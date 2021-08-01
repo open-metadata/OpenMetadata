@@ -1,0 +1,17 @@
+# Node
+node/
+
+# Dependencies
+node_modules/
+
+# Production
+build/
+dist/
+
+# macOS
+.DS_Store
+
+# configs
+**/*.config.js
+**/*.config.dev.js
+**/*.config.prod.js

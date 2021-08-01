@@ -1,0 +1,54 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/data/createTable.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Table entity request",
+  "description": "Schema corresponding to a table that belongs to a database",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
+      "$ref": "../../entity/data/table.json#/definitions/tableName"
+    },
+    "description": {
+      "description": "Description of entity instance.",
+      "type": "string"
+    },
+    "tableType": {
+      "$ref": "../../entity/data/table.json#/definitions/tableType"
+    },
+    "columns": {
+      "description": "Name of the tables in the database",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/column"
+      },
+      "default" : null
+    },
+    "tableConstraints": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/table.json#/definitions/tableConstraint"
+      },
+      "default" : null
+    },
+    "owner": {
+      "description": "Owner of this entity",
+      "$ref": "../../type/entityReference.json",
+      "default" : null
+    },
+    "database": {
+      "description": "Database corresponding to this table",
+      "$ref": "../../type/basic.json#/definitions/uuid",
+      "default" : null
+    },
+    "tags": {
+      "description": "Tags for this table",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    }
+  },
+  "required": ["name","columns","database"]
+}

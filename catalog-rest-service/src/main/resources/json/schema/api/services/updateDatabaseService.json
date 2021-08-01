@@ -1,0 +1,21 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/services/updateDatabaseService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Update Database service entity request",
+  "description": "Udpate Database service entity request",
+  "type": "object",
+
+  "properties" : {
+    "description": {
+      "description": "Description of Database entity.",
+      "type": "string"
+    },
+    "jdbc": {
+      "$ref" : "../../type/jdbcConnection.json#/definitions/jdbcInfo"
+    },
+    "ingestionSchedule" :  {
+      "description": "Schedule for running metadata ingestion jobs",
+      "$ref" : "../../type/schedule.json"
+    }
+  }
+}

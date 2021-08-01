@@ -1,0 +1,47 @@
+{
+  "source": {
+    "type": "redshift-usage",
+    "config": {
+      "host_port": "redshift-cluster-1.clot5cqn1cnb.us-west-2.redshift.amazonaws.com:5439",
+      "username": "awsuser",
+      "password": "focguC-kaqqe5-nepsok",
+      "database": "warehouse",
+      "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
+      "service_name": "aws_redshift",
+      "service_type": "Redshift",
+      "duration": 2
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage-stage",
+    "config": {
+      "filename": "/tmp/redshift_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/redshift_usage"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}

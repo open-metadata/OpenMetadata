@@ -1,0 +1,9 @@
+export enum ServiceType {
+  MYSQL = 'MYSQL',
+  REDSHIFT = 'REDSHIFT',
+  BIGQUERY = 'BIGQUERY',
+  HIVE = 'HIVE',
+  POSTGRES = 'POSTGRES',
+  ORACLE = 'ORACLE',
+  SNOWFLAKE = 'SNOWFLAKE',
+}

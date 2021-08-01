@@ -1,0 +1,47 @@
+{
+  "source": {
+    "type": "snowflake-usage",
+    "config": {
+      "host_port": "bg94420.ap-south-1.aws.snowflakecomputing.com",
+      "username": "catalog",
+      "password": "test!Password2",
+      "database": "SNOWFLAKE_SAMPLE_DATA",
+      "account": "BG94420",
+      "service_name": "snowflake",
+      "service_type": "Snowflake",
+      "duration": 2
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage-stage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/snowflake_usage"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}

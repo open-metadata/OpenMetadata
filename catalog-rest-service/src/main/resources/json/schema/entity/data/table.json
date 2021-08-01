@@ -1,0 +1,324 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/data/table.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table entity",
+  "description": "Schema corresponding to a table that belongs to a database",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Table",
+  "definitions": {
+    "tableType": {
+      "javaType": "org.openmetadata.catalog.type.TableType",
+      "description": "Type for capturing a column in a table",
+      "type": "string",
+      "enum": [
+        "Regular",
+        "External",
+        "View",
+        "SecureView",
+        "MaterializedView"
+      ],
+      "javaEnums": [
+        {
+          "name": "Regular"
+        },
+        {
+          "name": "External"
+        },
+        {
+          "name": "View"
+        },
+        {
+          "name": "SecureView"
+        },
+        {
+          "name": "MaterializedView"
+        }
+      ]
+    },
+    "columnDataType": {
+      "javaType": "org.openmetadata.catalog.type.ColumnDataType",
+      "description": "Type for capturing a column in a table",
+      "type": "string",
+      "enum": [
+        "NUMBER",
+        "TINYINT",
+        "SMALLINT",
+        "INT",
+        "BIGINT",
+        "FLOAT",
+        "DOUBLE",
+        "DECIMAL",
+        "NUMERIC",
+        "TIMESTAMP",
+        "TIME",
+        "DATE",
+        "DATETIME",
+        "INTERVAL",
+        "STRING",
+        "MEDIUMTEXT",
+        "TEXT",
+        "CHAR",
+        "VARCHAR",
+        "BOOLEAN",
+        "BINARY",
+        "VARBINARY",
+        "ARRAY",
+        "BLOB",
+        "LONGBLOB",
+        "MEDIUMBLOB",
+        "MAP",
+        "STRUCT",
+        "UNION",
+        "SET",
+        "GEOGRAPHY",
+        "ENUM",
+        "JSON"
+      ]
+    },
+    "columnConstraint": {
+      "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
+      "description": "Column constraint",
+      "type": "string",
+      "enum": [
+        "NULL",
+        "NOT_NULL",
+        "UNIQUE",
+        "PRIMARY_KEY"
+      ],
+      "default": "NULL"
+    },
+    "tableConstraint": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableConstraint",
+      "description": "Table constraint",
+      "properties": {
+        "constraintType": {
+          "type": "string",
+          "enum": [
+            "UNIQUE",
+            "PRIMARY_KEY",
+            "FOREIGN_KEY"
+          ]
+        },
+        "columns": {
+          "description": "List of column names corresponding to the constraint",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "columnName": {
+      "description": "Local name (not fully qualified name) of the column",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "tableName": {
+      "description": "Local name (not fully qualified name) of the table",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "fullyQualifiedColumnName": {
+      "description": "Fully qualified name of the column that includes serviceName.databaseName.tableName.columnName",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "column": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Column",
+      "description": "Type for capturing a column in a table",
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/columnName"
+        },
+        "columnDataType": {
+          "description": "Data type of the column (int, date etc.)",
+          "$ref": "#/definitions/columnDataType"
+        },
+        "description": {
+          "description": "Description of the column",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "$ref": "#/definitions/fullyQualifiedColumnName"
+        },
+        "tags": {
+          "description": "Tags associated with the column",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        },
+        "columnConstraint": {
+          "description": "Column level constraint",
+          "$ref": "#/definitions/columnConstraint"
+        },
+        "ordinalPosition": {
+          "description": "Ordinal position of the column",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "columnDataType"
+      ]
+    },
+    "columnJoins": {
+      "type": "object",
+      "javaType": "com.streamlinedata.catalog.type.ColumnJoin",
+      "description": "Information on other tables that this table column is frequently joined with",
+      "properties": {
+        "columnName": {
+          "$ref": "#/definitions/columnName"
+        },
+        "joinedWith": {
+          "description": "Fully qualified names of the columns that this column is joined with",
+          "type": "array",
+          "items": {
+            "type" : "object",
+            "properties": {
+              "fullyQualifiedName" : {
+                "$ref" : "#/definitions/fullyQualifiedColumnName"
+              },
+              "joinCount" : {
+                "type" : "integer"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableJoins": {
+      "type": "object",
+      "javaType": "com.streamlinedata.catalog.type.TableJoins",
+      "properties": {
+        "startDate": {
+          "description": "Date can be only from today going back to last 29 days",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "dayCount": {
+          "type": "integer",
+          "default": 1
+        },
+        "columnJoins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnJoins"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableData": {
+      "type": "object",
+      "javaType": "com.streamlinedata.catalog.type.TableData",
+      "description": "Information on other tables that this table column is frequently joined with",
+      "properties": {
+        "columns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnName"
+          }
+        },
+        "rows": {
+          "description": "Data for a multiple rows of the table",
+          "type": "array",
+          "items": {
+            "description": "Data for a single row of the table",
+            "type": "array"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this table instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the table. Expected to be unique with in a database",
+      "$ref": "#/definitions/tableName"
+    },
+    "description": {
+      "description": "Description of the table",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this table resource",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "tableType": {
+      "$ref": "#/definitions/tableType"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the table in the form serviceName.databaseName.tableName",
+      "type": "string"
+    },
+    "columns": {
+      "description": "Columns in the table",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/column"
+      },
+      "default": null
+    },
+    "tableConstraints": {
+      "description": "Table constraints",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "usageSummary": {
+      "$ref": "../../type/usageDetails.json",
+      "description": "Latest usage information for this table",
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this table",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this table",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "database": {
+      "description": "Reference to Database that contains this table",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this table",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "joins": {
+      "description": "Details of other tables this table is frequently joined with",
+      "$ref": "#/definitions/tableJoins",
+      "default": null
+    },
+    "sampleData": {
+      "description": "Sample data for the table",
+      "$ref": "#/definitions/tableData",
+      "default": null
+    }
+  },
+  "required": [
+    "name",
+    "columns"
+  ]
+}

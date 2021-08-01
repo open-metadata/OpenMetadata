@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  h1 {
+    @apply tw-text-h1 tw-font-medium tw-mb-2;
+  }
+  h2 {
+    @apply tw-text-h2 tw-font-medium tw-mb-2;
+  }
+  h3 {
+    @apply tw-text-h3 tw-font-medium tw-mb-2;
+  }
+  h4 {
+    @apply tw-text-h4 tw-font-medium tw-mb-2;
+  }
+  h5 {
+    @apply tw-text-h5 tw-font-medium tw-mb-2;
+  }
+  h6 {
+    @apply tw-text-h6 tw-font-medium tw-mb-2;
+  }
+  body {
+    @apply tw-text-body tw-text-grey-body tw-font-light;
+  }
+
+  .tw-table {
+    @apply tw-w-full;
+  }
+  .tw-table thead th {
+    @apply tw-text-sm tw-font-medium tw-bg-gray-100 tw-align-bottom;
+  }
+  .tw-table td,
+  .tw-table th {
+    @apply tw-p-2.5;
+  }
+  .tw-table.tw-table-bordered thead td,
+  .tw-table.tw-table-bordered thead th {
+    @apply tw-border-b-2;
+  }
+  .tw-table.tw-table-bordered td,
+  .tw-table.tw-table-bordered th {
+    @apply tw-border;
+  }
+  .tw-table-responsive {
+    @apply tw-block tw-w-full tw-overflow-x-auto;
+  }
+  .tw-table-responsive > .tw-table-bordered {
+    @apply tw-border-none;
+  }
+  .tw-table-data td {
+    @apply tw-whitespace-nowrap;
+  }
+
+  /* Table css start */
+  .tableHead-row {
+    @apply tw-border tw-border-gray-200 tw-leading-normal;
+  }
+  .tableHead-cell {
+    @apply tw-py-3 tw-px-6 tw-text-left tw-font-normal tw-whitespace-nowrap;
+  }
+  .tableBody {
+    @apply tw-text-grey-body;
+  }
+  .tableBody-row {
+    @apply tw-border tw-border-gray-200 hover:tw-bg-gray-100;
+  }
+  .tableBody-row.odd-row {
+    @apply tw-bg-gray-50 hover:tw-bg-gray-100;
+  }
+  .tableBody-cell {
+    @apply tw-py-3 tw-px-6 tw-text-left;
+  }
+  /* Table css end */
+
+  .tw-text-primary {
+    @apply tw-text-blue-500;
+  }
+  .tw-gh-tabs-container {
+    @apply tw-border-b;
+  }
+  .tw-gh-tabs {
+    @apply tw-text-gray-500 tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-block tw-border-b-2 tw-border-transparent hover:tw-border-gray-300 focus:tw-outline-none;
+  }
+  .tw-gh-tabs.active {
+    @apply tw-text-grey-body tw-border-b-2 tw-border-orange-400;
+  }
+  .tw-gh-tabs:disabled {
+    @apply tw-opacity-50 tw-pointer-events-none hover:tw-border-none;
+  }
+
+  .tw-modal {
+    @apply tw-z-9999 tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
+  }
+  .tw-modal-backdrop {
+    @apply tw-opacity-60 tw-bg-gray-900 tw-absolute tw-inset-0;
+  }
+  .tw-modal-container {
+    @apply tw-flex tw-flex-col tw-absolute tw-py-5 tw-bg-white tw-w-11/12 tw-max-w-screen-lg tw-max-h-screen tw-mx-auto tw-rounded-lg tw-border tw-border-gray-300 tw-shadow-xl;
+  }
+  .tw-modal-header {
+    @apply tw-flex tw-flex-row tw-justify-between tw-px-6 tw-pb-5 tw-bg-transparent tw-border-b tw-border-gray-200;
+  }
+  .tw-modal-title {
+    @apply tw-text-base tw-font-medium tw-text-grey-body;
+  }
+  .tw-modal-body {
+    @apply tw-flex tw-flex-col tw-overflow-auto tw-px-6 tw-py-5 tw-bg-transparent;
+  }
+  .tw-modal-footer {
+    @apply tw-flex tw-flex-row tw-items-center tw-justify-end tw-px-5 tw-pt-5 tw-bg-transparent tw-border-t tw-border-gray-200;
+  }
+
+  .quatily-tile {
+    @apply tw-bg-success tw-px-2 tw-py-0.5;
+  }
+  .link-title {
+    @apply tw-text-base tw-text-blue-600 focus:tw-underline tw-cursor-pointer;
+  }
+  .show-more,
+  a[href],
+  .link-text {
+    @apply tw-text-blue-600 hover:tw-text-blue-700 focus:tw-text-blue-700 hover:tw-underline focus:tw-underline tw-cursor-pointer;
+  }
+
+  .child-inline * {
+    @apply tw-inline;
+  }
+
+  .tw-tooltip {
+    @apply tw-invisible tw-absolute;
+  }
+  .tw-has-tooltip:hover .tw-tooltip {
+    @apply tw-visible tw-z-50;
+  }
+
+  .tw-tag {
+    @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-gray-200;
+  }
+
+  .tw-signin-button {
+    @apply tw-rounded-md tw-text-white tw-px-4 tw-py-2 tw-mt-5 tw-border tw-text-base tw-font-medium;
+  }
+
+  .tw-card {
+    @apply tw-bg-white tw-border tw-rounded-md tw-border-gray-200;
+  }
+
+  /* form */
+
+  .tw-form-label {
+    @apply tw-text-sm tw-text-gray-700 tw-mb-1;
+  }
+
+  .tw-form-input {
+    @apply tw-w-full tw-text-gray-700 tw-bg-gray-100 tw-border-2 tw-rounded;
+  }
+
+  /* Dropdown CSS start */
+  .dropdown-list {
+    @apply tw-origin-top-right tw-absolute tw-z-9999
+    tw-mt-2 tw-min-w-max tw-rounded-md tw-shadow-lg
+    tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none;
+  }
+
+  .dropdown-list.dd-horz-left {
+    @apply tw-left-0;
+  }
+
+  .dropdown-list.dd-horz-right {
+    @apply tw-right-0;
+  }
+  /* Dropdown CSS end */
+
+  /* Toaster CSS start */
+  .tw-notification-container {
+    @apply tw-text-body tw-fixed tw-z-9999 tw-box-border tw-top-3 tw-right-3 tw-transition tw-duration-300 tw-ease-in-out;
+  }
+  .tw-notification {
+    @apply tw-bg-white tw-transition tw-duration-300 tw-ease-linear tw-relative tw-flex tw-justify-between tw-pointer-events-auto
+     tw-mb-3.5 tw-p-4 tw-w-80 tw-h-auto tw-rounded tw-shadow tw-text-white tw-bg-left-top tw-bg-no-repeat;
+  }
+  /* Toaster CSS end */
+
+  .tw-heading {
+    @apply tw-font-medium tw-text-grey-body tw-mb-4;
+  }
+  .tw-nav {
+    @apply tw-font-normal tw-px-2;
+  }
+  /* popover css start */
+  .tippy-popper {
+    @apply tw-pointer-events-auto;
+  }
+  /* popover css end */
+
+  .tw-no-description {
+    @apply tw-text-gray-500;
+  }
+
+  .tw-form-label {
+    @apply tw-block tw-text-body tw-font-normal tw-text-grey-body tw-mb-2;
+  }
+}

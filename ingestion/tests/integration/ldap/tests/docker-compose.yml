@@ -1,0 +1,15 @@
+version: "3.3"
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    command: --copy-service
+    environment:
+      LDAP_ORGANISATION: "example"
+      LDAP_DOMAIN: "example.com"
+      LDAP_ADMIN_PASSWORD: "ldappassword"
+    ports:
+      - 389:389
+      - 636:636
+    volumes:
+      - ./bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/bootstrap.ldif
+      

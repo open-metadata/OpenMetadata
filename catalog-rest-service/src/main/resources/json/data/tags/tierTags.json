@@ -1,0 +1,27 @@
+{
+  "name": "Tier",
+  "categoryType": "Descriptive",
+  "description": "Tags related to tiering of the data. Tiers capture the business importance of data.",
+  "children": [
+    {
+      "name": "Tier1",
+      "description": "todo"
+    },
+    {
+      "name": "Tier2",
+      "description": "todo"
+    },
+    {
+      "name": "Tier3",
+      "description": "todo"
+    },
+    {
+      "name": "Tier4",
+      "description": "todo"
+    },
+    {
+      "name": "Tier5",
+      "description": "todo"
+    }
+  ]
+}

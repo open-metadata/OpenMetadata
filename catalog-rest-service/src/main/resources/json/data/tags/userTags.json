@@ -1,0 +1,231 @@
+{
+  "name": "User",
+  "categoryType": "Descriptive",
+  "description": "Tags related to describing User related data.",
+  "children": [
+    {
+      "name": "Address",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "BankAccount",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "CreditCardNumber",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Driver'sLicense",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Email",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "FacePhoto",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Login",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Name",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "NationalId",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Passport",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Phone",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "SocialMedia",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "SSN",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "TaxId",
+      "description": "todo",
+      "associatedTags": [
+        "PII.Sensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "DOB",
+      "description": "todo",
+      "associatedTags": [
+        "PII.nonSensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Ethnicity",
+      "description": "todo",
+      "associatedTags": [
+        "PII.nonSensitive",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "Gender",
+      "description": "todo",
+      "associatedTags": [
+        "PII.nonSensitive",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "AddressLocation",
+      "description": "todo",
+      "associatedTags": [
+        "PII.nonSensitive",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "MaritalStatus",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "IPAddress",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Password",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.Personal"
+      ]
+    },
+    {
+      "name": "Biometric",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "Genetic",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "MedicalRecords",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "Politics",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "Religion",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "SexualOrientation",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    },
+    {
+      "name": "TradeUnions",
+      "description": "todo",
+      "associatedTags": [
+        "PII.None",
+        "PersonalData.SpecialCategory"
+      ]
+    }
+  ]
+}

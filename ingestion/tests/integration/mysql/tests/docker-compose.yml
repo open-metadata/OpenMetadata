@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: catalog_user
+      MYSQL_PASSWORD: catalog_password
+      MYSQL_DATABASE: catalog_test
+    volumes:
+      - ./setup/setup.sql:/docker-entrypoint-initdb.d/setup.sql
+    expose:
+      - 3306
+    ports:
+      - 3307:3306

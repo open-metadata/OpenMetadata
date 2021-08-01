@@ -1,0 +1,53 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/team/team.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team entity",
+  "description": "Team entity",
+  "type": "object",
+
+  "defintions" : {
+    "teamName" : {
+      "description": "Unique name of the team typically the team ID from the identify provider. Example - group Id from ldap.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  },
+
+  "properties" : {
+    "id": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/defintions/teamName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'Data Science team'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the team",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "profile": {
+      "description": "Team profile information",
+      "$ref": "../../type/profile.json"
+    },
+    "deleted" : {
+      "type": "boolean"
+    },
+    "users" : {
+      "description": "Users that are part of the team",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "owns" : {
+      "description": "Entities owned by the team",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required" : ["id", "name", "href"]
+}

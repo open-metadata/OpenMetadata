@@ -1,0 +1,82 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/services/databaseService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Database service entity",
+  "description": "Database service entity that reference services such as MySQL, BigQuery, Redshift, Postgres or Snowflake",
+  "type": "object",
+  "definitions": {
+    "databaseServiceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
+      "type": "string",
+      "enum": [
+        "BigQuery",
+        "MySQL",
+        "Redshift",
+        "Snowflake",
+        "Postgres",
+        "MSSQL",
+        "Hive"
+      ],
+      "javaEnums": [
+        {
+          "name": "BigQuery"
+        },
+        {
+          "name": "MySQL"
+        },
+        {
+          "name": "Redshift"
+        },
+        {
+          "name": "Snowflake"
+        },
+        {
+          "name": "Postgres"
+        },
+        {
+          "name": "MSSQL"
+        },
+        {
+          "name": "Hive"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "serviceType": {
+      "$ref": "#/definitions/databaseServiceType"
+    },
+    "description": {
+      "description": "Description of database service instance.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "jdbc": {
+      "$ref": "../../type/jdbcConnection.json#/definitions/jdbcInfo"
+    },
+    "ingestionSchedule": {
+      "description": "Schedule for running metadata ingestion jobs",
+      "$ref": "../../type/schedule.json"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "serviceType",
+    "href",
+    "jdbc"
+  ]
+}

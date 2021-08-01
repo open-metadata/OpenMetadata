@@ -1,0 +1,17 @@
+.pagination {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tw-link:hover {
+  text-decoration: none !important;
+}
+.pagination > .disabled > .tw-link,
+.pagination > .disabled > .tw-link:hover,
+.pagination > .disabled > .tw-link:focus {
+  cursor: not-allowed;
+  color: #3b82f6;
+}

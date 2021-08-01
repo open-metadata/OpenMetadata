@@ -1,0 +1,23 @@
+{
+  "$id": "https://streaminlinedata.ai/api/feed/createFeed.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create thread request",
+  "description": "Create thread request",
+  "type": "object",
+
+  "properties" : {
+    "message" : {
+      "description": "Message",
+      "type" : "string"
+    },
+    "from" : {
+      "description": "ID of User (regular user or bot) posting the message",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "about": {
+      "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}",
+      "$ref" : "../../type/basic.json#/definitions/entityLink"
+    }
+  },
+  "required": ["message", "from", "about"]
+}

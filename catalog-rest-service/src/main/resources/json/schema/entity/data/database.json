@@ -1,0 +1,57 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/data/database.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Database entity",
+  "description": "Entity that represents a database",
+  "type": "object",
+
+  "definitions": {
+    "databaseName": {
+      "description": "Name that identifies the database",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    }
+  },
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies this database instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the database",
+      "$ref": "#/definitions/databaseName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the database instance. What it has and how to use it.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to the database cluster/service where this database is hosted in",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "usageSummary" : {
+      "description": "Latest usage information for this database",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "tables": {
+      "description": "References to tables in the database",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": ["name", "service"]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "89229e26-7f74-4443-a568-85512eaeaa07",
+  "name": "bigquery",
+  "serviceType": "BigQuery",
+  "description": "BigQuery service used for shopify data",
+  "href": "null",
+  "jdbc": {
+    "driverClass" : "jdbc",
+    "connectionUrl" : "jdbc://localhost"
+  }
+}

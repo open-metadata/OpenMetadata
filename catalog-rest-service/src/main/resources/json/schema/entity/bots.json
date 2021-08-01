@@ -1,0 +1,32 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/bots.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Bot entity",
+  "description": "Bot entity to capture the details of a bot",
+  "type": "object",
+
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Optional name that identifies this entity. Same as id if name is not available",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of entity instance.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../type/basic.json#/definitions/href"
+    }
+  }
+}

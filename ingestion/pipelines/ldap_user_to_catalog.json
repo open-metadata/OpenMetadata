@@ -1,0 +1,30 @@
+{
+  "source": {
+    "type": "ldap-users",
+    "config": {
+      "server": "ldap://localhost:389",
+      "username": "cn=admin,dc=example,dc=com",
+      "password": "ldappassword"
+    }
+  },
+  "sink": {
+    "type": "ldap-rest-users",
+    "config": {
+      "api_end_point": "http://localhost:8585/api"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}

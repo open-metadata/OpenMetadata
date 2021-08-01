@@ -1,0 +1,34 @@
+{
+  "$id": "https://streaminlinedata.ai/api/teams/team.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team entity",
+  "description": "Team entity",
+  "type": "object",
+
+  "properties" : {
+    "name": {
+      "$ref": "../../entity/teams/team.json#/defintions/teamName"
+    },
+    "displayName": {
+      "description": "Optional name used for display purposes. Example 'Marketing Team'",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of the team",
+      "type": "string"
+    },
+    "profile": {
+      "description": "Optional team profile information",
+      "$ref": "../../type/profile.json"
+    },
+    "users" : {
+      "description": "Optional IDs of users that are part of the team",
+      "type" : "array",
+      "items" : {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default" : null
+    }
+  },
+  "required": ["name"]
+}

@@ -1,0 +1,27 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/data/createDatabase.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Database entity request",
+  "description": "Create Database entity request",
+  "type": "object",
+
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this database instance uniquely.",
+      "$ref": "../../entity/data/database.json#/definitions/databaseName"
+    },
+    "description": {
+      "description": "Description of the database instance. What it has and how to use it.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to the database service where this database is hosted in",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "service"]
+}

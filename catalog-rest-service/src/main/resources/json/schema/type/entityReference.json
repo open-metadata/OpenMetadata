@@ -1,0 +1,43 @@
+{
+  "$id": "https://streaminlinedata.ai/type/entityReference.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entity Reference",
+  "description": "Entity reference that includes entity ID and entity type",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.EntityReference",
+  "definitions": {
+    "entityReferenceList": {
+      "type": "array",
+      "items": {
+        "$ref": "entityReference.json"
+      },
+      "default": null
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "type": {
+      "description": "Entity type/class name - Examples: database, table, metrics, redshift, mysql, bigquery, snowflake...",
+      "type": "string"
+    },
+    "name": {
+      "description": "Name of the entity instance",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional description of entity",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the entity resource",
+      "$ref": "basic.json#/definitions/href"
+    }
+  },
+  "required": [
+    "id",
+    "type"
+  ]
+}

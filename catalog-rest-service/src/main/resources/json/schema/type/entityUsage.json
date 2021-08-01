@@ -1,0 +1,22 @@
+{
+  "$id": "https://streaminlinedata.ai/type/entityUsage.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Usage details of an entity",
+  "description": "Type used for capturing usage details of an entity",
+  "type" : "object",
+
+  "properties": {
+    "entity": {
+      "description": "Entity for which usage is returned",
+      "$ref": "entityReference.json"
+    },
+    "usage": {
+      "description": "List usage details per day",
+      "type": "array",
+      "items": {
+        "$ref": "usageDetails.json"
+      }
+    }
+  },
+  "required": ["entity", "usage"]
+}

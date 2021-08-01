@@ -1,0 +1,31 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/services/createDatabaseService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Database service entity request",
+  "description": "Create Database service entity request",
+  "type": "object",
+
+  "properties" : {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of Database entity.",
+      "type": "string"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/databaseService.json#/definitions/databaseServiceType"
+    },
+    "jdbc": {
+      "$ref" : "../../type/jdbcConnection.json#/definitions/jdbcInfo"
+    },
+    "ingestionSchedule" :  {
+      "description": "Schedule for running metadata ingestion jobs",
+      "$ref" : "../../type/schedule.json"
+    }
+  },
+  "required": ["name", "serviceType", "jdbc"]
+}

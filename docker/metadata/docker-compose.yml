@@ -1,0 +1,83 @@
+version: "3.9"
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: catalog_user
+      MYSQL_PASSWORD: catalog_password
+      MYSQL_DATABASE: catalog_db
+    expose:
+      - 3306
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    environment:
+      discovery.type: single-node
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.11
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+  catalog:
+    build:
+      context: ../../.
+      dockerfile: docker/metadata/Dockerfile
+    expose:
+      - 8585
+      - 9200
+      - 9300
+    ports:
+      - 8585:8585
+    depends_on:
+      - db
+      - elasticsearch
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.12
+    extra_hosts:
+      - "localhost:172.16.239.10"
+      - "localhost:172.16.239.11"
+
+  ingestion:
+    build:
+      context: ../../ingestion/.
+      dockerfile: Dockerfile
+    expose:
+      - 7777
+    ports:
+      - 7777:7777
+    networks:
+      - app_net
+    extra_hosts:
+      - "localhost:172.16.239.10"
+      - "localhost:172.16.239.11"
+      - "localhost:172.16.239.12"
+      - "localhost:172.16.239.13"
+
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: pagila
+      POSTGRES_USER: catalog_user
+      POSTGRES_PASSWORD: catalog_password
+    ports:
+      - 5433:5432
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.13
+
+networks:
+  app_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.239.0/24"

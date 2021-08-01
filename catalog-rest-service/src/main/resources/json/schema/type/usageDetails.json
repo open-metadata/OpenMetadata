@@ -1,0 +1,54 @@
+{
+  "$id": "https://streaminlinedata.ai/type/usageDetails.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Type used to return usage details of an entity",
+  "description": "Type used to return usage details of an entity",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.UsageDetails",
+  "definitions": {
+    "usageStats": {
+      "$comment": "Type used to return usage statistics",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.UsageStats",
+      "properties": {
+        "count": {
+          "Description": "Usage count of a data asset on the start date",
+          "type": "integer",
+          "minimum": 0
+        },
+        "percentileRank": {
+          "Description": "Optional daily percentile rank data asset use when relevant",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "dailyStats": {
+      "Description": "Daily usage stats of a data asset on the start date",
+      "$ref": "#/definitions/usageStats"
+    },
+    "weeklyStats": {
+      "Description": "Weekly (last 7 days) rolling usage stats of a data asset on the start date",
+      "$ref": "#/definitions/usageStats"
+    },
+    "monthlyStats": {
+      "Description": "Monthly (last 30 days) rolling usage stats of a data asset on the start date",
+      "$ref": "#/definitions/usageStats"
+    },
+    "date": {
+      "Description": "Date in UTC time",
+      "$ref": "basic.json#/definitions/date"
+    }
+  },
+  "required": [
+    "dailyStats",
+    "date"
+  ]
+}

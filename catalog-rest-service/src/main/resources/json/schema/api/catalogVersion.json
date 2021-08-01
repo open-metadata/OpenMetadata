@@ -1,0 +1,22 @@
+{
+  "$id": "https://streaminlinedata.ai/api/admin/version/catalogVersion.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Catalog application software version",
+  "description": "Catalog application software version",
+  "type": "object",
+
+  "properties" : {
+    "version" : {
+      "description": "Software version of the catalog",
+      "type" : "string"
+    },
+    "revision" : {
+      "description": "Software revision of the catalog",
+      "type" : "string"
+    },
+    "timestamp" : {
+      "description": "Build timestamp",
+      "$ref" : "../type/basic.json#/definitions/timestamp"
+    }
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/team/user.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User entity",
+  "description": "User entity that is part of an organization",
+  "type": "object",
+
+  "definitions": {
+    "userName" : {
+      "description": "Unique name of the user typically the user ID from the identify provider. Example - uid from ldap.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    }
+  },
+
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "$ref": "#/definitions/userName"
+    },
+    "displayName": {
+      "description": "Name used for display purposes. Example 'FirstName LastName'",
+      "type": "string"
+    },
+    "email": {
+      "$ref": "../../type/basic.json#/definitions/email"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "timezone": {
+      "description": "Timezone of the user",
+      "type": "string",
+      "format": "timezone"
+    },
+    "deactivated" : {
+      "type": "boolean"
+    },
+    "isBot" : {
+      "type": "boolean",
+      "boolean" : false
+    },
+    "isAdmin" : {
+      "description": "When true indicates user is an adiministrator for the sytem with superuser privileges",
+      "type": "boolean",
+      "boolean" : false
+    },
+    "profile": {
+      "$ref": "../../type/profile.json"
+    },
+    "teams" : {
+      "description": "Teams that the user belongs to",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "owns" : {
+      "description": "Entities owned by the user",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "follows" : {
+      "description": "Entities followed by the user",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    }
+  },
+  "required": ["id", "name", "email", "href"]
+}

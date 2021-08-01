@@ -1,0 +1,67 @@
+.stepper-list {
+  display: flex;
+  padding: 24px;
+  flex: 0 0 100%;
+}
+
+.stepper-list.stepper-horizontal {
+  align-items: center;
+  flex-direction: row;
+}
+
+.step {
+  flex: 1;
+  position: relative;
+}
+
+.stepper-list.stepper-horizontal .step {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.step-pending .step-icon {
+  opacity: 0.5;
+}
+
+.step-done .step-icon,
+.step-doing .step-icon {
+  opacity: 1;
+}
+
+.step-icon {
+  display: inline-block;
+  height: 24px;
+  width: 24px;
+  border-radius: 50%;
+  background: blueviolet;
+  color: #fff;
+  text-align: center;
+}
+
+.step-label {
+  margin: 10px 0;
+}
+
+.step-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-connector {
+  top: 12px;
+  left: calc(-50% + 20px);
+  right: calc(50% + 20px);
+  position: absolute;
+  flex: 1 1 auto;
+}
+
+.step-connector-line {
+  display: block;
+  border-color: #bdbdbd;
+}
+
+.line-horizontal {
+  border-top-style: solid;
+  border-top-width: 1px;
+}

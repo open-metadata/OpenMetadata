@@ -1,0 +1,36 @@
+{
+  "$id": "https://streaminlinedata.ai/type/schedule.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tag Label",
+  "description": "Type used for schedule with start time and repeat frequency",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.TagLabel",
+  "properties": {
+    "tagFQN": {
+      "type": "string",
+      "maxLength": 45
+    },
+    "labelType": {
+      "type": "string",
+      "enum": [
+        "Manual",
+        "Propagated",
+        "Automated",
+        "Derived"
+      ],
+      "default": "Manual"
+    },
+    "state": {
+      "type": "string",
+      "enum": [
+        "Suggested",
+        "Confirmed"
+      ],
+      "default": "Confirmed"
+    },
+    "href": {
+      "description": "Link to the tag resource",
+      "$ref": "basic.json#/definitions/href"
+    }
+  }
+}

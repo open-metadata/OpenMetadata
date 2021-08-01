@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  sqlserver:
+    image: "mcr.microsoft.com/mssql/server:latest"
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "test!Password"
+    command: "./setup/setup.sh"
+    volumes:
+      - ./setup:/setup
+    ports:
+      - 51433:1433

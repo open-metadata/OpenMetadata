@@ -1,0 +1,17 @@
+# Node
+node/
+
+# Dependencies
+node_modules/
+
+# Production
+build/
+dist/
+
+# Ignore files (Prettier has trouble parsing files without extension)
+.gitignore
+.prettierignore
+.eslintignore
+
+# macOS
+.DS_Store

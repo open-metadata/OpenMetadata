@@ -1,0 +1,52 @@
+{
+  "$id": "https://streaminlinedata.ai/type/profile.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Type used to capture profile of a user, team, or an organization",
+  "description": "Type used to capture profile of a user, team, or an organization",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.Profile",
+  "definitions": {
+    "imageList": {
+      "description": "Links to list of images of varying resolutions/sizes",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ImageList",
+      "properties": {
+        "image": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image24": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image32": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image48": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image72": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image192": {
+          "type": "string",
+          "format": "uri"
+        },
+        "image512": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  },
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.Profile",
+  "properties": {
+    "images": {
+      "$ref": "#/definitions/imageList"
+    }
+  }
+}

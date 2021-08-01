@@ -1,0 +1,38 @@
+{
+  "$id": "https://streaminlinedata.ai/type/collection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Schema for collection descriptor",
+  "description": "Type used for capturing the details of a collection",
+  "type": "object",
+
+  "definitions": {
+    "collectionInfo": {
+      "description": "Collection Info",
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.CollectionInfo",
+      "properties": {
+        "name": {
+          "description": "Unique name that identifies a collection",
+          "type": "string"
+        },
+        "documentation": {
+          "description": "Description of collection",
+          "type": "string"
+        },
+        "href": {
+          "type": "string",
+          "description": "URL of the API endpoint where given collections are available",
+          "format": "uri"
+        },
+        "images": {
+          "$ref": "profile.json#/definitions/imageList"
+        }
+      }
+    }
+  },
+  "properties": {
+    "collection": {
+      "$ref": "#/definitions/collectionInfo"
+    }
+  }
+}

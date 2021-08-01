@@ -1,0 +1,18 @@
+{
+  "$id": "https://streaminlinedata.ai/type/schedule.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Type used for schedule with start time and repeat frequency",
+  "description": "Type used for schedule with start time and repeat frequency",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.Schedule",
+  "properties": {
+    "startDate": {
+      "description": "Start date and time of the schedule",
+      "$ref": "basic.json#/definitions/dateTime"
+    },
+    "repeatFrequency": {
+      "description": "Repeat frequency in ISO 8601 duration format",
+      "$ref": "basic.json#/definitions/duration"
+    }
+  }
+}

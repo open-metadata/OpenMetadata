@@ -1,0 +1,60 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/thread.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feed entity",
+  "description": "Entity that represents a feed",
+  "type": "object",
+
+  "definitions": {
+    "post": {
+      "javaType": "org.openmetadata.catalog.type.Post",
+      "type": "object",
+      "description": "Post within a feed",
+      "properties": {
+        "message": {
+          "description": "Message in markdown format. See markdown support for more details.",
+          "type": "string"
+        },
+        "postTs": {
+          "description": "Timestamp of the post",
+          "type": "string",
+          "format": "date-time"
+        },
+        "from": {
+          "description": "ID of User (regular user or a bot) posting the message",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "required": ["message", "from"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies an entity instance",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "threadTs": {
+      "description": "Timestamp of the when the first post created the thread",
+      "format": "date-time"
+    },
+    "about": {
+      "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}",
+      "$ref" : "../../type/basic.json#/definitions/entityLink"
+    },
+    "addressedTo": {
+      "description": "User or team this thread is addressed to in format <#E/{enties}/{entityName}/{field}/{fieldValue}",
+      "$ref" : "../../type/basic.json#/definitions/entityLink"
+    },
+    "posts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/post"
+      }
+    }
+  },
+  "required": ["id", "about", "posts"]
+}

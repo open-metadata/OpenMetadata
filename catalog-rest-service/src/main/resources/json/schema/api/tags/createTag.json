@@ -1,0 +1,28 @@
+{
+  "$id": "https://streaminlinedata.ai/type/createTag.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create tag API request",
+  "description": "Create tag API request",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.CreateTag",
+  "properties": {
+    "name": {
+      "$ref": "../../entity/tags/tagCategory.json#/definitions/tagName"
+    },
+    "description": {
+      "description": "Unique name of the tag category",
+      "type": "string"
+    },
+    "associatedTags": {
+      "description": "Fully qualified names of tags associated with this tag",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "description"
+  ]
+}

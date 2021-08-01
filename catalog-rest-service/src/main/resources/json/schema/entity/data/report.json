@@ -1,0 +1,48 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/data/report.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Report entity",
+  "description": "Entity that represents a Report",
+  "type": "object",
+
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies this report",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the this report instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "fullyQualifiedName": {
+      "description": "Unique name that identifies a report in the format 'ServiceName.ReportName'",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of this report instance.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this report",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this pipeline",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to service where this report is hosted in",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "usageSummary" : {
+      "description": "Latest usage information for this database",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    }
+  },
+  "required": ["id", "name", "service"]
+}
