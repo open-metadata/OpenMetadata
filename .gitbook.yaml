@@ -1,0 +1,9 @@
+root: ./docs/
+
+structure:
+    readme: ./README.md
+    summary: ./SUMMARY.md
+
+redirects:
+    help: ./support.md
+    help/contact: ./contact.md
