@@ -122,7 +122,6 @@ authorizerConfiguration:
   # JWT Filter
   containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
   adminPrincipals:
-    - "harshach"
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
