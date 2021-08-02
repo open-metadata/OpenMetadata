@@ -97,6 +97,7 @@ public class DashboardResource {
           .split(","));
   @GET
   @Operation(summary = "List dashboards", tags = "dashboards",
+          description = "Get a list of dashboards. Use `fields` parameter to get only necessary fields.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of dashboards",
                           content = @Content(mediaType = "application/json",
@@ -106,17 +107,15 @@ public class DashboardResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam,
-                            @Parameter(description = "Get dashboards that match fullyQualifiedName",
-                                    schema = @Schema(type = "string", example = "snowflakeWestCoast.finances"))
-                              @QueryParam("fqn") String fqn) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new DashboardList(addHref(uriInfo, dao.list(fields, fqn)));
+    return new DashboardList(addHref(uriInfo, dao.list(fields)));
   }
 
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a dashboard", tags = "dashboards",
+          description = "Get a dashboard by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",
@@ -135,6 +134,7 @@ public class DashboardResource {
 
   @POST
   @Operation(summary = "Create a dashboard", tags = "dashboards",
+          description = "Create a new dashboard.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",
@@ -151,6 +151,7 @@ public class DashboardResource {
 
   @PUT
   @Operation(summary = "Create or update a dashboard", tags = "dashboards",
+          description = "Create a new dashboard, if it does not exist or update an existing dashboard.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",

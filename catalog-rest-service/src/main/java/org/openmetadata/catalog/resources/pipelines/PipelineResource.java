@@ -84,6 +84,7 @@ public class PipelineResource {
 
   @GET
   @Operation(summary = "List pipelines", tags = "pipelines",
+          description = "Get a list of pipelines.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of pipelines",
                           content = @Content(mediaType = "application/json",
@@ -96,6 +97,7 @@ public class PipelineResource {
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a pipeline", tags = "pipelines",
+          description = "Get a pipeline by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
                           content = @Content(mediaType = "application/json",
@@ -108,6 +110,7 @@ public class PipelineResource {
 
   @POST
   @Operation(summary = "Create a pipeline", tags = "pipelines",
+          description = "Create a new pipeline.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
                           content = @Content(mediaType = "application/json",

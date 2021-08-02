@@ -89,6 +89,7 @@ public class FeedResource {
 
   @GET
   @Operation(summary = "List threads", tags = "feeds",
+          description = "Get a list of threads, optionally filtered by `entityLink`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of threads",
                           content = @Content(mediaType = "application/json",
@@ -104,6 +105,7 @@ public class FeedResource {
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a thread", tags = "feeds",
+          description = "Get a thread by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The thread",
                           content = @Content(mediaType = "application/json",
@@ -116,6 +118,7 @@ public class FeedResource {
 
   @POST
   @Operation(summary = "Create a thread", tags = "feeds",
+          description = "Create a new thread. A thread is created about a data asset when a user posts the first post.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The thread",
                           content = @Content(mediaType = "application/json",
@@ -135,6 +138,7 @@ public class FeedResource {
   @POST
   @Path("/{id}/posts")
   @Operation(summary = "Add post to a thread", tags = "feeds",
+          description = "Add a post to an existing thread.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The post",
                           content = @Content(mediaType = "application/json",
@@ -147,4 +151,3 @@ public class FeedResource {
     return Response.created(thread.getHref()).entity(thread).build();
   }
 }
-

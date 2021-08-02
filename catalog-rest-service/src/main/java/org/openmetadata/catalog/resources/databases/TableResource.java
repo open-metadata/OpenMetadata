@@ -121,6 +121,9 @@ public class TableResource {
 
   @GET
   @Operation(summary = "List tables", tags = "tables",
+          description = "Get a list of tables, optionally filtered by `database` it belongs to. Use `fields` " +
+                  "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
           responses = {@ApiResponse(responseCode = "200", description = "List of tables",
                   content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = TableList.class)))
@@ -139,7 +142,7 @@ public class TableResource {
                         @Min(1)
                         @Max(1000000)
                         @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of tables before this curor",
+                        @Parameter(description = "Returns list of tables before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
                         @Parameter(description = "Returns list of tables after this curor",
@@ -176,6 +179,7 @@ public class TableResource {
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a table", tags = "tables",
+          description = "Get a table by `id`",
           responses = {
                   @ApiResponse(responseCode = "200", description = "table",
                           content = @Content(mediaType = "application/json",
@@ -195,7 +199,8 @@ public class TableResource {
   
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a table by fully qualified name", tags = "tables",
+  @Operation(summary = "Get a table by name", tags = "tables",
+          description = "Get a table by fully qualified table name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "table",
                           content = @Content(mediaType = "application/json",
@@ -216,6 +221,7 @@ public class TableResource {
 
   @POST
   @Operation(summary = "Create a table", tags = "tables",
+          description = "Create a new table under an existing `database`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "table",
                           content = @Content(mediaType = "application/json",
@@ -236,6 +242,7 @@ public class TableResource {
 
   @PUT
   @Operation(summary = "Create or update a table", tags = "tables",
+          description = "Create a table, if it does not exist. If a table already exists, update the table.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The table",
                           content = @Content(mediaType = "application/json",
@@ -258,6 +265,7 @@ public class TableResource {
   @PATCH
   @Path("/{id}")
   @Operation(summary = "Update a table", tags = "tables",
+          description = "Update an existing table using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -282,6 +290,7 @@ public class TableResource {
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Delete a table", tags = "tables",
+          description = "Delete a table by `id`. Table is not immediately deleted and is only marked as deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
@@ -298,6 +307,7 @@ public class TableResource {
   @PUT
   @Path("/{id}/followers")
   @Operation(summary = "Add a follower", tags = "tables",
+          description = "Add a user identified by `userId` as followed of this table",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
@@ -317,7 +327,8 @@ public class TableResource {
   @PUT
   @Path("/{id}/joins")
   @Operation(summary = "Add table join information",
-          description = "Join information can only be added for last 30 days starting today", tags = "tables",
+          description = "Add information about other tables that this table is joined with. Join information can only" +
+                  " be added for the last 30 days starting today.", tags = "tables",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found"),
@@ -335,7 +346,8 @@ public class TableResource {
 
   @PUT
   @Path("/{id}/sampleData")
-  @Operation(summary = "Add sample data", tags = "tables")
+  @Operation(summary = "Add sample data", tags = "tables",
+          description = "Add sample data to the table." )
   public Response addSampleData(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
@@ -347,7 +359,8 @@ public class TableResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "tables")
+  @Operation(summary = "Remove a follower", tags = "tables",
+          description = "Remove the user identified `userId` as a follower of the table.")
   public Response deleteFollower(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Parameter(description = "Id of the table",

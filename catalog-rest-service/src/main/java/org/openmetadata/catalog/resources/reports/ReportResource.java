@@ -93,6 +93,7 @@ public class ReportResource {
 
   @GET
   @Operation(summary = "List reports", tags = "reports",
+          description = "Get a list of reports. Use `fields` parameter to get only necessary fields.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of reports",
                           content = @Content(mediaType = "application/json",
@@ -101,17 +102,15 @@ public class ReportResource {
   public ReportList list(@Context UriInfo uriInfo,
                          @Parameter(description = "Fields requested in the returned resource",
                                  schema = @Schema(type = "string", example = FIELDS))
-                         @QueryParam("fields") String fieldsParam,
-                         @Parameter(description = "Get report that match fullyQualifiedName",
-                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.finances"))
-                           @QueryParam("fqn") String fqn) throws IOException {
+                         @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new ReportList(addHref(uriInfo, dao.list(fields, fqn)));
+    return new ReportList(addHref(uriInfo, dao.list(fields)));
   }
 
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a report", tags = "reports",
+          description = "Get a report by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The report",
                           content = @Content(mediaType = "application/json",
@@ -128,6 +127,7 @@ public class ReportResource {
 
   @POST
   @Operation(summary = "Create a report", tags = "reports",
+          description = "Create a new report.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The report",
                           content = @Content(mediaType = "application/json",
@@ -142,6 +142,7 @@ public class ReportResource {
 
   @PUT
   @Operation(summary = "Create or update a report", tags = "reports",
+          description = "Create a new report, it it does not exist or update an existing report.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The report",
                           content = @Content(mediaType = "application/json",

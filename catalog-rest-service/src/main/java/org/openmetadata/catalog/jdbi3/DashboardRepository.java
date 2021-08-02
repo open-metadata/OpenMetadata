@@ -95,8 +95,8 @@ public abstract class DashboardRepository {
     return setFields(EntityUtil.validate(id, dashboardDAO().findById(id), Dashboard.class), fields);
   }
 
-  public List<Dashboard> list(Fields fields, String fqn) throws IOException {
-    List<String> jsonList = dashboardDAO().list(fqn);
+  public List<Dashboard> list(Fields fields) throws IOException {
+    List<String> jsonList = dashboardDAO().list();
     List<Dashboard> dashboardList = new ArrayList<>();
     for (String json : jsonList) {
       dashboardList.add(setFields(JsonUtils.readValue(json, Dashboard.class), fields));
@@ -171,7 +171,7 @@ public abstract class DashboardRepository {
     @SqlQuery("SELECT json FROM dashboard_entity WHERE fullyQualifiedName = :name")
     String findByFQN(@Bind("name") String name);
 
-    @SqlQuery("SELECT json FROM dashboard_entity WHERE (fullyQualifiedName = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @SqlQuery("SELECT json FROM dashboard_entity")
+    List<String> list();
   }
 }

@@ -18,8 +18,13 @@ package org.openmetadata.catalog.resources.config;
 
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.type.CollectionDescriptor;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -32,6 +37,7 @@ import javax.ws.rs.core.UriInfo;
 @Path("/v1/config")
 @Api(value = "Get configuration")
 @Produces(MediaType.APPLICATION_JSON)
+@Collection(name = "config")
 public class ConfigResource {
   private final CatalogApplicationConfig catalogApplicationConfig;
 
@@ -42,7 +48,12 @@ public class ConfigResource {
 
   @GET
   @Path(("/auth"))
-  @Operation(summary = "Get auth configuration")
+  @Operation(summary = "Get auth configuration", tags = "general",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Auth configuration",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = AuthenticationConfiguration.class)))
+          })
   public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
     if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {

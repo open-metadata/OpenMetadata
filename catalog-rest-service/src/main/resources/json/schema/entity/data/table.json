@@ -223,6 +223,7 @@
       "description": "Information on other tables that this table column is frequently joined with",
       "properties": {
         "columns": {
+          "description": "List of local column names (not fully qualified column names) of the table",
           "type": "array",
           "items": {
             "$ref": "#/definitions/columnName"
@@ -232,7 +233,7 @@
           "description": "Data for a multiple rows of the table",
           "type": "array",
           "items": {
-            "description": "Data for a single row of the table",
+            "description": "Data for a single row of the table with in the same order as columns fields",
             "type": "array"
           }
         }
