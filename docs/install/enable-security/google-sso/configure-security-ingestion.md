@@ -17,7 +17,7 @@ All Connectors have **metadata\_server** config. Pass the json file generated in
     "config": {
       "api_endpoint": "http://localhost:8585/api",
     "auth_provider_type": "google",
-    "secret_key": "/Users/harsha/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
+    "secret_key": "/Users/JohnDoe/Code/catalog/ingestion/pipelines/custom-name-320505-17b19fc14416.json"
     }
   },
 ...

@@ -7,12 +7,11 @@ I worked on the ..... because ...
 ### Type of change :
 
 <!-- You should choice 1 option and delete options that aren't relevant -->
-<!-- add an x in [ ] if true !-->
 
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation
++- [x] Bug fix
++- [x] New feature
++- [x] Breaking change (fix or feature that would cause existing functionality to not work as expected)
++- [x] Documentation
 #
 ### Frontend Preview (Screenshots) :
 <!-- While providing screenshots, delete the text below !-->
@@ -42,5 +41,5 @@ I worked on the ..... because ...
 <!--- OpenMetadata Community thanks you for explaining your changes in detail !-->
 <!--- If you are unsure of people to review your work, you can add anyone of these developers :) !-->
 <!--- Frontend: @shahsank3t, @darth-coder00, @Sachin-chaurasiya -->
-<!--- Backend: @sureshms , @harshach -->
-<!--- Ingestion: @harshach, @ayush-shah -->
++<!--- Backend: @sureshms -->
++<!--- Ingestion: @ayush-shah -->

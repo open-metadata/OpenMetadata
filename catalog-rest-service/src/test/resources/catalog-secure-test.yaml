@@ -126,7 +126,6 @@ authorizerConfiguration:
   # JWT Filter
   containerRequestFilter: "org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter"
   adminPrincipals:
-    - "harshach"
     - "suresh"
     - "admin"
   botPrincipals:
