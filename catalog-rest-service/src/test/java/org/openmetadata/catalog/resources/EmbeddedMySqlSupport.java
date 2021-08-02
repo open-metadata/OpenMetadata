@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.TimeZone;
-import java.util.concurrent.TimeUnit;
 
 import static com.wix.mysql.distribution.Version.v5_7_27;
 
@@ -26,7 +25,6 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
       MysqldConfig config = MysqldConfig.aMysqldConfig(v5_7_27)
               .withPort(3307)
               .withTimeZone(TimeZone.getTimeZone(ZoneId.of("UTC")))
-              .withTimeout(10, TimeUnit.MINUTES)
               .withUser("test", "")
               .build();
 
