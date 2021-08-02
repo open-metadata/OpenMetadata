@@ -18,11 +18,8 @@
 #   timestamp: 2021-07-31T17:12:10+00:00
 
 from __future__ import annotations
-
 from typing import Optional
-
 from pydantic import BaseModel, Field, constr
-
 from entity.services import databaseService
 from type import jdbcConnection, schedule
 

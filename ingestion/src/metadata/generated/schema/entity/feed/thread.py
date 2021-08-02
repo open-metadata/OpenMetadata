@@ -18,12 +18,9 @@
 #   timestamp: 2021-07-31T17:12:10+00:00
 
 from __future__ import annotations
-
 from datetime import datetime
 from typing import Any, List, Optional
-
 from pydantic import BaseModel, Field
-
 from type import basic
 
 
