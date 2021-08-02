@@ -21,7 +21,9 @@ import React from 'react';
 
 const PageContainer = ({ children, leftPanelContent, className }) => {
   return (
-    <div className={classnames('page-container', className || '')}>
+    <div
+      className={classnames('page-container', className || '')}
+      data-testid="container">
       {leftPanelContent && <div className="side-panel">{leftPanelContent}</div>}
       {children}
     </div>

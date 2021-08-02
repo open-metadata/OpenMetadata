@@ -35,8 +35,8 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   tags,
 }: Props) => {
   return (
-    <>
-      <div className="tw-mb-1 description-text">
+    <div data-testid="table-body">
+      <div className="tw-mb-1 description-text" data-testid="tags">
         {stringToHTML(description)}
       </div>
       <p className="tw-py-1">
@@ -69,7 +69,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 };
 

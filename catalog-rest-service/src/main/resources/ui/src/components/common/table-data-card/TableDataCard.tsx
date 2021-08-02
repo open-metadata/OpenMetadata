@@ -54,10 +54,14 @@ const TableDataCard: FunctionComponent<Props> = ({
   ];
 
   return (
-    <div className="tw-bg-white tw-p-3 tw-border tw-border-gray-200 tw-rounded-md">
+    <div
+      className="tw-bg-white tw-p-3 tw-border tw-border-gray-200 tw-rounded-md"
+      data-testid="table-data-card">
       <div>
         <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-          <Link to={getDatasetDetailsPath(fullyQualifiedName)}>
+          <Link
+            data-testid="table-link"
+            to={getDatasetDetailsPath(fullyQualifiedName)}>
             <button className="tw-text-grey-body tw-font-medium">
               {name + ' '}
             </button>

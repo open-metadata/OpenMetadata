@@ -18,7 +18,7 @@
 import React from 'react';
 import './Loader.css';
 const Loader: Function = (): JSX.Element => {
-  return <div className="loader" />;
+  return <div className="loader" data-testid="loader" />;
 };
 
 export default Loader;

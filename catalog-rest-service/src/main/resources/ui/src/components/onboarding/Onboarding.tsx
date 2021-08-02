@@ -24,7 +24,9 @@ const Onboarding: React.FC = () => {
   };
 
   return (
-    <div className="tw-flex tw-items-center tw-justify-around tw-mt-28">
+    <div
+      className="tw-flex tw-items-center tw-justify-around tw-mt-28"
+      data-testid="onboarding">
       <div className="tw-p-4">
         <h4>3 Steps to get started with OpenMetadata</h4>
         <div className="tw-mt-5">
@@ -108,6 +110,7 @@ const Onboarding: React.FC = () => {
         <SVGIcons
           alt="OpenMetadata Logo"
           className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
+          data-testid="logo"
           icon={Icons.LOGO_SMALL}
           width="350"
         />
