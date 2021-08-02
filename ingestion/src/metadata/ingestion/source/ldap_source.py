@@ -18,7 +18,7 @@ from typing import Iterable
 from ldap3 import Server, Connection, ALL, LEVEL
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import WorkflowContext, Record
+from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.user import MetadataUser, User
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig

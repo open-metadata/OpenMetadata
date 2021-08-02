@@ -14,12 +14,11 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-from abc import ABC
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable, Optional
+from typing import Iterator, Union, Dict, Any, Iterable
 
 from metadata.utils.helpers import get_start_and_end
 from metadata.ingestion.source.snowflake import SnowflakeConfig

@@ -13,15 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import pytest
+import requests
+import time
 from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.type.common import EntityReference
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
-import pytest
-import requests
-import time
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 

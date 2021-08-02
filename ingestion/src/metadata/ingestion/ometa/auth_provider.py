@@ -17,7 +17,7 @@ from google.oauth2 import service_account
 
 from metadata.config.common import ConfigModel
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import google.auth
 import google.auth.transport.requests
@@ -26,8 +26,6 @@ import time
 import uuid
 
 from jose import jwt
-from okta.client import Client as OktaClient
-import asyncio
 from okta.jwt import JWT
 
 

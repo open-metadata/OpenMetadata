@@ -15,12 +15,8 @@
 
 import os
 from typing import Tuple
-from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass, field
 import dateutil.parser
 
-from metadata.config.common import ConfigModel
-from metadata.ingestion.ometa.client import MetadataServerConfig
 
 Credentials = Tuple[str, str, str]
 

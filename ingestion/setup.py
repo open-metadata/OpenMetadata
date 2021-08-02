@@ -16,7 +16,7 @@
 from typing import Dict, Set
 import os
 
-from setuptools import find_packages, setup, find_namespace_packages
+from setuptools import setup, find_namespace_packages
 
 
 def get_version():
@@ -24,7 +24,7 @@ def get_version():
     changelog = os.path.join(root, "CHANGELOG")
     with open(changelog) as f:
         return f.readline().strip()
-
+p
 
 def get_long_description():
     root = os.path.dirname(__file__)

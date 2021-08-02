@@ -16,12 +16,8 @@
 # This import verifies that the dependencies are available.
 import logging
 import uuid
-from abc import ABC
 
 import pymysql  # noqa: F401
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
 from pydantic import ValidationError
 
 from metadata.generated.schema.entity.data.table import Column, TableEntity
@@ -32,7 +28,7 @@ from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import BasicSQLQueryConfig, SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
 from itertools import groupby
-from typing import Iterator, Union, Dict, Any, Iterable, Optional
+from typing import Iterator, Union, Dict, Any, Iterable
 from collections import namedtuple
 
 from metadata.utils.helpers import get_service_or_create

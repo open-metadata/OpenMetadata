@@ -14,11 +14,9 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-from abc import ABC
 import uuid
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.data.database import DatabaseEntity
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity, DatabaseServiceType
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.common import EntityReference
 from metadata.ingestion.api.common import AllowDenyPattern
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
@@ -29,9 +27,9 @@ from metadata.generated.schema.entity.data.table import TableEntity, Column
 from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
 from .sql_source import BasicSQLAlchemyConfig
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import DatabaseMetadata, ColumnMetadata, TableMetadata
+from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from itertools import groupby
-from typing import Iterator, Tuple, Union, Dict, Any, Iterable
+from typing import Iterator, Union, Dict, Any, Iterable
 from collections import namedtuple
 
 from ..ometa.auth_provider import MetadataServerConfig
