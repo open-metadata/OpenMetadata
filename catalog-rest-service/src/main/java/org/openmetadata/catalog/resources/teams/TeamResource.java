@@ -113,6 +113,9 @@ public class TeamResource {
   @GET
   @Valid
   @Operation(summary = "List teams", tags = "teams",
+          description = "Get a list of teams. Use `fields` " +
+                  "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of teams",
                           content = @Content(mediaType = "application/json",
@@ -167,6 +170,7 @@ public class TeamResource {
   @Valid
   @Path("/{id}")
   @Operation(summary = "Get a team", tags = "teams",
+          description = "Get a team by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The team",
                           content = @Content(mediaType = "application/json",
@@ -187,6 +191,7 @@ public class TeamResource {
   @Valid
   @Path("/name/{name}")
   @Operation(summary = "Get a team by name", tags = "teams",
+          description = "Get a team by `name`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The team",
                           content = @Content(mediaType = "application/json",
@@ -205,6 +210,7 @@ public class TeamResource {
 
   @POST
   @Operation(summary = "Create a team", tags = "teams",
+          description = "Create a new team.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The team",
                           content = @Content(mediaType = "application/json",
@@ -226,6 +232,7 @@ public class TeamResource {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(summary = "Update a team", tags = "teams",
+          description = "Update an existing team with JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   public Team patch(@Context UriInfo uriInfo,
@@ -246,6 +253,7 @@ public class TeamResource {
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Delete a team", tags = "teams",
+          description = "Delete a team by given `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Team for instance {id} is not found")

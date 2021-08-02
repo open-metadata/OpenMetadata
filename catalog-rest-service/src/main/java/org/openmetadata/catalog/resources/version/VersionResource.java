@@ -16,11 +16,11 @@
 
 package org.openmetadata.catalog.resources.version;
 
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
 import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.api.CatalogVersion;
 import org.openmetadata.catalog.resources.Collection;
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +59,8 @@ public class VersionResource {
   public VersionResource() {}
 
   @GET
-  @Operation(summary = "Get version of metadata service", tags = "")
+  @Operation(summary = "Get version of metadata service", tags = "general",
+          description = "Get the build version of OpenMetadata service and build timestamp.")
   public CatalogVersion getCatalogVersion() {
     return CATALOG_VERSION;
   }

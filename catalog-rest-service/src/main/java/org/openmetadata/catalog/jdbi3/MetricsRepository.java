@@ -94,8 +94,8 @@ public abstract class MetricsRepository {
   }
 
   @Transaction
-  public List<Metrics> list(Fields fields, String fqn) throws IOException {
-    List<String> jsonList = metricsDAO().list(fqn);
+  public List<Metrics> list(Fields fields) throws IOException {
+    List<String> jsonList = metricsDAO().list();
     List<Metrics> metricsList = new ArrayList<>();
     for (String json : jsonList) {
       metricsList.add(setFields(JsonUtils.readValue(json, Metrics.class), fields));
@@ -168,8 +168,8 @@ public abstract class MetricsRepository {
     @SqlQuery("SELECT json FROM metric_entity WHERE fullyQualifiedName = :name")
     String findByFQN(@Bind("name") String name);
 
-    @SqlQuery("SELECT json FROM metric_entity WHERE (fullyQualifiedName = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @SqlQuery("SELECT json FROM metric_entity")
+    List<String> list();
 
     @SqlQuery("SELECT EXISTS (SELECT * FROM metric_entity where id = :id)")
     boolean exists(@Bind("id") String id);

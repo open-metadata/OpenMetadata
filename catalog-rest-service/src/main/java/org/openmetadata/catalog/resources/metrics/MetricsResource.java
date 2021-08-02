@@ -93,6 +93,7 @@ public class MetricsResource {
 
   @GET
   @Operation(summary = "List metrics", tags = "metrics",
+          description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of metrics",
                           content = @Content(mediaType = "application/json",
@@ -101,17 +102,15 @@ public class MetricsResource {
   public MetricsList list(@Context UriInfo uriInfo,
                           @Parameter(description = "Fields requested in the returned resource",
                                   schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam,
-                          @Parameter(description = "Get metrics that match fullyQualifiedName",
-                                  schema = @Schema(type = "string", example = "snowflakeWestCoast.finances"))
-                            @QueryParam("fqn") String fqn) throws IOException {
+                          @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new MetricsList(addHref(uriInfo, dao.list(fields, fqn)));
+    return new MetricsList(addHref(uriInfo, dao.list(fields)));
   }
 
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a metric", tags = "metrics",
+          description = "Get a metric by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The metrics",
                           content = @Content(mediaType = "application/json",
@@ -129,6 +128,7 @@ public class MetricsResource {
 
   @POST
   @Operation(summary = "Create a metric", tags = "metrics",
+          description = "Create a new metric.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The metric",
                           content = @Content(mediaType = "application/json",
@@ -143,6 +143,7 @@ public class MetricsResource {
 
   @PUT
   @Operation(summary = "Create or update a metric", tags = "metrics",
+          description = "Create a new metric, if it does not exist or update an existing metric.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The metric",
                           content = @Content(mediaType = "application/json",

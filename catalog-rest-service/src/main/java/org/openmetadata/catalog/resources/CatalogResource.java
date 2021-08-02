@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.resources;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.util.ResultList;
 
+import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -37,6 +39,7 @@ import java.util.List;
 @Path("/v1")
 @Api(value = "All collections in the catalog application", tags = "All collections in the Catalog")
 @Produces(MediaType.APPLICATION_JSON)
+@Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "root")
 public class CatalogResource {
   public static class CollectionList extends ResultList<CollectionDescriptor> {
@@ -59,7 +62,9 @@ public class CatalogResource {
   }
 
   @GET
-  @Operation(summary = "List all collections", tags = "",
+  @Operation(summary = "List all collections", tags = "general",
+          description = "List all the collections supported by OpenMetadata. This list provides all the collections " +
+                  "and resource REST endpoints.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "All collections",
                           content = @Content(mediaType = "application/json",

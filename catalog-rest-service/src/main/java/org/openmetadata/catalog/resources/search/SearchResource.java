@@ -73,7 +73,9 @@ public class SearchResource {
 
   @GET
   @Path("/query")
-  @Operation(summary = "Search Entities", tags = "search",
+  @Operation(summary = "Search entities", tags = "search",
+          description = "Search entities using query test. Use query params `from` and `size` for pagination. Use " +
+                  "`sort_field` to sort the results in `sort_order`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "search response",
                           content = @Content(mediaType = "application/json",
@@ -86,7 +88,7 @@ public class SearchResource {
                                  "1. For listing all tables pass q=* <br/>" +
                                  "2. For search tables pass q=*search_term* <br/>" +
                                  "3. For searching field names such as search by column_name " +
-                                 "pass q=column_naemes:address <br/>" +
+                                 "pass q=column_names:address <br/>" +
                                  "4. For searching by tag names pass q=tags:user.email <br/>" +
                                  "5. When user selects a filter pass q=query_text AND tags:user.email " +
                                  "AND platform:MYSQL <br/>" +
@@ -148,7 +150,8 @@ public class SearchResource {
 
   @GET
   @Path("/suggest")
-  @Operation(summary = "Suggest Entities", tags = "search",
+  @Operation(summary = "Suggest entities", tags = "search",
+          description = "Get suggested entities used for auto-completion.",
           responses = {
                   @ApiResponse(responseCode = "200",
                           description = "Table Suggestion API",

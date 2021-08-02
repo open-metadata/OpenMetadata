@@ -126,6 +126,9 @@ public class DatabaseResource {
   @GET
   @Valid
   @Operation(summary = "List databases", tags = "databases",
+          description = "Get a list of databases, optionally filtered by `service` it belongs to. Use `fields` " +
+                  "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of databases",
                           content = @Content(mediaType = "application/json",
@@ -183,6 +186,7 @@ public class DatabaseResource {
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a database", tags = "databases",
+          description = "Get a database by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
@@ -202,7 +206,8 @@ public class DatabaseResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a database by fully qualified name", tags = "databases",
+  @Operation(summary = "Get a database by name", tags = "databases",
+          description = "Get a database by fully qualified name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
@@ -222,6 +227,7 @@ public class DatabaseResource {
 
   @POST
   @Operation(summary = "Create a database", tags = "databases",
+          description = "Create a database under an existing `service`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
@@ -240,6 +246,7 @@ public class DatabaseResource {
   @PATCH
   @Path("/{id}")
   @Operation(summary = "Update a database", tags = "databases",
+          description = "Update an existing database using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -261,6 +268,7 @@ public class DatabaseResource {
 
   @PUT
   @Operation(summary = "Create or update database", tags = "databases",
+          description = "Create a database, it it does not exist or update an existing database.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated database ",
                           content = @Content(mediaType = "application/json",
@@ -280,6 +288,7 @@ public class DatabaseResource {
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Delete a database", tags = "databases",
+          description = "Delete a database by `id`. Database can only be deleted if it has no tables.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")

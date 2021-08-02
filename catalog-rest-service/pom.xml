@@ -337,24 +337,19 @@
               </server>
             </servers>
             <info>
-              <title>Open Metadata Apis</title>
-              <version>1.0.0</version>
-              <termsOfService>Terms</termsOfService>
+              <title>OpenMetadata Apis</title>
+              <version>0.3.0</version>
               <contact>
-                <email>e@mail.com</email>
-                <name>Open Metadata</name>
-                <url>https:/open-metadata.io</url>
+                <email>contact@open-metadata.org</email>
+                <name>OpenMetadata</name>
+                <url>https:/open-metadata.org</url>
               </contact>
               <license>
-                <url>https://license</url>
-                <name>MIT</name>
+                <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+                <name>Apache 2.0</name>
               </license>
-              <extensions>
-                <x-custom-field-1>my-custom-field-1</x-custom-field-1>
-                <x-custom-field-2>my-custom-field-2</x-custom-field-2>
-              </extensions>
             </info>
-            <descriptionFile>src/test/resources/descriptions.md</descriptionFile>
+            <descriptionFile>../docs/openmetadata-apis/apis.md</descriptionFile>
           </swaggerConfig>
         </configuration>
         <executions>

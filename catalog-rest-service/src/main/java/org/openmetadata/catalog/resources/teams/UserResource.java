@@ -116,6 +116,9 @@ public class UserResource {
   @GET
   @Valid
   @Operation(summary = "List users", tags = "users",
+          description = "Get a list of users. Use `fields` " +
+                  "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
+                  "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
@@ -170,6 +173,7 @@ public class UserResource {
   @Valid
   @Path("/{id}")
   @Operation(summary = "Get a user", tags = "users",
+          description = "Get a user by `id`",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user",
                           content = @Content(mediaType = "application/json",
@@ -189,6 +193,7 @@ public class UserResource {
   @Valid
   @Path("/name/{name}")
   @Operation(summary = "Get a user by name", tags = "users",
+          description = "Get a user by `name`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user",
                           content = @Content(mediaType = "application/json",
@@ -209,6 +214,7 @@ public class UserResource {
   @Valid
   @Path("/loggedInUser")
   @Operation(summary = "Get current logged in user", tags = "users",
+          description = "Get the user who is authenticated and is currently logged in.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user",
                           content = @Content(mediaType = "application/json",
@@ -227,6 +233,7 @@ public class UserResource {
 
   @POST
   @Operation(summary = "Create a user", tags = "users",
+          description = "Create a new user.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
@@ -250,6 +257,7 @@ public class UserResource {
   @Path("/{id}")
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   @Operation(summary = "Update a user", tags = "users",
+          description = "Update an existing user using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   public User patch(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
@@ -269,8 +277,8 @@ public class UserResource {
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Deactivate a user", tags = "users",
-          description = "Users can't be deleted but are deactiveated. The name and display name is changed to include" +
-                  " string `deactivated`.",
+          description = "Users can't be deleted but are deactivated. The name and display name is prefixed with " +
+                  "the string `deactivated`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
