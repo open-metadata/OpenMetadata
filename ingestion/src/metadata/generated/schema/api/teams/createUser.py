@@ -23,8 +23,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from ...entity.teams import user
-from ...type import basic, profile
+from entity.teams import user
+from type import basic, profile
 
 
 class RequestToCreateUserEntity(BaseModel):

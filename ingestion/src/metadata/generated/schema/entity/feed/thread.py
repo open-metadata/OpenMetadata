@@ -24,7 +24,7 @@ from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
-from ...type import basic
+from type import basic
 
 
 class Post(BaseModel):
