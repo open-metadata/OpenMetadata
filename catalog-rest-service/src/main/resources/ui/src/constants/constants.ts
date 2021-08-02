@@ -21,6 +21,15 @@ const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 
 export const pagingObject = { after: '', before: '' };
 
+/* eslint-disable @typescript-eslint/camelcase */
+export const tiers = [
+  { key: 'Tier.Tier1', doc_count: 0 },
+  { key: 'Tier.Tier2', doc_count: 0 },
+  { key: 'Tier.Tier3', doc_count: 0 },
+  { key: 'Tier.Tier4', doc_count: 0 },
+  { key: 'Tier.Tier5', doc_count: 0 },
+];
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',

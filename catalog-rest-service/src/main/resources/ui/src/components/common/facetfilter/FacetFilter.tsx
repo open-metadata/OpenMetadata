@@ -39,8 +39,14 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
       )
     );
   };
+  const sortBuckets = (buckets: Array<Bucket>) => {
+    return buckets.sort((a, b) => (a.key > b.key ? 1 : -1));
+  };
   const getBuckets = (buckets: Array<Bucket>, state: boolean) => {
-    return buckets.slice(0, state ? buckets.length - 1 : LIST_SIZE);
+    return sortBuckets(buckets).slice(
+      0,
+      state ? buckets.length - 1 : LIST_SIZE
+    );
   };
 
   const getLinkTextByTitle = (title: string, bucketLength: number) => {
