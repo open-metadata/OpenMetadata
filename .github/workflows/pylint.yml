@@ -34,4 +34,4 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint `ls -R|grep .py$|xargs`
+        find . -type f -name "*.py" | xargs pylint
