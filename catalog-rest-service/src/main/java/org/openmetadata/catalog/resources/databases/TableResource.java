@@ -17,8 +17,8 @@
 package org.openmetadata.catalog.resources.databases;
 
 import com.google.inject.Inject;
-import com.streamlinedata.catalog.type.TableData;
-import com.streamlinedata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;

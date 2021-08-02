@@ -31,9 +31,9 @@
   </modules>
   <packaging>pom</packaging>
   <scm>
-    <connection>scm:git:git@github.com:StreamlineData/catalog</connection>
-    <developerConnection>scm:git:git@github.com:StreamlineData/catalog</developerConnection>
-    <url>scm:git:git@github.com:StreamlineData/catalog</url>
+    <connection>scm:git:git@github.com:Open-Metadata/OpenMetadata</connection>
+    <developerConnection>scm:git:git@github.com:Open-Metadata/OpenMetadata</developerConnection>
+    <url>scm:git:git@github.com:Open-Metadata/OpenMetadata</url>
   </scm>
 
   <properties>
