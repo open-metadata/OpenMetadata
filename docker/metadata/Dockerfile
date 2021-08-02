@@ -8,7 +8,7 @@ RUN apt-get update -y && \
 
 #Need to add pom.xml for maven dependency installation  
 
-ADD /dist/target/catalog-1.0.0-SNAPSHOT.zip /
+ADD /dist/target/catalog-1.0.0-SNAPSHOT.tar.gz /
 COPY /docker/metadata/catalog-start.sh /
 COPY /docker/metadata/catalog.yaml /
 RUN chmod 777 /catalog-start.sh
