@@ -20,7 +20,6 @@ import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.security.AuthorizerConfiguration;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -45,6 +44,10 @@ public class ConfigResource {
   @Path(("/auth"))
   @Operation(summary = "Get auth configuration")
   public AuthenticationConfiguration getAuthConfig(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    return catalogApplicationConfig.getAuthenticationConfiguration();
+    AuthenticationConfiguration authenticationConfiguration = new AuthenticationConfiguration();
+    if (catalogApplicationConfig.getAuthenticationConfiguration() != null) {
+      authenticationConfiguration = catalogApplicationConfig.getAuthenticationConfiguration();
+    }
+    return authenticationConfiguration;
   }
 }

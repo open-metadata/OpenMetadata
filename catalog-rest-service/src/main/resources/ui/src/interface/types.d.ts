@@ -211,6 +211,7 @@ declare module 'Models' {
     authority: string;
     client_id: string;
     provider?: 'google' | 'okta' | 'github';
+    callbackUrl?: string;
     signingIn?: boolean;
   };
 

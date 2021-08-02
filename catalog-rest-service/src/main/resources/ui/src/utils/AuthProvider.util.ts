@@ -1,4 +1,5 @@
 import { CookieStorage } from 'cookie-storage';
+import { isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import { isDev } from '../utils/EnvironmentUtils';
 
@@ -11,7 +12,7 @@ export const getOidcExpiry = () => {
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
 ): Record<string, string | WebStorageStateStore> => {
-  const { authority, clientId } = authClient;
+  const { authority, clientId, callbackUrl } = authClient;
 
   return {
     authority,
@@ -22,7 +23,9 @@ export const getUserManagerConfig = (
     // eslint-disable-next-line @typescript-eslint/camelcase
     redirect_uri: isDev()
       ? 'http://localhost:3000/callback'
-      : 'http://localhost:8585/callback',
+      : !isNil(callbackUrl)
+      ? callbackUrl
+      : `${window.location.origin}/callback`,
     scope: 'openid email profile',
     userStore: new WebStorageStateStore({ store: cookieStorage }),
   };

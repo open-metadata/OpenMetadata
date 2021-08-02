@@ -99,7 +99,7 @@ class ElasticSearchBulkSink(BulkSink):
             suggest = [{'input': [fqdn], 'weight': 5}, {'input': [table_name], 'weight': 10}]
             column_names = []
             column_descriptions = []
-            tags = set[str]()
+            tags = set()
 
             timestamp = time.time()
             tier = None

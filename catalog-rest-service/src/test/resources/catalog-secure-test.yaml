@@ -137,3 +137,4 @@ authenticationConfiguration:
   publicKey: "https://www.googleapis.com/oauth2/v3/certs"
   authority: "https://accounts.google.com"
   clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
+  callbackUrl: "http://localhost:8585/callback"
