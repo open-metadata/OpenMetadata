@@ -9,6 +9,8 @@ public class AuthenticationConfiguration {
 
   private String clientId;
 
+  private String callbackUrl;
+
   public String getProvider() {
     return provider;
   }
@@ -37,5 +39,13 @@ public class AuthenticationConfiguration {
 
   public void setClientId(String clientId) {
     this.clientId = clientId;
+  }
+
+  public String getCallbackUrl() {
+    return callbackUrl;
+  }
+
+  public void setCallbackUrl(String callbackUrl) {
+    this.callbackUrl = callbackUrl;
   }
 }

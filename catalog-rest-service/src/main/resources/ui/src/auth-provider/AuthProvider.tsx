@@ -156,8 +156,12 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     fetchAuthorizerConfig()
       .then((res: AxiosResponse) => {
         if (res.data) {
-          const { provider, authority, clientId } = res.data;
-          const userConfig = getUserManagerConfig({ authority, clientId });
+          const { provider, authority, clientId, callbackUrl } = res.data;
+          const userConfig = getUserManagerConfig({
+            authority,
+            clientId,
+            callbackUrl,
+          });
           setUserManagerConfig(userConfig);
           setUserManager(makeUserManager(userConfig));
           if (!oidcUserToken) {
