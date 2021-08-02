@@ -20,7 +20,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
           onSelect(!isSelected, name, type);
         }}
       />
-      <div className="filters-title">
+      <div className="filters-title tw-w-40 tw-truncate">
         {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
       </div>
       <div

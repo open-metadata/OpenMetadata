@@ -17,6 +17,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getFilterString } from '../../utils/FilterUtils';
+import { getAggrWithDefaultValue } from './explore.constants';
 import { Params } from './explore.interface';
 
 const visibleFilters = ['tags', 'service', 'service type', 'tier'];
@@ -157,7 +158,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const fetchLeftPanel = () => {
     return (
       <FacetFilter
-        aggregations={aggregations}
+        aggregations={getAggrWithDefaultValue(aggregations)}
         filters={getFacetedFilter()}
         onSelectHandler={handleSelectedFilter}
       />
