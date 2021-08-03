@@ -130,8 +130,9 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   @Override
   public boolean hasPermissions(AuthenticationContext ctx,  EntityReference owner) {
     validateAuthenticationContext(ctx);
+    // To encourage users to claim or update changes to tables when a non-owner or un-claimed datasets.
     if (owner == null)  {
-      return false;
+      return true;
     }
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
@@ -190,7 +191,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
 
   private void validateAuthenticationContext(AuthenticationContext ctx) {
     if (ctx == null || ctx.getPrincipal() == null) {
-      throw new AuthorizationException("No principal in AuthenticationContext");
+      throw new AuthenticationException("No principal in AuthenticationContext");
     }
   }
 }

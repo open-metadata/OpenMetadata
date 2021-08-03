@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.exception;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
-import org.openmetadata.catalog.security.AuthorizationException;
+import org.openmetadata.catalog.security.AuthenticationException;
 import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
               .type(MediaType.APPLICATION_JSON_TYPE)
               .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), ex.getMessage()))
               .build();
-    } else if (ex instanceof AuthorizationException) {
+    } else if (ex instanceof AuthenticationException) {
       return Response.status(UNAUTHORIZED)
               .type(MediaType.APPLICATION_JSON_TYPE)
               .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), ex.getMessage()))

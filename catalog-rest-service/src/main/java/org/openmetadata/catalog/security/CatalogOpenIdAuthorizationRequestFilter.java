@@ -81,7 +81,7 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
 
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
     if (Strings.isNullOrEmpty(openIdEmail)) {
-      throw new AuthorizationException("Not authorized; User's Email is not present");
+      throw new AuthenticationException("Not authorized; User's Email is not present");
     }
     String[] openIdEmailParts = openIdEmail.split("@");
     return openIdEmailParts[0];
@@ -91,7 +91,7 @@ public class CatalogOpenIdAuthorizationRequestFilter implements ContainerRequest
     LOG.debug("Request Headers:{}", headers);
     String openIdEmail = headers.getFirst(X_AUTH_PARAMS_EMAIL_HEADER);
     if (Strings.isNullOrEmpty(openIdEmail)) {
-      throw new AuthorizationException("Not authorized; User's Email is not present");
+      throw new AuthenticationException("Not authorized; User's Email is not present");
     }
     return openIdEmail;
   }

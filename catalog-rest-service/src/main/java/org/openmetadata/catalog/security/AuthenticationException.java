@@ -19,19 +19,19 @@ package org.openmetadata.catalog.security;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-public class AuthorizationException extends RuntimeException {
+public class AuthenticationException extends RuntimeException {
   private final Response response;
-  public AuthorizationException(String msg) {
+  public AuthenticationException(String msg) {
     super(msg);
-    response = Response.status(Response.Status.FORBIDDEN)
+    response = Response.status(Response.Status.UNAUTHORIZED)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
   }
 
-  public AuthorizationException(String msg, Throwable cause) {
+  public AuthenticationException(String msg, Throwable cause) {
     super(msg, cause);
-    response = Response.status(Response.Status.FORBIDDEN)
+    response = Response.status(Response.Status.UNAUTHORIZED)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();

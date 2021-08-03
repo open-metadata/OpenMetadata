@@ -97,7 +97,7 @@ public class SecureDatabaseResourceTest extends SecureCatalogApplicationTest {
     CreateDatabase create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

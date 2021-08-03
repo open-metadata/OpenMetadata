@@ -16,7 +16,7 @@
 
 package org.openmetadata.catalog.security.auth;
 
-import org.openmetadata.catalog.security.AuthorizationException;
+import org.openmetadata.catalog.security.AuthenticationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +45,7 @@ public class CatalogSecurityContextRequestFilter implements ContainerRequestFilt
             httpRequest.getRemoteUser(), principal, scheme);
 
     if (principal == null) {
-      throw new AuthorizationException("Not authorized. Principal is not available");
+      throw new AuthenticationException("Not authorized. Principal is not available");
     }
 
     SecurityContext securityContext = new CatalogSecurityContext(principal, scheme, httpRequest.getAuthType());

@@ -119,7 +119,7 @@ public class SecureTableResourceTest extends SecureCatalogApplicationTest {
     CreateTable create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createTable(create,
             TestUtils.authHeaders("test@getcollate.com")));
-      TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+      TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -245,7 +245,7 @@ public class SecureTableResourceTest extends SecureCatalogApplicationTest {
     Table table = createTable(create(test), TestUtils.adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTable(table.getId(), TestUtils.authHeaders("test@getcollate.io")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

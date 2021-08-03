@@ -75,7 +75,7 @@ public class JwtFilter implements ContainerRequestFilter {
 
     //Check if expired
     if (jwt.getExpiresAt().before(Calendar.getInstance().getTime())) {
-      throw new AuthorizationException("Expired token!");
+      throw new AuthenticationException("Expired token!");
     }
     //Validate JWT with public key
     final URI uri = new URI(publicKeyUri).normalize();
@@ -85,7 +85,7 @@ public class JwtFilter implements ContainerRequestFilter {
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
-      throw new AuthorizationException("Invalid token");
+      throw new AuthenticationException("Invalid token");
     }
     String authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
     String userName = authorizedEmail.split("@")[0];
@@ -102,7 +102,7 @@ public class JwtFilter implements ContainerRequestFilter {
     LOG.debug("Request Headers:{}", headers);
     String source = headers.getFirst(TOKEN_HEADER);
     if (Strings.isNullOrEmpty(source)) {
-      throw new AuthorizationException("Not Authorized! Token not present");
+      throw new AuthenticationException("Not Authorized! Token not present");
     }
     return source;
   }

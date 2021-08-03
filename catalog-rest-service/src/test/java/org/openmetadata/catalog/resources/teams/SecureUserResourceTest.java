@@ -61,7 +61,7 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create,
             TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -83,7 +83,7 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
     user.setDisplayName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user,
             TestUtils.authHeaders("test100@email.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
   }
 
   @Test
@@ -105,7 +105,7 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> deleteUser(user.getId(),
             TestUtils.authHeaders("test3@email.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test3'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
   }
 
   @Test
