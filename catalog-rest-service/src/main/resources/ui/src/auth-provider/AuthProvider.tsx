@@ -204,7 +204,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
           if (status === ClientErrors.FORBIDDEN) {
             showToast({
               variant: 'error',
-              body: 'User does not have permission for this action!',
+              body: 'You do not have permission for this action!',
             });
           }
         }
