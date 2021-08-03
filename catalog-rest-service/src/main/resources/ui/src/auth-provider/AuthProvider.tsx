@@ -17,7 +17,7 @@
 
 import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { User } from 'Models';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
@@ -155,7 +155,10 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   const fetchAuthConfig = (): void => {
     fetchAuthorizerConfig()
       .then((res: AxiosResponse) => {
-        if (res.data) {
+        const isSecureMode =
+          !isNil(res.data) &&
+          Object.values(res.data).filter((item) => isNil(item)).length === 0;
+        if (isSecureMode) {
           const { provider, authority, clientId, callbackUrl } = res.data;
           const userConfig = getUserManagerConfig({
             authority,
