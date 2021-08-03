@@ -32,7 +32,13 @@ import javax.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static javax.ws.rs.core.Response.Status.*;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.Family;
+
+
 
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogGenericExceptionMapper.class);
