@@ -1,5 +1,5 @@
 {
-  "$id": "https://streaminlinedata.ai/entity/data/table.json",
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Table entity",
   "description": "Schema corresponding to a table that belongs to a database",
