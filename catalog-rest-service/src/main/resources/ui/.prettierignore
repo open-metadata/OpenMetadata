@@ -30,5 +30,10 @@ dist/
 .prettierignore
 .eslintignore
 
+# rc, json and html files
+.prettierrc
+.lintstagedrc.json
+swagger.html
+
 # macOS
 .DS_Store

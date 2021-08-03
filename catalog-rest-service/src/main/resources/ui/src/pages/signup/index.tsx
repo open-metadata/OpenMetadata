@@ -100,7 +100,7 @@ const Signup = () => {
         ...details,
         teams: selectedTeams as Array<string>,
         profile: {
-          images: getImages(appState.newUser.picture),
+          images: getImages(appState.newUser.picture ?? ''),
         },
       });
     }
