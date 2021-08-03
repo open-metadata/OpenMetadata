@@ -138,19 +138,25 @@ JSON schema supports many native types - `null, boolean, object, array, number` 
 
 ## List of Schema Types
 
-{% page-ref page="\"categoryusage.md\"" %}
-
-{% page-ref page="\"classification.md\"" %}
+{% page-ref page="\"basic.md\"" %}
 
 {% page-ref page="\"collectiondescriptor.md\"" %}
 
-{% page-ref page="\"common.md\"" %}
-
 {% page-ref page="\"dailycount.md\"" %}
+
+{% page-ref page="\"entityreference.md\"" %}
 
 {% page-ref page="\"entityusage.md\"" %}
 
-{% page-ref page="\"jdbcconnection.md\"" %}" >> $path
+{% page-ref page="\"jdbcconnection.md\"" %}
+
+{% page-ref page="\"profile.md\"" %}
+
+{% page-ref page="\"schedule.md\"" %}
+
+{% page-ref page="\"taglabel.md\"" %}
+
+{% page-ref page="\"usagedetails.md\"" %}" >> $path
 
 cd docs/openmetadata-apis/schemas/SchemaMarkdown
 cat bots-* >> bots.md
@@ -165,13 +171,16 @@ cat table-* >> table.md
 cat tagcategory-* >> tagcategory.md
 cat team-* >> team.md
 cat user-* >> user.md
-cat categoryusage-* >> categoryusage.md
-cat classification-* >> classification.md
+cat basic-* >> basic.md
 cat collectiondescriptor-* >> collectiondescriptor.md
-cat common-* >> common.md
 cat dailycount-* >> dailycount.md
+cat entityreference-* >> entityreference.md
 cat entityusage-* >> entityusage.md
 cat jdbcconnection-* >> jdbcconnection.md
+cat profile-* >> profile.md
+cat schedule-* >> schedule.md
+cat taglabel-* >> taglabel.md
+cat usagedetails-* >> usagedetails.md
 
 
 echo "------------------Moving files------------------"
@@ -188,11 +197,14 @@ cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/Sch
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/tagcategory.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/entities
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/team.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/entities
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/user.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/entities
-cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/categoryusage.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
-cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/classification.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/basic.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/collectiondescriptor.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
-cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/common.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/dailycount.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/entityreference.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/entityusage.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
 cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/jdbcconnection.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/profile.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/schedule.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/taglabel.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
+cp /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/SchemaMarkdown/usagedetails.md /home/runner/work/OpenMetadata/OpenMetadatadocs/openmetadata-apis/schemas/types
 echo "------------------Files moved to respective folders------------------"
