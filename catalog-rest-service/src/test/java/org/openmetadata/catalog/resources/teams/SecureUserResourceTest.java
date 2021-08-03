@@ -39,7 +39,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
             .withEmail("test@email.com")
             .withIsAdmin(true);
 
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create, null));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create,
+            null));
     TestUtils.assertResponse(exception, UNAUTHORIZED, "Not authorized; User's Email is not present");
   }
 
@@ -61,7 +62,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create,
             TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
+            "is not admin");
   }
 
   @Test
@@ -75,7 +77,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
 
   @Test
-  public void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_userNameChange_as_another_user_401(TestInfo test) throws HttpResponseException,
+          JsonProcessingException {
     // Ensure user name can't be changed using patch
     User user = createUser(create(test, 6).withName("test2").withDisplayName("displayName")
             .withEmail("test2@email.com"), TestUtils.authHeaders("test2@email.com"));
@@ -83,11 +86,13 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
     user.setDisplayName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user,
             TestUtils.authHeaders("test100@email.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} " +
+            "does not have permissions");
   }
 
   @Test
-  public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException,
+          JsonProcessingException {
     // Ensure user name can't be changed using patch
     User user = createUser(create(test, 6).withName("test").withDisplayName("displayName")
             .withEmail("test@email.com"), TestUtils.authHeaders("test@email.com"));
@@ -105,7 +110,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> deleteUser(user.getId(),
             TestUtils.authHeaders("test3@email.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test3'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} " +
+            "is not admin");
   }
 
   @Test
@@ -123,10 +129,12 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
           throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(SecureCatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
+    return TestUtils.patch(SecureCatalogApplicationTest.getResource("users/" + userId), patch,
+            User.class, headers);
   }
 
-  private User patchUser(String originalJson, User updated,Map<String, String> headers) throws JsonProcessingException, HttpResponseException {
+  private User patchUser(String originalJson, User updated,Map<String, String> headers) throws
+          JsonProcessingException, HttpResponseException {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
@@ -158,7 +166,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
   }
 
 
-  public static User createAndCheckUser(CreateUser create, Map<String, String> httpHeaders) throws HttpResponseException {
+  public static User createAndCheckUser(CreateUser create, Map<String, String> httpHeaders)
+          throws HttpResponseException {
     final User user = createUser(create, httpHeaders);
     List<Team> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
@@ -184,7 +193,8 @@ public class SecureUserResourceTest extends SecureCatalogApplicationTest {
 
   public static User createUser(CreateUser create, Map<String, String> httpHeaders) throws HttpResponseException {
     if (httpHeaders != null) {
-      return TestUtils.post(SecureCatalogApplicationTest.getResource("users"), create, User.class, httpHeaders);
+      return TestUtils.post(SecureCatalogApplicationTest.getResource("users"), create,
+              User.class, httpHeaders);
     } else {
       return TestUtils.post(SecureCatalogApplicationTest.getResource("users"), create, User.class);
     }
