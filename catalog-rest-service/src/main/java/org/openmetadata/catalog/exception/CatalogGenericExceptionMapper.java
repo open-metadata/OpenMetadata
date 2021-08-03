@@ -18,6 +18,7 @@ package org.openmetadata.catalog.exception;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
 import org.openmetadata.catalog.security.AuthenticationException;
+import org.openmetadata.catalog.security.AuthorizationException;
 import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +32,7 @@ import javax.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
-import static javax.ws.rs.core.Response.Status.Family;
+import static javax.ws.rs.core.Response.Status.*;
 
 public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable> {
   private static final Logger LOG = LoggerFactory.getLogger(CatalogGenericExceptionMapper.class);
@@ -67,6 +65,11 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return Response.status(UNAUTHORIZED)
               .type(MediaType.APPLICATION_JSON_TYPE)
               .entity(new ErrorMessage(UNAUTHORIZED.getStatusCode(), ex.getMessage()))
+              .build();
+    } else if (ex instanceof AuthorizationException) {
+      return Response.status(FORBIDDEN)
+              .type(MediaType.APPLICATION_JSON_TYPE)
+              .entity(new ErrorMessage(FORBIDDEN.getStatusCode(), ex.getMessage()))
               .build();
     } else if (ex instanceof WebServiceException) {
       final Response response = ((WebApplicationException) ex).getResponse();

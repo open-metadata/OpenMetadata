@@ -53,7 +53,7 @@ public final class SecurityUtil {
     AuthenticationContext authenticationCtx = SecurityUtil.getAuthenticationContext(principal);
     if (!authorizer.isAdmin(authenticationCtx)  && !authorizer.isBot(authenticationCtx)
             && !authorizer.hasPermissions(authenticationCtx, entityReference)) {
-      throw new AuthorizationException("Principal: " + principal + " does not have permissions to modify");
+      throw new AuthorizationException("Principal: " + principal + " does not have permissions");
     }
   }
 
