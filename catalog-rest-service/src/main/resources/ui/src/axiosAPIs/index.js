@@ -18,10 +18,10 @@
 import axios from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { oidcTokenKey } from '../constants/constants';
+import { ClientErrors } from '../enums/axios.enum';
 import { userSignOut } from '../utils/AuthUtils';
 
 const cookieStorage = new CookieStorage();
-const UNAUTHORIZED = 401;
 
 const axiosClient = axios.create({
   baseURL: '/api/v1',
@@ -41,7 +41,7 @@ axiosClient.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status } = error.response;
-      if (status === UNAUTHORIZED) {
+      if (status === ClientErrors.UNAUTHORIZED) {
         userSignOut();
       }
     }

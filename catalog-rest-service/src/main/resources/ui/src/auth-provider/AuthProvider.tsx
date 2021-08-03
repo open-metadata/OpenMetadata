@@ -30,6 +30,7 @@ import React, {
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import appState from '../AppState';
+import axiosClient from '../axiosAPIs';
 import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
 import {
   getLoggedInUser,
@@ -38,7 +39,9 @@ import {
   getUsers,
 } from '../axiosAPIs/userAPI';
 import { oidcTokenKey, ROUTES, TIMEOUT } from '../constants/constants';
+import { ClientErrors } from '../enums/axios.enum';
 import { useAuth } from '../hooks/authHooks';
+import useToastContext from '../hooks/useToastContext';
 import SigninPage from '../pages/login';
 import PageNotFound from '../pages/page-not-found';
 import {
@@ -65,6 +68,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   children,
 }: AuthProviderProps) => {
   const history = useHistory();
+  const showToast = useToastContext();
   const { isSignedIn, isSigningIn, isSignedOut } = useAuth();
 
   const oidcUserToken = cookieStorage.getItem(oidcTokenKey);
@@ -190,6 +194,24 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
 
   useEffect(() => {
     fetchAuthConfig();
+
+    // Axios intercepter for statusCode 403
+    axiosClient.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response) {
+          const { status } = error.response;
+          if (status === ClientErrors.FORBIDDEN) {
+            showToast({
+              variant: 'error',
+              body: 'User does not have permission for this action!',
+            });
+          }
+        }
+
+        throw error;
+      }
+    );
   }, []);
 
   useEffect(() => {
