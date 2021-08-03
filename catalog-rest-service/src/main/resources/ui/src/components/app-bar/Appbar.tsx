@@ -150,7 +150,7 @@ const Appbar: React.FC = (): JSX.Element => {
           </div>
         </div>
       ) : (
-        <div className="tw-flex tw-justify-center tw-items-center tw-mt-10">
+        <div className="tw-flex tw-justify-center tw-items-center tw-my-5">
           <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} />
         </div>
       )}
