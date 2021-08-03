@@ -172,7 +172,7 @@
     },
     "columnJoins": {
       "type": "object",
-      "javaType": "com.streamlinedata.catalog.type.ColumnJoin",
+      "javaType": "org.openmetadata.catalog.type.ColumnJoin",
       "description": "Information on other tables that this table column is frequently joined with",
       "properties": {
         "columnName": {
@@ -198,7 +198,7 @@
     },
     "tableJoins": {
       "type": "object",
-      "javaType": "com.streamlinedata.catalog.type.TableJoins",
+      "javaType": "org.openmetadata.catalog.type.TableJoins",
       "properties": {
         "startDate": {
           "description": "Date can be only from today going back to last 29 days",
@@ -219,7 +219,7 @@
     },
     "tableData": {
       "type": "object",
-      "javaType": "com.streamlinedata.catalog.type.TableData",
+      "javaType": "org.openmetadata.catalog.type.TableData",
       "description": "Information on other tables that this table column is frequently joined with",
       "properties": {
         "columns": {

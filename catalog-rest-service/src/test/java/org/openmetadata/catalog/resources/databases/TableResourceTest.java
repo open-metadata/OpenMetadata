@@ -1,10 +1,10 @@
 package org.openmetadata.catalog.resources.databases;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.streamlinedata.catalog.type.ColumnJoin;
-import com.streamlinedata.catalog.type.JoinedWith;
-import com.streamlinedata.catalog.type.TableData;
-import com.streamlinedata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.ColumnJoin;
+import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
