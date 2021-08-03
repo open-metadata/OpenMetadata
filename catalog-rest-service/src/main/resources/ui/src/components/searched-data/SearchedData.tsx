@@ -23,12 +23,14 @@ import { pluralize } from '../../utils/CommonUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import PageContainer from '../containers/PageContainer';
+import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 import Pagination from '../Pagination';
 type SearchedDataProp = {
   children?: ReactNode;
   data: Array<FormatedTableData>;
   currentPage: number;
+  isLoading?: boolean;
   paginate: (value: number) => void;
   totalValue: number;
   fetchLeftPanel?: () => ReactNode;
@@ -40,6 +42,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   children,
   data,
   currentPage,
+  isLoading = false,
   paginate,
   showResultCount = false,
   showOnboardingTemplate = false,
@@ -49,7 +52,9 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 }) => {
   return (
     <>
-      {totalValue > 0 || showOnboardingTemplate ? (
+      {isLoading ? (
+        <Loader />
+      ) : totalValue > 0 || showOnboardingTemplate ? (
         <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
           <div className="container-fluid" data-testid="fluid-container">
             {children}
@@ -99,6 +104,7 @@ SearchedData.propTypes = {
   children: PropTypes.element,
   data: PropTypes.array.isRequired,
   currentPage: PropTypes.number.isRequired,
+  isLoading: PropTypes.bool,
   paginate: PropTypes.func.isRequired,
   showResultCount: PropTypes.bool,
   showOnboardingTemplate: PropTypes.bool,

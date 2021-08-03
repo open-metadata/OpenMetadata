@@ -16,7 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { getDatasetDetailsPath } from '../../constants/constants';
@@ -35,15 +35,23 @@ type Option = {
 };
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [options, setOptions] = useState<Array<Option>>([]);
+  const isMounting = useRef(true);
 
   useEffect(() => {
-    getSuggestions(searchText).then((res: AxiosResponse) => {
-      if (res.data) {
-        setOptions(res.data.suggest['table-suggest'][0].options);
-        setIsOpen(true);
-      }
-    });
+    if (!isMounting.current) {
+      getSuggestions(searchText).then((res: AxiosResponse) => {
+        if (res.data) {
+          setOptions(res.data.suggest['table-suggest'][0].options);
+          setIsOpen(true);
+        }
+      });
+    }
   }, [searchText]);
+
+  // alwyas Keep this useEffect at the end...
+  useEffect(() => {
+    isMounting.current = false;
+  }, []);
 
   return (
     <>
