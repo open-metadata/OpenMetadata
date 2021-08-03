@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import React, { FunctionComponent, useEffect } from 'react';
+import React, { FunctionComponent, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { getExplorePathWithSearch } from '../../constants/constants';
 import Tags from '../tags/tags';
@@ -35,9 +35,17 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
   setIsOpen,
   selectOption,
 }: SearchOptionsProp) => {
+  const isMounting = useRef(true);
   useEffect(() => {
-    setIsOpen(true);
+    if (!isMounting.current) {
+      setIsOpen(true);
+    }
   }, [searchText]);
+
+  // alwyas Keep this useEffect at the end...
+  useEffect(() => {
+    isMounting.current = false;
+  }, []);
 
   return (
     <>

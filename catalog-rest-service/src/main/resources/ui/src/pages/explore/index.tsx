@@ -27,7 +27,6 @@ import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
-import Loader from '../../components/Loader/Loader';
 import SearchedData from '../../components/searched-data/SearchedData';
 import { ERROR404, ERROR500, PAGE_SIZE } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
@@ -72,7 +71,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregation] = useState<Array<AggregationType>>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
   const handleSelectedFilter = (
@@ -112,13 +111,11 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
         if (hits.length > 0) {
-          setAggregation(getAggregationList(res.data.aggregations));
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
           setIsLoading(false);
         } else {
           setData([]);
-          setAggregation([]);
           setTotalNumberOfValues(0);
           setIsLoading(false);
         }
@@ -131,6 +128,26 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         });
 
         setIsLoading(false);
+      });
+  };
+
+  const fetchAggregationData = () => {
+    setIsLoading(true);
+    searchData('*', 1, PAGE_SIZE, '')
+      .then((res: SearchResponse) => {
+        const hits = res.data.hits.hits;
+        if (hits.length > 0) {
+          setAggregation(getAggregationList(res.data.aggregations));
+        } else {
+          setAggregation([]);
+        }
+      })
+      .catch((err: AxiosError) => {
+        // setError(ERROR404);
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.responseMessage ?? ERROR500,
+        });
       });
   };
 
@@ -156,6 +173,10 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       setCurrentPage(1);
     }
   }, [searchText, filters]);
+
+  useEffect(() => {
+    fetchAggregationData();
+  }, []);
 
   useEffect(() => {
     fetchTableData();
@@ -184,24 +205,19 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   return (
     <>
-      {isLoading ? (
-        <Loader />
+      {error ? (
+        <Error error={error} />
       ) : (
-        <>
-          {error ? (
-            <Error error={error} />
-          ) : (
-            <SearchedData
-              showResultCount
-              currentPage={currentPage}
-              data={data}
-              fetchLeftPanel={fetchLeftPanel}
-              paginate={paginate}
-              searchText={searchText}
-              totalValue={totalNumberOfValue}
-            />
-          )}
-        </>
+        <SearchedData
+          showResultCount
+          currentPage={currentPage}
+          data={data}
+          fetchLeftPanel={fetchLeftPanel}
+          isLoading={isLoading}
+          paginate={paginate}
+          searchText={searchText}
+          totalValue={totalNumberOfValue}
+        />
       )}
     </>
   );
