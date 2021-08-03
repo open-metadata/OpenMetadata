@@ -1,5 +1,5 @@
 {
-  "$id": "https://streaminlinedata.ai/entity/services/databaseService.json",
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database service entity",
   "description": "Database service entity that reference services such as MySQL, BigQuery, Redshift, Postgres or Snowflake",
