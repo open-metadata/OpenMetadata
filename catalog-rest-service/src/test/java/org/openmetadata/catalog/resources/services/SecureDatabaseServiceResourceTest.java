@@ -45,7 +45,7 @@ public class SecureDatabaseServiceResourceTest extends SecureCatalogApplicationT
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createAndCheckService(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -94,7 +94,7 @@ public class SecureDatabaseServiceResourceTest extends SecureCatalogApplicationT
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             updateAndCheckService(id, update, OK, TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   public static DatabaseService createAndCheckService(CreateDatabaseService create,
@@ -162,7 +162,7 @@ public class SecureDatabaseServiceResourceTest extends SecureCatalogApplicationT
     DatabaseService databaseService = createService(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteService(databaseService.getId(), TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
 

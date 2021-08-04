@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.CreateTag;
 import org.openmetadata.catalog.type.CreateTagCategory;
@@ -36,7 +37,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +117,7 @@ public class TagResource {
 
   @GET
   @Operation(summary = "List tag categories", tags = "tags",
+          description = "Get a list of tag categories.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -136,6 +137,8 @@ public class TagResource {
   @GET
   @Path("{category}")
   @Operation(summary = "Get a tag category", tags = "tags",
+          description = "Get a tag category identified by name. The response includes tag category information along " +
+                  "with the entire hierarchy of all the children tags.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -156,6 +159,8 @@ public class TagResource {
 
   @GET
   @Operation(summary = "Get a primary tag", tags = "tags",
+          description = "Get a primary tag identified by name. The response includes with the entire hierarchy of all" +
+                  " the children tags.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -187,6 +192,7 @@ public class TagResource {
   @GET
   @Path("{category}/{primaryTag}/{secondaryTag}")
   @Operation(summary = "Get a secondary tag", tags = "tags",
+          description = "Get a secondary tag identified by name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -221,6 +227,8 @@ public class TagResource {
 
   @POST
   @Operation(summary = "Create a tag category", tags = "tags",
+          description = "Create a new tag category. The request can include the children tags to be created along " +
+                  "with the tag category.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -240,6 +248,7 @@ public class TagResource {
   @POST
   @Path("{category}")
   @Operation(summary = "Create a primary tag", tags = "tags",
+          description = "Create a primary tag in the given tag category.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -263,6 +272,7 @@ public class TagResource {
   @POST
   @Path("{category}/{primaryTag}")
   @Operation(summary = "Create a secondary tag", tags = "tags",
+          description = "Create a secondary tag under the given primary tag.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -291,7 +301,8 @@ public class TagResource {
 
   @PUT
   @Path("{category}")
-  @Operation(summary = "Update an existing tag category", tags = "tags")
+  @Operation(summary = "Update a tag category", tags = "tags",
+          description = "Update an existing category identify by category name")
   public Response updateCategory(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Parameter(description = "Tag category name",
@@ -308,7 +319,8 @@ public class TagResource {
 
   @PUT
   @Path("{category}/{primaryTag}")
-  @Operation(summary = "Update an existing primaryTag", tags = "tags")
+  @Operation(summary = "Update a primaryTag", tags = "tags",
+          description = "Update an existing primaryTag identify by name")
   public Response updatePrimaryTag(@Context UriInfo uriInfo,
                                    @Context SecurityContext securityContext,
                                    @Parameter(description = "Tag category name",
@@ -330,7 +342,8 @@ public class TagResource {
 
   @PUT
   @Path("{category}/{primaryTag}/{secondaryTag}")
-  @Operation(summary = "Update an existing primaryTag", tags = "tags")
+  @Operation(summary = "Update a secondaryTag", tags = "tags",
+          description = "Update an existing secondaryTag identify by name")
   public Response updateSecondaryTag(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
                                      @Parameter(description = "Tag category name",

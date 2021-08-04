@@ -20,7 +20,7 @@ cd /
 
 while ! curl -o - 172.16.239.10:3306; do sleep 1; done
 
-unzip -o catalog*.zip
+tar zxvf catalog-1.0.0-SNAPSHOT.tar.gz
 cp /catalog.yaml /catalog-1.0.0-SNAPSHOT/conf/
 
 cd /catalog-1.0.0-SNAPSHOT

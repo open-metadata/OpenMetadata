@@ -17,6 +17,5 @@
 #
 
 set -euo pipefail
-source env/bin/activate
-echo "Ingesting Data using scheduler"
-python ingestion_scheduler/scheduler.py
+pip install --upgrade pip setuptools
+pip install '.[all]'

@@ -94,8 +94,8 @@ public abstract class ReportRepository {
     return setFields(EntityUtil.validate(id, reportDAO().findById(id), Report.class), fields);
   }
 
-  public List<Report> list(Fields fields, String fqn) throws IOException {
-    List<String> jsonList = reportDAO().list(fqn);
+  public List<Report> list(Fields fields) throws IOException {
+    List<String> jsonList = reportDAO().list();
     List<Report> reportList = new ArrayList<>();
     for (String json : jsonList) {
       reportList.add(setFields(JsonUtils.readValue(json, Report.class), fields));
@@ -168,8 +168,8 @@ public abstract class ReportRepository {
     @SqlQuery("SELECT json FROM report_entity WHERE fullyQualifiedName = :name")
     String findByFQN(@Bind("name") String name);
 
-    @SqlQuery("SELECT json FROM report_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @SqlQuery("SELECT json FROM report_entity")
+    List<String> list();
 
     @SqlQuery("SELECT EXISTS (SELECT * FROM report_entity where id = :id)")
     boolean exists(@Bind("id") String id);

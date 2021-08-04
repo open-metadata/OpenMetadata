@@ -57,7 +57,7 @@ public class SecureTeamResourceTest extends SecureCatalogApplicationTest {
     CreateTeam create = create(test, 1);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckTeam(create,
             authHeaders));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -105,7 +105,7 @@ public class SecureTeamResourceTest extends SecureCatalogApplicationTest {
     Team team = createAndCheckTeam(create, TestUtils.authHeaders("admin@getcollate.com"));
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTeam(team.getId(), TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -160,7 +160,7 @@ public class SecureTeamResourceTest extends SecureCatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchTeamAttributesAndCheck(team, "displayName", "description", profile, users,
                     TestUtils.authHeaders("test@getcollate.com")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 //  @Test
 //  public void patch_updateInvalidUsers_404_notFound(TestInfo test) throws HttpResponseException {

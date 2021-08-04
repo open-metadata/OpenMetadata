@@ -94,6 +94,7 @@ public class DatabaseServiceResource {
 
   @GET
   @Operation(summary = "List database services", tags = "services",
+          description = "Get a list of database services.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of database service instances",
                           content = @Content(mediaType = "application/json",
@@ -105,7 +106,8 @@ public class DatabaseServiceResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get database service", tags = "services",
+  @Operation(summary = "Get a database service", tags = "services",
+          description = "Get a database service by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
@@ -121,6 +123,7 @@ public class DatabaseServiceResource {
   @GET
   @Path("/name/{name}")
   @Operation(summary = "Get database service by name", tags = "services",
+          description = "Get a database service by the service `name`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
@@ -135,6 +138,7 @@ public class DatabaseServiceResource {
 
   @POST
   @Operation(summary = "Create database service", tags = "services",
+          description = "Create a new database service.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
@@ -156,7 +160,8 @@ public class DatabaseServiceResource {
 
   @PUT
   @Path("/{id}")
-  @Operation(summary = "Update database service", tags = "services",
+  @Operation(summary = "Update a database service", tags = "services",
+          description = "Update an existing database service identified by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
@@ -176,7 +181,9 @@ public class DatabaseServiceResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete database service", tags = "services",
+  @Operation(summary = "Delete a database service", tags = "services",
+          description = "Delete a database services. If databases (and tables) belong the service, it can't be " +
+                  "deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {id} " +

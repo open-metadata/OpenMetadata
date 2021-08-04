@@ -53,6 +53,7 @@ public class ServiceResource {
 
   @GET
   @Operation(summary = "List service collections", tags = "services",
+          description = "Get a list of resources under service collection.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of serviceCollections",
                           content = @Content(mediaType = "application/json",

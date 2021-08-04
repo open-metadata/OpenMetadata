@@ -1,9 +1,6 @@
 package org.openmetadata.catalog.resources.databases;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.streamlinedata.catalog.type.ColumnJoin;
-import com.streamlinedata.catalog.type.JoinedWith;
-import com.streamlinedata.catalog.type.TableData;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -33,7 +30,10 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
+import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -119,7 +119,7 @@ public class SecureTableResourceTest extends SecureCatalogApplicationTest {
     CreateTable create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createTable(create,
             TestUtils.authHeaders("test@getcollate.com")));
-      TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+      TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -245,7 +245,7 @@ public class SecureTableResourceTest extends SecureCatalogApplicationTest {
     Table table = createTable(create(test), TestUtils.adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTable(table.getId(), TestUtils.authHeaders("test@getcollate.io")));
-    TestUtils.assertResponse(exception, UNAUTHORIZED, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test

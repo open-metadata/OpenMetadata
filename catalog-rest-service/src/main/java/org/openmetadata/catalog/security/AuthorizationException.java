@@ -23,7 +23,7 @@ public class AuthorizationException extends RuntimeException {
   private final Response response;
   public AuthorizationException(String msg) {
     super(msg);
-    response = Response.status(Response.Status.UNAUTHORIZED)
+    response = Response.status(Response.Status.FORBIDDEN)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
@@ -31,7 +31,7 @@ public class AuthorizationException extends RuntimeException {
 
   public AuthorizationException(String msg, Throwable cause) {
     super(msg, cause);
-    response = Response.status(Response.Status.UNAUTHORIZED)
+    response = Response.status(Response.Status.FORBIDDEN)
             .entity(convertToErrorResponseMessage(msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();

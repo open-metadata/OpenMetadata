@@ -86,6 +86,7 @@ public class BotsResource {
 
   @GET
   @Operation(summary = "List bots", tags = "bots",
+          description = "Get a list of bots.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of bots",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -100,7 +101,8 @@ public class BotsResource {
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a bot by ID", tags = "bots",
+  @Operation(summary = "Get a bot", tags = "bots",
+          description = "Get a bot by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The bot",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
@@ -115,6 +117,7 @@ public class BotsResource {
 
   @POST
   @Operation(summary = "Create a bot", tags = "bots",
+          description = "Create a new bot.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The bot ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =

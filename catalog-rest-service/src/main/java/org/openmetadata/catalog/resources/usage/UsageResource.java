@@ -70,7 +70,8 @@ public class UsageResource {
   @GET
   @Valid
   @Path("/{entity}/{id}")
-  @Operation(summary = "Get usage of an entity", tags = "usage",
+  @Operation(summary = "Get usage", tags = "usage",
+          description = "Get usage details for an entity identified by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Entity usage",
                           content = @Content(mediaType = "application/json",
@@ -103,7 +104,8 @@ public class UsageResource {
   @GET
   @Valid
   @Path("/{entity}/name/{fqn}")
-  @Operation(summary = "Get usage of an entity by name", tags = "usage",
+  @Operation(summary = "Get usage by name", tags = "usage",
+          description = "Get usage details for an entity identified by fully qualified name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Entity usage",
                           content = @Content(mediaType = "application/json",
@@ -136,7 +138,9 @@ public class UsageResource {
 
   @POST
   @Path("/{entity}/{id}")
-  @Operation(summary = "Report usage information for an entity", tags = "usage",
+  @Operation(summary = "Report usage", tags = "usage",
+          description = "Report usage information for an entity on a given date. System stores last 30 days of usage " +
+                  "information. Usage information older than 30 days is deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Usage information",
                           content = @Content(mediaType = "application/json",
@@ -162,7 +166,9 @@ public class UsageResource {
 
   @POST
   @Path("/{entity}/name/{fqn}")
-  @Operation(summary = "Post usage information for an entity by name", tags = "usage",
+  @Operation(summary = "Report usage by name", tags = "usage",
+          description = "Report usage information for an entity by name on a given date. System stores last 30 days " +
+                  "of usage information. Usage information older than 30 days is deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "Usage information",
                           content = @Content(mediaType = "application/json",
@@ -187,7 +193,8 @@ public class UsageResource {
 
   @POST
   @Path("/compute.percentile/{entity}/{date}")
-  @Operation(summary = "Compute percentiles for an entity on a given day", tags = "usage",
+  @Operation(summary = "Compute percentiles", tags = "usage",
+          description = "Compute percentile ranking for an entity based on last 30 days of usage.",
           responses = {
                   @ApiResponse(responseCode = "201", description = "Percentiles computed"),
                   @ApiResponse(responseCode = "400", description = "Bad request")
@@ -199,9 +206,8 @@ public class UsageResource {
           @PathParam("entity") String entity,
           @Parameter(description = "ISO 8601 format date to compute percentile on",
                   schema = @Schema(type = "string", example = "2021-01-28"))
-          @PathParam("date") String date,
-          @Parameter(description = "Usage information a given date")
-          @Valid DailyCount usage) {
+          @PathParam("date") String date) {
+    // TODO delete this?
     dao.computePercentile(entity, date);
     return Response.status(Response.Status.CREATED).build();
   }
