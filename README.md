@@ -26,37 +26,37 @@
 ```shell
 mysql -u username -p (Enter password when prompted)
 
-mysql> CREATE USER 'catalog_user'@'%' IDENTIFIED WITH mysql_native_password BY 'catalog_password';
-mysql> CREATE DATABASE catalog_db;
-mysql> GRANT ALL PRIVILEGES ON catalog_db.* TO 'catalog_user'@'%' IDENTIFIED BY 'catalog_password';
+mysql> CREATE USER 'openmetadata_user'@'%' IDENTIFIED WITH mysql_native_password BY 'openmetadata_password';
+mysql> CREATE DATABASE openmetadata_db;
+mysql> `GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password'`;
 mysql> FLUSH PRIVILEGES;
 ```
 
 ### Build OpenMetdata project and run it
-Make sure mysql is running with credentials user 'catalog_user' with password 'catalog_password'.
+Make sure mysql is running with credentials user 'openmetadata_user' with password 'openmetadata_password'.
 Connect to mysql following steps mentioned [here](#steps-to-connect-mysql).
 
 ```shells
 mvn -DskipTests clean package
 cd dist/target
-tar zxvf catalog-1.0.0-SNAPSHOT.tar.gz
-cd catalog-1.0.0-SNAPSHOT/bootstrap
+tar zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
+cd openmetadata-1.0.0-SNAPSHOT/bootstrap
 ./bootstrap_storage.sh migrate
 cd ../
 ```
 If authorizer is configured, run:
 ```
-./bin/catalog-server-start.sh conf/catalog-security.yaml
+./bin/openmetadata-server-start.sh conf/openmetadata-security.yaml
 ```
 otherwise run
 ```
-./bin/catalog-server-start.sh conf/catalog.yaml
+./bin/openmetadata-server-start.sh conf/openmetadata.yaml
 ```
 Open browser http://localhost:8585/ to start the UI.\
 Open browser http://localhost:8585/api/swagger to look at API documentation.
 
 ### Setup Authorizer Configuration
-Enter following information in ***/conf/catalog-security.yaml*** file:
+Enter following information in ***/conf/openmetadata-security.yaml*** file:
 ```
 authorizerConfiguration:
   className: <authorizer_classname>

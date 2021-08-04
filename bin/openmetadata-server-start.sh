@@ -18,7 +18,7 @@
 
  if [ $# -lt 1 ];
 then
-	echo "USAGE: $0 [-daemon] catalog.yaml"
+	echo "USAGE: $0 [-daemon] openmetadata.yaml"
 	exit 1
 fi
 base_dir=$(dirname $0)/..

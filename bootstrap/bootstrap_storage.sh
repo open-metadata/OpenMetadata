@@ -30,7 +30,7 @@ while [ -h "${PRG}" ]; do
 done
 
 BOOTSTRAP_DIR=`dirname ${PRG}`
-CONFIG_FILE_PATH=${BOOTSTRAP_DIR}/../conf/catalog.yaml
+CONFIG_FILE_PATH=${BOOTSTRAP_DIR}/../conf/openmetadata.yaml
 SCRIPT_ROOT_DIR="${BOOTSTRAP_DIR}/sql"
 
 # Which java to use
