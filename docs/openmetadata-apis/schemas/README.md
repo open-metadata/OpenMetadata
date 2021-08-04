@@ -24,4 +24,4 @@ OpenMetadata takes the **schema-first** approach to model metadata as a Single S
 
 ## Version Note
 
-The schemas linked above follow the JSON Schema Spec version: 
+The schemas linked above follow the JSON Schema Spec version: http://json-schema.org/draft-07/schema#
