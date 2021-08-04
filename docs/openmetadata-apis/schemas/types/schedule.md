@@ -16,8 +16,8 @@ Type used for schedule with start time and repeat frequency
 
 # Type used for schedule with start time and repeat frequency Properties
 
-| Property                            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                          |
-| :---------------------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property                            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                |
+| :---------------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [startDate](#startdate)             | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/startDate")       |
 | [repeatFrequency](#repeatfrequency) | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/repeatFrequency") |
 

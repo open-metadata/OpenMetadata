@@ -16,8 +16,8 @@ Entity that represents a Pipeline
 
 # Pipeline entity Properties
 
-| Property                                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                    |
-| :---------------------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                          |
+| :---------------------------------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                                 | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                                 |
 | [name](#name)                             | `string` | Required | cannot be null | [Pipeline entity](#pipeline-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/name")                             |
 | [fullyQualifiedName](#fullyqualifiedname) | `string` | Optional | cannot be null | [Pipeline entity](#pipeline-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/fullyQualifiedName") |

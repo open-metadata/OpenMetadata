@@ -16,8 +16,8 @@ Entity reference that includes entity ID and entity type
 
 # Entity Reference Properties
 
-| Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                              |
-| :-------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                    |
+| :-------------------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                          |
 | [type](#type)               | `string` | Required | cannot be null | [Entity Reference](#entityreference-properties-type "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/type")               |
 | [name](#name)               | `string` | Optional | cannot be null | [Entity Reference](#entityreference-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/name")               |

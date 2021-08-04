@@ -90,8 +90,8 @@ Reference this group by using
 {"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/timeInterval"}
 ```
 
-| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                            |
-| :-------------- | :-------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                  |
+| :-------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [start](#start) | `integer` | Optional | cannot be null | [Basic type](#basic-definitions-timeinterval-properties-start) |
 | [end](#end)     | `integer` | Optional | cannot be null | #[Basic type](basic-definitions-timeinterval-properties-end)     |
 
@@ -364,8 +364,8 @@ https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src
 
 # timeInterval Properties
 
-| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                            |
-| :-------------- | :-------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                  |
+| :-------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [start](#start) | `integer` | Optional | cannot be null | [Basic type](#basic-definitions-timeinterval-properties-start) |
 | [end](#end)     | `integer` | Optional | cannot be null | #[Basic type](basic-definitions-timeinterval-properties-end)     |
 

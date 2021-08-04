@@ -16,8 +16,8 @@ Team entity
 
 # Team entity Properties
 
-| Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                         |
-| :-------------------------- | :-------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                               |
+| :-------------------------- | :-------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                             |
 | [name](#name)               | `string`  | Required | cannot be null | [Team entity](#team-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/name")                             |
 | [displayName](#displayname) | `string`  | Optional | cannot be null | [Team entity](#team-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/displayName")               |

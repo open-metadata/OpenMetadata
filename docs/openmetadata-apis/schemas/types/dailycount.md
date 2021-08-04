@@ -16,8 +16,8 @@ Type used for capturing and reporting daily count of some measurement, such as u
 
 # Daily count of some measurement Properties
 
-| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                       |
-| :-------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property        | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                             |
+| :-------------- | :-------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [count](#count) | `integer` | Required | cannot be null | [Daily count of some measurement](#dailycount-properties-count "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json#/properties/count") |
 | [date](#date)   | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-date)       |
 

@@ -16,8 +16,8 @@ Type used for schedule with start time and repeat frequency
 
 # Tag Label Properties
 
-| Property                | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                     |
-| :---------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                | Type     | Required | Nullable       | Defined by                                                                                                                                                                                           |
+| :---------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [tagFQN](#tagfqn)       | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-tagfqn "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN")       |
 | [labelType](#labeltype) | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-labeltype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType") |
 | [state](#state)         | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-state "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state")         |

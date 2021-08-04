@@ -18,8 +18,8 @@ JDBC connection information used for connecting to a database system
 
 # JDBC connection Properties
 
-| Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                               |
-| :------------------------------ | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                     |
+| :------------------------------ | :------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass")     |
 | [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl") |
 | [userName](#username)           | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-username "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName")           |
@@ -137,8 +137,8 @@ Reference this group by using
 {"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo"}
 ```
 
-| Property                          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                         |
-| :-------------------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                               |
+| :-------------------------------- | :------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [driverClass](#driverclass-1)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
 | [connectionUrl](#connectionurl-1) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
 
@@ -259,8 +259,8 @@ https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src
 
 # jdbc Properties
 
-| Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                     |
-| :------------------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                           |
+| :------------------------------ | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
 | [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
 

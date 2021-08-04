@@ -16,8 +16,8 @@ Entity that represents a Report
 
 # Report entity Properties
 
-| Property                                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                              |
-| :---------------------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                    |
+| :---------------------------------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                                 | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                               |
 | [name](#name)                             | `string` | Required | cannot be null | [Report entity](#report-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/name")                             |
 | [fullyQualifiedName](#fullyqualifiedname) | `string` | Optional | cannot be null | [Report entity](#report-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/fullyQualifiedName") |

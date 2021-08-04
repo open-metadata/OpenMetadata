@@ -16,8 +16,8 @@ Entity that represents a feed
 
 # Feed entity Properties
 
-| Property                    | Type          | Required | Nullable       | Defined by                                                                                                                                                                                                             |
-| :-------------------------- | :------------ | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                    | Type          | Required | Nullable       | Defined by                                                                                                                                                                                                   |
+| :-------------------------- | :------------ | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string`      | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                |
 | [href](#href)               | `string`      | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-href)              |
 | [threadTs](#threadts)       | Not specified | Optional | cannot be null | [Feed entity](#thread-Properties-Threads "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs")      |
@@ -177,8 +177,8 @@ Reference this group by using
 {"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post"}
 ```
 
-| Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                        |
-| :------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                              |
+| :------------------ | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
 | [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
 | [from](#from)       | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                        |
@@ -296,8 +296,8 @@ Post within a feed
 
 # items Properties
 
-| Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                        |
-| :------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                              |
+| :------------------ | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
 | [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
 | [from](#from)       | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                        |

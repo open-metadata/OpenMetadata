@@ -16,8 +16,8 @@ User entity that is part of an organization
 
 # User entity Properties
 
-| Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                           |
-| :-------------------------- | :-------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                 |
+| :-------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                               |
 | [name](#name)               | `string`  | Required | cannot be null | [User entity](#user-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name")                               |
 | [displayName](#displayname) | `string`  | Optional | cannot be null | [User entity](#user-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName")                 |

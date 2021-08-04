@@ -16,8 +16,8 @@ Bot entity to capture the details of a bot
 
 # Bot entity Properties
 
-| Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                    |
-| :-------------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                          |
+| :-------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string` | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)               |
 | [name](#name)               | `string` | Optional | cannot be null | [Bot entity](#bots-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name")               |
 | [displayName](#displayname) | `string` | Optional | cannot be null | [Bot entity](#bots-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName") |

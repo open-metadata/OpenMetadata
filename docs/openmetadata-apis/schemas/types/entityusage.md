@@ -16,8 +16,8 @@ Type used for capturing usage details of an entity
 
 # Usage details of an entity Properties
 
-| Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                    |
-| :---------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                          |
+| :---------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [entity](#entity) | `object` | Required | cannot be null | [Usage details of an entity](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/entity")         |
 | [usage](#usage)   | `array`  | Required | cannot be null | [Usage details of an entity](#entityusage-properties-usage "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json#/properties/usage") |
 
