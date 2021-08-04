@@ -1,14 +1,14 @@
 # user
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json
 ```
 
 User entity that is part of an organization
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                 |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [user.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [user.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## User entity Type
 
@@ -19,14 +19,14 @@ User entity that is part of an organization
 | Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                           |
 | :-------------------------- | :-------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                               |
-| [name](#name)               | `string`  | Required | cannot be null | [User entity](#user-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name")                               |
-| [displayName](#displayname) | `string`  | Optional | cannot be null | [User entity](#user-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName")                 |
+| [name](#name)               | `string`  | Required | cannot be null | [User entity](#user-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name")                               |
+| [displayName](#displayname) | `string`  | Optional | cannot be null | [User entity](#user-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName")                 |
 | [email](#email)             | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-email)                           |
 | [href](#href)               | `string`  | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-href)                             |
-| [timezone](#timezone)       | `string`  | Optional | cannot be null | [User entity](#user-properties-timezone "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone")                       |
-| [deactivated](#deactivated) | `boolean` | Optional | cannot be null | [User entity](#user-properties-deactivated "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated")                 |
-| [isBot](#isbot)             | `boolean` | Optional | cannot be null | [User entity](#user-properties-isbot "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot")                             |
-| [isAdmin](#isadmin)         | `boolean` | Optional | cannot be null | [User entity](#user-properties-isAdmin "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin")                         |
+| [timezone](#timezone)       | `string`  | Optional | cannot be null | [User entity](#user-properties-timezone "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone")                       |
+| [deactivated](#deactivated) | `boolean` | Optional | cannot be null | [User entity](#user-properties-deactivated "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated")                 |
+| [isBot](#isbot)             | `boolean` | Optional | cannot be null | [User entity](#user-properties-isbot "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot")                             |
+| [isAdmin](#isadmin)         | `boolean` | Optional | cannot be null | [User entity](#user-properties-isAdmin "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin")                         |
 | [profile](#profile)         | `object`  | Optional | cannot be null | [Profile type](../types/profile.md)                                              |
 | [teams](#teams)             | `array`   | Optional | cannot be null | [Entity Reference type](../types/entityreference.md#entityreference-definitions-entityreferencelist)   |
 | [owns](#owns)               | `array`   | Optional | cannot be null | [Entity Reference type](../types/entityreference.md#entityreference-definitions-entityreferencelist)    |
@@ -66,7 +66,7 @@ Unique name of the user typically the user ID from the identify provider. Exampl
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name")
+*   defined in: [User entity](#user-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name")
 
 ### name Type
 
@@ -90,7 +90,7 @@ Name used for display purposes. Example 'FirstName LastName'
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName")
+*   defined in: [User entity](#user-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName")
 
 ### displayName Type
 
@@ -166,7 +166,7 @@ Timezone of the user
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-timezone "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone")
+*   defined in: [User entity](#user-properties-timezone "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone")
 
 ### timezone Type
 
@@ -188,7 +188,7 @@ Timezone of the user
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-deactivated "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated")
+*   defined in: [User entity](#user-properties-deactivated "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated")
 
 ### deactivated Type
 
@@ -206,7 +206,7 @@ Timezone of the user
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-isbot "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot")
+*   defined in: [User entity](#user-properties-isbot "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot")
 
 ### isBot Type
 
@@ -224,7 +224,7 @@ When true indicates user is an adiministrator for the sytem with superuser privi
 
 *   cannot be null
 
-*   defined in: [User entity](#user-properties-isAdmin "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin")
+*   defined in: [User entity](#user-properties-isAdmin "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin")
 
 ### isAdmin Type
 
@@ -309,7 +309,7 @@ Entities followed by the user
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/definitions/userName"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/definitions/userName"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -317,14 +317,14 @@ Reference this group by using
 # user-definitions-username
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json#/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json#/properties/name
 ```
 
 Unique name of the user typically the user ID from the identify provider. Example - uid from ldap.
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                           |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createUser.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createUser.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json "open original schema") |
 
 ## name Type
 
@@ -338,14 +338,14 @@ Unique name of the user typically the user ID from the identify provider. Exampl
 # user-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## definitions Type
 
@@ -353,14 +353,14 @@ unknown
 # user-properties-deactivated
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/deactivated
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## deactivated Type
 
@@ -368,14 +368,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # user-properties-displayname
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/displayName
 ```
 
 Name used for display purposes. Example 'FirstName LastName'
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## displayName Type
 
@@ -383,14 +383,14 @@ Name used for display purposes. Example 'FirstName LastName'
 # user-properties-isadmin
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isAdmin
 ```
 
 When true indicates user is an adiministrator for the sytem with superuser privileges
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## isAdmin Type
 
@@ -398,14 +398,14 @@ When true indicates user is an adiministrator for the sytem with superuser privi
 # user-properties-isbot
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/isBot
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## isBot Type
 
@@ -413,14 +413,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # user-properties-name
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/name
 ```
 
 Unique name of the user typically the user ID from the identify provider. Example - uid from ldap.
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## name Type
 
@@ -434,14 +434,14 @@ Unique name of the user typically the user ID from the identify provider. Exampl
 # user-properties-timezone
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/timezone
 ```
 
 Timezone of the user
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [user.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json "open original schema") |
 
 ## timezone Type
 

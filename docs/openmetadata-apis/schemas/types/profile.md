@@ -1,14 +1,14 @@
 # profile
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json
 ```
 
 Type used to capture profile of a user, team, or an organization
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                               |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## Type used to capture profile of a user, team, or an organization Type
 
@@ -18,7 +18,7 @@ Type used to capture profile of a user, team, or an organization
 
 | Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                        |
 | :---------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [images](#images) | `object` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images") |
+| [images](#images) | `object` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images") |
 
 ## images
 
@@ -32,7 +32,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images")
 
 ### images Type
 
@@ -45,18 +45,18 @@ Links to list of images of varying resolutions/sizes
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList"}
 ```
 
 | Property              | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                    |
 | :-------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
-| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
-| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
-| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
-| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
-| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
-| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
+| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
+| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
+| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
+| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
+| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
+| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
+| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
 
 ### image
 
@@ -70,7 +70,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
 
 #### image Type
 
@@ -92,7 +92,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
 
 #### image24 Type
 
@@ -114,7 +114,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
 
 #### image32 Type
 
@@ -136,7 +136,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
 
 #### image48 Type
 
@@ -158,7 +158,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
 
 #### image72 Type
 
@@ -180,7 +180,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
 
 #### image192 Type
 
@@ -202,7 +202,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
 
 #### image512 Type
 
@@ -214,14 +214,14 @@ Reference this group by using
 # profile-definitions-imagelist-properties-image
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image Type
 
@@ -233,14 +233,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image192
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image192 Type
 
@@ -252,14 +252,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image24
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image24 Type
 
@@ -271,14 +271,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image32
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image32 Type
 
@@ -290,14 +290,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image48
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image48 Type
 
@@ -309,14 +309,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image512
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image512 Type
 
@@ -328,14 +328,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist-properties-image72
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## image72 Type
 
@@ -347,14 +347,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # profile-definitions-imagelist
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images
 ```
 
 Links to list of images of varying resolutions/sizes
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## images Type
 
@@ -364,13 +364,13 @@ Links to list of images of varying resolutions/sizes
 
 | Property              | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                    |
 | :-------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
-| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
-| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
-| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
-| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
-| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
-| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
+| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
+| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
+| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
+| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
+| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
+| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
+| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
 
 ## image
 
@@ -384,7 +384,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
 
 ### image Type
 
@@ -406,7 +406,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
 
 ### image24 Type
 
@@ -428,7 +428,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
 
 ### image32 Type
 
@@ -450,7 +450,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
 
 ### image48 Type
 
@@ -472,7 +472,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
 
 ### image72 Type
 
@@ -494,7 +494,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
 
 ### image192 Type
 
@@ -516,7 +516,7 @@ Links to list of images of varying resolutions/sizes
 
 *   cannot be null
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
+*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
 
 ### image512 Type
 
@@ -528,14 +528,14 @@ Links to list of images of varying resolutions/sizes
 # profile-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
 
 ## definitions Type
 

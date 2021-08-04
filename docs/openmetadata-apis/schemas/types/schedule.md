@@ -1,14 +1,14 @@
 # schedule
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json
 ```
 
 Type used for schedule with start time and repeat frequency
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                 |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [schedule.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [schedule.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json "open original schema") |
 
 ## Type used for schedule with start time and repeat frequency Type
 
@@ -18,8 +18,8 @@ Type used for schedule with start time and repeat frequency
 
 | Property                            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                          |
 | :---------------------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [startDate](#startdate)             | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/startDate")       |
-| [repeatFrequency](#repeatfrequency) | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/repeatFrequency") |
+| [startDate](#startdate)             | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/startDate")       |
+| [repeatFrequency](#repeatfrequency) | `string` | Optional | cannot be null | [Type used for schedule with start time and repeat frequency](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/repeatFrequency") |
 
 ## startDate
 
@@ -33,7 +33,7 @@ Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'
 
 *   cannot be null
 
-*   defined in: [Type used for schedule with start time and repeat frequency](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/startDate")
+*   defined in: [Type used for schedule with start time and repeat frequency](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/startDate")
 
 ### startDate Type
 
@@ -57,7 +57,7 @@ Duration in ISO 8601 format in UTC time. Example - 'P23DT23H'
 
 *   cannot be null
 
-*   defined in: [Type used for schedule with start time and repeat frequency](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/repeatFrequency")
+*   defined in: [Type used for schedule with start time and repeat frequency](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/repeatFrequency")
 
 ### repeatFrequency Type
 

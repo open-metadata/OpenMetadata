@@ -1,14 +1,14 @@
 # thread
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json
 ```
 
 Entity that represents a feed
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                    |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [thread.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [thread.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## Feed entity Type
 
@@ -20,10 +20,10 @@ Entity that represents a feed
 | :-------------------------- | :------------ | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                   | `string`      | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                |
 | [href](#href)               | `string`      | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-href)              |
-| [threadTs](#threadts)       | Not specified | Optional | cannot be null | [Feed entity](#thread-Properties-Threads "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs")      |
+| [threadTs](#threadts)       | Not specified | Optional | cannot be null | [Feed entity](#thread-Properties-Threads "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs")      |
 | [about](#about)             | `string`      | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-entitylink)       |
 | [addressedTo](#addressedto) | `string`      | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-entitylink) |
-| [posts](#posts)             | `array`       | Required | cannot be null | [Feed entity](#thread-Properties-Posts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts")            |
+| [posts](#posts)             | `array`       | Required | cannot be null | [Feed entity](#thread-Properties-Posts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts")            |
 
 ## id
 
@@ -83,7 +83,7 @@ Timestamp of the when the first post created the thread
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-Properties-Threads "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs")
+*   defined in: [Feed entity](#thread-Properties-Threads "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs")
 
 ### threadTs Type
 
@@ -161,7 +161,7 @@ Entity or field thread is created for with format <#E/{enties}/{entityName}/{fie
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-Properties-Posts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts")
+*   defined in: [Feed entity](#thread-Properties-Posts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts")
 
 ### posts Type
 
@@ -174,13 +174,13 @@ Entity or field thread is created for with format <#E/{enties}/{entityName}/{fie
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post"}
 ```
 
 | Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                        |
 | :------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
-| [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
+| [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
+| [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
 | [from](#from)       | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                        |
 
 ### message
@@ -195,7 +195,7 @@ Message in markdown format. See markdown support for more details.
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message")
+*   defined in: [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message")
 
 #### message Type
 
@@ -213,7 +213,7 @@ Timestamp of the post
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")
+*   defined in: [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")
 
 #### postTs Type
 
@@ -247,14 +247,14 @@ Unique id used to identify an entity
 # thread-definitions-post-properties-message
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message
 ```
 
 Message in markdown format. See markdown support for more details.
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## message Type
 
@@ -262,14 +262,14 @@ Message in markdown format. See markdown support for more details.
 # thread-definitions-post-properties-postts
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs
 ```
 
 Timestamp of the post
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## postTs Type
 
@@ -281,14 +281,14 @@ Timestamp of the post
 # thread-definitions-post
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts/items
 ```
 
 Post within a feed
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## items Type
 
@@ -298,8 +298,8 @@ Post within a feed
 
 | Property            | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                        |
 | :------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
-| [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
+| [message](#message) | `string` | Required | cannot be null | [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message") |
+| [postTs](#postts)   | `string` | Optional | cannot be null | [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")   |
 | [from](#from)       | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                        |
 
 ## message
@@ -314,7 +314,7 @@ Message in markdown format. See markdown support for more details.
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message")
+*   defined in: [Feed entity](#thread-definitions-post-properties-message "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/message")
 
 ### message Type
 
@@ -332,7 +332,7 @@ Timestamp of the post
 
 *   cannot be null
 
-*   defined in: [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")
+*   defined in: [Feed entity](#thread-definitions-post-properties-postts "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/postTs")
 
 ### postTs Type
 
@@ -366,14 +366,14 @@ Unique id used to identify an entity
 # thread-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## definitions Type
 
@@ -381,14 +381,14 @@ unknown
 # thread-properties-posts
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/posts
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## posts Type
 
@@ -396,14 +396,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # thread-properties-threadts
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/threadTs
 ```
 
 Timestamp of the when the first post created the thread
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                     |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [thread.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json "open original schema") |
 
 ## threadTs Type
 

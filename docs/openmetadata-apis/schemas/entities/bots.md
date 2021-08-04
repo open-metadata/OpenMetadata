@@ -1,14 +1,14 @@
 # bots
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json
 ```
 
 Bot entity to capture the details of a bot
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                           |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [bots.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [bots.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
 
 ## Bot entity Type
 
@@ -19,9 +19,9 @@ Bot entity to capture the details of a bot
 | Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                    |
 | :-------------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | [id](#id)                   | `string` | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)               |
-| [name](#name)               | `string` | Optional | cannot be null | [Bot entity](#bots-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name")               |
-| [displayName](#displayname) | `string` | Optional | cannot be null | [Bot entity](#bots-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName") |
-| [description](#description) | `string` | Optional | cannot be null | [Bot entity](#bots-properties-description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description") |
+| [name](#name)               | `string` | Optional | cannot be null | [Bot entity](#bots-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name")               |
+| [displayName](#displayname) | `string` | Optional | cannot be null | [Bot entity](#bots-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName") |
+| [description](#description) | `string` | Optional | cannot be null | [Bot entity](#bots-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description") |
 | [href](#href)               | `string` | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-href)             |
 
 ## id
@@ -58,7 +58,7 @@ Optional name that identifies this entity. Same as id if name is not available
 
 *   cannot be null
 
-*   defined in: [Bot entity](#bots-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name")
+*   defined in: [Bot entity](#bots-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name")
 
 ### name Type
 
@@ -82,7 +82,7 @@ Name used for display purposes. Example 'FirstName LastName'
 
 *   cannot be null
 
-*   defined in: [Bot entity](#bots-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName")
+*   defined in: [Bot entity](#bots-properties-displayname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName")
 
 ### displayName Type
 
@@ -100,7 +100,7 @@ Description of entity instance.
 
 *   cannot be null
 
-*   defined in: [Bot entity](#bots-properties-description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description")
+*   defined in: [Bot entity](#bots-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description")
 
 ### description Type
 
@@ -132,14 +132,14 @@ Link to the resource corresponding to this entity
 # bots-properties-description
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/description
 ```
 
 Description of entity instance.
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                            |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
 
 ## description Type
 
@@ -147,14 +147,14 @@ Description of entity instance.
 # bots-properties-displayname
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/displayName
 ```
 
 Name used for display purposes. Example 'FirstName LastName'
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                            |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
 
 ## displayName Type
 
@@ -162,14 +162,14 @@ Name used for display purposes. Example 'FirstName LastName'
 # bots-properties-name
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/name
 ```
 
 Optional name that identifies this entity. Same as id if name is not available
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                            |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [bots.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json "open original schema") |
 
 ## name Type
 

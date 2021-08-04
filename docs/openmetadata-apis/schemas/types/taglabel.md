@@ -1,14 +1,14 @@
 # taglabel
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json
 ```
 
 Type used for schedule with start time and repeat frequency
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                 |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [tagLabel.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [tagLabel.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
 
 ## Tag Label Type
 
@@ -18,10 +18,10 @@ Type used for schedule with start time and repeat frequency
 
 | Property                | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                     |
 | :---------------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [tagFQN](#tagfqn)       | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-tagfqn "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN")       |
-| [labelType](#labeltype) | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-labeltype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType") |
-| [state](#state)         | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-state "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state")         |
-| [href](#href)           | `string` | Optional | cannot be null | [Tag Label](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/href")             |
+| [tagFQN](#tagfqn)       | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-tagfqn "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN")       |
+| [labelType](#labeltype) | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-labeltype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType") |
+| [state](#state)         | `string` | Optional | cannot be null | [Tag Label](#taglabel-properties-state "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state")         |
+| [href](#href)           | `string` | Optional | cannot be null | [Tag Label](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/href")             |
 
 ## tagFQN
 
@@ -35,7 +35,7 @@ Type used for schedule with start time and repeat frequency
 
 *   cannot be null
 
-*   defined in: [Tag Label](#taglabel-properties-tagfqn "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN")
+*   defined in: [Tag Label](#taglabel-properties-tagfqn "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN")
 
 ### tagFQN Type
 
@@ -57,7 +57,7 @@ Type used for schedule with start time and repeat frequency
 
 *   cannot be null
 
-*   defined in: [Tag Label](#taglabel-properties-labeltype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType")
+*   defined in: [Tag Label](#taglabel-properties-labeltype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType")
 
 ### labelType Type
 
@@ -94,7 +94,7 @@ The default value is:
 
 *   cannot be null
 
-*   defined in: [Tag Label](#taglabel-properties-state "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state")
+*   defined in: [Tag Label](#taglabel-properties-state "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state")
 
 ### state Type
 
@@ -131,7 +131,7 @@ Link to the tag resource
 
 *   cannot be null
 
-*   defined in: [Tag Label](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/href")
+*   defined in: [Tag Label](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/href")
 
 ### href Type
 
@@ -143,14 +143,14 @@ Link to the tag resource
 # taglabel-properties-labeltype
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/labelType
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
 
 ## labelType Type
 
@@ -177,14 +177,14 @@ The default value is:
 # taglabel-properties-state
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/state
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
 
 ## state Type
 
@@ -209,14 +209,14 @@ The default value is:
 # taglabel-properties-tagfqn
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#/properties/tagFQN
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [tagLabel.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json "open original schema") |
 
 ## tagFQN Type
 

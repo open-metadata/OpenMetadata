@@ -32,34 +32,34 @@ The schemas linked above follow the JSON Schema Spec version: `http://json-schem
 
 echo "----------------------Changing paths----------------------"
 path=docs/openmetadata-apis/schemas/*/*.md
-sed -i -e 's#../../out/entity/bots.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#g' \
--e 's#../../out/entity/data/dashboard.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#g' \
--e 's#../../out/entity/data/database.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#g' \
--e 's#../../out/entity/services/databaseService.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#g' \
--e 's#../../out/entity/feed/thread.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#g' \
--e 's#../../out/entity/data/metrics.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#g' \
--e 's#../../out/entity/data/pipeline.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#g' \
--e 's#../../out/entity/data/report.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#g' \
--e 's#../../out/entity/data/table.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#g' \
--e 's#../../out/entity/tags/tagCategory.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#g' \
--e 's#../../out/entity/teams/team.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#g' \
--e 's#../../out/entity/teams/user.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#g' \
--e 's#../../out/type/categoryUsage.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/categoryUsage.json#g' \
--e 's#../../out/type/classification.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/classification.json#g' \
--e 's#../../out/type/collectionDescriptor.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#g' \
--e 's#../../out/type/basic.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/basic.json#g' \
--e 's#../../out/type/dailyCount.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json#g' \
--e 's#../../out/type/entityUsage.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json#g' \
--e 's#../../out/type/jdbcConnection.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#g' \
--e 's#../../out/type/entityReference.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#g' \
--e 's#../../out/type/profile.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#g' \
--e 's#../../out/type/schedule.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#g' \
--e 's#../../out/type/tagLabel.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#g' \
--e 's#../../out/api/teams/createUser.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json#g' \
--e 's#../../out/api/teams/createThread.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/feed/createThread.json#g' \
--e 's#../../out/api/catalogVersion.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/catalogVersion.json#g' \
--e 's#../../out/api/data/createTable.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#g' \
--e 's#../../out/api/services/updateDatabaseService.json#https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json#g' \
+sed -i -e 's#../../out/entity/bots.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#g' \
+-e 's#../../out/entity/data/dashboard.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#g' \
+-e 's#../../out/entity/data/database.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#g' \
+-e 's#../../out/entity/services/databaseService.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#g' \
+-e 's#../../out/entity/feed/thread.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#g' \
+-e 's#../../out/entity/data/metrics.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#g' \
+-e 's#../../out/entity/data/pipeline.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#g' \
+-e 's#../../out/entity/data/report.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#g' \
+-e 's#../../out/entity/data/table.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#g' \
+-e 's#../../out/entity/tags/tagCategory.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#g' \
+-e 's#../../out/entity/teams/team.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#g' \
+-e 's#../../out/entity/teams/user.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#g' \
+-e 's#../../out/type/categoryUsage.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/categoryUsage.json#g' \
+-e 's#../../out/type/classification.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/classification.json#g' \
+-e 's#../../out/type/collectionDescriptor.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#g' \
+-e 's#../../out/type/basic.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#g' \
+-e 's#../../out/type/dailyCount.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json#g' \
+-e 's#../../out/type/entityUsage.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json#g' \
+-e 's#../../out/type/jdbcConnection.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#g' \
+-e 's#../../out/type/entityReference.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#g' \
+-e 's#../../out/type/profile.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#g' \
+-e 's#../../out/type/schedule.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#g' \
+-e 's#../../out/type/tagLabel.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json#g' \
+-e 's#../../out/api/teams/createUser.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/teams/createUser.json#g' \
+-e 's#../../out/api/teams/createThread.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/feed/createThread.json#g' \
+-e 's#../../out/api/catalogVersion.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/catalogVersion.json#g' \
+-e 's#../../out/api/data/createTable.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#g' \
+-e 's#../../out/api/services/updateDatabaseService.json#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json#g' \
 -e 's+\[Details\](basic-definitions-entityreference.md)+\[Details\](../types/basic.md#basic-definitions-entityreference)+gI' \
 -e 's+\[Details\](basic-definitions-usagedetails.md)+\[Details\](../types/basic.md#basic-definitions-usagedetails)+gI' \
 -e 's+\[Details\](jdbcconnection-definitions-jdbcinfo.md)+\[Details\](../types/jdbcconnection.md#jdbcconnection-definitions-jdbcinfo)+gI' \
@@ -73,53 +73,53 @@ sed -i -e 's#../../out/entity/bots.json#https://github.com/open-metadata/OpenMet
 
 echo "----------------------Changing bots paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/bots.md
-sed -i -e 's+\[Bot entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Bot entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+sed -i -e 's+\[Bot entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Bot entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
 -e 's+bots-properties-name.md+#bots-properties-name+gI' \
 -e 's+bots-properties-displayname.md+#bots-properties-displayname+gI' \
 -e 's+bots-properties-description.md+#bots-properties-description+gI' $path
 
 echo "----------------------Changing dashboard paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/dashboard.md
-sed -i -e 's+\[Dashboard entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/uuid")+gI' \
--e 's+\[Dashboard entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/href")+gI' \
--e 's+\[Dashboard entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Dashboard entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Dashboard Entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
+sed -i -e 's+\[Dashboard entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/uuid")+gI' \
+-e 's+\[Dashboard entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/href")+gI' \
+-e 's+\[Dashboard entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Dashboard entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Dashboard Entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
 -e 's+dashboard-properties-name.md+#dashboard-properties-name+gI' \
 -e 's+dashboard-properties-fullyqualifiedname.md+#dashboard-properties-fullyqualifiedname+gI' \
 -e 's+dashboard-properties-description.md+#dashboard-properties-description+gI' $path
 
 echo "----------------------Changing database paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/database.md
-sed -i -e 's+\[Database entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Database entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Database entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Database entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Database entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
--e 's+\[Database entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/tables")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+sed -i -e 's+\[Database entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Database entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Database entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Database entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Database entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
+-e 's+\[Database entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json#/properties/tables")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
 -e 's+database-properties-name.md+#database-properties-name+gI' \
 -e 's+database-properties-fullyqualifiedname.md+#database-properties-fullyqualifiedname+gI' \
 -e 's+database-properties-description.md+#database-properties-description+gI' $path
 
 echo "----------------------Changing databaseservice paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/databaseservice.md
-sed -i -e 's+\[Database service entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Database service entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Database service entity\](jdbcconnection-definitions-jdbcinfo.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/jdbc")+\[Jdbc Connection type\](../types/jdbcconnection.md#jdbcconnection-definitions-jdbcinfo)+gI' \
--e 's+\[Database service entity\](schedule.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/ingestionSchedule")+\[Schedule type\](../types/schedule.md)+gI' \
+sed -i -e 's+\[Database service entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Database service entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Database service entity\](jdbcconnection-definitions-jdbcinfo.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json#/properties/jdbc")+\[Jdbc Connection type\](../types/jdbcconnection.md#jdbcconnection-definitions-jdbcinfo)+gI' \
+-e 's+\[Database service entity\](schedule.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json#/properties/ingestionSchedule")+\[Schedule type\](../types/schedule.md)+gI' \
 -e 's+databaseservice-properties-name.md+#databaseservice-Properties-Name+gI' \
 -e 's+databaseservice-properties-servicetype.md+#databaseservice-properties-servicetype+gI' \
 -e 's+databaseservice-properties-description.md+#databaseservice-properties-description+gI' $path
 
 echo "----------------------Changing thread paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/thread.md
-sed -i -e 's+\[Feed entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Feed entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/from")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Feed entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Feed entity\](basic-definitions-entitylink.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/about")+\[Basic type\](../types/basic.md#basic-definitions-entitylink)+gI' \
--e 's+\[Feed entity\](basic-definitions-entitylink.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/addressedTo")+\[Basic type\](../types/basic.md#basic-definitions-entitylink)+gI' \
--e 's+\[Feed entity\](basic-definitions-entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/toEntity")+\[Basic type\](../types/basic.md#basic-definitions-entityreference)+gI' \
+sed -i -e 's+\[Feed entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Feed entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/definitions/post/properties/from")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Feed entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Feed entity\](basic-definitions-entitylink.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/about")+\[Basic type\](../types/basic.md#basic-definitions-entitylink)+gI' \
+-e 's+\[Feed entity\](basic-definitions-entitylink.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/addressedTo")+\[Basic type\](../types/basic.md#basic-definitions-entitylink)+gI' \
+-e 's+\[Feed entity\](basic-definitions-entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json#/properties/toEntity")+\[Basic type\](../types/basic.md#basic-definitions-entityreference)+gI' \
 -e 's+thread-properties-threadts.md+#thread-Properties-Threads+gI' \
 -e 's+thread-properties-posts.md+#thread-Properties-Posts+gI' \
 -e 's+thread-definitions-post-properties-message.md+#thread-definitions-post-properties-message+gI' \
@@ -128,45 +128,45 @@ sed -i -e 's+\[Feed entity\](basic-definitions-uuid.md "https://github.com/open-
 
 echo "----------------------Changing metrics paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/metrics.md
-sed -i -e 's+\[Metrics entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Metrics entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Metrics entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Metrics entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Metrics entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
+sed -i -e 's+\[Metrics entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Metrics entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Metrics entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Metrics entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Metrics entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
 -e 's+metrics-properties-name.md+#metrics-properties-name+gI' \
 -e 's+metrics-properties-fullyqualifiedname.md+#metrics-properties-fullyqualifiedname+gI' \
 -e 's+metrics-properties-description.md+#metrics-properties-description+gI' $path
 
 echo "----------------------Changing pipeline paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/pipeline.md
-sed -i -e 's+\[Pipeline entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Pipeline entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Pipeline entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Pipeline entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+sed -i -e 's+\[Pipeline entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Pipeline entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Pipeline entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Pipeline entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
 -e 's+pipeline-properties-name.md+#pipeline-properties-name+gI' \
 -e 's+pipeline-properties-fullyqualifiedname.md+#pipeline-properties-fullyqualifiedname+gI' \
 -e 's+pipeline-properties-description.md+#pipeline-properties-description+gI' $path
 
 echo "----------------------Changing report paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/report.md
-sed -i -e 's+\[Report entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Report entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Report entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Report entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Report entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
+sed -i -e 's+\[Report entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Report entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Report entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Report entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/service")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Report entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
 -e 's+report-properties-name.md+#report-properties-name+gI' \
 -e 's+report-properties-fullyqualifiedname.md+#report-properties-fullyqualifiedname+gI' \
 -e 's+report-properties-description.md+#report-properties-description+gI' $path
 
 echo "----------------------Changing table paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/table.md
-sed -i -e 's+\[Table entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Table entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Table entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
--e 's+\[Table entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Table entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/followers")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
--e 's+\[Table entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
--e 's+\[Table entity\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/startDate")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
+sed -i -e 's+\[Table entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Table entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Table entity\](usagedetails.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/usageSummary")+\[Usage Details type\](../types/usagedetails.md)+gI' \
+-e 's+\[Table entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Table entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/followers")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+-e 's+\[Table entity\](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/owner")+\[Entity Reference type\](../types/entityreference.md)+gI' \
+-e 's+\[Table entity\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/startDate")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
 -e 's+table-properties-name.md+#table-properties-name+gI' \
 -e 's+table-properties-description.md+#table-properties-description+gI' \
 -e 's+table-properties-tabletype.md+#table-properties-tabletype+gI' \
@@ -204,8 +204,8 @@ sed -i -e 's+\[Table entity\](basic-definitions-uuid.md "https://github.com/open
 
 echo "----------------------Changing tagcategory paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/tagcategory.md
-sed -i -e 's+\[Types related to tag category\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Types related to tag category\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#/definitions/tag/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+sed -i -e 's+\[Types related to tag category\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Types related to tag category\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json#/definitions/tag/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
 -e 's+tagcategory-properties-name.md+#tagcategory-properties-name+gI' \
 -e 's+tagcategory-properties-description.md+#tagcategory-properties-description+gI' \
 -e 's+tagcategory-properties-categorytype.md+#tagcategory-properties-categorytype+gI' \
@@ -221,11 +221,11 @@ sed -i -e 's+\[Types related to tag category\](basic-definitions-href.md "https:
 
 echo "----------------------Changing team paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/team.md
-sed -i -e 's+\[Team entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Team entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[Team entity\](profile.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/profile")+\[Profile type\](../types/profile.md)+gI' \
--e 's+\[Team entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/users")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
--e 's+\[Team entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/owns")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+sed -i -e 's+\[Team entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Team entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[Team entity\](profile.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/profile")+\[Profile type\](../types/profile.md)+gI' \
+-e 's+\[Team entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/users")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+-e 's+\[Team entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json#/properties/owns")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
 -e 's+team-properties-name.md+#team-properties-name+gI' \
 -e 's+team-properties-displayname.md+#team-properties-displayname+gI' \
 -e 's+team-properties-description.md+#team-properties-description+gI' \
@@ -233,13 +233,13 @@ sed -i -e 's+\[Team entity\](basic-definitions-uuid.md "https://github.com/open-
 
 echo "----------------------Changing users paths----------------------"
 path=docs/openmetadata-apis/schemas/entities/user.md
-sed -i -e 's+\[User entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[User entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
--e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/teams")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
--e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/owns")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
--e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/follows")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
--e 's+\[User entity\](basic-definitions-email.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/email")+\[Basic type\](../types/basic.md#basic-definitions-email)+gI' \
--e 's+\[User entity\](profile.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/profile")+\[Profile type\](../types/profile.md)+gI' \
+sed -i -e 's+\[User entity\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[User entity\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+-e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/teams")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+-e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/owns")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+-e 's+\[User entity\](entityreference-definitions-entityreferencelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/follows")+\[Entity Reference type\](../types/entityreference.md#entityreference-definitions-entityreferencelist)+gI' \
+-e 's+\[User entity\](basic-definitions-email.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/email")+\[Basic type\](../types/basic.md#basic-definitions-email)+gI' \
+-e 's+\[User entity\](profile.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/profile")+\[Profile type\](../types/profile.md)+gI' \
 -e 's+user-properties-name.md+#user-properties-name+gI' \
 -e 's+user-properties-displayname.md+#user-properties-displayname+gI' \
 -e 's+user-properties-timezone.md+#user-properties-timezone+gI' \
@@ -249,7 +249,7 @@ sed -i -e 's+\[User entity\](basic-definitions-uuid.md "https://github.com/open-
 
 echo "----------------------Changing collectiondescriptor paths----------------------"
 path=docs/openmetadata-apis/schemas/types/collectiondescriptor.md
-sed -i -e 's+\[Schema for collection descriptor\](profile-definitions-imagelist.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/images")+\[Profile type\](../types/profile.md#profile-definitions-imagelist)+gI' \
+sed -i -e 's+\[Schema for collection descriptor\](profile-definitions-imagelist.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/images")+\[Profile type\](../types/profile.md#profile-definitions-imagelist)+gI' \
 -e 's+collectiondescriptor-definitions-collectioninfo.md+#collectiondescriptor-definitions-collectioninfo+gI' \
 -e 's+collectiondescriptor-definitions-collectioninfo-properties-name.md+#collectiondescriptor-definitions-collectioninfo-properties-name+gI' \
 -e 's+collectiondescriptor-definitions-collectioninfo-properties-documentation.md+#collectiondescriptor-definitions-collectioninfo-properties-documentation+gI' \
@@ -257,8 +257,8 @@ sed -i -e 's+\[Schema for collection descriptor\](profile-definitions-imagelist.
 
 echo "----------------------Changing basic paths----------------------"
 path=docs/openmetadata-apis/schemas/types/basic.md
-sed -i -e 's+\[Common types\](basic-definitions-timeinterval-properties-start.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/timeInterval/properties/start")+\[Basic type\](#basic-definitions-timeinterval-properties-start)+gI' \
--e 's+\[Common types\](basic-definitions-timeinterval-properties-end.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/timeInterval/properties/end")+#\[Basic type\](basic-definitions-timeinterval-properties-end)+gI' \
+sed -i -e 's+\[Common types\](basic-definitions-timeinterval-properties-start.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/timeInterval/properties/start")+\[Basic type\](#basic-definitions-timeinterval-properties-start)+gI' \
+-e 's+\[Common types\](basic-definitions-timeinterval-properties-end.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json#/definitions/timeInterval/properties/end")+#\[Basic type\](basic-definitions-timeinterval-properties-end)+gI' \
 -e 's+basic-definitions-schedule-properties-startdate.md+#basic-definitions-datetime+gI' \
 -e 's+basic-definitions-schedule-properties-repeatfrequency.md+#basic-definitions-duration+gI' \
 -e 's+basic-definitions-entityreference-properties-id.md+#basic-definitions-uuid+gI' \
@@ -286,8 +286,8 @@ sed -i -e 's+\[Common types\](basic-definitions-timeinterval-properties-start.md
 
 echo "----------------------Changing entityreference paths----------------------"
 path=docs/openmetadata-apis/schemas/types/entityreference.md
-sed -i -e 's+\[Entity Reference\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
--e 's+\[Entity Reference\](basic-definitions-href.md "(basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+sed -i -e 's+\[Entity Reference\](basic-definitions-uuid.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/id")+\[Basic type\](../types/basic.md#basic-definitions-uuid)+gI' \
+-e 's+\[Entity Reference\](basic-definitions-href.md "(basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
 -e 's+entityreference-properties-type.md+#entityreference-properties-type+gI' \
 -e 's+entityreference-properties-name.md+#entityreference-properties-name+gI' \
 -e 's+entityreference-properties-description.md+#entityreference-properties-description+gI' $path
@@ -305,24 +305,24 @@ sed -i -e 's+profile-definitions-imagelist.md+#profile-definitions-imagelist+gI'
 
 echo "----------------------Changing schedule paths----------------------"
 path=docs/openmetadata-apis/schemas/types/schedule.md
-sed -i -e 's+\[Type used for schedule with start time and repeat frequency\](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/datetime")+\[Basic type\](../types/basic.md#basic-definitions-datetime)+gI' \
--e 's+\[Type used for schedule with start time and repeat frequency\](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/duration")+\[Basic type\](../types/basic.md#basic-definitions-duration)+gI' $path
+sed -i -e 's+\[Type used for schedule with start time and repeat frequency\](basic-definitions-datetime.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/datetime")+\[Basic type\](../types/basic.md#basic-definitions-datetime)+gI' \
+-e 's+\[Type used for schedule with start time and repeat frequency\](basic-definitions-duration.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/duration")+\[Basic type\](../types/basic.md#basic-definitions-duration)+gI' $path
 
 echo "----------------------Changing taglabel paths----------------------"
 path=docs/openmetadata-apis/schemas/types/taglabel.md
-sed -i -e 's+\[Tag Label\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
+sed -i -e 's+\[Tag Label\](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json#/properties/href")+\[Basic type\](../types/basic.md#basic-definitions-href)+gI' \
 -e 's+taglabel-properties-tagfqn.md+#taglabel-properties-tagfqn+gI' \
 -e 's+taglabel-properties-labeltype.md+#taglabel-properties-labeltype+gI' \
 -e 's+taglabel-properties-state.md+#taglabel-properties-state+gI' $path
 
 echo "----------------------Changing dailycount paths----------------------"
 path=docs/openmetadata-apis/schemas/types/dailycount.md
-sed -i -e 's+\[Daily count of some measurement\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json#/properties/date")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
+sed -i -e 's+\[Daily count of some measurement\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json#/properties/date")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
 -e 's+dailycount-properties-count.md+#dailycount-properties-count+gI' $path
 
 echo "----------------------Changing entityusage paths----------------------"
 path=docs/openmetadata-apis/schemas/types/entityusage.md
-sed -i -e 's+\[Usage details of an entity\](basic-definitions-entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json#/properties/entity")+\[Basic type\](../types/basic.md#basic-definitions-entityreference)+gI' \
+sed -i -e 's+\[Usage details of an entity\](basic-definitions-entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json#/properties/entity")+\[Basic type\](../types/basic.md#basic-definitions-entityreference)+gI' \
 -e 's+entityusage-properties-usage.md+#entityusage-properties-usage+gI' $path
 
 echo "----------------------Changing jdbcconnection paths----------------------"
@@ -338,7 +338,7 @@ sed -i -e 's+jdbcconnection-properties-driverclass.md+#jdbcconnection-properties
 
 echo "----------------------Changing usagedetails paths----------------------"
 path=docs/openmetadata-apis/schemas/types/usagedetails.md
-sed -i -e 's+\[Type used to return usage details of an entity\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/date")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
+sed -i -e 's+\[Type used to return usage details of an entity\](basic-definitions-date.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/date")+\[Basic type\](../types/basic.md#basic-definitions-date)+gI' \
 -e 's+usagedetails-definitions-usagestats.md+#usagedetails-definitions-usagestats+gI' \
 -e 's+usagedetails-definitions-usagestats-properties-count.md+#usagedetails-definitions-usagestats-properties-count+gI' \
 -e 's+usagedetails-definitions-usagestats-properties-percentilerank.md+#usagedetails-definitions-usagestats-properties-percentilerank+gI' $path

@@ -1,14 +1,14 @@
 # table
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json
 ```
 
 Schema corresponding to a table that belongs to a database
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                  |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [table.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [table.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## Table entity Type
 
@@ -19,20 +19,20 @@ Schema corresponding to a table that belongs to a database
 | Property                                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                              |
 | :---------------------------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [id](#id)                                 | `string` | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                                 |
-| [name](#name)                             | `string` | Required | cannot be null | [Table entity](#table-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name")                                |
-| [description](#description)               | `string` | Optional | cannot be null | [Table entity](#table-properties-description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description")                  |
+| [name](#name)                             | `string` | Required | cannot be null | [Table entity](#table-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name")                                |
+| [description](#description)               | `string` | Optional | cannot be null | [Table entity](#table-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description")                  |
 | [href](#href)                             | `string` | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-href)                               |
-| [tableType](#tabletype)                   | `string` | Optional | cannot be null | [Table entity](#table-properties-tabletype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType")                      |
-| [fullyQualifiedName](#fullyqualifiedname) | `string` | Optional | cannot be null | [Table entity](#table-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName")    |
-| [columns](#columns)                       | `array`  | Required | cannot be null | [Table entity](#table-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns")                          |
-| [tableConstraints](#tableconstraints)     | `array`  | Optional | cannot be null | [Table entity](#table-properties-tableconstraints "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints")        |
+| [tableType](#tabletype)                   | `string` | Optional | cannot be null | [Table entity](#table-properties-tabletype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType")                      |
+| [fullyQualifiedName](#fullyqualifiedname) | `string` | Optional | cannot be null | [Table entity](#table-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName")    |
+| [columns](#columns)                       | `array`  | Required | cannot be null | [Table entity](#table-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns")                          |
+| [tableConstraints](#tableconstraints)     | `array`  | Optional | cannot be null | [Table entity](#table-properties-tableconstraints "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints")        |
 | [usageSummary](#usagesummary)             | `object` | Optional | cannot be null | [Usage Details type](../types/usagedetails.md)                                 |
 | [owner](#owner)                           | `object` | Optional | cannot be null | [Entity Reference type](../types/entityreference.md)                                  |
 | [followers](#followers)                   | `array`  | Optional | cannot be null | [Entity Reference type](../types/entityreference.md#entityreference-definitions-entityreferencelist) |
-| [database](#database)                     | `object` | Optional | cannot be null | [Table entity](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/database")                               |
-| [tags](#tags)                             | `array`  | Optional | cannot be null | [Table entity](#table-properties-tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags")                                |
-| [joins](#joins)                           | `object` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins")                        |
-| [sampleData](#sampledata)                 | `object` | Optional | cannot be null | [Table entity](#table-definitions-tabledata "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData")                    |
+| [database](#database)                     | `object` | Optional | cannot be null | [Table entity](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/database")                               |
+| [tags](#tags)                             | `array`  | Optional | cannot be null | [Table entity](#table-properties-tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags")                                |
+| [joins](#joins)                           | `object` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins")                        |
+| [sampleData](#sampledata)                 | `object` | Optional | cannot be null | [Table entity](#table-definitions-tabledata "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData")                    |
 
 ## id
 
@@ -68,7 +68,7 @@ Local name (not fully qualified name) of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name")
+*   defined in: [Table entity](#table-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name")
 
 ### name Type
 
@@ -100,7 +100,7 @@ Description of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description")
+*   defined in: [Table entity](#table-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description")
 
 ### description Type
 
@@ -142,7 +142,7 @@ Type for capturing a column in a table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-tabletype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType")
+*   defined in: [Table entity](#table-properties-tabletype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType")
 
 ### tableType Type
 
@@ -172,7 +172,7 @@ Fully qualified name of the table in the form serviceName.databaseName.tableName
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName")
+*   defined in: [Table entity](#table-properties-fullyqualifiedname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName")
 
 ### fullyQualifiedName Type
 
@@ -190,7 +190,7 @@ Columns in the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns")
+*   defined in: [Table entity](#table-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns")
 
 ### columns Type
 
@@ -208,7 +208,7 @@ Table constraints
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-tableconstraints "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints")
+*   defined in: [Table entity](#table-properties-tableconstraints "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints")
 
 ### tableConstraints Type
 
@@ -280,7 +280,7 @@ Entity reference that includes entity ID and entity type
 
 *   cannot be null
 
-*   defined in: [Table entity](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/database")
+*   defined in: [Table entity](entityreference.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/database")
 
 ### database Type
 
@@ -298,7 +298,7 @@ Tags for this table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-properties-tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags")
+*   defined in: [Table entity](#table-properties-tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags")
 
 ### tags Type
 
@@ -316,7 +316,7 @@ Details of other tables this table is frequently joined with
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tablejoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins")
+*   defined in: [Table entity](#table-definitions-tablejoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins")
 
 ### joins Type
 
@@ -334,7 +334,7 @@ Information on other tables that this table column is frequently joined with
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tabledata "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData")
+*   defined in: [Table entity](#table-definitions-tabledata "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData")
 
 ### sampleData Type
 
@@ -347,7 +347,7 @@ Information on other tables that this table column is frequently joined with
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -358,7 +358,7 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnDataType"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnDataType"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -369,7 +369,7 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnConstraint"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnConstraint"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -380,13 +380,13 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint"}
 ```
 
 | Property                          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                           |
 | :-------------------------------- | :------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [constraintType](#constrainttype) | `string` | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType") |
-| [columns](#columns-1)             | `array`  | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")               |
+| [constraintType](#constrainttype) | `string` | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType") |
+| [columns](#columns-1)             | `array`  | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")               |
 
 ### constraintType
 
@@ -400,7 +400,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType")
+*   defined in: [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType")
 
 #### constraintType Type
 
@@ -428,7 +428,7 @@ List of column names corresponding to the constraint
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")
+*   defined in: [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")
 
 #### columns Type
 
@@ -439,7 +439,7 @@ List of column names corresponding to the constraint
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnName"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnName"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -450,7 +450,7 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableName"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableName"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -461,7 +461,7 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/fullyQualifiedColumnName"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/fullyQualifiedColumnName"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -472,18 +472,18 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column"}
 ```
 
 | Property                                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                 |
 | :------------------------------------------ | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [name](#name-1)                             | `string`  | Required | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")                             |
-| [columnDataType](#columndatatype)           | `string`  | Required | cannot be null | [Table entity](#table-Definitions-Columndatatype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")         |
-| [description](#description-1)               | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")               |
-| [fullyQualifiedName](#fullyqualifiedname-1) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName") |
-| [tags](#tags-1)                             | `array`   | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")                             |
-| [columnConstraint](#columnconstraint)       | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")     |
-| [ordinalPosition](#ordinalposition)         | `integer` | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")       |
+| [name](#name-1)                             | `string`  | Required | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")                             |
+| [columnDataType](#columndatatype)           | `string`  | Required | cannot be null | [Table entity](#table-Definitions-Columndatatype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")         |
+| [description](#description-1)               | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")               |
+| [fullyQualifiedName](#fullyqualifiedname-1) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName") |
+| [tags](#tags-1)                             | `array`   | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")                             |
+| [columnConstraint](#columnconstraint)       | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")     |
+| [ordinalPosition](#ordinalposition)         | `integer` | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")       |
 
 ### name
 
@@ -497,7 +497,7 @@ Local name (not fully qualified name) of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")
+*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")
 
 #### name Type
 
@@ -529,7 +529,7 @@ Type for capturing a column in a table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Columndatatype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")
+*   defined in: [Table entity](#table-Definitions-Columndatatype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")
 
 #### columnDataType Type
 
@@ -587,7 +587,7 @@ Description of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")
 
 #### description Type
 
@@ -605,7 +605,7 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")
+*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")
 
 #### fullyQualifiedName Type
 
@@ -629,7 +629,7 @@ Tags associated with the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")
 
 #### tags Type
 
@@ -647,7 +647,7 @@ Column constraint
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")
+*   defined in: [Table entity](#table-Definitions-Columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")
 
 #### columnConstraint Type
 
@@ -684,7 +684,7 @@ Ordinal position of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")
 
 #### ordinalPosition Type
 
@@ -695,13 +695,13 @@ Ordinal position of the column
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins"}
 ```
 
 | Property                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :------------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [columnName](#columnname) | `string` | Optional | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName") |
-| [joinedWith](#joinedwith) | `array`  | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith") |
+| [columnName](#columnname) | `string` | Optional | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName") |
+| [joinedWith](#joinedwith) | `array`  | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith") |
 
 ### columnName
 
@@ -715,7 +715,7 @@ Local name (not fully qualified name) of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")
+*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")
 
 #### columnName Type
 
@@ -747,7 +747,7 @@ Fully qualified names of the columns that this column is joined with
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith")
+*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith")
 
 #### joinedWith Type
 
@@ -758,14 +758,14 @@ Fully qualified names of the columns that this column is joined with
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins"}
 ```
 
 | Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :-------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [startDate](#startdate)     | `string`  | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-date)                                |
-| [dayCount](#daycount)       | `integer` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")       |
-| [columnJoins](#columnjoins) | `array`   | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins") |
+| [dayCount](#daycount)       | `integer` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")       |
+| [columnJoins](#columnjoins) | `array`   | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins") |
 
 ### startDate
 
@@ -801,7 +801,7 @@ Date in ISO 8601 format in UTC time. Example - '2018-11-13'
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")
+*   defined in: [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")
 
 #### dayCount Type
 
@@ -827,7 +827,7 @@ The default value is:
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins")
+*   defined in: [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins")
 
 #### columnJoins Type
 
@@ -838,13 +838,13 @@ The default value is:
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData"}
 ```
 
 | Property              | Type    | Required | Nullable       | Defined by                                                                                                                                                                                                                                                 |
 | :-------------------- | :------ | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [columns](#columns-2) | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns") |
-| [rows](#rows)         | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")       |
+| [columns](#columns-2) | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns") |
+| [rows](#rows)         | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")       |
 
 ### columns
 
@@ -858,7 +858,7 @@ List of local column names (not fully qualified column names) of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns")
+*   defined in: [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns")
 
 #### columns Type
 
@@ -876,7 +876,7 @@ Data for a multiple rows of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")
+*   defined in: [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")
 
 #### rows Type
 
@@ -884,14 +884,14 @@ Data for a multiple rows of the table
 # table-definitions-column-properties-description
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description
 ```
 
 Description of the column
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## description Type
 
@@ -899,14 +899,14 @@ Description of the column
 # table-definitions-column-properties-ordinalposition
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition
 ```
 
 Ordinal position of the column
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## ordinalPosition Type
 
@@ -914,14 +914,14 @@ Ordinal position of the column
 # table-definitions-column-properties-tags
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags
 ```
 
 Tags associated with the column
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## tags Type
 
@@ -929,14 +929,14 @@ Tags associated with the column
 # table-definitions-column
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/columns/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/columns/items
 ```
 
 Type for capturing a column in a table
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                            |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
 
 ## items Type
 
@@ -946,13 +946,13 @@ Type for capturing a column in a table
 
 | Property                                  | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :---------------------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [name](#name)                             | `string`  | Required | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")                                   |
-| [columnDataType](#columndatatype)         | `string`  | Required | cannot be null | [Table entity](#table-definitions-columndatatype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")                     |
-| [description](#description)               | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")         |
-| [fullyQualifiedName](#fullyqualifiedname) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")       |
-| [tags](#tags)                             | `array`   | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")                       |
-| [columnConstraint](#columnconstraint)     | `string`  | Optional | cannot be null | [Table entity](#table-definitions-columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")                 |
-| [ordinalPosition](#ordinalposition)       | `integer` | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition") |
+| [name](#name)                             | `string`  | Required | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")                                   |
+| [columnDataType](#columndatatype)         | `string`  | Required | cannot be null | [Table entity](#table-definitions-columndatatype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")                     |
+| [description](#description)               | `string`  | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")         |
+| [fullyQualifiedName](#fullyqualifiedname) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")       |
+| [tags](#tags)                             | `array`   | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")                       |
+| [columnConstraint](#columnconstraint)     | `string`  | Optional | cannot be null | [Table entity](#table-definitions-columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")                 |
+| [ordinalPosition](#ordinalposition)       | `integer` | Optional | cannot be null | [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition") |
 
 ## name
 
@@ -966,7 +966,7 @@ Local name (not fully qualified name) of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")
+*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name")
 
 ### name Type
 
@@ -998,7 +998,7 @@ Type for capturing a column in a table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columndatatype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")
+*   defined in: [Table entity](#table-definitions-columndatatype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType")
 
 ### columnDataType Type
 
@@ -1056,7 +1056,7 @@ Description of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/description")
 
 ### description Type
 
@@ -1074,7 +1074,7 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")
+*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName")
 
 ### fullyQualifiedName Type
 
@@ -1098,7 +1098,7 @@ Tags associated with the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Tags "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/tags")
 
 ### tags Type
 
@@ -1116,7 +1116,7 @@ Column constraint
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")
+*   defined in: [Table entity](#table-definitions-columnconstraint "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint")
 
 ### columnConstraint Type
 
@@ -1153,7 +1153,7 @@ Ordinal position of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")
+*   defined in: [Table entity](#table-Definitions-Column-Properties-Ordinalposition "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/ordinalPosition")
 
 ### ordinalPosition Type
 
@@ -1161,14 +1161,14 @@ Ordinal position of the column
 # table-definitions-columnconstraint
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnConstraint
 ```
 
 Column constraint
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columnConstraint Type
 
@@ -1195,14 +1195,14 @@ The default value is:
 # table-definitions-columndatatype
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/columnDataType
 ```
 
 Type for capturing a column in a table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columnDataType Type
 
@@ -1250,14 +1250,14 @@ Type for capturing a column in a table
 # table-definitions-columnjoins-properties-joinedwith-items-properties-joincount
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## joinCount Type
 
@@ -1265,14 +1265,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # table-definitions-columnjoins-properties-joinedwith-items
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## items Type
 
@@ -1282,8 +1282,8 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Property                                  | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                                 |
 | :---------------------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [fullyQualifiedName](#fullyqualifiedname) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/fullyQualifiedName")                            |
-| [joinCount](#joincount)                   | `integer` | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith-items-properties-joincount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount") |
+| [fullyQualifiedName](#fullyqualifiedname) | `string`  | Optional | cannot be null | [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/fullyQualifiedName")                            |
+| [joinCount](#joincount)                   | `integer` | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith-items-properties-joincount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount") |
 
 ## fullyQualifiedName
 
@@ -1297,7 +1297,7 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/fullyQualifiedName")
+*   defined in: [Table entity](#table-definitions-fullyqualifiedcolumnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/fullyQualifiedName")
 
 ### fullyQualifiedName Type
 
@@ -1321,7 +1321,7 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith-items-properties-joincount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount")
+*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith-items-properties-joincount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith/items/properties/joinCount")
 
 ### joinCount Type
 
@@ -1329,14 +1329,14 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 # table-definitions-columnjoins-properties-joinedwith
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith
 ```
 
 Fully qualified names of the columns that this column is joined with
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## joinedWith Type
 
@@ -1344,14 +1344,14 @@ Fully qualified names of the columns that this column is joined with
 # table-definitions-columnjoins
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins/items
 ```
 
 Information on other tables that this table column is frequently joined with
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## items Type
 
@@ -1361,8 +1361,8 @@ Information on other tables that this table column is frequently joined with
 
 | Property                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :------------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [columnName](#columnname) | `string` | Optional | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")                        |
-| [joinedWith](#joinedwith) | `array`  | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith") |
+| [columnName](#columnname) | `string` | Optional | cannot be null | [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")                        |
+| [joinedWith](#joinedwith) | `array`  | Optional | cannot be null | [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith") |
 
 ## columnName
 
@@ -1376,7 +1376,7 @@ Local name (not fully qualified name) of the column
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")
+*   defined in: [Table entity](#table-definitions-columnname "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/columnName")
 
 ### columnName Type
 
@@ -1408,7 +1408,7 @@ Fully qualified names of the columns that this column is joined with
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith")
+*   defined in: [Table entity](#table-definitions-columnjoins-properties-joinedwith "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/columnJoins/properties/joinedWith")
 
 ### joinedWith Type
 
@@ -1416,14 +1416,14 @@ Fully qualified names of the columns that this column is joined with
 # table-definitions-columnname
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/name
 ```
 
 Local name (not fully qualified name) of the column
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## name Type
 
@@ -1445,14 +1445,14 @@ Local name (not fully qualified name) of the column
 # table-definitions-fullyqualifiedcolumnname
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/column/properties/fullyQualifiedName
 ```
 
 Fully qualified name of the column that includes serviceName.databaseName.tableName.columnName
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## fullyQualifiedName Type
 
@@ -1466,14 +1466,14 @@ Fully qualified name of the column that includes serviceName.databaseName.tableN
 # table-definitions-tableconstraint-properties-columns-items
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns/items
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## items Type
 
@@ -1481,14 +1481,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # table-definitions-tableconstraint-properties-columns
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns
 ```
 
 List of column names corresponding to the constraint
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columns Type
 
@@ -1496,14 +1496,14 @@ List of column names corresponding to the constraint
 # table-definitions-tableconstraint-properties-constrainttype
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## constraintType Type
 
@@ -1521,14 +1521,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # table-definitions-tableconstraint
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/tableConstraints/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/tableConstraints/items
 ```
 
 Table constraint
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                            |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
 
 ## items Type
 
@@ -1538,8 +1538,8 @@ Table constraint
 
 | Property                          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                           |
 | :-------------------------------- | :------- | :------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [constraintType](#constrainttype) | `string` | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType") |
-| [columns](#columns)               | `array`  | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")               |
+| [constraintType](#constrainttype) | `string` | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType") |
+| [columns](#columns)               | `array`  | Optional | cannot be null | [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")               |
 
 ## constraintType
 
@@ -1553,7 +1553,7 @@ Table constraint
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType")
+*   defined in: [Table entity](#table-definitions-tableconstraint-properties-constrainttype "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/constraintType")
 
 ### constraintType Type
 
@@ -1581,7 +1581,7 @@ List of column names corresponding to the constraint
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")
+*   defined in: [Table entity](#table-definitions-tableconstraint-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableConstraint/properties/columns")
 
 ### columns Type
 
@@ -1589,14 +1589,14 @@ List of column names corresponding to the constraint
 # table-definitions-tabledata-properties-columns
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns
 ```
 
 List of local column names (not fully qualified column names) of the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columns Type
 
@@ -1604,14 +1604,14 @@ List of local column names (not fully qualified column names) of the table
 # table-definitions-tabledata-properties-rows-items
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows/items
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows/items
 ```
 
 Data for a single row of the table with in the same order as columns fields
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## items Type
 
@@ -1619,14 +1619,14 @@ Data for a single row of the table with in the same order as columns fields
 # table-definitions-tabledata-properties-rows
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows
 ```
 
 Data for a multiple rows of the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## rows Type
 
@@ -1634,14 +1634,14 @@ Data for a multiple rows of the table
 # table-definitions-tabledata
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/sampleData
 ```
 
 Information on other tables that this table column is frequently joined with
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## sampleData Type
 
@@ -1651,8 +1651,8 @@ Information on other tables that this table column is frequently joined with
 
 | Property            | Type    | Required | Nullable       | Defined by                                                                                                                                                                                                                                                 |
 | :------------------ | :------ | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [columns](#columns) | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns") |
-| [rows](#rows)       | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")       |
+| [columns](#columns) | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns") |
+| [rows](#rows)       | `array` | Optional | cannot be null | [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")       |
 
 ## columns
 
@@ -1666,7 +1666,7 @@ List of local column names (not fully qualified column names) of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns")
+*   defined in: [Table entity](#table-definitions-tabledata-properties-columns "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/columns")
 
 ### columns Type
 
@@ -1684,7 +1684,7 @@ Data for a multiple rows of the table
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")
+*   defined in: [Table entity](#table-definitions-tabledata-properties-rows "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableData/properties/rows")
 
 ### rows Type
 
@@ -1692,14 +1692,14 @@ Data for a multiple rows of the table
 # table-definitions-tablejoins-properties-columnjoins
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columnJoins Type
 
@@ -1707,14 +1707,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # table-definitions-tablejoins-properties-daycount
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## dayCount Type
 
@@ -1730,14 +1730,14 @@ The default value is:
 # table-definitions-tablejoins
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/joins
 ```
 
 Details of other tables this table is frequently joined with
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Forbidden             | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## joins Type
 
@@ -1748,8 +1748,8 @@ Details of other tables this table is frequently joined with
 | Property                    | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :-------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [startDate](#startdate)     | `string`  | Optional | cannot be null | [Basic type](../types/basic.md#basic-definitions-date)                                |
-| [dayCount](#daycount)       | `integer` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")       |
-| [columnJoins](#columnjoins) | `array`   | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins") |
+| [dayCount](#daycount)       | `integer` | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")       |
+| [columnJoins](#columnjoins) | `array`   | Optional | cannot be null | [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins") |
 
 ## startDate
 
@@ -1785,7 +1785,7 @@ Date in ISO 8601 format in UTC time. Example - '2018-11-13'
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")
+*   defined in: [Table entity](#table-definitions-tablejoins-properties-daycount "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/dayCount")
 
 ### dayCount Type
 
@@ -1811,7 +1811,7 @@ The default value is:
 
 *   cannot be null
 
-*   defined in: [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins")
+*   defined in: [Table entity](#table-definitions-tablejoins-properties-columnjoins "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableJoins/properties/columnJoins")
 
 ### columnJoins Type
 
@@ -1819,14 +1819,14 @@ The default value is:
 # table-definitions-tablename
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/name
 ```
 
 Local name (not fully qualified name) of the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                            |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
 
 ## name Type
 
@@ -1848,14 +1848,14 @@ Local name (not fully qualified name) of the table
 # table-definitions-tabletype-javaenums-0
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/0
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/0
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## 0 Type
 
@@ -1863,14 +1863,14 @@ unknown
 # table-definitions-tabletype-javaenums-1
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/1
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/1
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## 1 Type
 
@@ -1878,14 +1878,14 @@ unknown
 # table-definitions-tabletype-javaenums-2
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/2
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/2
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## 2 Type
 
@@ -1893,14 +1893,14 @@ unknown
 # table-definitions-tabletype-javaenums-3
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/3
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/3
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## 3 Type
 
@@ -1908,14 +1908,14 @@ unknown
 # table-definitions-tabletype-javaenums-4
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/4
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions/tableType/javaEnums/4
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## 4 Type
 
@@ -1923,14 +1923,14 @@ unknown
 # table-definitions-tabletype
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/tableType
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json#/properties/tableType
 ```
 
 Type for capturing a column in a table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                            |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [createTable.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createTable.json "open original schema") |
 
 ## tableType Type
 
@@ -1950,14 +1950,14 @@ Type for capturing a column in a table
 # table-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## definitions Type
 
@@ -1965,14 +1965,14 @@ unknown
 # table-properties-columns
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/columns
 ```
 
 Columns in the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## columns Type
 
@@ -1980,14 +1980,14 @@ Columns in the table
 # table-properties-description
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/description
 ```
 
 Description of the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## description Type
 
@@ -1995,14 +1995,14 @@ Description of the table
 # table-properties-fullyqualifiedname
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/fullyQualifiedName
 ```
 
 Fully qualified name of the table in the form serviceName.databaseName.tableName
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## fullyQualifiedName Type
 
@@ -2010,14 +2010,14 @@ Fully qualified name of the table in the form serviceName.databaseName.tableName
 # table-properties-name
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/name
 ```
 
 Local name (not fully qualified name) of the table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## name Type
 
@@ -2039,14 +2039,14 @@ Local name (not fully qualified name) of the table
 # table-properties-tableconstraints
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableConstraints
 ```
 
 Table constraints
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## tableConstraints Type
 
@@ -2054,14 +2054,14 @@ Table constraints
 # table-properties-tabletype
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tableType
 ```
 
 Type for capturing a column in a table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## tableType Type
 
@@ -2081,14 +2081,14 @@ Type for capturing a column in a table
 # table-properties-tags
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/tags
 ```
 
 Tags for this table
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
 
 ## tags Type
 

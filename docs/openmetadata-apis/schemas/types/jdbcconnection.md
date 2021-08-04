@@ -1,7 +1,7 @@
 # jdbcconnection
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json
 ```
 
 JDBC connection information used for connecting to a database system
@@ -10,7 +10,7 @@ JDBC connection information used for connecting to a database system
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                             |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [jdbcConnection.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [jdbcConnection.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## JDBC connection Type
 
@@ -20,10 +20,10 @@ JDBC connection information used for connecting to a database system
 
 | Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                               |
 | :------------------------------ | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass")     |
-| [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl") |
-| [userName](#username)           | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-username "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName")           |
-| [password](#password)           | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-password "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password")           |
+| [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass")     |
+| [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl") |
+| [userName](#username)           | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-username "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName")           |
+| [password](#password)           | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-properties-password "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password")           |
 
 ## driverClass
 
@@ -39,7 +39,7 @@ JDBC connection information used for connecting to a database system
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-properties-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass")
+*   defined in: [JDBC connection](#jdbcconnection-properties-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass")
 
 ### driverClass Type
 
@@ -59,7 +59,7 @@ JDBC connection information used for connecting to a database system
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-properties-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl")
+*   defined in: [JDBC connection](#jdbcconnection-properties-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl")
 
 ### connectionUrl Type
 
@@ -81,7 +81,7 @@ Login user name
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-properties-username "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName")
+*   defined in: [JDBC connection](#jdbcconnection-properties-username "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName")
 
 ### userName Type
 
@@ -99,7 +99,7 @@ Login password
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-properties-password "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password")
+*   defined in: [JDBC connection](#jdbcconnection-properties-password "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password")
 
 ### password Type
 
@@ -112,7 +112,7 @@ Login password
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/driverClass"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/driverClass"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -123,7 +123,7 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/connectionUrl"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/connectionUrl"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
@@ -134,13 +134,13 @@ Reference this group by using
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo"}
 ```
 
 | Property                          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                         |
 | :-------------------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [driverClass](#driverclass-1)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
-| [connectionUrl](#connectionurl-1) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
+| [driverClass](#driverclass-1)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
+| [connectionUrl](#connectionurl-1) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
 
 ### driverClass
 
@@ -156,7 +156,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")
+*   defined in: [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")
 
 #### driverClass Type
 
@@ -184,7 +184,7 @@ The default value is:
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl")
+*   defined in: [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl")
 
 #### connectionUrl Type
 
@@ -196,7 +196,7 @@ The default value is:
 # jdbcconnection-definitions-connectionurl
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl
 ```
 
 
@@ -205,7 +205,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## connectionUrl Type
 
@@ -217,7 +217,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # jdbcconnection-definitions-driverclass
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass
 ```
 
 
@@ -226,7 +226,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## driverClass Type
 
@@ -242,7 +242,7 @@ The default value is:
 # jdbcconnection-definitions-jdbcinfo
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json#/properties/jdbc
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json#/properties/jdbc
 ```
 
 
@@ -251,7 +251,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                                    |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [updateDatabaseService.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [updateDatabaseService.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/services/updateDatabaseService.json "open original schema") |
 
 ## jdbc Type
 
@@ -261,8 +261,8 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                     |
 | :------------------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
-| [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
+| [driverClass](#driverclass)     | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")     |
+| [connectionUrl](#connectionurl) | `string` | Required | cannot be null | [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl") |
 
 ## driverClass
 
@@ -278,7 +278,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")
+*   defined in: [JDBC connection](#jdbcconnection-definitions-driverclass "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/driverClass")
 
 ### driverClass Type
 
@@ -306,7 +306,7 @@ The default value is:
 
 *   cannot be null
 
-*   defined in: [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl")
+*   defined in: [JDBC connection](#jdbcconnection-definitions-connectionurl "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions/jdbcInfo/properties/connectionUrl")
 
 ### connectionUrl Type
 
@@ -318,14 +318,14 @@ The default value is:
 # jdbcconnection-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## definitions Type
 
@@ -333,7 +333,7 @@ unknown
 # jdbcconnection-properties-connectionurl
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/connectionUrl
 ```
 
 
@@ -342,7 +342,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## connectionUrl Type
 
@@ -354,7 +354,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # jdbcconnection-properties-driverclass
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/driverClass
 ```
 
 
@@ -363,7 +363,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## driverClass Type
 
@@ -371,14 +371,14 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # jdbcconnection-properties-password
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/password
 ```
 
 Login password
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## password Type
 
@@ -386,14 +386,14 @@ Login password
 # jdbcconnection-properties-username
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json#/properties/userName
 ```
 
 Login user name
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                              |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [jdbcConnection.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json "open original schema") |
 
 ## userName Type
 

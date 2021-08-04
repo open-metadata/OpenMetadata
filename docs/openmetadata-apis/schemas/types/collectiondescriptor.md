@@ -1,14 +1,14 @@
 # collectiondescriptor
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json
 ```
 
 Type used for capturing the details of a collection
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                         |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [collectionDescriptor.json](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [collectionDescriptor.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## Schema for collection descriptor Type
 
@@ -18,7 +18,7 @@ Type used for capturing the details of a collection
 
 | Property                  | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                           |
 | :------------------------ | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [collection](#collection) | `object` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection") |
+| [collection](#collection) | `object` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection") |
 
 ## collection
 
@@ -32,7 +32,7 @@ Collection Info
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection")
 
 ### collection Type
 
@@ -45,14 +45,14 @@ Collection Info
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo"}
 ```
 
 | Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                                  |
 | :------------------------------ | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [name](#name)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")                   |
-| [documentation](#documentation) | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation") |
-| [href](#href)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")                   |
+| [name](#name)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")                   |
+| [documentation](#documentation) | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation") |
+| [href](#href)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")                   |
 | [images](#images)               | `object` | Optional | cannot be null | [Profile type](../types/profile.md#profile-definitions-imagelist)                                                   |
 
 ### name
@@ -67,7 +67,7 @@ Unique name that identifies a collection
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")
 
 #### name Type
 
@@ -85,7 +85,7 @@ Description of collection
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation")
 
 #### documentation Type
 
@@ -103,7 +103,7 @@ URL of the API endpoint where given collections are available
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")
 
 #### href Type
 
@@ -133,14 +133,14 @@ Links to list of images of varying resolutions/sizes
 # collectiondescriptor-definitions-collectioninfo-properties-documentation
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation
 ```
 
 Description of collection
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                          |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## documentation Type
 
@@ -148,14 +148,14 @@ Description of collection
 # collectiondescriptor-definitions-collectioninfo-properties-href
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href
 ```
 
 URL of the API endpoint where given collections are available
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                          |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## href Type
 
@@ -167,14 +167,14 @@ URL of the API endpoint where given collections are available
 # collectiondescriptor-definitions-collectioninfo-properties-name
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name
 ```
 
 Unique name that identifies a collection
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                          |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## name Type
 
@@ -182,14 +182,14 @@ Unique name that identifies a collection
 # collectiondescriptor-definitions-collectioninfo
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/properties/collection
 ```
 
 Collection Info
 
 | Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                          |
 | :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## collection Type
 
@@ -199,9 +199,9 @@ Collection Info
 
 | Property                        | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                                  |
 | :------------------------------ | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [name](#name)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")                   |
-| [documentation](#documentation) | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation") |
-| [href](#href)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")                   |
+| [name](#name)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")                   |
+| [documentation](#documentation) | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation") |
+| [href](#href)                   | `string` | Optional | cannot be null | [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")                   |
 | [images](#images)               | `object` | Optional | cannot be null | [Profile type](../types/profile.md#profile-definitions-imagelist)                                                   |
 
 ## name
@@ -216,7 +216,7 @@ Unique name that identifies a collection
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/name")
 
 ### name Type
 
@@ -234,7 +234,7 @@ Description of collection
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-documentation "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/documentation")
 
 ### documentation Type
 
@@ -252,7 +252,7 @@ URL of the API endpoint where given collections are available
 
 *   cannot be null
 
-*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")
+*   defined in: [Schema for collection descriptor](#collectiondescriptor-definitions-collectioninfo-properties-href "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions/collectionInfo/properties/href")
 
 ### href Type
 
@@ -282,14 +282,14 @@ Links to list of images of varying resolutions/sizes
 # collectiondescriptor-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json#/definitions
 ```
 
 
 
 | Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                          |
 | :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :-------------------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
+| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [collectionDescriptor.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/collectionDescriptor.json "open original schema") |
 
 ## definitions Type
 

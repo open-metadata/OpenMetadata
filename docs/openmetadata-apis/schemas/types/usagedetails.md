@@ -1,7 +1,7 @@
 # usagedetails
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json
 ```
 
 Type used to return usage details of an entity
@@ -18,9 +18,9 @@ Type used to return usage details of an entity
 
 | Property                      | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                       |
 | :---------------------------- | :------- | :------- | :------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [dailyStats](#dailystats)     | `object` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/dailyStats")   |
-| [weeklyStats](#weeklystats)   | `object` | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/weeklyStats")  |
-| [monthlyStats](#monthlystats) | `object` | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats") |
+| [dailyStats](#dailystats)     | `object` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/dailyStats")   |
+| [weeklyStats](#weeklystats)   | `object` | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/weeklyStats")  |
+| [monthlyStats](#monthlystats) | `object` | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats") |
 | [date](#date)                 | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-date)                      |
 
 ## dailyStats
@@ -37,7 +37,7 @@ Type used to return usage details of an entity
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/dailyStats")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/dailyStats")
 
 ### dailyStats Type
 
@@ -57,7 +57,7 @@ Type used to return usage details of an entity
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/weeklyStats")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/weeklyStats")
 
 ### weeklyStats Type
 
@@ -77,7 +77,7 @@ Type used to return usage details of an entity
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats")
 
 ### monthlyStats Type
 
@@ -112,13 +112,13 @@ Date in ISO 8601 format in UTC time. Example - '2018-11-13'
 Reference this group by using
 
 ```json
-{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats"}
+{"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats"}
 ```
 
 | Property                          | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                          |
 | :-------------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [count](#count)                   | `integer` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")                   |
-| [percentileRank](#percentilerank) | `number`  | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank") |
+| [count](#count)                   | `integer` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")                   |
+| [percentileRank](#percentilerank) | `number`  | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank") |
 
 ### count
 
@@ -132,7 +132,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")
 
 #### count Type
 
@@ -154,7 +154,7 @@ Reference this group by using
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank")
 
 #### percentileRank Type
 
@@ -168,7 +168,7 @@ Reference this group by using
 # usagedetails-definitions-usagestats-properties-count
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count
 ```
 
 
@@ -187,7 +187,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # usagedetails-definitions-usagestats-properties-percentilerank
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank
 ```
 
 
@@ -208,7 +208,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # usagedetails-definitions-usagestats
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/properties/monthlyStats
 ```
 
 
@@ -227,8 +227,8 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 | Property                          | Type      | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                                          |
 | :-------------------------------- | :-------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [count](#count)                   | `integer` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")                   |
-| [percentileRank](#percentilerank) | `number`  | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank") |
+| [count](#count)                   | `integer` | Required | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")                   |
+| [percentileRank](#percentilerank) | `number`  | Optional | cannot be null | [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank") |
 
 ## count
 
@@ -242,7 +242,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-count "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/count")
 
 ### count Type
 
@@ -264,7 +264,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 
 *   cannot be null
 
-*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank")
+*   defined in: [Type used to return usage details of an entity](#usagedetails-definitions-usagestats-properties-percentilerank "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions/usageStats/properties/percentileRank")
 
 ### percentileRank Type
 
@@ -278,7 +278,7 @@ https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-s
 # usagedetails-definitions
 
 ```txt
-https://github.com/open-metadata/OpenMetadata/blob/schema-scripts/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json#/definitions
 ```
 
 
