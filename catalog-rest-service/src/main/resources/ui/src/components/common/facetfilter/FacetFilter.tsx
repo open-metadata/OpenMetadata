@@ -124,7 +124,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (
               <>
-                <h6 className="tw-heading">{aggregation.title}</h6>
+                <h6 className="tw-heading" data-testid="filter-heading">
+                  {aggregation.title}
+                </h6>
                 <div className="sidebar-my-data-holder mt-2 mb-3">
                   {getFilterItems(aggregation)}
                 </div>

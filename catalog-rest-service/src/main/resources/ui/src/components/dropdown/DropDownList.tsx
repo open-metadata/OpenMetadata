@@ -52,6 +52,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
           'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-gray-200',
           !isNil(value) && item.value === value ? 'tw-bg-primary-light' : null
         )}
+        data-testid="list-item"
         id={`menu-item-${index}`}
         key={index}
         role="menuitem"
@@ -92,6 +93,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               'dropdown-list',
               horzPosRight ? 'dd-horz-right' : 'dd-horz-left'
             )}
+            data-testid="dropdown-list"
             role="menu">
             {showSearchBar && (
               <div className="has-search tw-p-4 tw-pb-2">
