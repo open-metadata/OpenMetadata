@@ -61,15 +61,20 @@ public class ElasticSearchEventHandler implements EventHandler {
           Table instance = (Table) entity;
           Map<String, Object> jsonMap = new HashMap<>();
           jsonMap.put("description", instance.getDescription());
-          Set<String> tags = new HashSet<String>();
+          Set<String> tags = new HashSet<>();
+          List<String> columnDescriptions = new ArrayList<>();
           instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
           for(Column column: instance.getColumns()) {
             column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+            columnDescriptions.add(column.getDescription());
           }
           if (!tags.isEmpty()) {
             List<String> tagsList = new ArrayList<>();
             tagsList.addAll(tags);
             jsonMap.put("tags", tagsList);
+          }
+          if (!columnDescriptions.isEmpty()) {
+            jsonMap.put("column_descriptions", columnDescriptions);
           }
           UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
           updateRequest.doc(jsonMap);
