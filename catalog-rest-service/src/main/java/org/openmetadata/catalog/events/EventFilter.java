@@ -41,7 +41,7 @@ public class EventFilter implements ContainerResponseFilter {
   private CatalogApplicationConfig config;
   private DBI jdbi;
   private final ForkJoinPool forkJoinPool;
-  List<EventHandler> eventHandlers;
+  private List<EventHandler> eventHandlers;
 
   public EventFilter(CatalogApplicationConfig config, DBI jdbi) {
     this.config = config;
