@@ -17,10 +17,7 @@
 package org.openmetadata.catalog.events;
 
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.entity.audit.AuditLog;
-import org.openmetadata.catalog.jdbi3.AuditLogRepository;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.ParallelStreamUtil;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,30 +27,30 @@ import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.ext.Provider;
 import java.io.IOException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
-import java.util.UUID;
+import java.util.concurrent.ForkJoinPool;
 
 @Provider
 public class EventFilter implements ContainerResponseFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(EventFilter.class);
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
-  private final DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
-  private AuditLogRepository auditLogRepository;
+  private static final int FORK_JOIN_POOL_PARALLELISM = 20;
+  private CatalogApplicationConfig config;
+  private DBI jdbi;
+  private final ForkJoinPool forkJoinPool;
+  List<EventHandler> eventHandlers;
 
-  @SuppressWarnings("unused")
-  private EventFilter() {
-  }
-
-  public EventFilter(CatalogApplicationConfig config, DBI dbi) {
-    this.auditLogRepository = dbi.onDemand(AuditLogRepository.class);
-    TimeZone tz = TimeZone.getTimeZone("UTC");
-    this.df.setTimeZone(tz);
+  public EventFilter(CatalogApplicationConfig config, DBI jdbi) {
+    this.config = config;
+    this.jdbi = jdbi;
+    this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
+    this.eventHandlers = new ArrayList<>();
+    AuditEventHandler auditEventHandler = new AuditEventHandler();
+    auditEventHandler.init(config, jdbi);
+    eventHandlers.add(auditEventHandler);
   }
 
   @Override
@@ -65,33 +62,11 @@ public class EventFilter implements ContainerResponseFilter {
     if ((responseCode < 200 || responseCode > 299) || (!AUDITABLE_METHODS.contains(method))) {
       return;
     }
-    if (responseContext.getEntity() != null) {
-      String path = requestContext.getUriInfo().getPath();
-      String username = requestContext.getSecurityContext().getUserPrincipal().getName();
-      String nowAsISO = df.format(new Date());
 
-      try {
-        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
-                responseContext.getEntity().getClass());
-        if (entityReference != null) {
-          AuditLog auditLog = new AuditLog().withId(UUID.randomUUID())
-                  .withPath(path)
-                  .withDate(nowAsISO)
-                  .withEntityId(entityReference.getId())
-                  .withEntityType(entityReference.getType())
-                  .withEntity(entityReference)
-                  .withMethod(method)
-                  .withUsername(username)
-                  .withResponseCode(responseCode);
-          auditLogRepository.create(auditLog);
-          LOG.debug("Added audit log entry: {}", auditLog);
-        } else {
-          LOG.error("Failed to capture audit log for {}", path);
-        }
-      } catch(Exception e) {
-        LOG.error("Failed to capture audit log due to {}", e.getMessage());
-      }
-    }
+    eventHandlers.parallelStream().forEach(eventHandler -> ParallelStreamUtil.runAsync(() ->
+            eventHandler.process(requestContext, responseContext), forkJoinPool));
+
   }
+
 
 }
