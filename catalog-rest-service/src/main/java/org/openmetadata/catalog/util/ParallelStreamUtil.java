@@ -27,7 +27,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class ParallelStreamUtil {
+public final class ParallelStreamUtil {
   private static final Logger LOG = LoggerFactory.getLogger(ParallelStreamUtil.class);
 
   private ParallelStreamUtil() {
