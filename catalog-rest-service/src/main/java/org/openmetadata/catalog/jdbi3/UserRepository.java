@@ -254,7 +254,7 @@ public abstract class UserRepository {
     List<String> teamIds = relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<Team> teams = new ArrayList<>();
     for (String teamId : teamIds) {
-      LOG.info("Adding team {}", teamId);
+      LOG.debug("Adding team {}", teamId);
       String json = teamDAO().findById(teamId);
       Team team = JsonUtils.readValue(json, Team.class);
       if (team != null) {

@@ -20,6 +20,7 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
+import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
@@ -55,6 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestFilter;
+import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import java.lang.reflect.InvocationTargetException;
 
@@ -99,6 +101,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
     registerResources(catalogConfig, environment, jdbi);
+
+    // Register Event Handler
+    registerEventFilter(catalogConfig, environment, jdbi);
   }
 
   @SneakyThrows
@@ -147,6 +152,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       environment.jersey().register(filter);
     }
     injector = Guice.createInjector(new CatalogModule(authorizer));
+  }
+
+  private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, DBI jdbi) {
+    ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
+    environment.jersey().register(eventFilter);
   }
 
   private void registerResources(CatalogApplicationConfig config, Environment environment, DBI jdbi) {

@@ -23,6 +23,10 @@ then
 fi
 base_dir=$(dirname $0)/..
 
+CATALOG_HOME=$base_dir
+# OpenMetadata env script
+. $CATALOG_HOME/conf/catalog-env.sh
+
 if [ "x$CATALOG_HEAP_OPTS" = "x" ]; then
     export CATALOG_HEAP_OPTS="-Xmx1G -Xms1G"
 fi

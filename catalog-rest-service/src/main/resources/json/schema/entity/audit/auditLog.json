@@ -1,0 +1,49 @@
+{
+  "$id": "https://streaminlinedata.ai/entity/audit/auditLog.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit Log entity",
+  "description": "Entity that represents a Audit Log",
+  "type": "object",
+
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies a Audit Log Entry",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "method": {
+      "description": "HTTP Method used in a call",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "responseCode": {
+      "description": "HTTP response code for the api requested",
+      "type": "integer"
+    },
+    "path": {
+      "description": "requested API Path",
+      "type": "string"
+    },
+    "username": {
+      "description": "Name of the user who requested for the API",
+      "type": "string"
+    },
+    "date": {
+      "description": "Date which the api call is made",
+      "$ref": "../../type/basic.json#/definitions/date"
+    },
+    "entityId": {
+      "description": "entityReference Id",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "entityType": {
+      "description": "Entity Type",
+      "type": "string"
+    },
+    "entity" : {
+      "description": "Link to entity on which api request is done",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "method", "responseCode", "user", "entity"]
+}
