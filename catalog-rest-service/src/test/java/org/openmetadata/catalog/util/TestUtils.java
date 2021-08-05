@@ -9,6 +9,7 @@ import org.eclipse.jetty.http.HttpStatus;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.Entity;
+import javax.ws.rs.client.Invocation.Builder;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -31,6 +32,14 @@ public class TestUtils {
       JDBC_INFO = null;
       e.printStackTrace();
     }
+  }
+
+  public static Builder addHeaders(WebTarget target, Map<String, String> headers) {
+    if (headers != null) {
+      return target.request().header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
+              headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER));
+    }
+    return target.request();
   }
 
   public static void readResponseError(Response response) throws HttpResponseException {
@@ -58,9 +67,11 @@ public class TestUtils {
     assertEquals(expectedReason, exception.getReasonPhrase());
   }
 
-  public static void assertResponseContains(HttpResponseException exception, Status expectedCode, String expectedReason) {
+  public static void assertResponseContains(HttpResponseException exception, Status expectedCode,
+                                            String expectedReason) {
     assertEquals(expectedCode.getStatusCode(), exception.getStatusCode());
-    assertTrue(exception.getReasonPhrase().contains(expectedReason), expectedReason + " not in actual " + exception.getReasonPhrase());
+    assertTrue(exception.getReasonPhrase().contains(expectedReason),
+            expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
   public static <T> void assertEntityPagination(List<T> allEntities, ResultList<T> actual, int limit, int offset) {
@@ -74,94 +85,48 @@ public class TestUtils {
     }
   }
 
-  public static void post(WebTarget target) throws HttpResponseException {
-    Response response = target.request().post(null);
+  public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
+    Response response = addHeaders(target, headers).post(null);
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
-  public static <K> void post(WebTarget target, K request) throws HttpResponseException {
-    Response response = target.request().post(Entity.entity(request, MediaType.APPLICATION_JSON));
+  public static <K> void post(WebTarget target, K request, Map<String, String> headers) throws HttpResponseException {
+    Response response = addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, Status.CREATED.getStatusCode());
   }
 
-  public static <T, K> T post(WebTarget target, K request, Class<T> clz) throws HttpResponseException {
-    Response response = target.request().post(Entity.entity(request, MediaType.APPLICATION_JSON));
+  public static <T, K> T post(WebTarget target, K request, Class<T> clz, Map<String, String> headers)
+          throws HttpResponseException {
+    Response response = addHeaders(target, headers).post(Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, Status.CREATED.getStatusCode());
   }
 
-  public static <T, K> T post(WebTarget target, K request, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
-    Response response = target.request()
-            .header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-                    headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER))
-            .post(Entity.entity(request, MediaType.APPLICATION_JSON));
-    return readResponse(response, clz, Status.CREATED.getStatusCode());
-  }
-
-  public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz) throws HttpResponseException {
-    Response response = target.request().method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+  public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
+          throws HttpResponseException {
+    Response response = addHeaders(target, headers).method("PATCH",
+            Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
-  public static <T> T patch(WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
-    Response response = target.request()
-            .header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-                    headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER))
-            .method("PATCH", Entity.entity(patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
-    return readResponse(response, clz, Status.OK.getStatusCode());
-  }
-
-  public static <T, K> void put(WebTarget target, K request, Status expectedStatus,  Map<String, String> headers) throws HttpResponseException {
-    Response response = target.request()
-            .header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-                    headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER))
-            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+  public static <K> void put(WebTarget target, K request, Status expectedStatus,  Map<String, String> headers)
+          throws HttpResponseException {
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
-  }
-
-  public static <T, K> void put(WebTarget target, K request, Status expectedStatus) throws HttpResponseException {
-    Response response = target.request().method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
-    readResponse(response, expectedStatus.getStatusCode());
-  }
-
-  public static <T, K> T put(WebTarget target, K request, Class<T> clz, Status expectedStatus) throws HttpResponseException {
-    Response response = target.request().method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
-    return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
   public static <T, K> T put(WebTarget target, K request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
           throws HttpResponseException {
-    Response response = target.request()
-            .header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-            headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER))
-            .method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 
-  public static <T> T get(WebTarget target, Class<T> clz) throws HttpResponseException {
-    final Response response = target.request().get();
-    return readResponse(response, clz, Status.OK.getStatusCode());
-  }
-
   public static <T> T get(WebTarget target, Class<T> clz, Map<String, String> headers) throws HttpResponseException {
-    final Response response = target.request().header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-            headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER)).get();
+    final Response response = addHeaders(target, headers).get();
     return readResponse(response, clz, Status.OK.getStatusCode());
-  }
-
-  public static void delete(WebTarget target) throws HttpResponseException {
-    final Response response = target.request().delete();
-    if (!HttpStatus.isSuccess(response.getStatus())) {
-      readResponseError(response);
-    }
-    assertEquals(Status.OK.getStatusCode(), response.getStatus());
   }
 
   public static void delete(WebTarget target, Map<String, String> headers) throws HttpResponseException {
-    final Response response = target
-            .request()
-            .header(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER,
-                    headers.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER))
-            .delete();
+    final Response response = addHeaders(target, headers).delete();
     if (!HttpStatus.isSuccess(response.getStatus())) {
       readResponseError(response);
     }
@@ -188,12 +153,10 @@ public class TestUtils {
   }
 
   public static Map<String, String> adminAuthHeaders() {
-    return authHeaders("admin@getcollate.io");
+    return authHeaders("admin@open-metadata.org");
   }
 
   public static Map<String, String> userAuthHeaders() {
-    return authHeaders("test@getcollate.io");
+    return authHeaders("test@open-metadata.org");
   }
-
-
 }
