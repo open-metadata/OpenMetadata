@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.type.CollectionDescriptor;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;

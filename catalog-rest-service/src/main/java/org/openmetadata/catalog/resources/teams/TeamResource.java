@@ -99,9 +99,9 @@ public class TeamResource {
 
   static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
-    public TeamList() {}
+    TeamList() {}
 
-    public TeamList(List<Team> teams, int limitParam, String beforeCursor, String afterCursor)
+    TeamList(List<Team> teams, int limitParam, String beforeCursor, String afterCursor)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(teams, limitParam, beforeCursor, afterCursor);
     }

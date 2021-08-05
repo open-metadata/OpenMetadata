@@ -147,7 +147,8 @@ public class TableResource {
                         @QueryParam("before") String before,
                         @Parameter(description = "Returns list of tables after this curor",
                                 schema = @Schema(type = "string"))
-                        @QueryParam("after") String after) throws IOException, ParseException, GeneralSecurityException {
+                        @QueryParam("after") String after)
+          throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
@@ -350,7 +351,7 @@ public class TableResource {
   @PUT
   @Path("/{id}/sampleData")
   @Operation(summary = "Add sample data", tags = "tables",
-          description = "Add sample data to the table." )
+          description = "Add sample data to the table.")
   public Table addSampleData(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
