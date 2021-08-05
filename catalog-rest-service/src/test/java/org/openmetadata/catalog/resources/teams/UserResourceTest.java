@@ -29,15 +29,30 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactivatedUser;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class UserResourceTest extends CatalogApplicationTest {
   public static final Logger LOG = LoggerFactory.getLogger(UserResourceTest.class);
@@ -46,137 +61,179 @@ public class UserResourceTest extends CatalogApplicationTest {
   @Test
   public void post_userWithLongName_400_badRequest(TestInfo test) {
     // Create team with mandatory name field empty
+    CreateUser create = create(test).withName(LONG_ENTITY_NAME);
     HttpResponseException exception =
-            assertThrows(HttpResponseException.class, () -> createUser(create(test).withName(TestUtils.LONG_ENTITY_NAME)));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+            assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_userWithoutName_400_badRequest(TestInfo test) {
     // Create user with mandatory name field null
-    HttpResponseException exception = assertThrows(HttpResponseException.class,
-            () -> createUser(create(test).withName(null)));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+    CreateUser create = create(test).withName(null);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createUser(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     // Create user with mandatory name field empty
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create(test).withName("")));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    create.withName("");
+    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_userWithoutEmail_400_badRequest(TestInfo test) {
     // Create user with mandatory email field null
-    HttpResponseException exception = assertThrows(HttpResponseException.class,
-            () -> createUser(create(test).withEmail(null)));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[email must not be null]");
+    CreateUser create = create(test).withEmail(null);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createUser(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[email must not be null]");
 
     // Create user with mandatory email field empty
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create(test).withEmail("")));
+    create.withEmail("");
+    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "email must match \"^\\S+@\\S+\\.\\S+$\"");
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "email size must be between 6 and 127");
 
     // Create user with mandatory email field with invalid email address
-    exception = assertThrows(HttpResponseException.class, () -> createUser(create(test).withEmail("invalidEmail")));
+    create.withEmail("invalidEmail");
+    exception = assertThrows(HttpResponseException.class, () -> createUser(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "[email must match \"^\\S+@\\S+\\.\\S+$\"]");
   }
 
   @Test
   public void post_userAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateUser create = create(test);
-    createUser(create);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createUser(create));
-    TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    createUser(create, adminAuthHeaders()); // Create user first
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createUser(create, adminAuthHeaders())); // Creating again must fail
+    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+  }
+
+  @Test
+  public void post_validUser_200_ok_without_login(TestInfo test) {
+    CreateUser create = create(test, 6).withDisplayName("displayName")
+            .withEmail("test@email.com")
+            .withIsAdmin(true);
+
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createAndCheckUser(create, null));
+    assertResponse(exception, UNAUTHORIZED, "Not authorized; User's Email is not present");
   }
 
   @Test
   public void post_validUser_200_ok(TestInfo test) throws HttpResponseException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
-    createAndCheckUser(create);
+    createAndCheckUser(create, adminAuthHeaders());
 
     create = create(test, 2).withDisplayName("displayName");
-    createAndCheckUser(create);
+    createAndCheckUser(create, adminAuthHeaders());
 
     create = create(test, 3).withProfile(PROFILE);
-    createAndCheckUser(create);
+    createAndCheckUser(create, adminAuthHeaders());
 
     create = create(test, 5).withDisplayName("displayName").withProfile(PROFILE).withIsBot(true);
-    createAndCheckUser(create);
+    createAndCheckUser(create, adminAuthHeaders());
 
     create = create(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
-    createAndCheckUser(create);
+    createAndCheckUser(create, adminAuthHeaders());
+  }
+
+  @Test
+  public void post_validAdminUser_Non_Admin_401(TestInfo test) {
+    CreateUser create = create(test, 6)
+            .withName("test")
+            .withDisplayName("displayName")
+            .withEmail("test@email.com").withIsAdmin(true);
+
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create,
+            authHeaders("test@open-metadata.org")));
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+  }
+
+  @Test
+  public void post_validAdminUser_200_ok(TestInfo test) throws HttpResponseException {
+    CreateUser create = create(test, 6)
+            .withName("test1")
+            .withDisplayName("displayName")
+            .withEmail("test1@email.com").withIsAdmin(true);
+    createAndCheckUser(create, adminAuthHeaders());
   }
 
   @Test
   public void post_validUserWithTeams_200_ok(TestInfo test) throws HttpResponseException {
     // Create user with different optional fields
-    Team team1 = createTeam(TeamResourceTest.create(test, 1));
-    Team team2 = createTeam(TeamResourceTest.create(test, 2));
+    Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
+    Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
     List<UUID> teams = Arrays.asList(team1.getId(), team2.getId());
     CreateUser create = create(test).withTeams(teams);
-    User user = createAndCheckUser(create);
+    User user = createAndCheckUser(create, adminAuthHeaders());
 
     // Make sure Team has relationship to this user
-    team1 = TeamResourceTest.getTeam(team1.getId(), "users");
+    team1 = TeamResourceTest.getTeam(team1.getId(), "users", adminAuthHeaders());
     assertEquals(user.getId(), team1.getUsers().get(0).getId());
-    team2 = TeamResourceTest.getTeam(team2.getId(), "users");
+    team2 = TeamResourceTest.getTeam(team2.getId(), "users", adminAuthHeaders());
     assertEquals(user.getId(), team2.getUsers().get(0).getId());
   }
 
   @Test
   public void get_nonExistentUser_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getUser(TestUtils.NON_EXISTENT_ENTITY));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            getUser(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void get_userWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     // Create team and role for the user
-    Team team = createTeam(TeamResourceTest.create(test));
+    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create);
+    User user = createUser(create, adminAuthHeaders());
     validateGetWithDifferentField(user, false);
   }
 
   @Test
   public void get_userByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     // Create team and role for the user
-    Team team = createTeam(TeamResourceTest.create(test));
+    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withDisplayName("displayName").withTeams(teamIds).withProfile(PROFILE);
-    User user = createUser(create);
+    User user = createUser(create, adminAuthHeaders());
     validateGetWithDifferentField(user, true);
   }
 
   @Test
   public void get_userWithInvalidFields_400_BadRequest(TestInfo test) throws HttpResponseException {
-    User user = createUser(create(test));
+    User user = createUser(create(test), adminAuthHeaders());
 
     // Empty query field .../users?fields=
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getUser(user.getId(), ""));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            getUser(user.getId(), "", adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid field name");
 
     // .../users?fields=invalidField
-    exception = assertThrows(HttpResponseException.class, () -> getUser(user.getId(), "invalidField"));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
+    exception = assertThrows(HttpResponseException.class, () ->
+            getUser(user.getId(), "invalidField", adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   @Test
   public void get_userListWithInvalidLimit_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, -1, null, null));
+            -> listUsers(null, -1, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
     exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 0, null, null));
+            -> listUsers(null, 0, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
     exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 1000001, null, null));
+            -> listUsers(null, 1000001, null, null, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
@@ -184,7 +241,7 @@ public class UserResourceTest extends CatalogApplicationTest {
   public void get_userListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 1, "", ""));
+            -> listUsers(null, 1, "", "", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
@@ -199,26 +256,26 @@ public class UserResourceTest extends CatalogApplicationTest {
     // Create a large number of users
     int maxUsers = 40;
     for (int i = 0; i < maxUsers; i++) {
-      createUser(create(test, i));
+      createUser(create(test, i), adminAuthHeaders());
     }
 
     // List all users and use it for checking pagination
-    UserList allUsers = listUsers(null, 1000000, null, null);
+    UserList allUsers = listUsers(null, 1000000, null, null, adminAuthHeaders());
     int totalRecords = allUsers.getData().size();
     printUsers(allUsers);
 
     // List tables with limit set from 1 to maxTables size
-    // Each time comapare the returned list with allTables list to make sure right results are returned
+    // Each time compare the returned list with allTables list to make sure right results are returned
     for (int limit = 1; limit < maxUsers; limit++) {
       String after = null;
-      String before = null;
+      String before;
       int pageCount = 0;
       int indexInAllTables = 0;
       UserList forwardPage;
       UserList backwardPage;
       do { // For each limit (or page size) - forward scroll till the end
         LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listUsers(null, limit, null, after);
+        forwardPage = listUsers(null, limit, null, after, adminAuthHeaders());
         after = forwardPage.getPaging().getAfter();
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allUsers.getData(), forwardPage, limit, indexInAllTables);
@@ -227,7 +284,7 @@ public class UserResourceTest extends CatalogApplicationTest {
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listUsers(null, limit, before, null);
+          backwardPage = listUsers(null, limit, before, null, adminAuthHeaders());
           assertEntityPagination(allUsers.getData(), backwardPage, limit, (indexInAllTables - limit));
         }
 
@@ -241,7 +298,7 @@ public class UserResourceTest extends CatalogApplicationTest {
       indexInAllTables = totalRecords - limit - forwardPage.getData().size() ;
       do {
         LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listUsers(null, limit, before, null);
+        forwardPage = listUsers(null, limit, before, null, adminAuthHeaders());
         printUsers(forwardPage);
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allUsers.getData(), forwardPage, limit, indexInAllTables);
@@ -267,121 +324,165 @@ public class UserResourceTest extends CatalogApplicationTest {
   @Test
   public void patch_userIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure user ID can't be changed using patch
-    User user = createUser(create(test));
+    User user = createUser(create(test), adminAuthHeaders());
     UUID oldUserId = user.getId();
     String userJson = JsonUtils.pojoToJson(user);
     user.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(oldUserId, userJson, user));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("User", "id"));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            patchUser(oldUserId, userJson, user, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "id"));
+  }
+
+  @Test
+  public void patch_userNameChange_as_another_user_401(TestInfo test)
+          throws HttpResponseException, JsonProcessingException {
+    // Ensure user name can't be changed using patch
+    User user = createUser(create(test, 6).withName("test2").withDisplayName("displayName")
+            .withEmail("test2@email.com"), authHeaders("test2@email.com"));
+    String userJson = JsonUtils.pojoToJson(user);
+    user.setDisplayName("newName");
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user,
+            authHeaders("test100@email.com")));
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test100'} does not have permissions");
+  }
+
+  @Test
+  public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Ensure user name can't be changed using patch
+    User user = createUser(create(test, 6).withName("test").withDisplayName("displayName")
+            .withEmail("test@email.com"), authHeaders("test@email.com"));
+    String userJson = JsonUtils.pojoToJson(user);
+    String newDisplayName = "newDisplayName";
+    user.setDisplayName(newDisplayName); // Update the name
+    user = patchUser(userJson, user, adminAuthHeaders()); // Patch the user
+    assertEquals(newDisplayName, user.getDisplayName());
   }
 
   @Test
   public void patch_userNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure user name can't be changed using patch
-    User user = createUser(create(test));
+    User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
     user.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("User", "name"));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            patchUser(userJson, user, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "name"));
   }
 
   @Test
   public void patch_userDeletedDisallowed_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure user deleted attributed can't be changed using patch
-    User user = createUser(create(test));
+    User user = createUser(create(test), adminAuthHeaders());
     String userJson = JsonUtils.pojoToJson(user);
     user.setDeactivated(true);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> patchUser(userJson, user));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            patchUser(userJson, user, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute("User", "deactivated"));
   }
 
   @Test
-  public void patch_userAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws HttpResponseException,
+          JsonProcessingException {
     // Create user without any attributes
-    User user = createUser(create(test));
+    User user = createUser(create(test), adminAuthHeaders());
     assertNull(user.getDisplayName());
     assertNull(user.getIsBot());
     assertNull(user.getProfile());
     assertNull(user.getDeactivated());
     assertNull(user.getTimezone());
 
-    Team team1 = createTeam(TeamResourceTest.create(test, 1));
-    Team team2 = createTeam(TeamResourceTest.create(test, 2));
-    Team team3 = createTeam(TeamResourceTest.create(test, 3));
+    Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
+    Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
+    Team team3 = createTeam(TeamResourceTest.create(test, 3), adminAuthHeaders());
     List<Team> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
 
     // Add previously absent attributes
     String timezone = "America/Los_Angeles";
-    user = patchUserAttributesAndCheck(user, "displayName", teams, PROFILE, timezone, false, false);
+    user = patchUserAttributesAndCheck(user, "displayName", teams, profile, timezone, false,
+            false, adminAuthHeaders());
 
     // Replace the attributes
     timezone = "Canada/Eastern";
     teams = Arrays.asList(team1, team3); // team2 dropped and team3 is added
     profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
-    user = patchUserAttributesAndCheck(user, "displayName1", teams, PROFILE, timezone, true, false);
-
-    user = patchUserAttributesAndCheck(user, "displayName1", teams, PROFILE, timezone, false, true);
+    user = patchUserAttributesAndCheck(user, "displayName1", teams, profile, timezone, true,
+            false, adminAuthHeaders());
 
     // Remove the attributes
-    patchUserAttributesAndCheck(user, null, null, null, null, null, null);
+    patchUserAttributesAndCheck(user, null, null, null, null, null,
+            null, adminAuthHeaders());
   }
 
   @Test
-  public void delete_validUser_200_OK(TestInfo test) throws HttpResponseException {
-    Team team = createTeam(TeamResourceTest.create(test));
+  public void delete_validUser_as_non_admin_401(TestInfo test) throws HttpResponseException {
+    CreateUser create = create(test).withName("test3").withEmail("test3@email.com");
+    User user = createUser(create, authHeaders("test3"));
+
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> deleteUser(user.getId(),
+            authHeaders("test3@email.com")));
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test3'} is not admin");
+  }
+
+  @Test
+  public void delete_validUser_as_admin_200(TestInfo test) throws HttpResponseException {
+    Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
     CreateUser create = create(test).withProfile(PROFILE).withTeams(teamIds);
-    User user = createUser(create);
+    User user = createUser(create, adminAuthHeaders());
 
     // Add user as follower to a table
     Table table = TableResourceTest.createTable(test, 1);
-    TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1);
+    TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders());
 
-    deleteUser(user.getId());
+    deleteUser(user.getId(), adminAuthHeaders());
 
     // Make sure team entity no longer shows relationship to this user
-    team = TeamResourceTest.getTeam(team.getId(), "users");
+    team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
     assertTrue(team.getUsers().isEmpty());
 
     // Make sure the user is no longer following the table
-    team = TeamResourceTest.getTeam(team.getId(), "users");
+    team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
     assertTrue(team.getUsers().isEmpty());
-    TableResourceTest.checkFollowerDeleted(table.getId(), user.getId());
+    TableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
 
-    // Get deactiveated user and ensure the name and display name has deactivated
-    User deactiveatedUser = getUser(user.getId());
-    assertEquals("deactivated." + user.getName(), deactiveatedUser.getName());
-    assertEquals("Deactivated " + user.getDisplayName(), deactiveatedUser.getDisplayName());
+    // Get deactivated user and ensure the name and display name has deactivated
+    User deactivatedUser = getUser(user.getId(), adminAuthHeaders());
+    assertEquals("deactivated." + user.getName(), deactivatedUser.getName());
+    assertEquals("Deactivated " + user.getDisplayName(), deactivatedUser.getDisplayName());
 
     // User can no longer follow other entities
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1));
-    TestUtils.assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId().toString()));
+            TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId().toString()));
 
     // TODO deactivated user can't be made owner
   }
 
   @Test
   public void delete_nonExistentUser_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> deleteUser(TestUtils.NON_EXISTENT_ENTITY));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            deleteUser(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  private User patchUser(UUID userId, String originalJson, User updated) throws JsonProcessingException, HttpResponseException {
+  private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
+          throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class);
+    return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
   }
 
-  private User patchUser(String originalJson, User updated) throws JsonProcessingException, HttpResponseException {
-    return patchUser(updated.getId(), originalJson, updated);
+  private User patchUser(String originalJson, User updated,Map<String, String> headers)
+          throws JsonProcessingException, HttpResponseException {
+    return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
   private User patchUserAttributesAndCheck(User user, String displayName, List<Team> teams, Profile profile,
-                                           String timezone, Boolean isBot, Boolean isAdmin)
+                                           String timezone, Boolean isBot, Boolean isAdmin,
+                                           Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     Optional.ofNullable(user.getTeams()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
     String userJson = JsonUtils.pojoToJson(user);
@@ -395,18 +496,19 @@ public class UserResourceTest extends CatalogApplicationTest {
     user.setIsAdmin(isAdmin);
 
     // Validate information returned in patch response has the updates
-    User updatedUser = patchUser(userJson, user);
+    User updatedUser = patchUser(userJson, user, authHeaders);
     validateUser(updatedUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin);
 
     // GET the user and Validate information returned
-    User getUser = getUser(user.getId(), "teams,profile");
+    User getUser = getUser(user.getId(), "teams,profile", authHeaders);
     validateUser(getUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin);
     return getUser;
   }
 
 
-  public static User createAndCheckUser(CreateUser create) throws HttpResponseException {
-    final User user = createUser(create);
+  public static User createAndCheckUser(CreateUser create, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    final User user = createUser(create, authHeaders);
     List<Team> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new Team().withId(teamId));
@@ -415,26 +517,22 @@ public class UserResourceTest extends CatalogApplicationTest {
             create.getTimezone(), create.getIsBot(), create.getIsAdmin());
 
     // GET the newly created user and validate
-    User getUser = getUser(user.getId(), "profile,teams");
+    User getUser = getUser(user.getId(), "profile,teams", authHeaders);
     validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
             create.getTimezone(), create.getIsBot(), create.getIsAdmin());
     return user;
   }
 
   public static CreateUser create(TestInfo test, int index) {
-    String userName = getUserName(test) + index;
-    String userEmail = userName + "@domain.com";
-    return new CreateUser().withName(userName).withEmail(userEmail);
+    return new CreateUser().withName(getUserName(test) + index).withEmail(getUserName(test) + "@open-metadata.org");
   }
 
   public static CreateUser create(TestInfo test) {
-    String userName = getUserName(test);
-    String userEmail = userName + "@domain.com";
-    return new CreateUser().withName(userName).withEmail(userEmail);
+    return new CreateUser().withName(getUserName(test)).withEmail(getUserName(test)+"@open-metadata.org");
   }
 
-  public static User createUser(CreateUser create) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class);
+  public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
+    return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
   }
 
   public static void validateUser(User user, String expectedName, String expectedDisplayName, List<Team> expectedTeams,
@@ -470,44 +568,48 @@ public class UserResourceTest extends CatalogApplicationTest {
   private void validateGetWithDifferentField(User user, boolean byName) throws HttpResponseException {
     // .../teams?fields=profile
     String fields = "profile";
-    user = byName ? getUserByName(user.getName(), fields) : getUser(user.getId(), fields);
+    user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
+            getUser(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNull(user.getTeams());
 
     // .../teams?fields=profile,teams
     fields = "profile, teams";
-    user = byName ? getUserByName(user.getName(), fields) : getUser(user.getId(), fields);
+    user = byName ? getUserByName(user.getName(), fields, adminAuthHeaders()) :
+            getUser(user.getId(), fields, adminAuthHeaders());
     assertNotNull(user.getProfile());
     assertNotNull(user.getTeams());
   }
 
-  public static User getUser(UUID id) throws HttpResponseException {
-    return getUser(id, null);
+  public static User getUser(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    return getUser(id, null, authHeaders);
   }
 
-  public static User getUser(UUID id, String fields) throws HttpResponseException {
+  public static User getUser(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("users/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class);
+    return TestUtils.get(target, User.class, authHeaders);
   }
 
-  public static User getUserByName(String name, String fields) throws HttpResponseException {
+  public static User getUserByName(String name, String fields, Map<String, String> authHeaders)
+          throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("users/name/" + name);
     target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, User.class);
+    return TestUtils.get(target, User.class, authHeaders);
   }
 
-  private void deleteUser(UUID id) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("users/" + id));
+  private void deleteUser(UUID id, Map<String, String> headers) throws HttpResponseException {
+    TestUtils.delete(CatalogApplicationTest.getResource("users/" + id), headers);
   }
 
-  public static UserList listUsers(String fields, Integer limit, String before, String after) throws HttpResponseException {
+  public static UserList listUsers(String fields, Integer limit, String before, String after,
+                                   Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("users");
     target = fields != null ? target.queryParam("fields", fields) : target;
     target = limit != null ? target.queryParam("limit", limit) : target;
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, UserList.class);
+    return TestUtils.get(target, UserList.class, authHeaders);
   }
 
   // TODO write following tests
@@ -517,11 +619,5 @@ public class UserResourceTest extends CatalogApplicationTest {
     String testName = testInfo.getDisplayName();
     // user name can't be longer than 64 characters
     return String.format("user_%s", testName.substring(0, Math.min(testName.length(), 50)));
-  }
-
-  public static String getUserName(TestInfo testInfo, int index) {
-    String testName = testInfo.getDisplayName();
-    // user name can't be longer than 64 characters
-    return String.format("user%d_%s", index, testName.substring(0, Math.min(testName.length(), 50)));
   }
 }
