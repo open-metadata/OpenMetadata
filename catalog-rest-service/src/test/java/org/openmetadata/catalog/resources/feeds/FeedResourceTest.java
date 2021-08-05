@@ -1,7 +1,6 @@
 package org.openmetadata.catalog.resources.feeds;
 
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -30,7 +29,9 @@ import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.databases.TableResourceTest.createAndCheckTable;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -221,7 +222,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     Post firstPost = thread.getPosts().get(0);
     assertEquals(message, firstPost.getMessage());
     assertEquals(from, firstPost.getFrom());
-    Assertions.assertEquals(about, thread.getAbout());
+    assertEquals(about, thread.getAbout());
   }
 
   private static void validatePost(Thread expected, Thread actual, Post expectedPost) {

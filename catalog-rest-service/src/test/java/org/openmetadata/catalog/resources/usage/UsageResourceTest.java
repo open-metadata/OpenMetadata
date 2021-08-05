@@ -38,7 +38,9 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.Entity.TABLE;
-import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)

@@ -2,7 +2,6 @@ package org.openmetadata.catalog.resources.databases;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -34,12 +33,22 @@ import javax.ws.rs.core.Response.Status;
 import java.util.Map;
 import java.util.UUID;
 
-import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.openmetadata.catalog.CatalogApplicationTest.getResource;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResourceTest.class);
@@ -84,7 +93,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabase create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -93,7 +102,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabase create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -102,7 +111,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     createDatabase(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -130,7 +139,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabase create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -157,7 +166,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabase create = create(test).withOwner(owner);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDatabase(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -178,7 +187,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_databaseListWithInvalidLimitOffet_4xx() {
+  public void get_databaseListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> listDatabases(null, null, -1, null, null, adminAuthHeaders()));
@@ -202,7 +211,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_databaseListWithValidLimitOffet_4xx(TestInfo test) throws HttpResponseException {
+  public void get_databaseListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
     // Create a large number of databases
     int maxDatabases = 40;
     for (int i = 0; i < maxDatabases; i++) {
@@ -214,7 +223,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     int totalRecords = allDatabases.getData().size();
     printDatabases(allDatabases);
 
-    // List limit number databases at a time at varous offsets and ensure right results are returned
+    // List limit number databases at a time at various offsets and ensure right results are returned
     for (int limit = 1; limit < maxDatabases; limit++) {
       String after = null;
       String before;
@@ -230,7 +239,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
         before = forwardPage.getPaging().getBefore();
         assertEntityPagination(allDatabases.getData(), forwardPage, limit, indexInAllDatabases);
 
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursort
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
           assertNull(before);
         } else {
           // Make sure scrolling back based on before cursor returns the correct result
@@ -340,7 +349,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void get_nonExistentDatabase_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND,
+    assertResponse(exception, NOT_FOUND,
             entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
@@ -394,13 +403,13 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database.setId(UUID.randomUUID());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseId, databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
 
     // ID can't be deleted
     database.setId(null);
     exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseId, databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
   }
 
   @Test
@@ -411,13 +420,13 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database.setName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
 
     // Name can't be removed
     database.setName(null);
     exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
   }
 
   @Test
@@ -430,13 +439,13 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database.setService(MYSQL_REFERENCE);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
 
     // Service relationship can't be removed
     database.setService(null);
     exception = assertThrows(HttpResponseException.class, () ->
             patchDatabase(databaseJson, database, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
+    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
   }
 
   // TODO listing tables test:1
@@ -457,7 +466,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void delete_nonExistentDatabase_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Database createAndCheckDatabase(CreateDatabase create,
@@ -542,16 +551,16 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     // Validate owner
     if (expectedOwner != null) {
       TestUtils.validateEntityReference(database.getOwner());
-      Assertions.assertEquals(expectedOwner.getId(), database.getOwner().getId());
-      Assertions.assertEquals(expectedOwner.getType(), database.getOwner().getType());
+      assertEquals(expectedOwner.getId(), database.getOwner().getId());
+      assertEquals(expectedOwner.getType(), database.getOwner().getType());
       assertNotNull(database.getOwner().getHref());
     }
 
     // Validate service
     if (expectedService != null) {
       TestUtils.validateEntityReference(database.getService());
-      Assertions.assertEquals(expectedService.getId(), database.getService().getId());
-      Assertions.assertEquals(expectedService.getType(), database.getService().getType());
+      assertEquals(expectedService.getId(), database.getService().getId());
+      assertEquals(expectedService.getType(), database.getService().getType());
     }
     return database;
   }
@@ -630,7 +639,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
     // Ensure deleted database does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getDatabase(id, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, id));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DATABASE, id));
   }
 
   public static String getDatabaseName(TestInfo test) {

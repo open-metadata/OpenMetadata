@@ -33,11 +33,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.deactivatedUser;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
-import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class UserResourceTest extends CatalogApplicationTest {
   public static final Logger LOG = LoggerFactory.getLogger(UserResourceTest.class);

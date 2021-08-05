@@ -32,11 +32,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
-import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class TeamResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TeamResourceTest.class);
@@ -47,7 +57,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     // Create team with mandatory name field empty
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
                     createTeam(create(test).withName(TestUtils.LONG_ENTITY_NAME), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -55,7 +65,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     // Create team with mandatory name field empty
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTeam(create(test).withName(""), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
@@ -64,7 +74,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     createTeam(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTeam(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -93,7 +103,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     CreateTeam create = create(test, 1);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckTeam(create,
             authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -119,7 +129,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
   public void get_nonExistentTeam_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTeam(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -153,12 +163,12 @@ public class TeamResourceTest extends CatalogApplicationTest {
     // Empty query field .../teams?fields=
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTeam(team.getId(), "", adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField(""));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField(""));
 
     // .../teams?fields=invalidField
     exception = assertThrows(HttpResponseException.class, () ->
             getTeam(team.getId(), "invalidField", adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
   @Test
@@ -268,7 +278,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     // Make sure team is no longer there
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTeam(team.getId(), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("Team", team.getId()));
+    assertResponse(exception, NOT_FOUND, entityNotFound("Team", team.getId()));
 
     // Make sure user does not have relationship to this team
     User user = UserResourceTest.getUser(user1.getId(), "teams", adminAuthHeaders());
@@ -284,7 +294,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     Team team = createAndCheckTeam(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTeam(team.getId(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
 
@@ -292,7 +302,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
   public void delete_nonExistentTeam_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTeam(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound("Team", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -304,7 +314,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     team.setId(UUID.randomUUID());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchTeam(oldTeamId, teamJson, team, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "id"));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "id"));
   }
 
   @Test
@@ -315,7 +325,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     team.setName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchTeam(teamJson, team, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "name"));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "name"));
   }
 
   @Test
@@ -326,7 +336,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     team.setDeleted(true);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchTeam(teamJson, team, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
+    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
   }
 
   @Test
@@ -382,7 +392,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             patchTeamAttributesAndCheck(team, "displayName", "description", profile, users,
                     authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 //  @Test
 //  public void patch_updateInvalidUsers_404_notFound(TestInfo test) throws HttpResponseException {

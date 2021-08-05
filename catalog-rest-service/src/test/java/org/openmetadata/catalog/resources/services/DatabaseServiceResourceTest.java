@@ -21,8 +21,14 @@ import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
-import static javax.ws.rs.core.Response.Status.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -141,7 +147,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateNonExistentService_404(TestInfo test) {
+  public void put_updateNonExistentService_404() {
     // Update database description and ingestion service that are null
     UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
@@ -174,7 +180,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             authHeaders);
     String id = dbService.getId().toString();
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
+    RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update database description and ingestion service that are null
     UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
