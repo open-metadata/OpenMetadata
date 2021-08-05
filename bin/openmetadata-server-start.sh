@@ -23,15 +23,15 @@ then
 fi
 base_dir=$(dirname $0)/..
 
-CATALOG_HOME=$base_dir
+OPENMETADATA_HOME=$base_dir
 # OpenMetadata env script
-. $CATALOG_HOME/conf/catalog-env.sh
+. $OPENMETADATA_HOME/conf/openmetadata-env.sh
 
-if [ "x$CATALOG_HEAP_OPTS" = "x" ]; then
-    export CATALOG_HEAP_OPTS="-Xmx1G -Xms1G"
+if [ "x$OPENMETADATA_HEAP_OPTS" = "x" ]; then
+    export OPENMETADATA_HEAP_OPTS="-Xmx1G -Xms1G"
 fi
 
-EXTRA_ARGS="-name CatalogServer"
+EXTRA_ARGS="-name OpenMetadataServer"
 
 # create logs directory
 if [ "x$LOG_DIR" = "x" ]; then
@@ -79,7 +79,7 @@ fi
 
 
 # Set Debug options if enabled
-if [ "x$CATALOG_DEBUG" != "x" ]; then
+if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
     # Use default ports
     DEFAULT_JAVA_DEBUG_PORT="5005"
@@ -95,24 +95,24 @@ if [ "x$CATALOG_DEBUG" != "x" ]; then
     fi
 
     echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
-    CATALOG_OPTS="$JAVA_DEBUG_OPTS $CATALOG_OPTS"
+    OPENMETADATA_OPTS="$JAVA_DEBUG_OPTS $OPENMETADATA_OPTS"
 fi
 
 # GC options
-GC_LOG_FILE_NAME='catalog-gc.log'
-if [ -z "$CATALOG_GC_LOG_OPTS" ]; then
+GC_LOG_FILE_NAME='openmetadata-gc.log'
+if [ -z "$OPENMETADATA_GC_LOG_OPTS" ]; then
   JAVA_MAJOR_VERSION=$($JAVA -version 2>&1 | sed -E -n 's/.* version "([0-9]*).*$/\1/p')
   if [[ "$JAVA_MAJOR_VERSION" -ge "9" ]] ; then
-    CATALOG_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,tags:filecount=10,filesize=102400"
+    OPENMETADATA_GC_LOG_OPTS="-Xlog:gc*:file=$LOG_DIR/$GC_LOG_FILE_NAME:time,tags:filecount=10,filesize=102400"
   else
-    CATALOG_GC_LOG_OPTS="-Xloggc:$LOG_DIR/$GC_LOG_FILE_NAME -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
+    OPENMETADATA_GC_LOG_OPTS="-Xloggc:$LOG_DIR/$GC_LOG_FILE_NAME -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M"
   fi
 fi
 
 
 # JVM performance options
-if [ -z "$CATALOG_JVM_PERFORMANCE_OPTS" ]; then
-  CATALOG_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
+if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
+  OPENMETADATA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+ExplicitGCInvokesConcurrent -Djava.awt.headless=true"
 fi
 
 #Application classname
@@ -120,7 +120,7 @@ APP_CLASS="org.openmetadata.catalog.CatalogApplication"
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
-    nohup $JAVA $CATALOG_HEAP_OPTS $CATALOG_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $CATALOG_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $CATALOG_HEAP_OPTS $CATALOG_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $CATALOG_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi
