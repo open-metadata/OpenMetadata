@@ -30,6 +30,10 @@ import java.util.function.Supplier;
 public class ParallelStreamUtil {
   private static final Logger LOG = LoggerFactory.getLogger(ParallelStreamUtil.class);
 
+  private ParallelStreamUtil() {
+
+  }
+
   public static <T> T execute(Supplier<T> supplier, Executor executor) {
     Stopwatch stopwatch = Stopwatch.createStarted();
     LOG.debug("execute start");
