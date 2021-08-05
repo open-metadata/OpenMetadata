@@ -201,6 +201,8 @@ const MyDataDetailsPage = () => {
         setDescription(updatedHTML);
         setIsEdit(false);
       });
+    } else {
+      setIsEdit(false);
     }
   };
 
@@ -443,7 +445,9 @@ const MyDataDetailsPage = () => {
                     </div>
                     <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
                       <div data-testid="description" id="description" />
-                      {stringToHTML(description?.trim()) || (
+                      {stringToHTML(
+                        description?.trim().replaceAll(/\n/g, '<br/>')
+                      ) || (
                         <span className="tw-no-description">
                           No description added
                         </span>

@@ -6,7 +6,7 @@
     "incremental": true,
     "target": "ES5",
     "module": "esnext",
-    "lib": ["dom", "dom.iterable", "ES2020.Promise"],
+    "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
     "allowJs": true,
     "jsx": "react",
     "declaration": true,

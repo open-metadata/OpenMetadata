@@ -375,7 +375,7 @@ const TagsPage = () => {
                   initialData={{
                     name: '',
                     description: '',
-                    categoryType: 'DESCRIPTIVE',
+                    categoryType: 'Descriptive',
                   }}
                   onCancel={() => setIsAddingCategory(false)}
                   onSave={(data) => createCategory(data)}

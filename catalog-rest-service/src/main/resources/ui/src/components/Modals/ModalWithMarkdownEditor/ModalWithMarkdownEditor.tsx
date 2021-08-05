@@ -17,12 +17,12 @@
 
 import classnames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
-import { stringToDOMElement } from '../../../utils/StringsUtils';
+// import { stringToDOMElement } from '../../../utils/StringsUtils';
 import { Button } from '../../buttons/Button/Button';
-import { MarkdownWithPreview } from '../../common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 
-type MarkdownRef = {
-  fetchUpdatedHTML: () => string;
+type EditorContentRef = {
+  getEditorContent: () => string;
 };
 
 type Props = {
@@ -38,7 +38,7 @@ type Props = {
 export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
   isExpandable = false,
   header,
-  placeholder,
+  // placeholder,
   value,
   onSave,
   // onSuggest,
@@ -46,7 +46,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
 }: Props) => {
   const [expanded, setExpanded] = useState<boolean>(false);
 
-  const markdownRef = useRef<MarkdownRef>();
+  const markdownRef = useRef<EditorContentRef>();
 
   const getContainerClasses = () => {
     return classnames(
@@ -57,8 +57,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
 
   const handleSaveData = () => {
     if (markdownRef.current) {
-      const updatedHTML = markdownRef.current.fetchUpdatedHTML();
-      onSave(stringToDOMElement(updatedHTML).textContent ? updatedHTML : '');
+      onSave(markdownRef.current?.getEditorContent() ?? '');
     }
   };
 
@@ -99,11 +98,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
           )}
         </div>
         <div className="tw-modal-body tw-pt-0 tw-pb-1">
-          <MarkdownWithPreview
-            editorRef={(Ref: MarkdownRef) => (markdownRef.current = Ref)}
-            placeholder={placeholder}
-            value={value}
-          />
+          <MarkdownWithPreview ref={markdownRef} value={value} />
         </div>
         <div className="tw-modal-footer">
           <Button

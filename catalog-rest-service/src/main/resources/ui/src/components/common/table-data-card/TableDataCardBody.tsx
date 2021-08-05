@@ -37,7 +37,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   return (
     <>
       <div className="tw-mb-1 description-text">
-        {stringToHTML(description)}
+        {stringToHTML(description.replaceAll(/\n/g, '<br/>'))}
       </div>
       <p className="tw-py-1">
         {extraInfo.map(({ key, value }, i) =>
