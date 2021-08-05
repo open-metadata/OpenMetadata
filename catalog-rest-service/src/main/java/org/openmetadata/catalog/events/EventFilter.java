@@ -51,6 +51,9 @@ public class EventFilter implements ContainerResponseFilter {
     AuditEventHandler auditEventHandler = new AuditEventHandler();
     auditEventHandler.init(config, jdbi);
     eventHandlers.add(auditEventHandler);
+    ElasticSearchEventHandler elasticSearchEventHandler = new ElasticSearchEventHandler();
+    elasticSearchEventHandler.init(config, jdbi);
+    eventHandlers.add(elasticSearchEventHandler);
   }
 
   @Override

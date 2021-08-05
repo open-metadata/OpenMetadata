@@ -34,7 +34,6 @@ public class AuditEventHandler implements  EventHandler {
                       ContainerResponseContext responseContext) {
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();
-    LOG.info("are we processing, harsha");
     if (responseContext.getEntity() != null) {
       String path = requestContext.getUriInfo().getPath();
       String username = requestContext.getSecurityContext().getUserPrincipal().getName();
