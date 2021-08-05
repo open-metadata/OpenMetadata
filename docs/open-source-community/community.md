@@ -8,7 +8,7 @@ All OpenMetadata discussions happen on the [mailing list](community.md), [Github
 
 ## Github
 
-Star us at [open-metadata/catalog](https://github.com/open-metadata/catalog) to follow the development. Ask questions, raise issues or contribute pull requests. Please see [Developers](https://github.com/StreamlineData/catalog/tree/b882d5238a1e21ebc73edb1693a59296f4d38e24/docs/open-source-community/open-source-community/developer.md)
+Star us at [open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) to follow the development. Ask questions, raise issues or contribute pull requests. Please see [Developers](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/README.md)
 
 ## Slack Channel
 

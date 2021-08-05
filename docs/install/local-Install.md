@@ -18,7 +18,7 @@ This is a guide that will show you how to quickly start standalone server.
 
 ## Download OpenMetadata Distribution
 
-First, Lets download the OpenMetadata Distribution from [Github Releases](https://github.com/StreamlineData/catalog/releases)
+First, Lets download the OpenMetadata Distribution from [Github Releases](https://github.com/open-metadata/OpenMetadata/releases)
 
 
 {% hint style="info" %}
@@ -41,7 +41,7 @@ Make sure you have the above installed and ready.
 {% tab title="Build from source " %}
 
 
-Follow these steps to checkout code from [Github](https://github.com/StreamlineData/catalog) and build OpenMetadata locally
+Follow these steps to checkout code from [Github](https://github.com/open-metadata/OpenMetadata) and build OpenMetadata locally
 
 {% hint style="info" %}
  **Prerequisites** 
@@ -51,16 +51,16 @@ Install [Apache Maven](https://maven.apache.org/install.html) 3.6 or higher
 
 ```bash
 # checkout OpenMetadata
-git clone https://github.com/StreamlineData/catalog
-cd catalog
+git clone https://github.com/open-metadata/OpenMetadata
+cd OpenMetadata
 
 # build OpenMetadata
 mvn install package -DskipTests
 
 # navigate to directory containing the setup scripts
 cd dist/target/
-unzip catalog-1.0.0-SNAPSHOT.zip
-cd catalog-1.0.0-SNAPSHOT
+unzip openmetadata-1.0.0-SNAPSHOT.zip
+cd openmetadata-1.0.0-SNAPSHOT
 ```
 {% endtab %}
 {% tab title="Download the release" %}
@@ -69,10 +69,10 @@ Once you have the tar file,
 
 ```bash
 # untar it
-tar -zxvf catalog-1.0.0-SNAPSHOT.tar.gz
+tar -zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
 
 # navigate to directory containing the launcher scripts
-cd catalog-1.0.0-SNAPSHOT
+cd openmetadata-1.0.0-SNAPSHOT
 ```
 {% endtab %}
 {% endtabs %}
@@ -99,9 +99,9 @@ cd catalog-1.0.0-SNAPSHOT
     
     ```bash
     mysql -u root -p
-	 create database catalog_db;
-	 CREATE USER 'catalog_user'@'localhost' IDENTIFIED BY 'catalog_password';
-	 GRANT ALL PRIVILEGES ON catalog_db.* TO 'catalog_user'@'localhost' WITH GRANT OPTION;
+	 create database openmetadata;
+	 CREATE USER 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password';
+	 GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%';
 	 commit;
 	```
 2. 	Run bootstrap scripts to initiate the database and tables
@@ -113,7 +113,7 @@ cd catalog-1.0.0-SNAPSHOT
 3. Start the OpenMetadata Server
 
    ```bash
-   ./bin/catalog.sh start
+   ./bin/openmetadata.sh start
    ```
 4. Start ElasticSearch in a docker
 

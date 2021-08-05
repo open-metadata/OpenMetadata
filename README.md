@@ -28,13 +28,13 @@ mysql -u username -p (Enter password when prompted)
 
 mysql> CREATE USER 'openmetadata_user'@'%' IDENTIFIED WITH mysql_native_password BY 'openmetadata_password';
 mysql> CREATE DATABASE openmetadata_db;
-mysql> `GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password'`;
+mysql> GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%';
 mysql> FLUSH PRIVILEGES;
 ```
 
 ### Build OpenMetdata project and run it
 Make sure mysql is running with credentials user 'openmetadata_user' with password 'openmetadata_password'.
-Connect to mysql following steps mentioned [here](#steps-to-connect-mysql).
+Connect to mysql following steps mentioned [here](#Set up mysql database used as OpenMetadata backend).
 
 ```shells
 mvn -DskipTests clean package

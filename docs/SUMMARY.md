@@ -58,11 +58,11 @@
   * [Google SSO](install/enable-security/google-sso/README.md)
     * [Create Server Credentials](install/enable-security/google-sso/google-server-creds.md)
     * [Create Service Account](install/enable-security/google-sso/create-ingestion-service-account.md)
-    * [Configure OpenMetadata Server](install/enable-security/google-sso/okta-catalog-config.md)
+    * [Configure OpenMetadata Server](install/enable-security/google-sso/google-catalog-config.md)
     * [Configure Ingestion](install/enable-security/google-sso/configure-security-ingestion.md)
   * [Okta SSO](install/enable-security/okta-sso/README.md)
     * [Create Server Credentials](install/enable-security/okta-sso/okta-server-creds.md)
-    * [Configure OpenMetadata Server](install/enable-security/okta-sso/google-catalog-config.md)
+    * [Configure OpenMetadata Server](install/enable-security/okta-sso/okta-catalog-config.md)
     * [Create Service Account](install/enable-security/okta-sso/create-ingestion-service-account.md)
     * [Configure Ingestion](install/enable-security/okta-sso/configure-security-ingestion.md)
 
