@@ -10,10 +10,10 @@ An Entity is a special type that has an identity and represents an object that i
 | :--- | :--- |
 | **id** | Mandatory attribute of type UUID that identifies the entity instance |
 | **name** | Name of the entity \(example database name\). For some entities, the name may uniquely identify an entity. |
-| **fullyQualifiedName** | Human-readable name that uniquely identifies an entity that is formed using all the names in the hierarchy above the given entity. Example -  Attributes of an entity may also have  to uniquely identify a field. For example, a column of a table has  attribute set to  |
+| **fullyQualifiedName** | Human-readable name that uniquely identifies an entity that is formed using all the names in the hierarchy above the given entity. Example -  Attributes of an entity may also have  to uniquely identify a field. For example, a column of a table has  attribute set to |
 | **displayName** | Optional name used for display purposes. For example, the name could be john.smith@domain.com and displayName could be John Smith. |
 | **description** | Description of the entity instance. Not all entities need a description. For example, a User entity might not need a description and just the name of the user might suffice. A  entity needs  to provide details of what is stored in the database when to use it and other information on how to use it. |
-| **Owner** | Optional attribute used to capture the ownership information. Not all entities have ownership information \(for example User, Team, and Organization). |
+| **Owner** | Optional attribute used to capture the ownership information. Not all entities have ownership information \(for example User, Team, and Organization\). |
 | **href** | An attribute generated on the fly as part of API response to provide the URL link to the entity returned. |
 
 ### **Relationships**
@@ -26,17 +26,11 @@ An Entity is a special type that has an identity and represents an object that i
 
 All relationships are captured using the EntityReference type.
 
-Following is an example of a JSON schema of the User entity with attributes id, displayName, and email. User entity has one-to-many relationships to another entity Team \(user is member of multiple teams\).: is a special shell builtin
-string: not found
+Following is an example of a JSON schema of the User entity with attributes id, displayName, and email. User entity has one-to-many relationships to another entity Team \(user is member of multiple teams\).: is a special shell builtin string: not found
 
 ## Metadata system entities
 
-Metadata system has the following core entities:
-1. **Data Entities** - These entities represent data, such as databases, tables, and topics, and assets created using data, such as Dashboards, Reports, Metrics, and ML Features. It also includes entities such as Pipelines that are used for creating data assets.
-2. **Services** - Services represent platforms and services used for storing and processing data. It includes Online Data Stores, Data Warehouses, ETL tools, Dashboard services, etc.
-3. **Users & Teams** - These entities represent users within an organization and teams that they are organized under.
-4. **Activities** - These entities are related to feeds, posts, and notifications for collaboration between users.
-5. **Glossary and Tags** - Entities for defining business glossary that includes hierarchical tags.
+Metadata system has the following core entities: 1. **Data Entities** - These entities represent data, such as databases, tables, and topics, and assets created using data, such as Dashboards, Reports, Metrics, and ML Features. It also includes entities such as Pipelines that are used for creating data assets. 2. **Services** - Services represent platforms and services used for storing and processing data. It includes Online Data Stores, Data Warehouses, ETL tools, Dashboard services, etc. 3. **Users & Teams** - These entities represent users within an organization and teams that they are organized under. 4. **Activities** - These entities are related to feeds, posts, and notifications for collaboration between users. 5. **Glossary and Tags** - Entities for defining business glossary that includes hierarchical tags.
 
 ## List of Schema Entities
 
@@ -63,3 +57,4 @@ Metadata system has the following core entities:
 {% page-ref page="team.md" %}
 
 {% page-ref page="user.md" %}
+

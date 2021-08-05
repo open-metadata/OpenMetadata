@@ -1,106 +1,96 @@
-# entityreference
+# Entity Reference Type
 
-```txt
+## entityreference
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json
 ```
 
 Entity reference that includes entity ID and entity type
 
-| Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                               |
-| :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [entityReference.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | Yes | Unknown status | No | Forbidden | Allowed | none | [entityReference.json](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json) |
 
-## Entity Reference Type
+### Entity Reference Type
 
-`object` ([Entity Reference](entityreference.md))
+`object` \([Entity Reference](entityreference.md)\)
 
-# Entity Reference Properties
+## Entity Reference Properties
 
-| Property                    | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                    |
-| :-------------------------- | :------- | :------- | :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [id](#id)                   | `string` | Required | cannot be null | [Basic type](../types/basic.md#basic-definitions-uuid)                          |
-| [type](#type)               | `string` | Required | cannot be null | [Entity Reference](#entityreference-properties-type "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/type")               |
-| [name](#name)               | `string` | Optional | cannot be null | [Entity Reference](#entityreference-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/name")               |
-| [description](#description) | `string` | Optional | cannot be null | [Entity Reference](#entityreference-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/description") |
-| [href](#href)               | `string` | Optional | cannot be null | [Entity Reference](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/href")                        |
+| Property | Type | Required | Nullable | Defined by |
+| :--- | :--- | :--- | :--- | :--- |
+| [id](entityreference.md#id) | `string` | Required | cannot be null | [Basic type](basic.md#basic-definitions-uuid) |
+| [type](entityreference.md#type) | `string` | Required | cannot be null | [Entity Reference](entityreference.md#entityreference-properties-type) |
+| [name](entityreference.md#name) | `string` | Optional | cannot be null | [Entity Reference](entityreference.md#entityreference-properties-name) |
+| [description](entityreference.md#description) | `string` | Optional | cannot be null | [Entity Reference](entityreference.md#entityreference-properties-description) |
+| [href](entityreference.md#href) | `string` | Optional | cannot be null | [Entity Reference](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/schemas/types/basic-definitions-href.md) |
 
-## id
+### id
 
 Unique id used to identify an entity
 
 `id`
 
-*   is required
+* is required
+* Type: `string`
+* cannot be null
+* defined in: [Basic type](basic.md#basic-definitions-uuid)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Basic type](../types/basic.md#basic-definitions-uuid)
-
-### id Type
+#### id Type
 
 `string`
 
-### id Constraints
+#### id Constraints
 
-**UUID**: the string must be a UUID, according to [RFC 4122](https://tools.ietf.org/html/rfc4122 "check the specification")
+**UUID**: the string must be a UUID, according to [RFC 4122](https://tools.ietf.org/html/rfc4122)
 
-## type
+### type
 
 Entity type/class name - Examples: database, table, metrics, redshift, mysql, bigquery, snowflake...
 
 `type`
 
-*   is required
+* is required
+* Type: `string`
+* cannot be null
+* defined in: [Entity Reference](entityreference.md#entityreference-properties-type)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Entity Reference](#entityreference-properties-type "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/type")
-
-### type Type
+#### type Type
 
 `string`
 
-## name
+### name
 
 Name of the entity instance
 
 `name`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Entity Reference](entityreference.md#entityreference-properties-name)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Entity Reference](#entityreference-properties-name "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/name")
-
-### name Type
+#### name Type
 
 `string`
 
-## description
+### description
 
 Optional description of entity
 
 `description`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Entity Reference](entityreference.md#entityreference-properties-description)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Entity Reference](#entityreference-properties-description "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/description")
-
-### description Type
+#### description Type
 
 `string`
 
-## href
+### href
 
 Link to the entity resource
 
@@ -108,106 +98,108 @@ Link to the entity resource
 
 `href`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Entity Reference](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/schemas/types/basic-definitions-href.md)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Entity Reference](basic-definitions-href.md "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/href")
-
-### href Type
+#### href Type
 
 `string`
 
-### href Constraints
+#### href Constraints
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-# Entity Reference Definitions
+## Entity Reference Definitions
 
-## Definitions group entityReferenceList
+### Definitions group entityReferenceList
 
 Reference this group by using
 
-```json
+```javascript
 {"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/definitions/entityReferenceList"}
 ```
 
 | Property | Type | Required | Nullable | Defined by |
-| :------- | :--- | :------- | :------- | :--------- |
-# entityreference-definitions-entityreferencelist
+| :--- | :--- | :--- | :--- | :--- |
 
-```txt
+
+## entityreference-definitions-entityreferencelist
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json#/properties/followers
 ```
 
 Followers of this table
 
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                   |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :--------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [table.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [table.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json) |
 
-## followers Type
+### followers Type
 
-`object[]` ([Entity Reference](entityreference.md))
-# entityreference-definitions
+`object[]` \([Entity Reference](entityreference.md)\)
 
-```txt
+## entityreference-definitions
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/definitions
 ```
 
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [entityReference.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json) |
 
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [entityReference.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json "open original schema") |
-
-## definitions Type
+### definitions Type
 
 unknown
-# entityreference-properties-description
 
-```txt
+## entityreference-properties-description
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/description
 ```
 
 Optional description of entity
 
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [entityReference.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [entityReference.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json) |
 
-## description Type
+### description Type
 
 `string`
-# entityreference-properties-name
 
-```txt
+## entityreference-properties-name
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/name
 ```
 
 Name of the entity instance
 
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [entityReference.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [entityReference.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json) |
 
-## name Type
+### name Type
 
 `string`
-# entityreference-properties-type
 
-```txt
+## entityreference-properties-type
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json#/properties/type
 ```
 
 Entity type/class name - Examples: database, table, metrics, redshift, mysql, bigquery, snowflake...
 
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :---------------------------------------------------------------------------------------- |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [entityReference.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [entityReference.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json) |
 
-## type Type
+### type Type
 
 `string`
+

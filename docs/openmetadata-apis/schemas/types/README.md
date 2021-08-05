@@ -12,8 +12,6 @@ JSON schema supports many native types - null, boolean, object, array, number an
 
 {% page-ref page="entityreference.md" %}
 
-{% page-ref page="entityusage.md" %}
-
 {% page-ref page="jdbcconnection.md" %}
 
 {% page-ref page="profile.md" %}
@@ -23,3 +21,4 @@ JSON schema supports many native types - null, boolean, object, array, number an
 {% page-ref page="taglabel.md" %}
 
 {% page-ref page="usagedetails.md" %}
+

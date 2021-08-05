@@ -1,0 +1,2 @@
+# Entity Usage Type
+
