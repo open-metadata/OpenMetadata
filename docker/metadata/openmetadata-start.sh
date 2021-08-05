@@ -20,10 +20,10 @@ cd /
 
 while ! curl -o - 172.16.239.10:3306; do sleep 1; done
 
-tar zxvf catalog-1.0.0-SNAPSHOT.tar.gz
-cp /catalog.yaml /catalog-1.0.0-SNAPSHOT/conf/
+tar zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
+cp /openmetadata.yaml /openmetadata-1.0.0-SNAPSHOT/conf/
 
-cd /catalog-1.0.0-SNAPSHOT
+cd /openmetadata-1.0.0-SNAPSHOT
 ./bootstrap/bootstrap_storage.sh migrate
 
-./bin/catalog-server-start.sh conf/catalog.yaml
+./bin/openmetadata-server-start.sh conf/openmetadata.yaml

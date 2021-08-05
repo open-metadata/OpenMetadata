@@ -91,10 +91,9 @@ server:
 # Logging settings.
 # https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
-  level: DEBUG
+  level: INFO
   loggers:
     org.openmetadata.catalog.common: DEBUG
-    org.openmetadata.catalog.security: DEBUG
     io.swagger: ERROR
   appenders:
     - type: file
@@ -110,44 +109,13 @@ database:
   # the name of the JDBC driver, mysql in our case
   driverClass: com.mysql.cj.jdbc.Driver
   # the username and password
-  user: catalog_user
-  password: catalog_password
-  # the JDBC URL; the database is called catalog_db
-  url: jdbc:mysql://localhost/catalog_db?useSSL=false&serverTimezone=UTC
+  user: openmetadata_user
+  password: openmetadata_password
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
 
 
-# Authorizer Configuration
-authorizerConfiguration:
-  className: "org.openmetadata.catalog.security.DefaultCatalogAuthorizer"
-  # JWT Filter
-  containerRequestFilter: "org.openmetadata.catalog.security.JwtFilter"
-  adminPrincipals:
-    - "suresh"
-  botPrincipals:
-    - "ingestion-bot"
-  prinicipalDomain: "getcollate.com"
-
-authenticationConfiguration:
-  provider: "google"
-  publicKey: "https://www.googleapis.com/oauth2/v3/certs"
-  authority: "https://accounts.google.com"
-  clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
-  callbackUrl: "http://localhost:8585/callback"
-  
 elasticsearch:
-  host: localhost
+  host: elasticsearch
   port: 9200
-
-health:
-  delayedShutdownHandlerEnabled: true
-  shutdownWaitPeriod: 1s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
-  healthChecks:
-    - name: UserDatabaseCheck
-      critical: true
-      schedule:
-        checkInterval: 2500ms
-        downtimeInterval: 10s
-        failureAttempts: 2
-        successAttempts: 1
 

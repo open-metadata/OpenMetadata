@@ -28,7 +28,7 @@ mkdir -p $LOG_DIR
 [ -z $MAX_WAIT_TIME ] && MAX_WAIT_TIME=120
 
 # OpenMetadata env script
-. $CATALOG_HOME/conf/catalog-env.sh
+. $CATALOG_HOME/conf/openmetadata-env.sh
 
 function catalogStart {
    catalogStatus -q
@@ -125,7 +125,7 @@ else
 fi
 
 # CATALOG env script
-. ${CATALOG_HOME}/conf/catalog-env.sh
+. ${CATALOG_HOME}/conf/openmetadata-env.sh
 
 PID=0
 
@@ -187,7 +187,7 @@ option="$1"
 shift
 case "${option}" in
   start)
-     conf="$CATALOG_HOME/conf/catalog.yaml"
+     conf="$CATALOG_HOME/conf/openmetadata.yaml"
      if [[ $# -eq 1 ]]; then conf="${1}"; fi
      catalogStart "${conf}"
      ;;

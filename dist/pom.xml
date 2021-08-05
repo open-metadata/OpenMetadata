@@ -46,7 +46,7 @@
   </dependencies>
 
   <properties>
-    <final.Name>catalog</final.Name>
+    <final.Name>openmetadata</final.Name>
   </properties>
 
   <build>
