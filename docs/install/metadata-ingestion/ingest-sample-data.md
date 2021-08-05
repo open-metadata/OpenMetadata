@@ -26,8 +26,8 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
-git clone https://github.com/StreamlineData/catalog
-cd catalog/ingestion
+git clone https://github.com/open-metadata/OpenMetadata.git
+cd OpenMetadata/ingestion
 ```
 {% endtab %}
 

@@ -40,14 +40,14 @@ metadata ingest -c ./pipelines/postgres.json
   "source": {
     "type": "postgres",
     "config": {
-      "username": "catalog_user",
-      "password": "catalog_password",
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
       "service_name": "local_postgres",
       "service_type": "POSTGRES",
       "table_pattern": {
-        "deny": ["pg_catalog.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
+        "deny": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
     }
   },
  ...

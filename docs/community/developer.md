@@ -120,9 +120,9 @@ Make sure you followed [Create a distribution](#building) steps to create binary
 
 1. unzip open-metadata-{project.verson}.zip
 2. cd open-metadata-{project.version}
-3. Edit conf/catalog.yaml and provide the database and credentials under the "database".
+3. Edit conf/openmetadata.yaml and provide the database and credentials under the "database".
 4. ./bootstrap/bootstrap-storage.sh migrate
-5. ./bin/catalog start
+5. ./bin/openmetadata.sh start
 9. You should be able to access OpenMetadata by visiting http://HOST:8585/
 
 <a name="run-intellij"></a>
