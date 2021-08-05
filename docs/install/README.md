@@ -16,7 +16,7 @@ mysql -u username -p (Enter password when prompted)
 
 mysql> CREATE USER 'openmetadata_user'@'%' IDENTIFIED WITH mysql_native_password BY 'openmetadata_password';
 mysql> CREATE DATABASE openmetadata_db;
-mysql> GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password';
+mysql> GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%';
 mysql> FLUSH PRIVILEGES;
 ```
 

@@ -100,8 +100,8 @@ cd openmetadata-1.0.0-SNAPSHOT
     ```bash
     mysql -u root -p
 	 create database openmetadata;
-	 CREATE USER 'openmetadata_user'@'localhost' IDENTIFIED BY 'openmetadata_password';
-	 GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
+	 CREATE USER 'openmetadata_user'@'%' IDENTIFIED BY 'openmetadata_password';
+	 GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%';
 	 commit;
 	```
 2. 	Run bootstrap scripts to initiate the database and tables
