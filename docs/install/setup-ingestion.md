@@ -18,7 +18,9 @@ Ingestion is a data ingestion library, which is inspired by [Apache Gobblin](htt
 
 ```text
 cd ingestion
-./install_dependencies.sh
+python3 -m venv env
+source env/bin/activate
+./ingestion_dependency.sh
 ```
 
 You only need to run above command once.
@@ -51,14 +53,14 @@ metadata ingest -c ./pipelines/redshift.json
 
 ```text
  source env/bin/activate
- metadata ingest -c ./pipelines/sample_table.json
+ metadata ingest -c ./pipelines/sample_tables.json
 ```
 
 #### Generate Sample Users
 
 ```text
  source env/bin/activate
- metadata ingest -c ./pipelines/sample_user_to_file.json
+ metadata ingest -c ./pipelines/sample_users.json
 ```
 
 #### Ingest MySQL data to Metadata APIs
