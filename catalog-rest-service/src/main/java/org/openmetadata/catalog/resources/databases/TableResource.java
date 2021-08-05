@@ -318,10 +318,11 @@ public class TableResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
-
+                                      String userId) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "followers");
     Status status = dao.addFollower(id, userId);
-    return Response.status(status).build();
+    Table table = dao.get(id, fields);
+    return Response.status(status).entity(table).build();
   }
 
   @PUT
@@ -335,42 +336,48 @@ public class TableResource {
                   @ApiResponse(responseCode = "400", description = "Date range can only include past 30 days starting" +
                           " today")
           })
-  public Response addJoins(@Context UriInfo uriInfo,
+  public Table addJoins(@Context UriInfo uriInfo,
                            @Context SecurityContext securityContext,
                            @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                            @PathParam("id") String id, TableJoins joins) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(FIELD_LIST, "joins");
     dao.addJoins(id, joins);
-    return Response.ok().build();
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
   }
 
   @PUT
   @Path("/{id}/sampleData")
   @Operation(summary = "Add sample data", tags = "tables",
           description = "Add sample data to the table." )
-  public Response addSampleData(@Context UriInfo uriInfo,
+  public Table addSampleData(@Context UriInfo uriInfo,
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                                @PathParam("id") String id, TableData tableData) throws IOException {
+                                @PathParam("id") String id, TableData tableData) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(FIELD_LIST, "sampleData");
     dao.addSampleData(id, tableData);
-    return Response.ok().build();
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "tables",
           description = "Remove the user identified `userId` as a follower of the table.")
-  public Response deleteFollower(@Context UriInfo uriInfo,
+  public Table deleteFollower(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Parameter(description = "Id of the table",
                                          schema = @Schema(type = "string"))
                                  @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
                                          schema = @Schema(type = "string"))
-                                 @PathParam("userId") String userId) {
+                                 @PathParam("userId") String userId) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
-    return Response.ok().build();
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
   }
 
   public static Table validateNewTable(Table table) {

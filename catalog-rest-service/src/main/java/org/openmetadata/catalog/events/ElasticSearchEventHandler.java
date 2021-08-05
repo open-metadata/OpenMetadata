@@ -27,7 +27,9 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.EntityReference;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +46,7 @@ import java.util.Set;
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
   private RestHighLevelClient client;
+  private TableRepository tableRepository;
   private final ActionListener<UpdateResponse> listener = new ActionListener<>() {
     @Override
     public void onResponse(UpdateResponse updateResponse) {
@@ -68,19 +71,23 @@ public class ElasticSearchEventHandler implements EventHandler {
     try {
       int responseCode = responseContext.getStatus();
       String method = requestContext.getMethod();
+      LOG.info("request Context "+ requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         if (entity.getClass().toString().toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
-          LOG.info("updating elastic search");
           Table instance = (Table) entity;
           Map<String, Object> jsonMap = new HashMap<>();
           jsonMap.put("description", instance.getDescription());
           Set<String> tags = new HashSet<>();
           List<String> columnDescriptions = new ArrayList<>();
-          instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-          for(Column column: instance.getColumns()) {
-            column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-            columnDescriptions.add(column.getDescription());
+          if (instance.getTags() != null) {
+            instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+          }
+          if (instance.getColumns() != null) {
+            for (Column column : instance.getColumns()) {
+              column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+              columnDescriptions.add(column.getDescription());
+            }
           }
           if (!tags.isEmpty()) {
             List<String> tagsList = new ArrayList<>();
@@ -90,6 +97,17 @@ public class ElasticSearchEventHandler implements EventHandler {
           if (!columnDescriptions.isEmpty()) {
             jsonMap.put("column_descriptions", columnDescriptions);
           }
+          if(instance.getOwner() != null) {
+            jsonMap.put("owner", instance.getOwner().getId().toString());
+          }
+          if (instance.getFollowers() != null) {
+            List<String> followers = new ArrayList<>();
+            for(EntityReference follower: instance.getFollowers()) {
+              followers.add(follower.getId().toString());
+            }
+            jsonMap.put("followers", followers);
+          }
+          jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
           UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
           updateRequest.doc(jsonMap);
           client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
