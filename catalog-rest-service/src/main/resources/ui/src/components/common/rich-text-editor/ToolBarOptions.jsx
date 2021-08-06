@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { EditorState, Modifier } from 'draft-js';
+import { EditorState, Modifier, SelectionState } from 'draft-js';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import PopOver from '../popover/PopOver';
@@ -33,6 +33,21 @@ const getSelectedText = (editorState) => {
   return selectedText;
 };
 
+const updateEditorSelection = (eState, offsetDiff) => {
+  const selection = eState.getSelection();
+  const newFocusOffset = selection.focusOffset + offsetDiff;
+
+  const newSelection = new SelectionState({
+    anchorKey: selection.anchorKey,
+    anchorOffset: newFocusOffset,
+    focusKey: selection.focusKey,
+    focusOffset: newFocusOffset,
+  });
+  const newEditorState = EditorState.forceSelection(eState, newSelection);
+
+  return EditorState.push(newEditorState, newEditorState.getCurrentContent());
+};
+
 export class Bold extends Component {
   static propTypes = {
     onChange: PropTypes.func,
@@ -42,7 +57,6 @@ export class Bold extends Component {
   makeBold = () => {
     const { editorState, onChange } = this.props;
     const selectedText = getSelectedText(editorState);
-    // const selection = editorState.getSelection();
 
     const contentState = Modifier.replaceText(
       editorState.getCurrentContent(),
@@ -55,19 +69,13 @@ export class Bold extends Component {
       editorState.getCurrentInlineStyle()
     );
 
-    // const newSelection = new SelectionState({
-    //   anchorOffset: selection.focusOffset,
-    //   focusKey: contentState.getFirstBlock().getKey(),
-    //   focusOffset: selectedText
-    //     ? selection.anchorOffset + selectedText.length
-    //     : selection.focusOffset,
-    // });
-    // const newEditorState = EditorState.forceSelection(
-    //   editorState,
-    //   newSelection
-    // );
+    const eState = EditorState.push(
+      editorState,
+      contentState,
+      'insert-characters'
+    );
 
-    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+    onChange(updateEditorSelection(eState, -2));
   };
 
   render() {
@@ -106,7 +114,12 @@ export class Link extends Component {
       }`,
       editorState.getCurrentInlineStyle()
     );
-    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+    const eState = EditorState.push(
+      editorState,
+      contentState,
+      'insert-characters'
+    );
+    onChange(updateEditorSelection(eState, -6));
   };
 
   render() {
@@ -181,12 +194,17 @@ export class Heading extends Component {
       }`,
       editorState.getCurrentInlineStyle()
     );
-    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+    const eState = EditorState.push(
+      editorState,
+      contentState,
+      'insert-characters'
+    );
+    onChange(updateEditorSelection(eState, 0));
   };
 
   render() {
     return (
-      <div className="rdw-option-wrapper " onClick={this.makeHeading}>
+      <div className="rdw-option-wrapper" onClick={this.makeHeading}>
         <PopOver
           position="bottom"
           size="small"
@@ -198,3 +216,74 @@ export class Heading extends Component {
     );
   }
 }
+export class Mention extends Component {
+  static propTypes = {
+    onChange: PropTypes.func,
+    editorState: PropTypes.object,
+  };
+
+  makeMention = () => {
+    const { editorState, onChange } = this.props;
+    const selectedText = getSelectedText(editorState);
+    const selection = editorState.getSelection();
+    const contentState = Modifier.replaceText(
+      editorState.getCurrentContent(),
+      editorState.getSelection(),
+      `${
+        selectedText.length > 0
+          ? `@${selectedText}`
+          : `${selection.anchorOffset > 0 ? ` @` : '@'}`
+      }`,
+      editorState.getCurrentInlineStyle()
+    );
+    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+  };
+
+  render() {
+    return (
+      <div className="rdw-option-wrapper " onClick={this.makeMention}>
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Mention user or team"
+          trigger="mouseenter">
+          <p>@</p>
+        </PopOver>
+      </div>
+    );
+  }
+}
+
+// export class ULLIST extends Component {
+//   static propTypes = {
+//     onChange: PropTypes.func,
+//     editorState: PropTypes.object,
+//   };
+
+//   makeLIST = () => {
+//     const { editorState, onChange } = this.props;
+//     // const selectedText = getSelectedText(editorState);
+
+//     const contentState = Modifier.replaceText(
+//       editorState.getCurrentContent(),
+//       editorState.getSelection(),
+//       `\n -`,
+//       editorState.getCurrentInlineStyle()
+//     );
+//     onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+//   };
+
+//   render() {
+//     return (
+//       <div className="rdw-option-wrapper " onClick={this.makeLIST}>
+//         <PopOver
+//           position="bottom"
+//           size="small"
+//           title="Add unordered list"
+//           trigger="mouseenter">
+//           <i className="fas fa-list-ul" />
+//         </PopOver>
+//       </div>
+//     );
+//   }
+// }
