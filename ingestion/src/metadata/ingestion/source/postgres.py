@@ -17,7 +17,7 @@
 import uuid
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
-from metadata.generated.schema.type import entityReference
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -105,8 +105,8 @@ class PostgresSource(Source):
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
         self.service = get_service_or_create(config, metadata_config)
-        self.table_pattern = IncludeFilterPattern
-        self.pattern = config.table_pattern
+        self.include_pattern = IncludeFilterPattern
+        self.pattern = config.include_pattern
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -153,7 +153,7 @@ class PostgresSource(Source):
                     col_type = 'CHAR'
                 else:
                     col_type = row['col_type'].upper()
-                if not self.table_pattern.included(self.pattern, last_row[1]):
+                if not self.include_pattern.included(self.pattern, last_row[1]):
                     self.status.report_dropped(last_row['name'])
                     continue
                 columns.append(Column(name=row['col_name'], description=row['col_description'],
@@ -168,7 +168,7 @@ class PostgresSource(Source):
             dm = DatabaseEntity(id=uuid.uuid4(),
                                 name=row['schema'],
                                 description=row['description'] if row['description'] is not None else ' ',
-                                service=entityReference.EntityReference(id=self.service.id, type=self.SERVICE_TYPE))
+                                service=EntityReference(id=self.service.id, type=self.SERVICE_TYPE))
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=dm)
             self.status.records_produced(dm)
             yield table_and_db

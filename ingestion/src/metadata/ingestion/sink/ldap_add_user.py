@@ -16,7 +16,6 @@
 import logging
 import requests
 
-from metadata.ingestion.models.json_serializable import JsonSerializable
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -30,7 +29,7 @@ class LDAPSourceConfig(ConfigModel):
     api_end_point: str
 
 
-class LdapUserRestSink(Sink, JsonSerializable):
+class LdapUserRestSink(Sink):
     config: LDAPSourceConfig
     status: SinkStatus
 

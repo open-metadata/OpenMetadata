@@ -8,19 +8,21 @@
       "database": "pagila",
       "service_name": "local_postgres",
       "service_type": "Postgres",
-      "table_pattern": {
-        "filter": ["pg_catalog.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
+      "include_pattern": {
+        "filter": [
+          "pg_catalog.*[a-zA-Z0-9]*",
+          "information_schema.*[a-zA-Z0-9]*"
+        ]
+      }
     }
   },
   "processor": {
     "type": "pii-tags",
-    "config": {
-    }
+    "config": {}
   },
   "sink": {
     "type": "metadata-rest-tables",
-    "config": {
-        }
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",

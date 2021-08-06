@@ -187,7 +187,7 @@ class RedshiftSQLSource(Source):
                 yield table_and_db
             except ValidationError as err:
                 logger.info("Dropped Table {} due to {}".format(row['name'], err))
-                self.report.report_dropped(row['name'], err)
+                self.report.report_dropped(row['name'])
                 continue
 
     def get_report(self):

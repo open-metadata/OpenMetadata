@@ -21,7 +21,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field, constr
-from type import basic, jdbcConnection, schedule
+from metadata.generated.schema.type import basic, jdbcConnection, schedule
 
 
 class DatabaseServiceType(Enum):

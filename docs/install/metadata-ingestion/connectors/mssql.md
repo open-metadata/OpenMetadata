@@ -48,7 +48,7 @@ metadata ingest -c ./pipelines/mssql.json
       "database":"catalog_test",
       "username": "sa",
       "password": "test!Password",
-      "table_pattern": {
+      "include_pattern": {
         "allow": ["catalog_test.*"]
       }
     }

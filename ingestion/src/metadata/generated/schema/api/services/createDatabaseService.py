@@ -20,8 +20,8 @@
 from __future__ import annotations
 from typing import Optional
 from pydantic import BaseModel, Field, constr
-from entity.services import databaseService
-from type import jdbcConnection, schedule
+from metadata.generated.schema.entity.services import databaseService
+from metadata.generated.schema.type import jdbcConnection, schedule
 
 
 class CreateDatabaseServiceEntityRequest(BaseModel):

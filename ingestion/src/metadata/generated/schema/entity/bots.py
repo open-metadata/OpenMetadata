@@ -20,7 +20,7 @@
 from __future__ import annotations
 from pydantic import BaseModel, Field, constr
 from typing import Optional
-from type import basic
+from metadata.generated.schema.type import basic
 
 
 class BotEntity(BaseModel):
