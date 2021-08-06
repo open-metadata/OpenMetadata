@@ -35,7 +35,6 @@ import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;

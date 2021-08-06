@@ -40,8 +40,8 @@ metadata ingest -c ./pipelines/mysql.json
   "source": {
     "type": "mysql",
     "config": {
-      "username": "catalog_user",
-      "password": "catalog_password",
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
       "service_name": "local_mysql",
       "table_pattern": {
         "deny": ["mysql.*", "information_schema.*"]

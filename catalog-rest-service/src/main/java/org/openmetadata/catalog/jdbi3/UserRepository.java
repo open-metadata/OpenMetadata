@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
-import javax.json.JsonStructure;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -50,8 +49,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.jdbi3.Relationship.*;
-
+import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
+import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
+import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
 public abstract class UserRepository {
   public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
@@ -167,7 +167,7 @@ public abstract class UserRepository {
   @Transaction
   public User patch(String id, JsonPatch patch) throws IOException {
     User original = setFields(validateUser(id), USER_PATCH_FIELDS); // Query 1 - find user by Id
-    JsonStructure targetJson = JsonUtils.getJsonStructure(original);
+    JsonUtils.getJsonStructure(original);
     User updated = JsonUtils.applyPatch(original, patch, User.class);
     patch(original, updated);
     return updated;
@@ -254,7 +254,7 @@ public abstract class UserRepository {
     List<String> teamIds = relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<Team> teams = new ArrayList<>();
     for (String teamId : teamIds) {
-      LOG.info("Adding team {}", teamId);
+      LOG.debug("Adding team {}", teamId);
       String json = teamDAO().findById(teamId);
       Team team = JsonUtils.readValue(json, Team.class);
       if (team != null) {

@@ -21,9 +21,9 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: catalog_user
-      MYSQL_PASSWORD: catalog_password
-      MYSQL_DATABASE: catalog_db
+      MYSQL_USER: openmetadata_user
+      MYSQL_PASSWORD: openmetadata_password
+      MYSQL_DATABASE: openmetadata_db
     expose:
       - 3306
     networks:
@@ -82,8 +82,8 @@ services:
     restart: always
     environment:
       POSTGRES_DB: pagila
-      POSTGRES_USER: catalog_user
-      POSTGRES_PASSWORD: catalog_password
+      POSTGRES_USER: openmetadata_user
+      POSTGRES_PASSWORD: openmetadata_password
     ports:
       - 5433:5432
     networks:

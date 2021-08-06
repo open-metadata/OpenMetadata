@@ -4,7 +4,7 @@ description: This guide will help you setup the Ingestion framework and connecto
 
 # Setup Ingestion
 
-Ingestion is a data ingestion library, which is inspired by [Apache Gobblin](https://gobblin.apache.org/). It could be used in an orchestration framework\(e.g. Apache Airflow\) to build data for Catalog.
+Ingestion is a data ingestion library, which is inspired by [Apache Gobblin](https://gobblin.apache.org/). It could be used in an orchestration framework\(e.g. Apache Airflow\) to build data for OpenMetadata.
 
 {% hint style="info" %}
 **Prerequisites**
@@ -95,7 +95,7 @@ metadata ingest -c ./pipelines/redshift.json
 
 ### Run Ingestion docker
 
-The Catalog should be up and running before you run the docker on the system.
+The OpenMetadata should be up and running before you run the docker on the system.
 
 ```text
 docker build -t ingestion .

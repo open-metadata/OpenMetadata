@@ -14,16 +14,17 @@
 #  limitations under the License.
 
 swagger:
-  resourcePackage: org.openmetadata.catalog.webservice.resources
+  resourcePackage: org.openmetadata.catalog.resources
+
 
 server:
   rootPath: '/api/*'
   applicationConnectors:
     - type: http
-      port: 0
+      port: 8585
   adminConnectors:
     - type: http
-      port: 0
+      port: 8586
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it 
@@ -88,34 +89,33 @@ server:
   #    endpointIdentificationAlgorithm: (none)
 
 # Logging settings.
+# https://logback.qos.ch/manual/layouts.html#conversionWord
 logging:
   level: INFO
+  loggers:
+    org.openmetadata.catalog.common: DEBUG
+    io.swagger: ERROR
   appenders:
-    - type: console
     - type: file
-      currentLogFilename: './logs/catalog.log'
-      archivedLogFilenamePattern: './logs/catalog-%d-%i.log.gz'
-      archive: true
+      threshold: TRACE
+      logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
+      currentLogFilename: ./logs/catalog.log
+      archivedLogFilenamePattern: ./logs/catalog-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
-      maxFileSize: '1MiB'
+      timeZone: UTC
+      maxFileSize: 50MB
 
 database:
-  # the name of the JDBC driver, h2 is used for testing
+  # the name of the JDBC driver, mysql in our case
   driverClass: com.mysql.cj.jdbc.Driver
   # the username and password
-  user: test
-  password:
-  # the JDBC URL; the database is called washvalet
-  url: jdbc:mysql://localhost:3307/catalog_test_db?useSSL=false&serverTimezone=UTC
+  user: openmetadata_user
+  password: openmetadata_password
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
 
 elasticsearch:
-  host: localhost
-  port: 0
+  host: elasticsearch
+  port: 9200
 
-health:
-  delayedShutdownHandlerEnabled: true
-  shutdownWaitPeriod: 5s
-  healthCheckUrlPaths: ["/api/v1/health-check"]
-  healthChecks:
-    - name: UserDatabaseCheck
-      critical: true

@@ -35,11 +35,11 @@ dist/target/open-metadata-<version>.zip
 
 1. Add new Run/Debug configuration like below screenshot.
 
-   ![Intellj Run Configuration](https://github.com/StreamlineData/catalog/raw/master/docs/install/images/ingestion-bot-service-account.png)
+   ![Intellj Run Configuration](https://github.com/open-metadata/OpenMetadata/blob/main/docs/install/images/ingestion-bot-service-account.png)
 
 ## Coding Style
 
-1. [Refer to coding guidelines](https://github.com/StreamlineData/catalog/tree/b882d5238a1e21ebc73edb1693a59296f4d38e24/docs/open-source-community/open-source-community/coding-style.md)
+1. [Refer to coding guidelines](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/coding-style.md)
 2. Configure Intellij to disable the \[wild-card imports\]
 
    \([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html\#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports)\)

@@ -62,5 +62,5 @@ metadata ingest -c ./pipelines/mssql.json
 3. **service\_name** - Service Name for this mssql cluster. If you added mssql cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **host\_port** - Hostname and Port number where the service is being initialised.
 5. **table\_pattern** - It contains allow, deny options to choose which pattern of datasets you want to ingest into OpenMetadata.
-6. **database** - _\*\*_Database name from where data is to be fetched from.
+6. **database** - \_\*\*\_Database name from where data is to be fetched from.
 

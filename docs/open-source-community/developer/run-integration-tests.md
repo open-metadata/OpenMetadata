@@ -1,7 +1,7 @@
 # Run Integration Tests
 
 {% hint style="info" %}
-Make sure catalog is up and running
+Make sure openmetadata is up and running
 {% endhint %}
 
 ## Run MySQL test

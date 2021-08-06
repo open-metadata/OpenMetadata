@@ -29,7 +29,7 @@ import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;
-  private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "teams");
+  private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "profile");
 
   public CatalogHealthCheck(CatalogApplicationConfig config, DBI jdbi) {
     super();

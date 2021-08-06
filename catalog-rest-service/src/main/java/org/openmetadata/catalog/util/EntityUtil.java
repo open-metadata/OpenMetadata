@@ -265,6 +265,33 @@ public final class EntityUtil {
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
 
+  public static EntityReference getEntityReference(Object entity, Class<?> clazz) throws IOException {
+    if (clazz.toString().toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
+      Table instance = (Table) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.DATABASE.toLowerCase())) {
+      Database instance = (Database) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.METRICS.toLowerCase())) {
+      Metrics instance = (Metrics) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.DATABASE_SERVICE.toLowerCase())) {
+      DatabaseService instance = (DatabaseService) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.REPORT.toLowerCase())) {
+      Report instance = (Report) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.TEAM.toLowerCase())) {
+      Team instance = (Team) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.USER.toLowerCase())) {
+      User instance = (User) entity;
+      return getEntityReference(instance);
+    }
+    throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
+            String.format("Failed to find entity class {}", clazz.toString())));
+  }
+
   public static EntityReference getEntityReference(DatabaseService service) {
     return new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.DATABASE_SERVICE);

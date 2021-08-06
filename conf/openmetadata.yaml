@@ -109,13 +109,25 @@ database:
   # the name of the JDBC driver, mysql in our case
   driverClass: com.mysql.cj.jdbc.Driver
   # the username and password
-  user: catalog_user
-  password: catalog_password
-  # the JDBC URL; the database is called catalog_db
-  url: jdbc:mysql://localhost/catalog_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+  user: openmetadata_user
+  password: openmetadata_password
+  # the JDBC URL; the database is called openmetadata_db
+  url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 
 
 elasticsearch:
-  host: elasticsearch
+  host: localhost
   port: 9200
 
+health:
+  delayedShutdownHandlerEnabled: true
+  shutdownWaitPeriod: 1s
+  healthCheckUrlPaths: ["/api/v1/health-check"]
+  healthChecks:
+    - name: UserDatabaseCheck
+      critical: true
+      schedule:
+        checkInterval: 2500ms
+        downtimeInterval: 10s
+        failureAttempts: 2
+        successAttempts: 1
