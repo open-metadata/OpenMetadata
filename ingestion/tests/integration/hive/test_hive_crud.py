@@ -96,7 +96,7 @@ def hive_service(docker_ip, docker_services):
     return inspector
 
 
-def test_check_tables(hive_service):
+def test_check_schema(hive_service):
     inspector = hive_service
     schemas = []
     for schema in inspector.get_schema_names():
@@ -123,7 +123,7 @@ def test_read_tables(hive_service):
                 assert 0
 
 
-def test_check_tables():
+def test_check_table():
     client = REST("http://localhost:8585/api", 'test', 'test')
     databases = client.list_databases()
     if len(databases) > 0:

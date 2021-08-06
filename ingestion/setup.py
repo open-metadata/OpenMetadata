@@ -24,7 +24,7 @@ def get_version():
     changelog = os.path.join(root, "CHANGELOG")
     with open(changelog) as f:
         return f.readline().strip()
-p
+
 
 def get_long_description():
     root = os.path.dirname(__file__)

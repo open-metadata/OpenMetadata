@@ -18,7 +18,7 @@ import uuid
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.common import EntityReference
-from metadata.ingestion.api.common import AllowDenyPattern
+from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 import pymysql  # noqa: F401
@@ -105,7 +105,7 @@ class PostgresSource(Source):
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
         self.service = get_service_or_create(config, metadata_config)
-        self.table_pattern = AllowDenyPattern
+        self.table_pattern = IncludeFilterPattern
         self.pattern = config.table_pattern
 
     @classmethod
@@ -132,7 +132,6 @@ class PostgresSource(Source):
                 :return:
                 """
         counter = 0
-        # self.table_pattern: AllowDenyPattern = AllowDenyPattern.allowed(config.table_pattern, '')
         for key, group in groupby(self._get_raw_extract_iter(), get_table_key):
             columns = []
             for row in group:
@@ -154,7 +153,7 @@ class PostgresSource(Source):
                     col_type = 'CHAR'
                 else:
                     col_type = row['col_type'].upper()
-                if not self.table_pattern.allowed(self.pattern, last_row[1]):
+                if not self.table_pattern.included(self.pattern, last_row[1]):
                     self.status.report_dropped(last_row['name'])
                     continue
                 columns.append(Column(name=row['col_name'], description=row['col_description'],
