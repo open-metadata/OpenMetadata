@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.teams;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -245,7 +261,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
 
       // We have now reached the last page - test backward scroll till the beginning
       pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size() ;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
       do {
         LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
         forwardPage = listTeams(null, limit, before, null, adminAuthHeaders());
@@ -402,7 +418,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
 //    // User patch to add team to user relationship to an invalid user
 //    List<UUID> users = Collections.singletonList(UUID.randomUUID() /* invalid userId */);
 //    UpdateTeam update = new UpdateTeam().withUsers(users);
-//    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> updateTeam(team.getId(), update));
+//    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+//    updateTeam(team.getId(), update));
 //    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
 //  }
 
@@ -499,7 +516,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
           throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch, Team.class, authHeaders);
+    return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch,
+            Team.class, authHeaders);
   }
   private Team patchTeam(String originalJson, Team updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {

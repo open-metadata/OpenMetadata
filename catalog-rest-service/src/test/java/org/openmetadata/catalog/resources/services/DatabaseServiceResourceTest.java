@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.services;
 
 import org.apache.http.client.HttpResponseException;
@@ -76,7 +92,8 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createAndCheckService(create(test, 1).withDescription(null), authHeaders));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN,
+            "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
@@ -104,17 +121,20 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1Y"));
     exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
+            "Ingestion repeatFrequency can only contain Days, Hours, " +
+                    "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("P1M"));
     exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
+            "Ingestion repeatFrequency can only contain Days, Hours, " +
+                    "and Minutes - example P{d}DT{h}H{m}M");
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1S"));
     exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST,
-            "Ingestion repeatFrequency can only contain Days, Hours, and Minutes - example P{d}DT{h}H{m}M");
+            "Ingestion repeatFrequency can only contain Days, Hours, " +
+                    "and Minutes - example P{d}DT{h}H{m}M");
   }
 
   @Test
@@ -143,7 +163,8 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT59M"));  // Repeat every 50 minutes 59 seconds
     exception = assertThrows(HttpResponseException.class, () -> createService(create, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    TestUtils.assertResponse(exception, BAD_REQUEST, "Ingestion repeatFrequency is too short and must " +
+            "be more than 60 minutes");
   }
 
   @Test
@@ -152,12 +173,14 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> updateDatabaseService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("DatabaseService", TestUtils.NON_EXISTENT_ENTITY));
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("DatabaseService",
+            TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws HttpResponseException {
-    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null), adminAuthHeaders());
+    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
+            adminAuthHeaders());
     String id = dbService.getId().toString();
     String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
 
@@ -187,20 +210,22 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} " +
+            "is not admin");
   }
 
   @Test
   public void get_nonExistentTeam_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
+            TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void get_nonExistentTeamByName_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> getServiceByName("invalidName",null, adminAuthHeaders()));
+            -> getServiceByName("invalidName", null, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
             "invalidName"));
   }
@@ -208,15 +233,18 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   public static DatabaseService createAndCheckService(CreateDatabaseService create,
                                                       Map<String, String> authHeaders) throws HttpResponseException {
     DatabaseService service = createService(create, authHeaders);
-    validateService(service, create.getName(), create.getDescription(), create.getJdbc(), create.getIngestionSchedule());
+    validateService(service, create.getName(), create.getDescription(), create.getJdbc(),
+            create.getIngestionSchedule());
 
     // GET the newly created service and validate
     DatabaseService getService = getService(service.getId(), authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
+            create.getIngestionSchedule());
 
     // GET the newly created service by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
+            create.getIngestionSchedule());
     return service;
   }
 
@@ -246,13 +274,15 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     return getService(id, null, authHeaders);
   }
 
-  public static DatabaseService getService(UUID id, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static DatabaseService getService(UUID id, String fields, Map<String, String> authHeaders)
+          throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("services/databaseServices/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, DatabaseService.class, authHeaders);
   }
 
-  public static DatabaseService getServiceByName(String name, String fields, Map<String, String> authHeaders) throws HttpResponseException {
+  public static DatabaseService getServiceByName(String name, String fields, Map<String, String> authHeaders)
+          throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("services/databaseServices/name/" + name);
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, DatabaseService.class, authHeaders);
@@ -278,15 +308,18 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createService(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteService(databaseService.getId(), databaseService.getName(), authHeaders("test@open-metadata.org")));
-    TestUtils.assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+            deleteService(databaseService.getId(), databaseService.getName(),
+                    authHeaders("test@open-metadata.org")));
+    TestUtils.assertResponse(exception, FORBIDDEN,
+            "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void delete_notExistentDatabaseService() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+    TestUtils.assertResponse(exception, NOT_FOUND,
+            CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private void deleteService(UUID id, String name, Map<String, String> authHeaders) throws HttpResponseException {
@@ -298,13 +331,15 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
     // Ensure deleted service does not exist when getting by name
     exception = assertThrows(HttpResponseException.class, () -> getServiceByName(name, null, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, name));
+    TestUtils.assertResponse(exception, NOT_FOUND,
+            CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, name));
   }
 
   public static CreateDatabaseService create(TestInfo test) {
     String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
     return new CreateDatabaseService().withName(getName(test)).withServiceType(DatabaseServiceType.Snowflake)
-            .withJdbc(TestUtils.JDBC_INFO).withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
+            .withJdbc(TestUtils.JDBC_INFO)
+            .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
   }
 
   private static CreateDatabaseService create(TestInfo test, int index) {
@@ -330,7 +365,8 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   public static DatabaseService updateDatabaseService(String id, UpdateDatabaseService updated,
-                                                      Status status, Map<String, String> authHeaders) throws HttpResponseException {
+                                                      Status status, Map<String, String> authHeaders)
+          throws HttpResponseException {
     return TestUtils.put(CatalogApplicationTest.getResource("services/databaseServices/" + id), updated,
             DatabaseService.class, status, authHeaders);
   }

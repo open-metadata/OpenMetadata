@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.util;
 
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
@@ -28,7 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class TestUtils {
+public final class TestUtils {
   // Entity name length allowed is 64 characters. This is a 65 char length invalid entity name
   public static final String LONG_ENTITY_NAME = "012345678901234567890123456789012345678901234567890123456789012345";
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
@@ -40,6 +56,9 @@ public class TestUtils {
       JDBC_INFO = null;
       e.printStackTrace();
     }
+  }
+
+  private TestUtils() {
   }
 
   public static Builder addHeaders(WebTarget target, Map<String, String> headers) {
@@ -118,13 +137,16 @@ public class TestUtils {
 
   public static <K> void put(WebTarget target, K request, Status expectedStatus,  Map<String, String> headers)
           throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request,
+            MediaType.APPLICATION_JSON));
     readResponse(response, expectedStatus.getStatusCode());
   }
 
-  public static <T, K> T put(WebTarget target, K request, Class<T> clz, Status expectedStatus, Map<String, String> headers)
+  public static <T, K> T put(WebTarget target, K request, Class<T> clz, Status expectedStatus,
+                             Map<String, String> headers)
           throws HttpResponseException {
-    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request, MediaType.APPLICATION_JSON));
+    Response response = addHeaders(target, headers).method("PUT", Entity.entity(request,
+            MediaType.APPLICATION_JSON));
     return readResponse(response, clz, expectedStatus.getStatusCode());
   }
 

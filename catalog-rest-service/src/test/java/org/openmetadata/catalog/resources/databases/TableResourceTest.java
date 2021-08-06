@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.databases;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -431,7 +447,8 @@ public class TableResourceTest extends CatalogApplicationTest {
       validateColumnJoins(expectedJoins3, table3.getJoins());
 
       // Report again for the previous day and make sure aggregate counts are correct
-      table1Joins = new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-1)).withColumnJoins(reportedJoins);
+      table1Joins = new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-1))
+              .withColumnJoins(reportedJoins);
       putJoins(table1.getId(), table1Joins, adminAuthHeaders());
       table1 = getTable(table1.getId(), "joins", adminAuthHeaders());
     }
@@ -542,7 +559,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     tableData.withColumns(columns).withRows(rows);
     exception = assertThrows(HttpResponseException.class, () ->
             putSampleData(table.getId(), tableData, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row has 4 sample values");
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row " +
+            "has 4 sample values");
 
     // Send sample data that has less samples than the number of columns
     columns = Arrays.asList("c1", "c2", "c3");  // Invalid column name
@@ -550,7 +568,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     tableData.withColumns(columns).withRows(rows);
     exception = assertThrows(HttpResponseException.class, () ->
             putSampleData(table.getId(), tableData, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row has 2 sample values");
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Number of columns is 3 but row h" +
+            "as 2 sample values");
   }
 
   @Test
@@ -613,7 +632,7 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // GET .../tables?fields=usageSummary,owner,service
     fields = "usageSummary,owner,database";
-    tableList = listTables( fields, null, adminAuthHeaders());
+    tableList = listTables(fields, null, adminAuthHeaders());
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields);
     for (Table table : tableList.getData()) {
@@ -668,7 +687,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     }
 
     // List all tables and use it for checking pagination
-    TableList allTables = listTables(null, null, 1000000, null, null, adminAuthHeaders());
+    TableList allTables = listTables(null, null, 1000000, null, null,
+            adminAuthHeaders());
     int totalRecords = allTables.getData().size();
     printTables(allTables);
 
@@ -703,7 +723,7 @@ public class TableResourceTest extends CatalogApplicationTest {
 
       // We have now reached the last page - test backward scroll till the beginning
       pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size() ;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
       do {
         LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
         forwardPage = listTables(null, null, limit, before, null, adminAuthHeaders());
@@ -763,12 +783,13 @@ public class TableResourceTest extends CatalogApplicationTest {
     tableConstraints = List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE)
             .withColumns(List.of(COLUMNS.get(1).getName())));
     tableTags = singletonList(USER_BANK_ACCOUNT_TAG_LABEL);
-    table = patchTableAttributesAndCheck(table, "description1", USER_OWNER1, TableType.External, tableConstraints,
-            tableTags, adminAuthHeaders());
+    table = patchTableAttributesAndCheck(table, "description1", USER_OWNER1, TableType.External,
+            tableConstraints, tableTags, adminAuthHeaders());
     table.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Remove description, tier, owner, tableType, tableConstraints
-    patchTableAttributesAndCheck(table, null, null, null, null, null, adminAuthHeaders());
+    patchTableAttributesAndCheck(table, null, null, null, null, null,
+            adminAuthHeaders());
   }
 
   @Test
@@ -866,7 +887,8 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Table updatedTable = patchTable(tableJson, table, authHeaders);
-    validateTable(updatedTable, table.getDescription(), owner, null, tableType, tableConstraints, tags);
+    validateTable(updatedTable, table.getDescription(), owner, null, tableType,
+            tableConstraints, tags);
 
     // GET the table and Validate information returned
     Table getTable = getTable(table.getId(), "owner,tableConstraints,tags", authHeaders);
@@ -904,10 +926,14 @@ public class TableResourceTest extends CatalogApplicationTest {
   void assertFields(Table table, String fieldsParam) {
     Fields fields = new Fields(TableResource.FIELD_LIST, fieldsParam);
 
-    if (fields.contains("usageSummary")) {assertNotNull(table.getUsageSummary());} else {
+    if (fields.contains("usageSummary")) {
+      assertNotNull(table.getUsageSummary());
+    } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains("owner")) {assertNotNull(table.getOwner());} else {
+    if (fields.contains("owner")) {
+      assertNotNull(table.getOwner());
+    } else {
       assertNull(table.getOwner());
     }
     if (fields.contains("columns")) {
@@ -920,10 +946,14 @@ public class TableResourceTest extends CatalogApplicationTest {
     } else {
       assertNull(table.getColumns());
     }
-    if (fields.contains("tableConstraints")) {assertNotNull(table.getTableConstraints());} else {
+    if (fields.contains("tableConstraints")) {
+      assertNotNull(table.getTableConstraints());
+    } else {
       assertNull(table.getTableConstraints());
     }
-    if (fields.contains("database")) {assertNotNull(table.getDatabase());} else {
+    if (fields.contains("database")) {
+      assertNotNull(table.getDatabase());
+    } else {
       assertNull(table.getDatabase());
     }
     if (fields.contains("tags")) {
@@ -956,7 +986,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(table.getDatabase().getName(), DATABASE.getName());
   }
 
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList) throws HttpResponseException {
+  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+          throws HttpResponseException {
     if (expectedList == null) {
       return;
     }
@@ -1083,7 +1114,8 @@ public class TableResourceTest extends CatalogApplicationTest {
 
   public static Table updateTable(CreateTable create, Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("tables"), create, Table.class, status, authHeaders);
+    return TestUtils.put(CatalogApplicationTest.getResource("tables"), create, Table.class,
+            status, authHeaders);
   }
 
   public static void putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
@@ -1110,7 +1142,8 @@ public class TableResourceTest extends CatalogApplicationTest {
                            Map<String, String> authHeaders) throws JsonProcessingException, HttpResponseException {
     String updateTableJson = JsonUtils.pojoToJson(updatedTable);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTableJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("tables/" + tableId), patch, Table.class, authHeaders);
+    return TestUtils.patch(CatalogApplicationTest.getResource("tables/" + tableId),
+            patch, Table.class, authHeaders);
   }
 
   private Table patchTable(String originalJson, Table updatedTable,
