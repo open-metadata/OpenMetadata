@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.resources;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;

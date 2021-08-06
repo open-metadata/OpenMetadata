@@ -104,7 +104,7 @@ public class UserResource {
     @SuppressWarnings("unused")  // Used for deserialization
     UserList() {}
 
-    public UserList(List<User> users, int limitParam, String beforeCursor, String afterCursor)
+    UserList(List<User> users, int limitParam, String beforeCursor, String afterCursor)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(users, limitParam, beforeCursor, afterCursor);
     }

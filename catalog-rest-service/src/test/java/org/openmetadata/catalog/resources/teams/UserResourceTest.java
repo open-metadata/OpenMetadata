@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.teams;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -295,7 +311,7 @@ public class UserResourceTest extends CatalogApplicationTest {
 
       // We have now reached the last page - test backward scroll till the beginning
       pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size() ;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
       do {
         LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
         forwardPage = listUsers(null, limit, before, null, adminAuthHeaders());
@@ -347,7 +363,8 @@ public class UserResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_userNameChange_as_same_user_200_ok(TestInfo test) throws HttpResponseException,
+          JsonProcessingException {
     // Ensure user name can't be changed using patch
     User user = createUser(create(test, 6).withName("test").withDisplayName("displayName")
             .withEmail("test@email.com"), authHeaders("test@email.com"));
@@ -475,7 +492,7 @@ public class UserResourceTest extends CatalogApplicationTest {
     return TestUtils.patch(CatalogApplicationTest.getResource("users/" + userId), patch, User.class, headers);
   }
 
-  private User patchUser(String originalJson, User updated,Map<String, String> headers)
+  private User patchUser(String originalJson, User updated, Map<String, String> headers)
           throws JsonProcessingException, HttpResponseException {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
