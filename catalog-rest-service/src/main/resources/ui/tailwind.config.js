@@ -19,6 +19,10 @@ const defaultTheme = require('tailwindcss/defaultTheme');
 
 const bluePrimaryDark = '#0366D6';
 const bluePrimaryLight = '#D4E2FC';
+const primary = '#7147E8';
+const primaryHover = '#5523E0';
+const primaryActive = '#450DE2';
+const primaryHoverLite = '#DBD1F9';
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -39,6 +43,10 @@ module.exports = {
         'primary-tag': '#EECEDD',
         'secondary-tag': '#F2E8D0',
         search: '#F4F6FA',
+        primary: primary,
+        'primary-hover': primaryHover,
+        'primary-active': primaryActive,
+        'primary-hover-lite': primaryHoverLite,
       },
       borderColor: {
         'orange-400': '#F9826C',
@@ -46,10 +54,16 @@ module.exports = {
         'primary-dark': bluePrimaryDark,
         'primary-light': bluePrimaryLight,
         search: '#D5D6D9',
+        primary: primary,
+        'primary-hover': primaryHover,
+        'primary-active': primaryActive,
       },
       textColor: {
         success: '#28a745',
         'grey-body': '#37352f',
+        primary: primary,
+        'primary-hover': primaryHover,
+        'primary-active': primaryActive,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],

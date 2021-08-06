@@ -211,7 +211,7 @@ const TagsPage = () => {
             <div className="container-fluid py-3">
               {currentCategory && (
                 <div className="tw-flex tw-justify-between tw-pl-1">
-                  <div className="tw-heading tw-text-blue-600 tw-text-base">
+                  <div className="tw-heading tw-text-link tw-text-base">
                     {currentCategory.name}
                   </div>
                   <Button

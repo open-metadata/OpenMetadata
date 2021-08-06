@@ -133,12 +133,12 @@
     @apply tw-bg-success tw-px-2 tw-py-0.5;
   }
   .link-title {
-    @apply tw-text-base tw-text-blue-600 focus:tw-underline tw-cursor-pointer;
+    @apply tw-text-base tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
   .show-more,
   a[href],
   .link-text {
-    @apply tw-text-blue-600 hover:tw-text-blue-700 focus:tw-text-blue-700 hover:tw-underline focus:tw-underline tw-cursor-pointer;
+    @apply tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
 
   .child-inline * {

@@ -54,7 +54,11 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                   {link.name}
                 </Link>
               ) : (
-                <span className={classNames(classes, 'tw-cursor-text')}>
+                <span
+                  className={classNames(
+                    classes,
+                    'tw-cursor-text hover:tw-text-primary hover:tw-no-underline'
+                  )}>
                   {link.name}
                 </span>
               )}
