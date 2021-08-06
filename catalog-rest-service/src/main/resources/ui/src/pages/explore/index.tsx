@@ -16,13 +16,14 @@
 */
 
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
   AggregationType,
   FilterObject,
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
@@ -70,7 +71,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [filters, setFilters] = useState<FilterObject>(filterObject);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [aggregations, setAggregation] = useState<Array<AggregationType>>([]);
+  const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
@@ -105,6 +106,32 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setCurrentPage(pageNumber);
   };
 
+  const updateAggregationCount = useCallback(
+    (newAggregations: Array<AggregationType>) => {
+      const oldAggs = cloneDeep(aggregations);
+      for (const newAgg of newAggregations) {
+        for (const oldAgg of oldAggs) {
+          if (newAgg.title === oldAgg.title) {
+            for (const oldBucket of oldAgg.buckets) {
+              let docCount = 0;
+              for (const newBucket of newAgg.buckets) {
+                if (newBucket.key === oldBucket.key) {
+                  docCount = newBucket.doc_count;
+
+                  break;
+                }
+              }
+              // eslint-disable-next-line @typescript-eslint/camelcase
+              oldBucket.doc_count = docCount;
+            }
+          }
+        }
+      }
+      setAggregations(oldAggs);
+    },
+    [aggregations]
+  );
+
   const fetchTableData = () => {
     setIsLoading(true);
     searchData(searchText, currentPage, PAGE_SIZE, getFilterString(filters))
@@ -119,6 +146,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           setTotalNumberOfValues(0);
           setIsLoading(false);
         }
+        updateAggregationCount(getAggregationList(res.data.aggregations));
       })
       .catch((err: AxiosError) => {
         setError(ERROR404);
@@ -137,13 +165,14 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
         if (hits.length > 0) {
-          setAggregation(getAggregationList(res.data.aggregations));
+          setAggregations(getAggregationList(res.data.aggregations));
+          // fetchTableData();
         } else {
-          setAggregation([]);
+          setAggregations([]);
         }
       })
       .catch((err: AxiosError) => {
-        // setError(ERROR404);
+        setError(ERROR404);
         showToast({
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
@@ -179,6 +208,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, []);
 
   useEffect(() => {
+    // if(aggregations.length)
     fetchTableData();
   }, [searchText, currentPage, filters]);
 

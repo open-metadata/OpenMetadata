@@ -277,7 +277,7 @@ declare module 'Models' {
         };
         hits: Array<SearchHit>;
       };
-      aggregations: Aggregation;
+      aggregations: Record<string, Sterm>;
     };
   };
 }
