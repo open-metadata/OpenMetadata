@@ -37,7 +37,9 @@ const SigninPage = () => {
 
   return (
     <PageContainer>
-      <div className="tw-w-screen tw-h-screen tw-flex  tw-justify-center">
+      <div
+        className="tw-w-screen tw-h-screen tw-flex tw-justify-center"
+        data-testid="signin-page">
         <div className="tw-flex tw-flex-col tw-mt-52">
           <div>
             <h3>Sign in to OpenMetadata</h3>

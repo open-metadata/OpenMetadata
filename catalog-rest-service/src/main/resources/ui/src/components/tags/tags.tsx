@@ -35,11 +35,14 @@ const Tags: FunctionComponent<TagProps> = ({
     : tagStyles.text.default;
 
   return (
-    <span className={classNames(baseStyle, layoutStyles, className)}>
+    <span
+      className={classNames(baseStyle, layoutStyles, className)}
+      data-testid="tags">
       <span className={classNames(textBaseStyle, textLayoutStyles)}>{tag}</span>
       {editable && (
         <span
           className="tw-py-1 tw-px-2 tw-rounded hover:tw-bg-gray-300"
+          data-testid="remove"
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
             e.stopPropagation();

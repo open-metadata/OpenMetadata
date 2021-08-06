@@ -25,7 +25,7 @@ describe('Test TableDataCardBody Component', () => {
     const { getByTestId } = render(
       <TableDataCardBody description="test" extraInfo={extraInfo} tags={tags} />
     );
-    const tag = getByTestId('tags');
+    const tag = getByTestId('tags-container');
 
     expect(tag).toBeInTheDocument();
   });

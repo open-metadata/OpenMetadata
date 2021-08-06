@@ -138,7 +138,7 @@ const ServicePage: FunctionComponent = () => {
         <Loader />
       ) : (
         <PageContainer>
-          <div className="tw-px-4">
+          <div className="tw-px-4" data-testid="service-page">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
             <div className="tw-bg-white tw-my-4">
@@ -179,7 +179,7 @@ const ServicePage: FunctionComponent = () => {
             </div>
             {data.length > 0 ? (
               <>
-                <div className="tw-mt-4">
+                <div className="tw-mt-4" data-testid="table-container">
                   <table
                     className="tw-bg-white tw-w-full tw-mb-4"
                     data-testid="database-tables">

@@ -36,7 +36,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 }: Props) => {
   return (
     <div data-testid="table-body">
-      <div className="tw-mb-1 description-text" data-testid="tags">
+      <div className="tw-mb-1 description-text">
         {stringToHTML(description)}
       </div>
       <p className="tw-py-1">
@@ -55,7 +55,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         )}
       </p>
       {Boolean(tags?.length) && (
-        <div className="tw-mt-1">
+        <div className="tw-mt-1" data-testid="tags-container">
           <span>
             <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-gray-500" />
           </span>
