@@ -1,0 +1,5 @@
+{
+    "python.linting.enabled": true,
+    "python.formatting.provider": "autopep8",
+    "python.defaultInterpreterPath": "ingestion/env/bin/python"
+  }

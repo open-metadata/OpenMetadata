@@ -22,7 +22,7 @@ from pydantic import ValidationError
 
 from metadata.generated.schema.entity.data.table import Column, TableEntity
 from metadata.generated.schema.entity.data.database import DatabaseEntity
-from metadata.generated.schema.type.common import EntityReference
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import BasicSQLQueryConfig, SQLAlchemyHelper, SQLSourceStatus
