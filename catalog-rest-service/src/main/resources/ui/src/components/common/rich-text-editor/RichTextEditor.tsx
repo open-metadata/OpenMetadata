@@ -26,7 +26,7 @@ import React, {
 import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Link } from './ToolBarOptions';
+import { Bold, Heading, Link } from './ToolBarOptions';
 
 const getIntialContent = (format: string, content?: string) => {
   /*eslint-disable  */
@@ -39,7 +39,7 @@ const getIntialContent = (format: string, content?: string) => {
           remarkableOptions: {
             disable: {
               inline: ['links', 'emphasis'],
-              block: ['heading', 'code'],
+              block: ['heading', 'code', 'list'],
             },
             enable: {
               block: 'table',
@@ -128,7 +128,11 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
           }}
           toolbarClassName="tw-py-2 tw-border tw-border-gray-300"
           toolbarCustomButtons={
-            customOptions ?? [<Bold key="bold" />, <Link key="link" />]
+            customOptions ?? [
+              <Heading key="heading" />,
+              <Bold key="bold" />,
+              <Link key="link" />,
+            ]
           }
           toolbarHidden={readonly}
           wrapperClassName="editor-wrapper"

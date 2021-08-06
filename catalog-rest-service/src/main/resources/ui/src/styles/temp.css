@@ -692,3 +692,10 @@ strong {
 body .rdw-editor-main pre {
   background: none;
 }
+
+body .editor-wrapper ul {
+  list-style: disc;
+}
+body .editor-wrapper ol {
+  list-style: decimal;
+}

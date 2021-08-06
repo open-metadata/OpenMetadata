@@ -45,70 +45,6 @@ const components = {
       />
     );
   },
-  p({ children }: any) {
-    const modifiedChildren = children?.map((child: any, index: number) => {
-      if (typeof child === 'string') {
-        if (child.startsWith('**') && child.endsWith('**')) {
-          const length = child.length;
-          return <strong key={index}>{child.substr(2, length - 4)}</strong>;
-        }
-        if (child.startsWith('~~') && child.endsWith('~~')) {
-          const length = child.length;
-          return (
-            <p
-              key={index}
-              style={{
-                textDecorationLine: 'line-through',
-                textDecorationStyle: 'solid',
-              }}>
-              {child.substr(2, length - 4)}
-            </p>
-          );
-        }
-        if (child.startsWith('*') && child.endsWith('*')) {
-          const length = child.length;
-          return <em key={index}>{child.substr(1, length - 2)}</em>;
-        }
-        if (child.startsWith('[') && child.endsWith(')')) {
-          const textFIndex = child.indexOf('[');
-          const textLIndex = child.indexOf(']');
-          const linkFIndex = child.indexOf('(');
-          const linkLIndex = child.indexOf(')');
-          const text = child.substr(textFIndex + 1, textLIndex - 1);
-          const link = child.substr(linkFIndex + 1, linkLIndex - 1);
-          return (
-            <a key={index} href={`${link}`} target="_blank">
-              {text}
-            </a>
-          );
-        }
-        if (child.startsWith('# ')) {
-          return <h1 key={index}>{child.substr(2)}</h1>;
-        }
-        if (child.startsWith('## ')) {
-          return <h2 key={index}>{child.substr(3)}</h2>;
-        }
-        if (child.startsWith('### ')) {
-          return <h3 key={index}>{child.substr(4)}</h3>;
-        }
-        if (child.startsWith('#### ')) {
-          return <h4 key={index}>{child.substr(5)}</h4>;
-        }
-        if (child.startsWith('##### ')) {
-          return <h5 key={index}>{child.substr(6)}</h5>;
-        }
-        if (child.startsWith('###### ')) {
-          return <h6 key={index}>{child.substr(7)}</h6>;
-        }
-        if (child === '<br/>') {
-          return <br key={index} />;
-        }
-        return child;
-      }
-      return child;
-    });
-    return modifiedChildren ?? null;
-  },
 };
 
 function RichTextEditorPreviewer({ markdown }: { markdown: string }) {
@@ -116,18 +52,13 @@ function RichTextEditorPreviewer({ markdown }: { markdown: string }) {
   useEffect(() => {
     setContent(markdown);
   }, [markdown]);
-
   return (
     <div className="content-container">
       <ReactMarkdown
         /*eslint-disable */
-        children={content
-          .replaceAll(/&lt;/g, '<')
-          .replaceAll(/&gt;/g, '>')
-          .replaceAll(/\n/g, '<br/>')}
+        children={content.replaceAll(/&lt;/g, '<').replaceAll(/&gt;/g, '>')}
         components={components}
         remarkPlugins={[gfm]}
-        linkTarget="_blank"
       />
     </div>
   );

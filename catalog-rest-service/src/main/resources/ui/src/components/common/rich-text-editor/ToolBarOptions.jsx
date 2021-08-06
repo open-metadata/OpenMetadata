@@ -1,6 +1,24 @@
+/*
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+  * contributor license agreements. See the NOTICE file distributed with
+  * this work for additional information regarding copyright ownership.
+  * The ASF licenses this file to You under the Apache License, Version 2.0
+  * (the "License"); you may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at
+
+  * http://www.apache.org/licenses/LICENSE-2.0
+
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+*/
+
 import { EditorState, Modifier } from 'draft-js';
 import PropTypes from 'prop-types';
 import React, { Component } from 'react';
+import PopOver from '../popover/PopOver';
 
 const getSelectedText = (editorState) => {
   const selection = editorState.getSelection();
@@ -24,6 +42,7 @@ export class Bold extends Component {
   makeBold = () => {
     const { editorState, onChange } = this.props;
     const selectedText = getSelectedText(editorState);
+    // const selection = editorState.getSelection();
 
     const contentState = Modifier.replaceText(
       editorState.getCurrentContent(),
@@ -35,13 +54,32 @@ export class Bold extends Component {
       }`,
       editorState.getCurrentInlineStyle()
     );
+
+    // const newSelection = new SelectionState({
+    //   anchorOffset: selection.focusOffset,
+    //   focusKey: contentState.getFirstBlock().getKey(),
+    //   focusOffset: selectedText
+    //     ? selection.anchorOffset + selectedText.length
+    //     : selection.focusOffset,
+    // });
+    // const newEditorState = EditorState.forceSelection(
+    //   editorState,
+    //   newSelection
+    // );
+
     onChange(EditorState.push(editorState, contentState, 'insert-characters'));
   };
 
   render() {
     return (
       <div className="rdw-option-wrapper tw-font-bold" onClick={this.makeBold}>
-        B
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Add bold text"
+          trigger="mouseenter">
+          <p>B</p>
+        </PopOver>
       </div>
     );
   }
@@ -63,8 +101,8 @@ export class Link extends Component {
       editorState.getSelection(),
       `${
         selectedText.startsWith('[') && selectedText.endsWith(')')
-          ? selectedText.replace(/[\])}[{(]/g, '')
-          : `[${selectedText}]()`
+          ? selectedText.replace(/ *\([^)]*\) */g, '').replace(/[\])}[{(]/g, '')
+          : `[${selectedText}](url)`
       }`,
       editorState.getCurrentInlineStyle()
     );
@@ -74,7 +112,13 @@ export class Link extends Component {
   render() {
     return (
       <div className="rdw-option-wrapper " onClick={this.makeLink}>
-        <i className="fas fa-link" />
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Add link"
+          trigger="mouseenter">
+          <i className="fas fa-link" />
+        </PopOver>
       </div>
     );
   }
@@ -106,7 +150,50 @@ export class Italic extends Component {
   render() {
     return (
       <div className="rdw-option-wrapper " onClick={this.makeItalic}>
-        <i className="fas fa-italic" />
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Add link"
+          trigger="mouseenter">
+          <i className="fas fa-italic" />
+        </PopOver>
+      </div>
+    );
+  }
+}
+export class Heading extends Component {
+  static propTypes = {
+    onChange: PropTypes.func,
+    editorState: PropTypes.object,
+  };
+
+  makeHeading = () => {
+    const { editorState, onChange } = this.props;
+    const selectedText = getSelectedText(editorState);
+
+    const contentState = Modifier.replaceText(
+      editorState.getCurrentContent(),
+      editorState.getSelection(),
+      `${
+        selectedText.startsWith('### ')
+          ? selectedText.replaceAll('### ', '')
+          : `### ${selectedText}`
+      }`,
+      editorState.getCurrentInlineStyle()
+    );
+    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+  };
+
+  render() {
+    return (
+      <div className="rdw-option-wrapper " onClick={this.makeHeading}>
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Add header text"
+          trigger="mouseenter">
+          <p>H</p>
+        </PopOver>
       </div>
     );
   }
