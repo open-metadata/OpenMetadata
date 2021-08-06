@@ -38,7 +38,6 @@ from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.source.sql_source import get_service_or_create
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
