@@ -32,7 +32,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         className="mr-1"
         // disabled={count > 0 ? false : true}
         type="checkbox"
-        onClick={() => {
+        onChange={() => {
           onSelect(!isSelected, name, type);
         }}
       />

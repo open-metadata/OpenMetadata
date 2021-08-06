@@ -197,6 +197,7 @@ declare module 'Models' {
     dailyStats: number;
     weeklyStats: number;
     service?: string;
+    serviceType?: string;
     tier: string;
   };
 
