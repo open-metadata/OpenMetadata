@@ -20,7 +20,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import ColumnJoins, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageRequest, TableColumn, ColumnJoinsList, \
+from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageRequest, TableColumn, \
     ColumnJoinedWith
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST, APIError
@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 class MetadataUsageSinkConfig(ConfigModel):
     filename: str
+
 
 class MetadataUsageBulkSink(BulkSink):
     config: MetadataUsageSinkConfig

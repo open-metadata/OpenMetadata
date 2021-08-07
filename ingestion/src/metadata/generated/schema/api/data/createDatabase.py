@@ -23,8 +23,8 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from ...entity.data import database
-from ...type import entityReference
+from metadata.generated.schema.entity.data import database
+from metadata.generated.schema.type import entityReference
 
 
 class CreateDatabaseEntityRequest(BaseModel):

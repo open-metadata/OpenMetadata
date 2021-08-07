@@ -23,8 +23,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from ...entity.data import table
-from ...type import basic, entityReference, tagLabel
+from metadata.generated.schema.entity.data import table
+from metadata.generated.schema.type import basic, entityReference, tagLabel
 
 
 class CreateTableEntityRequest(BaseModel):

@@ -16,7 +16,7 @@
 from typing import Dict, Set
 import os
 
-from setuptools import find_packages, setup, find_namespace_packages
+from setuptools import setup, find_namespace_packages
 
 
 def get_version():

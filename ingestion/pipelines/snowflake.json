@@ -9,7 +9,7 @@
       "account": "BG94420",
       "service_name": "snowflake",
       "service_type": "Snowflake",
-      "table_pattern": {
+      "include_pattern": {
         "include": [
           "(\\w)*.tpcds_sf100tcl.catalog_page",
           "(\\w)*.tpcds_sf100tcl.time_dim",

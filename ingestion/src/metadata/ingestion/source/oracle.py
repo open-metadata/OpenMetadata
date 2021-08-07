@@ -27,7 +27,7 @@ class OracleConfig(BasicSQLAlchemyConfig):
 
 class OracleSource(SQLAlchemySource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config,metadata_config, ctx, "oracle")
+        super().__init__(config, metadata_config, ctx, "oracle")
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

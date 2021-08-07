@@ -15,8 +15,7 @@
 
 import logging
 import os
-import sys
-from typing import List, Union, Dict
+from typing import List
 import requests
 from requests.exceptions import HTTPError
 import time
@@ -29,11 +28,10 @@ from metadata.generated.schema.api.services.createDatabaseService import CreateD
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoinsList
-from metadata.ingestion.ometa import auth_provider_registry
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
     GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.generated.schema.entity.data.table import TableEntity, ColumnJoins
+from metadata.generated.schema.entity.data.table import TableEntity
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 
 logger = logging.getLogger(__name__)

@@ -23,7 +23,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from ...type import jdbcConnection, schedule
+from metadata.generated.schema.type import jdbcConnection, schedule
 
 
 class UpdateDatabaseServiceEntityRequest(BaseModel):
