@@ -49,7 +49,7 @@ base_requirements = {
     "typing_extensions>=3.7.4"
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic<1.8.0,>=1.7.1",
+    "pydantic@https://github.com/samuelcolvin/pydantic/archive/refs/tags/v1.7.4.tar.gz#egg=pydantic",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
     "google-auth>=1.33.0",
