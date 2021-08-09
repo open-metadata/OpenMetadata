@@ -2,11 +2,11 @@
   "source": {
     "type": "snowflake",
     "config": {
-      "host_port": "bg94420.ap-south-1.aws.snowflakecomputing.com",
-      "username": "catalog",
-      "password": "test!Password2",
+      "host_port": "account.region.service.snowflakecomputing.com",
+      "username": "username",
+      "password": "strong_password",
       "database": "SNOWFLAKE_SAMPLE_DATA",
-      "account": "BG94420",
+      "account": "account_name",
       "service_name": "snowflake",
       "service_type": "Snowflake",
       "include_pattern": {
