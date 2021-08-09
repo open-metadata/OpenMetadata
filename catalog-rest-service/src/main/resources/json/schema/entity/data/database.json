@@ -28,7 +28,7 @@
       "type": "string"
     },
     "description": {
-      "description": "Description of the database instance. What it has and how to use it.",
+      "description": "Description of the database instance.",
       "type": "string"
     },
     "href": {

@@ -54,6 +54,7 @@
       "boolean" : false
     },
     "profile": {
+      "description": "Profile of the user.",
       "$ref": "../../type/profile.json"
     },
     "teams" : {
@@ -61,11 +62,11 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "owns" : {
-      "description": "Entities owned by the user.",
+      "description": "List of entities owned by the user.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "follows" : {
-      "description": "Entities followed by the user.",
+      "description": "List of entities followed by the user.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

@@ -11,7 +11,7 @@
       "$ref": "basic.json#/definitions/dateTime"
     },
     "repeatFrequency": {
-      "description": "Repeat frequency in ISO 8601 duration format.",
+      "description": "Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'",
       "$ref": "basic.json#/definitions/duration"
     }
   }

@@ -8,7 +8,7 @@
   "definitions": {
     "tableType": {
       "javaType": "org.openmetadata.catalog.type.TableType",
-      "description": "Type for capturing a column in a table.",
+      "description": "This schema defines the type for a column in a table.",
       "type": "string",
       "enum": [
         "Regular",
@@ -37,7 +37,7 @@
     },
     "columnDataType": {
       "javaType": "org.openmetadata.catalog.type.ColumnDataType",
-      "description": "Type for capturing a column in a table.",
+      "description": "This enum defines the type for column data type.",
       "type": "string",
       "enum": [
         "NUMBER",
@@ -77,7 +77,7 @@
     },
     "columnConstraint": {
       "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
-      "description": "Column constraint.",
+      "description": "This enum defines the type for column constraint.",
       "type": "string",
       "enum": [
         "NULL",
@@ -90,7 +90,7 @@
     "tableConstraint": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableConstraint",
-      "description": "Table constraint.",
+      "description": "This enum defines the type for table constraint.",
       "properties": {
         "constraintType": {
           "type": "string",
@@ -124,7 +124,7 @@
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes serviceName.databaseName.tableName.columnName.",
+      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.",
       "type": "string",
       "minLength": 1,
       "maxLength": 256
@@ -132,7 +132,7 @@
     "column": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.Column",
-      "description": "Type for capturing a column in a table.",
+      "description": "This schema defines the type for a column in a table.",
       "properties": {
         "name": {
           "$ref": "#/definitions/columnName"
@@ -173,7 +173,7 @@
     "columnJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ColumnJoin",
-      "description": "Information on other tables that this table column is frequently joined with.",
+      "description": "This schema defines the type to capture how frequently a column in this table is joined with columns in the other tables.",
       "properties": {
         "columnName": {
           "$ref": "#/definitions/columnName"
@@ -199,6 +199,7 @@
     "tableJoins": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableJoins",
+      "description": "This schema defines the type to capture how columns in this table is joined with columns in the other tables.",
       "properties": {
         "startDate": {
           "description": "Date can be only from today going back to last 29 days.",
@@ -220,7 +221,7 @@
     "tableData": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.TableData",
-      "description": "Information on other tables that this table column is frequently joined with.",
+      "description": "This schema defines the type to capture rows of sample data for the table.",
       "properties": {
         "columns": {
           "description": "List of local column names (not fully qualified column names) of the table.",
@@ -243,7 +244,7 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies this table instance.",
+      "description": "Unique identifier of this table instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
@@ -262,11 +263,11 @@
       "$ref": "#/definitions/tableType"
     },
     "fullyQualifiedName": {
-      "description": "Fully qualified name of the table in the form serviceName.databaseName.tableName.",
+      "description": "Fully qualified name of the table in the form `serviceName.databaseName.tableName`.",
       "type": "string"
     },
     "columns": {
-      "description": "Columns in the table.",
+      "description": "Columns in this table.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/column"
@@ -282,8 +283,8 @@
       "default": null
     },
     "usageSummary": {
-      "$ref": "../../type/usageDetails.json",
       "description": "Latest usage information for this table.",
+      "$ref": "../../type/usageDetails.json",
       "default": null
     },
     "owner": {
@@ -319,6 +320,7 @@
     }
   },
   "required": [
+    "id",
     "name",
     "columns"
   ]
