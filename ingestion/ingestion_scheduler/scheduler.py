@@ -15,9 +15,9 @@
 #  limitations under the License.
 
 from sdscheduler.server import server
-from sdscheduler.corescheduler import job
 import os
 import json
+from sdscheduler.server import server
 
 
 class SimpleServer(server.SchedulerServer):

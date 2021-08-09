@@ -13,17 +13,14 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
 import logging
-import pathlib
-from typing import Dict, Any
 
 import requests
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.models.user import MetadataOrg, MetadataRole, MetadataTeam, MetadataUser
+from metadata.ingestion.models.user import MetadataTeam, MetadataUser
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 
 logger = logging.getLogger(__name__)

@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from pydantic import BaseModel, Field, constr
+from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 from metadata.generated.schema.entity.data.table import TableEntity

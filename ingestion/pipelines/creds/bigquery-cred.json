@@ -1,12 +1,12 @@
 {
   "type": "service_account",
-  "project_id": "arched-champion-319818",
-  "private_key_id": "7877f752ebeb972a44d16ea827ea1a8099f2fb07",
-  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC+9uvcNGwv+IAN\ndpAlTiZvOAkEILiEhU79vSYTS5hqsYiVgrKvxefc44oqCrjykRukPUSWR0qZlb/C\nSByLeoGnY87hEEbsOmvgWEhIvJ5RplDSL/+807C6Kn3PjLCHskTOO0J+1Lz8+jSe\nbFgdcdj0oSaK3A9Dm/nFEFCdQap2Mq4CcSKERF2BKLGDqtkOKlVH30yw/O79GZ4s\nBC6Ef+ER8Gp9f7UNkhqqJdoIF3bqktbeVs10TvRQWZjSpEmsjetibiKJ0th1/fce\nxou9EZPT/iOIpB+7imjeY1hgyQH4rTE8PMObxo+r7WjfQpPY6SkVF/3lRlz+IdmR\n49WwI6HpAgMBAAECggEAKQnffh818Mkym7ITIDE/ST99kImHndMYOqdfe14Pjz4/\n4AGKbQPW5D1x/772KArPKeiQyMrhWUg5QYNFvyPAoTxtxSg+VZ3oePn/7sG6NEnN\nrJ3sE6RaomdnSict+Lty1e8eRytoweTzUehut0U0Hr5TDhxkm171ukfbSzBFdcjn\nLS54QEZVryqlzlBQod+c5B+qqQgYpFJdgSSHyi5N7nYr+LXNO8QHnOFaxawrUBXT\nhmi4GN1g7V2coApJOlGobDjV2oSSXhorN1Z6tdFCKiYPglQhynggqIFLObcwBUZV\nMB4Xzd6Z4TZkGvM6MyvcHvNGgP3pMNms3IgQeacTUQKBgQDrQQJkVX7g9F7PdXPB\n/9NC7xBpEV7w9FVOdfdi6VU6vebBZvx1licvs4dFUB4iVCUla11WVdKcgvrhZcC4\nrUlxXBGIKTXd5MVKzhiLbyQJLk34dAcGoxofymxbHus7tt9yYo6IIuiJIbTfFJBt\neSvHujw5nIr5nL0zBQpCKVe0vwKBgQDPzg256nPyYU3T7tcQU8U+oUlZZUGf3x++\nO/BHAz6RvQYy9cMxxOZijJh62k+K5ROLRhwsa6xeljZUAWApmOq09KvQxhFLE92M\nOWH8TNZ+cXsP9DFq19cbxTAkPvykqH7QZpld742wdWv9lsumJgvFWR/dzJ0/fGNP\njY9lsK8LVwKBgQCxGSdr0NDLGCunkYurJ6MqaD26WtFWIxl1D2lElNMMfZkRTy4O\ndxLY3hWfIEkPHrk4CjMho0oBeLjUpX0HiawYIm8wSZW7jVTYk332uZwvLSSVPQNt\nA6vO8tvPXN9I/MoJmhgic+UKFs3KgfiX8Pf8Sz67QBV/A3eKyOiIFgdokQKBgQDF\nElziG/6ptq3gd3lt+oPsyXiOVwDNZQTtnFpafjEwdVsTqQ7cfCcg/sT8fV1CE81d\nH7hISDTH3xzWvhc8W9D6m67152EvGj/ZY/IRG62vbF+Q2byj3t4ZcAAf37wpS8I4\nUZTRCQYOes1XSVMI1rwDBGq8Jfha5NQp9c4wWkcnMQKBgQClTzTPirKa0wzuMUch\nTvWbyNy6rozveGnvycvTJeB1Dceckv2WGfMCtn8ugz77eZ9F6DKvVJixtyqFBWVV\n94aE9fp+wXaDZ9AgTOv2tfS1YbAYnFRwfwYU7KOFoJx/Tcxf+NXtSpHwjFzCL9/t\nTd13j7a+se+DesksNJ34xct2rw==\n-----END PRIVATE KEY-----\n",
-  "client_email": "gcpuser@arched-champion-319818.iam.gserviceaccount.com",
-  "client_id": "109275416629352491544",
+  "project_id": "project_id",
+  "private_key_id": "private_key_id",
+  "private_key": "",
+  "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
+  "client_id": "",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
   "token_uri": "https://oauth2.googleapis.com/token",
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gcpuser%40arched-champion-319818.iam.gserviceaccount.com"
+  "client_x509_cert_url": ""
 }

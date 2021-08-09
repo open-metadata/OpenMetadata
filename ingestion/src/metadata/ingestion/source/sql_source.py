@@ -60,8 +60,7 @@ class SQLSourceStatus(SourceStatus):
 class SQLAlchemyConfig(ConfigModel):
     env: str = "PROD"
     options: dict = {}
-    schema_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    table_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    include_pattern: IncludeFilterPattern
 
     @abstractmethod
     def get_sql_alchemy_url(self):
@@ -184,7 +183,7 @@ class SQLAlchemySource(Source):
         engine = create_engine(url, **sql_config.options)
         inspector = inspect(engine)
         for schema in inspector.get_schema_names():
-            if not sql_config.schema_pattern.included(schema):
+            if not sql_config.include_pattern.included(schema):
                 self.status.report_dropped(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
@@ -206,7 +205,7 @@ class SQLAlchemySource(Source):
 
                     dataset_name = sql_config.get_identifier(schema, table)
                     self.status.report_table_scanned('{}.{}'.format(self.config.service_name, dataset_name))
-                    if not sql_config.table_pattern.included(dataset_name):
+                    if not sql_config.include_pattern.included(dataset_name):
                         self.status.report_dropped('{}.{}'.format(self.config.service_name, dataset_name),
                                                    "Table pattern not allowed")
                         continue

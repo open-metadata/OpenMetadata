@@ -11,7 +11,7 @@
     * [Collection Descriptor Type](openmetadata-apis/schemas/types/collectiondescriptor.md)
     * [Daily Count Type](openmetadata-apis/schemas/types/dailycount.md)
     * [Entity Reference Type](openmetadata-apis/schemas/types/entityreference.md)
-    * [Entity Usage Type](openmetadata-apis/schemas/types/entityusage)
+    * [Entity Usage Type](openmetadata-apis/schemas/types/entity-usage-type.md)
     * [Jdbc Connection Type](openmetadata-apis/schemas/types/jdbcconnection.md)
     * [Profile Type](openmetadata-apis/schemas/types/profile.md)
     * [Schedule Type](openmetadata-apis/schemas/types/schedule.md)

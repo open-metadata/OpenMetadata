@@ -1,390 +1,190 @@
-# profile
+# Profile Type
 
-```txt
+## profile
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json
 ```
 
 Type used to capture profile of a user, team, or an organization
 
-| Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                               |
-| :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :----------------------------------------------------------------------- |
-| Can be instantiated | Yes        | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | Yes | Unknown status | No | Forbidden | Allowed | none | [profile.json](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
-## Type used to capture profile of a user, team, or an organization Type
+### Type used to capture profile of a user, team, or an organization Type
 
-`object` ([Type used to capture profile of a user, team, or an organization](profile.md))
+`object` \([Type used to capture profile of a user, team, or an organization](profile.md)\)
 
-# Type used to capture profile of a user, team, or an organization Properties
+## Type used to capture profile of a user, team, or an organization Properties
 
-| Property          | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                              |
-| :---------------- | :------- | :------- | :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [images](#images) | `object` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images") |
+| Property | Type | Required | Nullable | Defined by |
+| :--- | :--- | :--- | :--- | :--- |
+| [images](profile.md#images) | `object` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist) |
 
-## images
+### images
 
 Links to list of images of varying resolutions/sizes
 
 `images`
 
-*   is optional
+* is optional
+* Type: `object` \([Details](profile.md#profile-definitions-imagelist)\)
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist)
 
-*   Type: `object` ([Details](#profile-definitions-imagelist))
+#### images Type
 
-*   cannot be null
+`object` \([Details](profile.md#profile-definitions-imagelist)\)
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images")
+## Type used to capture profile of a user, team, or an organization Definitions
 
-### images Type
-
-`object` ([Details](#profile-definitions-imagelist))
-
-# Type used to capture profile of a user, team, or an organization Definitions
-
-## Definitions group imageList
+### Definitions group imageList
 
 Reference this group by using
 
-```json
+```javascript
 {"$ref":"https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList"}
 ```
 
-| Property              | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                          |
-| :-------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
-| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
-| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
-| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
-| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
-| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
-| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
+| Property | Type | Required | Nullable | Defined by |
+| :--- | :--- | :--- | :--- | :--- |
+| [image](profile.md#image) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image) |
+| [image24](profile.md#image24) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image24) |
+| [image32](profile.md#image32) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image32) |
+| [image48](profile.md#image48) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image48) |
+| [image72](profile.md#image72) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image72) |
+| [image192](profile.md#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image192) |
+| [image512](profile.md#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image512) |
 
-### image
-
-
+#### image
 
 `image`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
-
-#### image Type
+**image Type**
 
 `string`
 
-#### image Constraints
+**image Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image24
-
-
+#### image24
 
 `image24`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image24)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
-
-#### image24 Type
+**image24 Type**
 
 `string`
 
-#### image24 Constraints
+**image24 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image32
-
-
+#### image32
 
 `image32`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image32)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
-
-#### image32 Type
+**image32 Type**
 
 `string`
 
-#### image32 Constraints
+**image32 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image48
-
-
+#### image48
 
 `image48`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image48)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
-
-#### image48 Type
+**image48 Type**
 
 `string`
 
-#### image48 Constraints
+**image48 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image72
-
-
+#### image72
 
 `image72`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image72)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
-
-#### image72 Type
+**image72 Type**
 
 `string`
 
-#### image72 Constraints
+**image72 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image192
-
-
+#### image192
 
 `image192`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image192)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
-
-#### image192 Type
+**image192 Type**
 
 `string`
 
-#### image192 Constraints
+**image192 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-### image512
-
-
+#### image512
 
 `image512`
 
-*   is optional
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image512)
 
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
-
-#### image512 Type
+**image512 Type**
 
 `string`
 
-#### image512 Constraints
+**image512 Constraints**
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-```txt
+## profile-definitions-imagelist-properties-image
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image
 ```
 
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image Type
-
-`string`
-
-## image Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image192
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image192 Type
-
-`string`
-
-## image192 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image24
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image24 Type
-
-`string`
-
-## image24 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image32
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image32 Type
-
-`string`
-
-## image32 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image48
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image48 Type
-
-`string`
-
-## image48 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image512
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image512 Type
-
-`string`
-
-## image512 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist-properties-image72
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72
-```
-
-
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## image72 Type
-
-`string`
-
-## image72 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions-imagelist
-
-```txt
-https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images
-```
-
-Links to list of images of varying resolutions/sizes
-
-| Abstract            | Extensible | Status         | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :----------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | No           | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## images Type
-
-`object` ([Details](#profile-definitions-imagelist))
-
-# images Properties
-
-| Property              | Type     | Required | Nullable       | Defined by                                                                                                                                                                                                                                                                                          |
-| :-------------------- | :------- | :------- | :------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [image](#image)       | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")       |
-| [image24](#image24)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")   |
-| [image32](#image32)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")   |
-| [image48](#image48)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")   |
-| [image72](#image72)   | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")   |
-| [image192](#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192") |
-| [image512](#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512") |
-
-## image
-
-
-
-`image`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image")
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
 ### image Type
 
@@ -392,109 +192,17 @@ Links to list of images of varying resolutions/sizes
 
 ### image Constraints
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-## image24
+## profile-definitions-imagelist-properties-image192
 
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192
+```
 
-
-`image24`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image24 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24")
-
-### image24 Type
-
-`string`
-
-### image24 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-
-## image32
-
-
-
-`image32`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image32 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32")
-
-### image32 Type
-
-`string`
-
-### image32 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-
-## image48
-
-
-
-`image48`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image48 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48")
-
-### image48 Type
-
-`string`
-
-### image48 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-
-## image72
-
-
-
-`image72`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image72 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72")
-
-### image72 Type
-
-`string`
-
-### image72 Constraints
-
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-
-## image192
-
-
-
-`image192`
-
-*   is optional
-
-*   Type: `string`
-
-*   cannot be null
-
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image192 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image192")
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
 ### image192 Type
 
@@ -502,21 +210,71 @@ Links to list of images of varying resolutions/sizes
 
 ### image192 Constraints
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-## image512
+## profile-definitions-imagelist-properties-image24
 
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image24
+```
 
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
-`image512`
+### image24 Type
 
-*   is optional
+`string`
 
-*   Type: `string`
+### image24 Constraints
 
-*   cannot be null
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-*   defined in: [Type used to capture profile of a user, team, or an organization](#profile-definitions-imagelist-properties-image512 "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512")
+## profile-definitions-imagelist-properties-image32
+
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image32
+```
+
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
+
+### image32 Type
+
+`string`
+
+### image32 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+## profile-definitions-imagelist-properties-image48
+
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image48
+```
+
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
+
+### image48 Type
+
+`string`
+
+### image48 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+## profile-definitions-imagelist-properties-image512
+
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image512
+```
+
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
 ### image512 Type
 
@@ -524,19 +282,184 @@ Links to list of images of varying resolutions/sizes
 
 ### image512 Constraints
 
-**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986 "check the specification")
-# profile-definitions
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
 
-```txt
+## profile-definitions-imagelist-properties-image72
+
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions/imageList/properties/image72
+```
+
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
+
+### image72 Type
+
+`string`
+
+### image72 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+## profile-definitions-imagelist
+
+```text
+https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/properties/images
+```
+
+Links to list of images of varying resolutions/sizes
+
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | No | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
+
+### images Type
+
+`object` \([Details](profile.md#profile-definitions-imagelist)\)
+
+## images Properties
+
+| Property | Type | Required | Nullable | Defined by |
+| :--- | :--- | :--- | :--- | :--- |
+| [image](profile.md#image) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image) |
+| [image24](profile.md#image24) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image24) |
+| [image32](profile.md#image32) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image32) |
+| [image48](profile.md#image48) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image48) |
+| [image72](profile.md#image72) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image72) |
+| [image192](profile.md#image192) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image192) |
+| [image512](profile.md#image512) | `string` | Optional | cannot be null | [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image512) |
+
+### image
+
+`image`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image)
+
+#### image Type
+
+`string`
+
+#### image Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image24
+
+`image24`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image24)
+
+#### image24 Type
+
+`string`
+
+#### image24 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image32
+
+`image32`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image32)
+
+#### image32 Type
+
+`string`
+
+#### image32 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image48
+
+`image48`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image48)
+
+#### image48 Type
+
+`string`
+
+#### image48 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image72
+
+`image72`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image72)
+
+#### image72 Type
+
+`string`
+
+#### image72 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image192
+
+`image192`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image192)
+
+#### image192 Type
+
+`string`
+
+#### image192 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+### image512
+
+`image512`
+
+* is optional
+* Type: `string`
+* cannot be null
+* defined in: [Type used to capture profile of a user, team, or an organization](profile.md#profile-definitions-imagelist-properties-image512)
+
+#### image512 Type
+
+`string`
+
+#### image512 Constraints
+
+**URI**: the string must be a URI, according to [RFC 3986](https://tools.ietf.org/html/rfc3986)
+
+## profile-definitions
+
+```text
 https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json#/definitions
 ```
 
+| Abstract | Extensible | Status | Identifiable | Custom Properties | Additional Properties | Access Restrictions | Defined In |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Can be instantiated | No | Unknown status | Unknown identifiability | Forbidden | Allowed | none | [profile.json\*](https://github.com/open-metadata/OpenMetadata/tree/88ab3784a5a9e2cfcf56bbb144522498eb33184c/docs/openmetadata-apis/https:/github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json) |
 
-
-| Abstract            | Extensible | Status         | Identifiable            | Custom Properties | Additional Properties | Access Restrictions | Defined In                                                                |
-| :------------------ | :--------- | :------------- | :---------------------- | :---------------- | :-------------------- | :------------------ | :------------------------------------------------------------------------ |
-| Can be instantiated | No         | Unknown status | Unknown identifiability | Forbidden         | Allowed               | none                | [profile.json*](../../https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json "open original schema") |
-
-## definitions Type
+### definitions Type
 
 unknown
+

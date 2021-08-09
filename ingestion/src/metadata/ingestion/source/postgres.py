@@ -14,13 +14,11 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-from abc import ABC
 import uuid
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.data.database import DatabaseEntity
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity, DatabaseServiceType
-from metadata.generated.schema.type.common import EntityReference
-from metadata.ingestion.api.common import AllowDenyPattern
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import IncludeFilterPattern
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 import pymysql  # noqa: F401
@@ -29,9 +27,9 @@ from metadata.generated.schema.entity.data.table import TableEntity, Column
 from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
 from .sql_source import BasicSQLAlchemyConfig
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import DatabaseMetadata, ColumnMetadata, TableMetadata
+from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from itertools import groupby
-from typing import Iterator, Tuple, Union, Dict, Any, Iterable
+from typing import Iterator, Union, Dict, Any, Iterable
 from collections import namedtuple
 
 from ..ometa.auth_provider import MetadataServerConfig
@@ -107,8 +105,8 @@ class PostgresSource(Source):
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
         self.service = get_service_or_create(config, metadata_config)
-        self.table_pattern = AllowDenyPattern
-        self.pattern = config.table_pattern
+        self.include_pattern = IncludeFilterPattern
+        self.pattern = config.include_pattern
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -134,7 +132,6 @@ class PostgresSource(Source):
                 :return:
                 """
         counter = 0
-        # self.table_pattern: AllowDenyPattern = AllowDenyPattern.allowed(config.table_pattern, '')
         for key, group in groupby(self._get_raw_extract_iter(), get_table_key):
             columns = []
             for row in group:
@@ -156,7 +153,7 @@ class PostgresSource(Source):
                     col_type = 'CHAR'
                 else:
                     col_type = row['col_type'].upper()
-                if not self.table_pattern.allowed(self.pattern, last_row[1]):
+                if not self.include_pattern.included(self.pattern, last_row[1]):
                     self.status.report_dropped(last_row['name'])
                     continue
                 columns.append(Column(name=row['col_name'], description=row['col_description'],

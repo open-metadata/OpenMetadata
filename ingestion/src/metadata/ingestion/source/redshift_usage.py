@@ -15,14 +15,11 @@
 
 # This import verifies that the dependencies are available.
 import logging
-from abc import ABC
-
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable, Optional
-
+from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.utils.helpers import get_start_and_end
 from metadata.ingestion.source.redshift import RedshiftConfig
 
@@ -105,7 +102,6 @@ class RedshiftUsageSource(Source):
                             str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'], row['aborted'], row['sql'])
             self.status.records_produced(tq)
             yield tq
-
 
     def close(self):
         self.alchemy_helper.close()

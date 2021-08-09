@@ -125,7 +125,7 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "getcollate.com"
+  prinicipalDomain: "open-metadata.org"
 
 authenticationConfiguration:
   provider: "google"

@@ -13,14 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
-import time
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 from metadata.config.common import ConfigModel
-from typing import Any, Iterable, List, Optional, Tuple, Type
+from typing import Any, Iterable, List, Optional, Tuple
 from dataclasses import dataclass, field
 from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import SourceStatus
 from sqlalchemy import create_engine
 
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig

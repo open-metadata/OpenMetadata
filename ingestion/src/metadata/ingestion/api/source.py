@@ -15,8 +15,7 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, Generic, Iterable, List, TypeVar, Any
-
+from typing import Dict, Iterable, List
 from .closeable import Closeable
 from .common import WorkflowContext, Record
 from .status import Status
@@ -41,7 +40,6 @@ class SourceStatus(Status):
         if key not in self.failures:
             self.failures[key] = []
         self.failures[key].append(reason)
-
 
 
 @dataclass  # type: ignore[misc]

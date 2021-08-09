@@ -130,7 +130,7 @@ authorizerConfiguration:
     - "admin"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "getcollate.com"
+  prinicipalDomain: "open-metadata.org"
 
 authenticationConfiguration:
   provider: "openID"
