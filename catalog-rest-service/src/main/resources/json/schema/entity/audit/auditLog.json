@@ -1,47 +1,47 @@
 {
-  "$id": "https://streaminlinedata.ai/entity/audit/auditLog.json",
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/audit/auditLog.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Audit Log entity",
-  "description": "Entity that represents a Audit Log",
+  "title": "Audit Log",
+  "description": "This schema defines Audit Log entity. Audit Log is used to capture audit trail of POST, PUT, and PATCH API operations.",
   "type": "object",
 
   "properties" : {
     "id": {
-      "description": "Unique identifier that identifies a Audit Log Entry",
+      "description": "Unique identifier that identifies a Audit Log Entry.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "method": {
-      "description": "HTTP Method used in a call",
+      "description": "HTTP Method used in a call.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "responseCode": {
-      "description": "HTTP response code for the api requested",
+      "description": "HTTP response code for the api requested.",
       "type": "integer"
     },
     "path": {
-      "description": "requested API Path",
+      "description": "Requested API Path.",
       "type": "string"
     },
     "username": {
-      "description": "Name of the user who requested for the API",
+      "description": "Name of the user who requested for the API.",
       "type": "string"
     },
     "date": {
-      "description": "Date which the api call is made",
+      "description": "Date which the api call is made.",
       "$ref": "../../type/basic.json#/definitions/date"
     },
     "entityId": {
-      "description": "entityReference Id",
+      "description": "Entity reference.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "entityType": {
-      "description": "Entity Type",
+      "description": "Entity Type.",
       "type": "string"
     },
     "entity" : {
-      "description": "Link to entity on which api request is done",
+      "description": "Link to entity on which api request is done.",
       "$ref" : "../../type/entityReference.json"
     }
   },

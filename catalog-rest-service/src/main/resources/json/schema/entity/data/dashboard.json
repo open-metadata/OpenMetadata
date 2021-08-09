@@ -1,23 +1,23 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Dashboard entity",
-  "description": "Entity that represents a Dashboard",
+  "title": "Dashboard",
+  "description": "This schema defines Dashboard entity.",
   "type": "object",
 
   "properties" : {
     "id": {
-      "description": "Unique identifier that identifies a dashboard instance",
+      "description": "Unique identifier that identifies a dashboard instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the this dashboard.",
+      "description": "Name that identifies this dashboard.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "Unique name that identifies a dashboard in the format 'ServiceName.DashboardName'",
+      "description": "Unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
@@ -27,19 +27,19 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this dashboard",
+      "description": "Owner of this dashboard.",
       "$ref": "../../type/entityReference.json"
     },
     "service" : {
-      "description": "Link to service where this dashboard is hosted in",
+      "description": "Link to service where this dashboard is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
     "usageSummary" : {
-      "description": "Latest usage information for this database",
+      "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     }
