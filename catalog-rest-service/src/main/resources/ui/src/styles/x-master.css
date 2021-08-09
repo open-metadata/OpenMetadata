@@ -289,7 +289,6 @@ a:focus {
   height: calc(100% - 61px);
   overflow-y: auto;
   padding: 15px 0 0;
-  background: #f5f8fa;
   box-shadow: 0 -5px 5px -5px #d1cfc7;
 }
 

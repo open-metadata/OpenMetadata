@@ -141,6 +141,10 @@
     @apply tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
 
+  .page-container {
+    @apply tw-bg-body;
+  }
+
   .child-inline * {
     @apply tw-inline;
   }

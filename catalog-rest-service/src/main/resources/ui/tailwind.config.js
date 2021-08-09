@@ -23,6 +23,9 @@ const primary = '#7147E8';
 const primaryHover = '#5523E0';
 const primaryActive = '#450DE2';
 const primaryHoverLite = '#DBD1F9';
+const bodyBG = '#F9F8FD';
+const tagBG = '#EEEAF8';
+const mainBorder = '#AFA8BA';
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -37,12 +40,11 @@ module.exports = {
     },
     extend: {
       backgroundColor: {
+        body: bodyBG,
+        tag: tagBG,
         success: '#28a745',
         'primary-dark': bluePrimaryDark,
         'primary-light': bluePrimaryLight,
-        'primary-tag': '#EECEDD',
-        'secondary-tag': '#F2E8D0',
-        search: '#F4F6FA',
         primary: primary,
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
@@ -50,6 +52,7 @@ module.exports = {
       },
       borderColor: {
         'orange-400': '#F9826C',
+        main: mainBorder,
         success: '#28a745',
         'primary-dark': bluePrimaryDark,
         'primary-light': bluePrimaryLight,
