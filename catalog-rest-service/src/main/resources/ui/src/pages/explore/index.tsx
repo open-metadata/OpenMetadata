@@ -16,7 +16,7 @@
 */
 
 import { AxiosError } from 'axios';
-import { cloneDeep, lowerCase } from 'lodash';
+import { cloneDeep } from 'lodash';
 import {
   AggregationType,
   FilterObject,
@@ -110,23 +110,14 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   const updateAggregationCount = useCallback(
     (newAggregations: Array<AggregationType>) => {
-      const excludeFilterTypes = Object.keys(filters).filter((key) => {
-        return Boolean(filters[key as keyof typeof filterObject]?.length);
-      });
       const oldAggs = cloneDeep(aggregations);
       for (const newAgg of newAggregations) {
         for (const oldAgg of oldAggs) {
           if (newAgg.title === oldAgg.title) {
-            const exldFilterType = excludeFilterTypes.includes(
-              lowerCase(newAgg.title)
-            );
             for (const oldBucket of oldAgg.buckets) {
-              let docCount = exldFilterType ? oldBucket.doc_count : 0;
+              let docCount = 0;
               for (const newBucket of newAgg.buckets) {
-                if (
-                  newBucket.key === oldBucket.key &&
-                  (!exldFilterType || newBucket.doc_count > oldBucket.doc_count)
-                ) {
+                if (newBucket.key === oldBucket.key) {
                   docCount = newBucket.doc_count;
 
                   break;
@@ -143,60 +134,79 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     [aggregations, filters]
   );
 
-  // const updateAggregationCount1 = useCallback(
-  //   (newAggregations: Array<AggregationType>) => {
-  //     const excludeFilterTypes = Object.keys(filters).filter((key) => {
-  //       return Boolean(filters[key as keyof typeof filterObject]?.length);
-  //     });
-  //     const oldAggs = cloneDeep(aggregations);
-  //     for (const newAgg of newAggregations) {
-  //       if (excludeFilterTypes.includes(lowerCase(newAgg.title))) {
-  //         continue;
-  //       }
-  //       for (const oldAgg of oldAggs) {
-  //         if (newAgg.title === oldAgg.title) {
-  //           for (const oldBucket of oldAgg.buckets) {
-  //             let docCount = 0;
-  //             for (const newBucket of newAgg.buckets) {
-  //               if (newBucket.key === oldBucket.key) {
-  //                 docCount = newBucket.doc_count;
-
-  //                 break;
-  //               }
-  //             }
-  //             // eslint-disable-next-line @typescript-eslint/camelcase
-  //             oldBucket.doc_count = docCount;
-  //           }
-  //         }
-  //       }
-  //     }
-  //     setAggregations(oldAggs);
-  //   },
-  //   [aggregations, filters]
-  // );
+  const updateSearchResults = (res: SearchResponse) => {
+    const hits = res.data.hits.hits;
+    if (hits.length > 0) {
+      setTotalNumberOfValues(res.data.hits.total.value);
+      setData(formatDataResponse(hits));
+    } else {
+      setData([]);
+      setTotalNumberOfValues(0);
+    }
+  };
 
   const fetchTableData = (forceSetAgg: boolean) => {
     setIsLoading(true);
-    searchData(searchText, currentPage, PAGE_SIZE, getFilterString(filters))
-      .then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setTotalNumberOfValues(res.data.hits.total.value);
-          setData(formatDataResponse(hits));
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setTotalNumberOfValues(0);
+
+    const searchResults = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters)
+    );
+    const serviceTypeAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['service type'])
+    );
+    const tierAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['tier'])
+    );
+    const tagAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['tags'])
+    );
+
+    Promise.all([searchResults, serviceTypeAgg, tierAgg, tagAgg])
+      .then(
+        ([
+          resSearchResults,
+          resAggServiceType,
+          resAggTier,
+          resAggTag,
+        ]: Array<SearchResponse>) => {
+          updateSearchResults(resSearchResults);
+          if (forceSetAgg) {
+            setAggregations(
+              resSearchResults.data.hits.hits.length > 0
+                ? getAggregationList(resSearchResults.data.aggregations)
+                : []
+            );
+          } else {
+            const aggServiceType = getAggregationList(
+              resAggServiceType.data.aggregations,
+              'service type'
+            );
+            const aggTier = getAggregationList(
+              resAggTier.data.aggregations,
+              'tier'
+            );
+            const aggTag = getAggregationList(
+              resAggTag.data.aggregations,
+              'tags'
+            );
+
+            updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
+          }
           setIsLoading(false);
         }
-        if (forceSetAgg) {
-          setAggregations(
-            hits.length > 0 ? getAggregationList(res.data.aggregations) : []
-          );
-        } else {
-          updateAggregationCount(getAggregationList(res.data.aggregations));
-        }
-      })
+      )
       .catch((err: AxiosError) => {
         setError(ERROR404);
         showToast({
@@ -240,17 +250,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       fetchTableData(false);
     }
   }, [currentPage, filters]);
-
-  useEffect(() => {
-    if (location.search) {
-      setFilters({
-        ...filterObject,
-        ...getQueryParam(location.search),
-      });
-    } else {
-      setFilters(filterObject);
-    }
-  }, [location.search]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
