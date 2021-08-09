@@ -133,7 +133,6 @@ public class SearchResource {
             .field("column_names")
             .field("column_descriptions")
             .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service").field("service"))
             .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
             .aggregation(AggregationBuilders.terms("Tier").field("tier"))
             .aggregation(AggregationBuilders.terms("Tags").field("tags"))

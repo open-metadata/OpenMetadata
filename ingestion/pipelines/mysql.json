@@ -2,11 +2,11 @@
   "source": {
     "type": "mysql",
     "config": {
-      "username": "catalog_user",
-      "password": "catalog_password",
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
       "service_name": "local_mysql",
       "service_type": "MySQL",
-      "table_pattern": {
+      "include_pattern": {
         "filter": ["mysql.*", "information_schema.*"]
       }
     }

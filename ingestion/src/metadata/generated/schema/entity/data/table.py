@@ -24,7 +24,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, constr
 
-from ...type import basic, entityReference, tagLabel, usageDetails
+from metadata.generated.schema.type import basic, entityReference, tagLabel, usageDetails
 
 
 class TableType(Enum):

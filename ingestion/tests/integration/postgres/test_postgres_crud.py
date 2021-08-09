@@ -18,7 +18,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableEntityRequ
 from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.common import EntityReference
+from metadata.generated.schema.type.entityReference import EntityReference
 import pytest
 import requests
 

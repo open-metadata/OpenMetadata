@@ -46,7 +46,7 @@ metadata ingest -c ./pipelines/postgres.json
       "database": "pagila",
       "service_name": "local_postgres",
       "service_type": "POSTGRES",
-      "table_pattern": {
+      "include_pattern": {
         "deny": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
     }
   },

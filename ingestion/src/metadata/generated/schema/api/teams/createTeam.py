@@ -23,8 +23,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from ...entity.teams import team
-from ...type import basic, profile
+from metadata.generated.schema.entity.teams import team
+from metadata.generated.schema.type import basic, profile
 
 
 class TeamEntity(BaseModel):

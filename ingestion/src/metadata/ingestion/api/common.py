@@ -96,12 +96,12 @@ class IncludeFilterPattern(ConfigModel):
 
     def included(self, string: str) -> bool:
         try:
-            for filter_pattern in self.filter:
-                if re.match(filter_pattern, string):
+            for filter in self.filter:
+                if re.match(filter, string):
                     return False
 
-            for include_pattern in self.include:
-                if re.match(include_pattern, string):
+            for include in self.include:
+                if re.match(include, string):
                     return True
             return False
         except Exception as err:
