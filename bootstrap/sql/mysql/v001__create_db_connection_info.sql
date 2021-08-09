@@ -212,9 +212,9 @@ CREATE TABLE IF NOT EXISTS tag_usage (
 );
 
 CREATE TABLE IF NOT EXISTS audit_log (
-    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityId') STORED NOT NULL,
     entityType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
-    username VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.username') NOT NULL,
+    username VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id)

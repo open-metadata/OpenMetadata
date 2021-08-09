@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.catalog.type.UsageDetails",
   "definitions": {
     "usageStats": {
-      "$comment": "Type used to return usage statistics",
+      "description": "Type used to return usage statistics",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.UsageStats",
       "properties": {
