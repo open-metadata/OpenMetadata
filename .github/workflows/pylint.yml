@@ -31,6 +31,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pylint
+          cd ingestion
+          sudo apt-get install -y libsasl2-dev unixodbc-dev
+          pip install '.[all]'
+          
       - name: Analysing the code with pylint
         run: |
-          pylint $(find . -type f -name "*.py")
+          pylint $(find ./ingestion/src -type f -name "*.py")
