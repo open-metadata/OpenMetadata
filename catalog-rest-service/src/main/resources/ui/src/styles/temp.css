@@ -693,7 +693,8 @@ body .rdw-editor-main pre {
   background: none;
 }
 
-body .editor-wrapper ul {
+body .editor-wrapper ul,
+#description ul {
   list-style: disc;
 }
 body .editor-wrapper ol {

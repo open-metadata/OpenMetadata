@@ -26,7 +26,7 @@ import React, {
 import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Heading, Link } from './ToolBarOptions';
+import { Bold, Heading, Italic, Link, ULLIST } from './ToolBarOptions';
 
 const getIntialContent = (format: string, content?: string) => {
   /*eslint-disable  */
@@ -121,17 +121,16 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
           }}
           readOnly={readonly}
           toolbar={{
-            options: ['inline'],
-            inline: {
-              options: [],
-            },
+            options: [],
           }}
           toolbarClassName="tw-py-2 tw-border tw-border-gray-300"
           toolbarCustomButtons={
             customOptions ?? [
               <Heading key="heading" />,
               <Bold key="bold" />,
+              <Italic key="italic" />,
               <Link key="link" />,
+              <ULLIST key="ulList" />,
             ]
           }
           toolbarHidden={readonly}

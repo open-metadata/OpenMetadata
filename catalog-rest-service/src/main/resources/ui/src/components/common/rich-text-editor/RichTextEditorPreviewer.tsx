@@ -56,7 +56,10 @@ function RichTextEditorPreviewer({ markdown }: { markdown: string }) {
     <div className="content-container">
       <ReactMarkdown
         /*eslint-disable */
-        children={content.replaceAll(/&lt;/g, '<').replaceAll(/&gt;/g, '>')}
+        children={content
+          .replaceAll(/&lt;/g, '<')
+          .replaceAll(/&gt;/g, '>')
+          .replaceAll('\\', '')}
         components={components}
         remarkPlugins={[gfm]}
       />

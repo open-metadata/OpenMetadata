@@ -20,6 +20,8 @@ import PropTypes from 'prop-types';
 import React, { Component } from 'react';
 import PopOver from '../popover/PopOver';
 
+/*eslint-disable  */
+
 const getSelectedText = (editorState) => {
   const selection = editorState.getSelection();
   const anchorKey = selection.getAnchorKey();
@@ -157,7 +159,13 @@ export class Italic extends Component {
       }`,
       editorState.getCurrentInlineStyle()
     );
-    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+    const eState = EditorState.push(
+      editorState,
+      contentState,
+      'insert-characters'
+    );
+
+    onChange(updateEditorSelection(eState, -1));
   };
 
   render() {
@@ -166,7 +174,7 @@ export class Italic extends Component {
         <PopOver
           position="bottom"
           size="small"
-          title="Add link"
+          title="Add italic text"
           trigger="mouseenter">
           <i className="fas fa-italic" />
         </PopOver>
@@ -216,24 +224,32 @@ export class Heading extends Component {
     );
   }
 }
-export class Mention extends Component {
+
+export class ULLIST extends Component {
   static propTypes = {
     onChange: PropTypes.func,
     editorState: PropTypes.object,
   };
 
-  makeMention = () => {
+  makeLIST = () => {
     const { editorState, onChange } = this.props;
     const selectedText = getSelectedText(editorState);
     const selection = editorState.getSelection();
+    const currentKey = selection.getStartKey();
+    const currentBlock = editorState
+      .getCurrentContent()
+      .getBlockForKey(currentKey);
+    const text = selectedText.startsWith('- ')
+      ? selectedText.replaceAll('- ', '')
+      : `${
+          selection.anchorOffset > 0 && selectedText.length <= 0
+            ? `\n\n- ${selectedText}`
+            : `- ${selectedText}`
+        }`;
     const contentState = Modifier.replaceText(
       editorState.getCurrentContent(),
       editorState.getSelection(),
-      `${
-        selectedText.length > 0
-          ? `@${selectedText}`
-          : `${selection.anchorOffset > 0 ? ` @` : '@'}`
-      }`,
+      text,
       editorState.getCurrentInlineStyle()
     );
     onChange(EditorState.push(editorState, contentState, 'insert-characters'));
@@ -241,49 +257,77 @@ export class Mention extends Component {
 
   render() {
     return (
-      <div className="rdw-option-wrapper " onClick={this.makeMention}>
+      <div className="rdw-option-wrapper " onClick={this.makeLIST}>
         <PopOver
           position="bottom"
           size="small"
-          title="Mention user or team"
+          title="Add unordered list"
           trigger="mouseenter">
-          <p>@</p>
+          <i className="fas fa-list-ul" />
         </PopOver>
       </div>
     );
   }
 }
+export class OLLIST extends Component {
+  static propTypes = {
+    onChange: PropTypes.func,
+    editorState: PropTypes.object,
+  };
 
-// export class ULLIST extends Component {
-//   static propTypes = {
-//     onChange: PropTypes.func,
-//     editorState: PropTypes.object,
-//   };
+  makeLIST = () => {
+    const { editorState, onChange } = this.props;
+    const selectedText = getSelectedText(editorState);
+    const selection = editorState.getSelection();
+    const currentKey = selection.getStartKey();
+    const currentBlock = editorState
+      .getCurrentContent()
+      .getBlockForKey(currentKey);
+    const textArr = currentBlock.getText().split('\n') || [];
+    const lastText = textArr[textArr.length - 1];
+    const match = lastText.match(/(\d+)/)?.[0];
+    let len = 0;
+    for (const txt of textArr) {
+      len += txt.length;
+      if (len >= selection.focusOffset) {
+        const index = textArr.indexOf(txt);
+        break;
+      }
+      len++;
+    }
 
-//   makeLIST = () => {
-//     const { editorState, onChange } = this.props;
-//     // const selectedText = getSelectedText(editorState);
+    const newSelection = new SelectionState({
+      anchorKey: selection.anchorKey,
+      anchorOffset: textArr.join(',').length,
+      focusKey: selection.focusKey,
+      focusOffset: textArr.join(',').length,
+    });
 
-//     const contentState = Modifier.replaceText(
-//       editorState.getCurrentContent(),
-//       editorState.getSelection(),
-//       `\n -`,
-//       editorState.getCurrentInlineStyle()
-//     );
-//     onChange(EditorState.push(editorState, contentState, 'insert-characters'));
-//   };
+    const contentState = Modifier.replaceText(
+      editorState.getCurrentContent(),
+      newSelection,
+      `${
+        selection.anchorOffset > 0
+          ? `\n${match ? parseInt(match) + 1 : 1}. `
+          : `${match ? parseInt(match) + 1 : 1}. `
+      }`,
+      editorState.getCurrentInlineStyle()
+    );
 
-//   render() {
-//     return (
-//       <div className="rdw-option-wrapper " onClick={this.makeLIST}>
-//         <PopOver
-//           position="bottom"
-//           size="small"
-//           title="Add unordered list"
-//           trigger="mouseenter">
-//           <i className="fas fa-list-ul" />
-//         </PopOver>
-//       </div>
-//     );
-//   }
-// }
+    onChange(EditorState.push(editorState, contentState, 'insert-characters'));
+  };
+
+  render() {
+    return (
+      <div className="rdw-option-wrapper " onClick={this.makeLIST}>
+        <PopOver
+          position="bottom"
+          size="small"
+          title="Add unordered list"
+          trigger="mouseenter">
+          <i className="fas fa-list-ol" />
+        </PopOver>
+      </div>
+    );
+  }
+}
