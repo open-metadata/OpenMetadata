@@ -1,19 +1,19 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Types related to tag category",
-  "description": "Types related to tag category",
+  "title": "Tag Category",
+  "description": "This schema defines Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can have children Tags called Secondary Tags. Only two level of of tags are supported currently.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagCategory",
   "definitions": {
     "tagName": {
-      "description": "Name of the tag",
+      "description": "Name of the tag.",
       "type": "string",
       "minLength": 2,
       "maxLength": 25
     },
     "tagCategoryType": {
-      "description": "Type of tag category",
+      "description": "Type of tag category.",
       "type": "string",
       "enum": [
         "Descriptive",
@@ -22,11 +22,11 @@
       "javaEnums": [
         {
           "name": "Descriptive",
-          "description": "Tag category used for describing an entity. Example - column is of of type User.Address"
+          "description": "Tag category used for describing an entity. Example - column is of of type User.Addres.s"
         },
         {
           "name": "Classification",
-          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive"
+          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitiv.e"
         }
       ]
     },
@@ -37,35 +37,35 @@
           "$ref": "#/definitions/tagName"
         },
         "fullyQualifiedName": {
-          "description": "Unique name of the tag of format Category.PrimaryTag.SecondaryTag",
+          "description": "Unique name of the tag of format Category.PrimaryTag.SecondaryTag.",
           "type": "string"
         },
         "description": {
-          "description": "Unique name of the tag category",
+          "description": "Unique name of the tag category.",
           "type": "string"
         },
         "href": {
-          "description": "Link to the resource corresponding to the tag",
+          "description": "Link to the resource corresponding to the tag.",
           "$ref": "../../type/basic.json#/definitions/href"
         },
         "usageCount": {
-          "description": "Count of how many times this tag and children tags are used",
+          "description": "Count of how many times this tag and children tags are used.",
           "type": "integer"
         },
         "deprecated": {
-          "description": "If the tag is deprecated",
+          "description": "If the tag is deprecated.",
           "type": "boolean",
           "default": false
         },
         "associatedTags": {
-          "description": "Fully qualified names of tags associated with this tag",
+          "description": "Fully qualified names of tags associated with this tag.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "children": {
-          "description": "Tags under this tag group or empty for tags at leaf level",
+          "description": "Tags under this tag group or empty for tags at leaf level.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/tag"
@@ -84,22 +84,22 @@
       "$ref": "#/definitions/tagName"
     },
     "description": {
-      "description": "Description of the tag category",
+      "description": "Description of the tag category.",
       "type": "string"
     },
     "categoryType": {
       "$ref": "#/definitions/tagCategoryType"
     },
     "href": {
-      "description": "Link to the resource corresponding to the tag category",
+      "description": "Link to the resource corresponding to the tag category.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "usageCount": {
-      "description": "Count of how many times the tags from this tag category are used",
+      "description": "Count of how many times the tags from this tag category are used.",
       "type": "integer"
     },
     "children": {
-      "description": "Tags under this category",
+      "description": "Tags under this category.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/tag"

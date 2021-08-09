@@ -1,8 +1,8 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Database service entity",
-  "description": "Database service entity that reference services such as MySQL, BigQuery, Redshift, Postgres or Snowflake",
+  "title": "Database Service",
+  "description": "This schema defines Database Service entity, such as MySQL, BigQuery, Redshift, Postgres or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used.",
   "type": "object",
   "definitions": {
     "databaseServiceType": {
@@ -44,11 +44,11 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies an entity instance",
+      "description": "Unique identifier that identifies an entity instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
+      "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
@@ -61,14 +61,14 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "jdbc": {
       "$ref": "../../type/jdbcConnection.json#/definitions/jdbcInfo"
     },
     "ingestionSchedule": {
-      "description": "Schedule for running metadata ingestion jobs",
+      "description": "Schedule for running metadata ingestion jobs.",
       "$ref": "../../type/schedule.json"
     }
   },

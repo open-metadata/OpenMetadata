@@ -1,13 +1,13 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Database entity",
-  "description": "Entity that represents a database",
+  "title": "Database",
+  "description": "This schema defines Database entity. Database is a collection of schemas. They are also referred to as Database Catalog.",
   "type": "object",
 
   "definitions": {
     "databaseName": {
-      "description": "Name that identifies the database",
+      "description": "Name that identifies the database.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
@@ -16,15 +16,15 @@
   },
   "properties" : {
     "id": {
-      "description": "Unique identifier that identifies this database instance",
+      "description": "Unique identifier that identifies this database instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the database",
+      "description": "Name that identifies the database.",
       "$ref": "#/definitions/databaseName"
     },
     "fullyQualifiedName": {
-      "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'",
+      "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
       "type": "string"
     },
     "description": {
@@ -32,24 +32,24 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this database",
+      "description": "Owner of this database.",
       "$ref": "../../type/entityReference.json"
     },
     "service" : {
-      "description": "Link to the database cluster/service where this database is hosted in",
+      "description": "Link to the database cluster/service where this database is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
     "usageSummary" : {
-      "description": "Latest usage information for this database",
+      "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
     "tables": {
-      "description": "References to tables in the database",
+      "description": "References to tables in the database.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },
