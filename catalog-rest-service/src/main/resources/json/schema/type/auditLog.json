@@ -1,0 +1,45 @@
+{
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit Log",
+  "description": "This schema defines type for Audit Log. Audit Log is used to capture audit trail of POST, PUT, and PATCH API operations.",
+  "type": "object",
+
+  "properties" : {
+    "method": {
+      "description": "HTTP Method used in a call.",
+      "type": "string",
+      "enum": [
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE"
+      ]
+    },
+    "responseCode": {
+      "description": "HTTP response code for the api requested.",
+      "type": "integer"
+    },
+    "path": {
+      "description": "Requested API Path.",
+      "type": "string"
+    },
+    "userName": {
+      "description": "Name of the user who requested for the API.",
+      "type": "string"
+    },
+    "dateTime": {
+      "description": "Date which the api call is made.",
+      "$ref": "basic.json#/definitions/dateTime"
+    },
+    "entityId": {
+      "description": "Entity Id that was modified by the operation.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "entityType": {
+      "description": "Entity Type that modified by the operation.",
+      "type": "string"
+    }
+  },
+  "required": ["method", "responseCode", "path", "userName", "entityId", "entityType"]
+}
