@@ -37,7 +37,7 @@ import { getFilterString } from '../../utils/FilterUtils';
 import { getAggrWithDefaultValue } from './explore.constants';
 import { Params } from './explore.interface';
 
-const visibleFilters = ['tags', 'service', 'service type', 'tier'];
+const visibleFilters = ['tags', 'service type', 'tier'];
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
@@ -61,7 +61,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
 
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], 'service type': [], tier: [] },
+    ...{ tags: [], 'service type': [], tier: [] },
     ...getQueryParam(location.search),
   };
   const showToast = useToastContext();
@@ -259,7 +259,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const fetchLeftPanel = () => {
     return (
       <FacetFilter
-        aggregations={getAggrWithDefaultValue(aggregations)}
+        aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
         filters={getFacetedFilter()}
         onSelectHandler={handleSelectedFilter}
       />
