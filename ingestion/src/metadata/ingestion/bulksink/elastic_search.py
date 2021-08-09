@@ -8,7 +8,7 @@ import uuid
 
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from metadata.generated.schema.entity.data.table import TableEntity
 from metadata.ingestion.bulksink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING

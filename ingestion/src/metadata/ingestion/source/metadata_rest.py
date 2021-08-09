@@ -14,11 +14,11 @@
 #  limitations under the License.
 
 import logging
-from typing import Dict, Any, Iterable, Optional
+from typing import Iterable, Optional
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import TableEntity
-from metadata.ingestion.api.common import WorkflowContext, Record
+from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST

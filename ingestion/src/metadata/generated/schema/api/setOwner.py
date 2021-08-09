@@ -23,7 +23,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from ..type import basic
+from metadata.generated.schema.type import basic
 
 
 class SetOwnershipForAGivenEntity(BaseModel):

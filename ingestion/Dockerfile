@@ -2,9 +2,9 @@ FROM python:3.9.2
 
 EXPOSE 7777
 
-COPY . /catalog-ingestion
+COPY . /openmetadata-ingestion
 
-WORKDIR /catalog-ingestion
+WORKDIR /openmetadata-ingestion
 
 RUN apt-get update && \
     apt-get install -y gcc libsasl2-dev unixodbc-dev --no-install-recommends && \

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from ...entity.tags import tagCategory
+from metadata.generated.schema.entity.tags import tagCategory
 
 
 class CreateTagCategoryRequest(BaseModel):

@@ -16,11 +16,10 @@
 import json
 import logging
 import pathlib
-from typing import Dict, Any
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import TableEntity
-from metadata.ingestion.api.common import WorkflowContext, Record
+from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.client import MetadataServerConfig
 
@@ -45,7 +44,7 @@ class FileStage(Stage):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict:dict, ctx: WorkflowContext):
+    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         config = FileStageConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)

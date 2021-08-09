@@ -18,7 +18,7 @@ from typing import Optional
 
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLAlchemySource, BasicSQLAlchemyConfig
-from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.api.source import SourceStatus
 
 logger = logging.getLogger(__name__)
 
