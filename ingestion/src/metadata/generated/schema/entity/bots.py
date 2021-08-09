@@ -18,12 +18,9 @@
 #   timestamp: 2021-07-31T17:12:10+00:00
 
 from __future__ import annotations
-
-from typing import Optional
-
 from pydantic import BaseModel, Field, constr
-
-from ..type import basic
+from typing import Optional
+from metadata.generated.schema.type import basic
 
 
 class BotEntity(BaseModel):

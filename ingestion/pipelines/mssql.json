@@ -8,7 +8,7 @@
       "database":"catalog_test",
       "username": "sa",
       "password": "test!Password",
-      "table_pattern": {
+      "include_pattern": {
         "include": ["catalog_test.*"]
       }
     }

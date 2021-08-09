@@ -5,11 +5,13 @@
 [![Build Status](https://github.com/StreamlineData/catalog/actions/workflows/maven-build.yml/badge.svg?event=push)](https://github.com/StreamlineData/catalog/actions/workflows/maven-build.yml)
 [![Release](https://img.shields.io/github/release/StreamlineData/catalog/all.svg)](https://github.com/StreamlineData/catalog/releases)
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
+<a href="https://join.slack.com/t/openmetadata/shared_invite/zt-oiq9s1qd-dHHvw4xjpnoRV1QQrq6vUg"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
 [![License](https://img.shields.io/github/license/StreamlineData/catalog.svg)](LICENSE)
 
 </div>
 
 - [What is OpenMetadata?](#what-is-openmetadata )
+- [Install & Run](#install-and-run)
 - [Features](#features)
 - [Building OpenMetadata](#building-openmetadata)
 - [Running OpenMetadata via Docker](#running-openmetadata-via-docker)
@@ -19,67 +21,46 @@
 # What is OpenMetadata?
 [OpenMetadata](https://open-metadata.org/) is a ...
 
+## Our Mission
+
+## Run OpenMetadata
+Get up and running in few mins
+
+```sh
+git clone https://github.com/open-metadata/OpenMetadata
+cd openmetadata/docker
+docker-compose up -d
+```
+Then visit [http://localhost:8585](http://localhost:8585)
+
+
+
+## Try Metadata
+
+Visit our demo at [http://demo.open-metadata.org](http://demo.open-metadata.org)
+
+
 ## Features
 
-## Building OpenMetadata
-### Set up mysql database used as OpenMetadata backend
-```shell
-mysql -u username -p (Enter password when prompted)
-
-mysql> CREATE USER 'openmetadata_user'@'%' IDENTIFIED WITH mysql_native_password BY 'openmetadata_password';
-mysql> CREATE DATABASE openmetadata_db;
-mysql> GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'%';
-mysql> FLUSH PRIVILEGES;
-```
-
-### Build OpenMetdata project and run it
-Make sure mysql is running with credentials user 'openmetadata_user' with password 'openmetadata_password'.
-Connect to mysql following steps mentioned [here](#Set up mysql database used as OpenMetadata backend).
-
-```shells
-mvn -DskipTests clean package
-cd dist/target
-tar zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
-cd openmetadata-1.0.0-SNAPSHOT/bootstrap
-./bootstrap_storage.sh migrate
-cd ../
-```
-If authorizer is configured, run:
-```
-./bin/openmetadata-server-start.sh conf/openmetadata-security.yaml
-```
-otherwise run
-```
-./bin/openmetadata-server-start.sh conf/openmetadata.yaml
-```
-Open browser http://localhost:8585/ to start the UI.\
-Open browser http://localhost:8585/api/swagger to look at API documentation.
-
-### Setup Authorizer Configuration
-Enter following information in ***/conf/openmetadata-security.yaml*** file:
-```
-authorizerConfiguration:
-  className: <authorizer_classname>
-  containerRequestFilter: <JWT-filter>
-  publicKeyUri: <sign-on_provider_public-key>
-  clientAuthorizer:
-    authority: <sign-on_issuer-url>
-    client_id: <sign-on_client_id>
-```
 
 
-## Running OpenMetadata via Docker
-```shell
-cd docker/metadata/
-docker-compose build
-docker-compose up
-```
-Open browser http://localhost:8585/ to start the UI.\
-Open browser http://localhost:8585/api/swagger to look at API documentation.
+## Documentation and Support
 
-
-## Documentation
 Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
+
+Join [our Slack Community](https://join.slack.com/t/openmetadata/shared_invite/) if you get stuck, want to chat, or are thinking of a new feature.
+
+Or email us at [dev@open-metadata.org](mailto:dev@open-metadata.org) 
+
+We're here to help - and make OpenMetadata even better!
+
+## Contributors
+
+We ❤️ all contributions, big and small!
+
+Read [Build Code and Run Tests](https://docs.open-metadata.org/open-source-community/developer/build-code-run-tests) for how to setup your local development environment.
+
+If you want to, you can reach out via [Slack](https://join.slack.com/t/openmetadata/shared_invite/) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
 
 ## License
 OpenMetadata is under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

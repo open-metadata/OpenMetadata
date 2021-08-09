@@ -16,34 +16,28 @@
 import csv
 import json
 import uuid
-from collections import namedtuple
-from itertools import groupby
-from typing import Iterable, Dict, Any, List, Union
-
-from faker import Faker
 import os
 import pandas as pd
 import random
 import string
 import logging
 
+from faker import Faker
+from collections import namedtuple
+from typing import Iterable, Dict, Any, List, Union
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
-
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import Column, TableEntity
+from metadata.generated.schema.entity.data.table import TableEntity
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source, SourceStatus
 from dataclasses import dataclass, field
-
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.models.table_metadata import DatabaseMetadata, ColumnMetadata, TableMetadata
+from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.source.sql_source import get_service_or_create, BasicSQLAlchemyConfig
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
@@ -256,6 +250,7 @@ class SampleUserMetadataGenerator:
 
         return row_dict
 
+
 def get_service_or_create(service_json, metadata_config) -> DatabaseServiceEntity:
     client = REST(metadata_config)
     service = client.get_database_service(service_json['name'])
@@ -265,6 +260,7 @@ def get_service_or_create(service_json, metadata_config) -> DatabaseServiceEntit
     else:
         created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service_json))
         return created_service
+
 
 class SampleTableSource(Source):
 

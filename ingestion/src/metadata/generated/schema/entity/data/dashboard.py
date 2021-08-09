@@ -23,7 +23,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, constr
 
-from ...type import basic, entityReference, usageDetails
+from metadata.generated.schema.type import basic, entityReference, usageDetails
 
 
 class DashboardEntity(BaseModel):

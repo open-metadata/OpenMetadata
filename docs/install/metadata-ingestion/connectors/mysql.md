@@ -43,7 +43,7 @@ metadata ingest -c ./pipelines/mysql.json
       "username": "openmetadata_user",
       "password": "openmetadata_password",
       "service_name": "local_mysql",
-      "table_pattern": {
+      "include_pattern": {
         "deny": ["mysql.*", "information_schema.*"]
       }
     }

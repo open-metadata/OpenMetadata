@@ -21,7 +21,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEnti
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.type.common import EntityReference
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.client import REST, APIError
 
 
