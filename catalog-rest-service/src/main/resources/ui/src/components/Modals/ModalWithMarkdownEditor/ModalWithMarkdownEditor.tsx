@@ -63,11 +63,13 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
   };
 
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="markdown-editor">
       <div className="tw-modal-backdrop" />
       <div className={getContainerClasses()}>
         <div className="tw-modal-header">
-          <p className="tw-modal-title">{header}</p>
+          <p className="tw-modal-title" data-testid="header">
+            {header}
+          </p>
           {isExpandable && (
             <div className="tw-flex">
               <Button
@@ -100,6 +102,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
         </div>
         <div className="tw-modal-body tw-pt-0 tw-pb-1">
           <MarkdownWithPreview
+            data-testid="markdown-with-preview"
             editorRef={(Ref: MarkdownRef) => (markdownRef.current = Ref)}
             placeholder={placeholder}
             value={value}
@@ -107,6 +110,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
         </div>
         <div className="tw-modal-footer">
           <Button
+            data-testid="cancel"
             size="regular"
             theme="primary"
             variant="link"
@@ -114,6 +118,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
             Cancel
           </Button>
           <Button
+            data-testid="save"
             size="regular"
             theme="primary"
             variant="contained"

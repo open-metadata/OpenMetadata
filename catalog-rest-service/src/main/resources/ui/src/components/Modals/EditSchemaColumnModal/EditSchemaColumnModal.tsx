@@ -41,11 +41,13 @@ export const EditSchemaColumnModal: FunctionComponent<Props> = ({
   };
 
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="edit-schema">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container">
         <div className="tw-modal-header">
-          <p className="tw-modal-title">{header}</p>
+          <p className="tw-modal-title" data-testid="header">
+            {header}
+          </p>
           <svg
             className="tw-w-6 tw-h-6 tw-cursor-pointer"
             fill="none"
@@ -75,12 +77,14 @@ export const EditSchemaColumnModal: FunctionComponent<Props> = ({
         <div className="tw-modal-footer tw-justify-end">
           <Button
             className="tw-mr-2"
+            data-testid="cancel"
             size="regular"
             variant="outlined"
             onClick={onCancel}>
             Cancel
           </Button>
           <Button
+            data-testid="save"
             size="regular"
             theme="primary"
             variant="contained"

@@ -75,7 +75,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   const getTabs = () => {
     return (
-      <div className="tw-mb-3 tw--mt-4">
+      <div className="tw-mb-3 tw--mt-4" data-testid="container">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
