@@ -5,7 +5,7 @@
   "description": "This schema defines Team entity. A Team is a group of zero or more users. Team can have ownership of data assets.",
   "type": "object",
 
-  "defintions" : {
+  "definitions" : {
     "teamName" : {
       "description": "Unique name of the team typically the team ID from the identify provider. Example - group Id from ldap.",
       "type": "string",
@@ -19,7 +19,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/defintions/teamName"
+      "$ref": "#/definitions/teamName"
     },
     "displayName": {
       "description": "Name used for display purposes. Example 'Data Science team'.",
@@ -38,6 +38,7 @@
       "$ref": "../../type/profile.json"
     },
     "deleted" : {
+      "description": "When true the team has been deleted.",
       "type": "boolean"
     },
     "users" : {
@@ -45,7 +46,7 @@
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "owns" : {
-      "description": "Entities owned by the team.",
+      "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

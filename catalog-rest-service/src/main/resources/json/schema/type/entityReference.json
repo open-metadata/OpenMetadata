@@ -20,7 +20,7 @@
       "$ref": "basic.json#/definitions/uuid"
     },
     "type": {
-      "description": "Entity type/class name - Examples: database, table, metrics, redshift, mysql, bigquery, snowflake...",
+      "description": "Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...",
       "type": "string"
     },
     "name": {

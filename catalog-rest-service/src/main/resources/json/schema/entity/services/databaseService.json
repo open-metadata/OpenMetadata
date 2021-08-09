@@ -44,16 +44,17 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies an entity instance.",
+      "description": "Unique identifier of this database service instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique.",
+      "description": "Name that identifies this database service.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "serviceType": {
+      "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "$ref": "#/definitions/databaseServiceType"
     },
     "description": {
@@ -61,10 +62,11 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity.",
+      "description": "Link to the resource corresponding to this database service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "jdbc": {
+      "description": "JDBC connection information",
       "$ref": "../../type/jdbcConnection.json#/definitions/jdbcInfo"
     },
     "ingestionSchedule": {

@@ -39,9 +39,11 @@
   "description":"JDBC connection information",
   "properties": {
     "driverClass": {
+      "description": "JDBC driver class",
       "$ref" : "#/definitions/driverClass"
     },
     "connectionUrl": {
+      "description": "JDBC connection URL",
       "$ref" : "#/definitions/connectionUrl"
     },
     "userName": {
