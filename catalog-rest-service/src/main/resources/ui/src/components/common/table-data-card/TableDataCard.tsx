@@ -28,7 +28,7 @@ type Props = {
   tableType?: string;
   tier?: string;
   usage?: number;
-  service?: string;
+  serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[];
 };
@@ -40,7 +40,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   tableType,
   tier = 'No Tier',
   usage,
-  service,
+  serviceType,
   fullyQualifiedName,
   tags,
 }: Props) => {
@@ -48,7 +48,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   const badgeName = getBadgeName(tableType);
   const OtherDetails = [
     { key: 'Owner', value: owner },
-    { key: 'Service', value: service },
+    { key: 'Service Type', value: serviceType },
     { key: 'Usage', value: percentile },
     { key: 'Tier', value: tier },
   ];

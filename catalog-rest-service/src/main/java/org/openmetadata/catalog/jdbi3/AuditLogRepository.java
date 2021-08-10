@@ -16,7 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.entity.audit.AuditLog;
+import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.util.EntityUtil;
 
 import org.openmetadata.catalog.util.JsonUtils;
