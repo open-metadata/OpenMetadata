@@ -408,7 +408,7 @@
 .side-panel .activeCategory {
   margin-right: -15px;
   margin-left: -15px;
-  padding: 5px 15px;
+  padding: 0px 15px;
   border-right: 3px solid rgba(249, 130, 108);
   font-weight: 500;
 }

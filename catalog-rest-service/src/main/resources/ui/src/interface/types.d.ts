@@ -168,8 +168,8 @@ declare module 'Models' {
   };
 
   export type UserTeam = {
-    description?: string;
-    href?: string;
+    description: string;
+    href: string;
     id: string;
     name: string;
     type: string;
@@ -280,5 +280,14 @@ declare module 'Models' {
       };
       aggregations: Record<string, Sterm>;
     };
+  };
+  export type Team = {
+    id: string;
+    name: string;
+    displayName: string;
+    description: string;
+    href: string;
+    users: Array<UserTeam>;
+    owns: Array<UserTeam>;
   };
 }

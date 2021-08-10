@@ -15,15 +15,17 @@
   * limitations under the License.
 */
 
+import { Team } from 'Models';
 import React, { useRef, useState } from 'react';
 import { TagsCategory } from '../../../pages/tags/tagsTypes';
 import { Button } from '../../buttons/Button/Button';
+type FormData = TagsCategory | Team;
 type FormModalProp = {
   onCancel: () => void;
   onSave: (data: TagsCategory) => void;
   form: React.ElementType;
   header: string;
-  initialData: TagsCategory;
+  initialData: FormData;
 };
 type FormRef = {
   fetchMarkDownData: () => string;
@@ -36,7 +38,7 @@ const FormModal = ({
   initialData,
 }: FormModalProp) => {
   const formRef = useRef<FormRef>();
-  const [data, setData] = useState<TagsCategory>(initialData);
+  const [data, setData] = useState<FormData>(initialData);
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
