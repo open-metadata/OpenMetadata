@@ -1,6 +1,6 @@
 # Entity Reference
 
-This schema defines the type Entity Reference used for referencing an entity.
+This schema defines the type EntityReference used for referencing an entity. EntityReference is used for capturing relationship from one entity to another. For example, table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypeentityreference.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityReference.json</b>
 
@@ -24,11 +24,11 @@ Type: `object`
 	 - &#36;ref: [basic.json#/definitions/href](#basic.jsondefinitionshref)
 
 
-## Definitions
-**_entityReferenceList_**
+## Types defined in this schema
+**entityReferenceList**
 
  - Type: `array`
-	 - **_Items_**
+	 - **Items**
 	 - &#36;ref: [entityReference.json](#entityreference.json)
 
 

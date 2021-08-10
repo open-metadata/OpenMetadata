@@ -2,7 +2,7 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/metrics.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Metrics",
-  "description": "This schema defines Metrics entity.",
+  "description": "This schema defines the Metrics entity.",
   "type": "object",
 
   "properties" : {
@@ -11,19 +11,19 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the this metrics instance uniquely.",
+      "description": "Name that identifies this metrics instance uniquely.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "Unique name that identifies a metric in the format 'ServiceName.MetricName'.",
+      "description": "A unique name that identifies a metric in the format 'ServiceName.MetricName'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "description": {
-      "description": "Description of metrics instance. What is has and how to use it.",
+      "description": "Description of metrics instance, what it is, and how to use it.",
       "type": "string"
     },
     "href": {

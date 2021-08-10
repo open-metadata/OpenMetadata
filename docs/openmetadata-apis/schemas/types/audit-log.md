@@ -1,6 +1,6 @@
 # Audit Log
 
-This schema defines type for Audit Log. Audit Log is used to capture audit trail of POST, PUT, and PATCH API operations.
+This schema defines the type for Audit Log to capture the audit trail of POST, PUT, and PATCH API operations.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypeauditlog.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json</b>
 

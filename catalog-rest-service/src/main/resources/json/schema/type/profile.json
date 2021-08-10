@@ -2,12 +2,12 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Profile",
-  "description": "This schema defines type used to capture profile of a user, team, or an organization.",
+  "description": "This schema defines the type used to capture profile of a user, team, or an organization.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Profile",
   "definitions": {
     "imageList": {
-      "description": "Links to list of images of varying resolutions/sizes.",
+      "description": "Links to a list of images of varying resolutions/sizes.",
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.ImageList",
       "properties": {

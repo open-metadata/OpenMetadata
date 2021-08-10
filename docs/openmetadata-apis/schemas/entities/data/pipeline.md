@@ -1,6 +1,6 @@
 # Pipeline
 
-This schema defines Pipeline entity.
+This schema defines the Pipeline entity.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentitydatapipeline.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json</b>
 
@@ -11,11 +11,11 @@ Type: `object`
 	 - Unique identifier that identifies a pipeline instance.
 	 - &#36;ref: [../../type/basic.json#/definitions/uuid](#....typebasic.jsondefinitionsuuid)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json/properties/name">name</b> `required`
-	 - Name that identifies the this pipeline instance uniquely.
+	 - Name that identifies this pipeline instance uniquely.
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json/properties/fullyQualifiedName">fullyQualifiedName</b>
-	 - Unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
+	 - A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json/properties/description">description</b>

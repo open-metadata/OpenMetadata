@@ -21,25 +21,25 @@ Type: `object`
 	 - Type: `string`
 
 
-## Definitions
-**_driverClass_**
+## Types defined in this schema
+**driverClass**
 
  - Type used for JDBC driver class
  - Type: `string`
 
 
-**_connectionUrl_**
+**connectionUrl**
 
  - Type used for JDBC connection URL
  - Type: `string`
  - String format must be a "uri"
 
 
-**_jdbcInfo_**
+**jdbcInfo**
 
  - Type for capturing JDBC connector information
  - Type: `object`
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/jdbcConnection.json/definitions/jdbcInfo/properties/driverClass">driverClass</b> `required`
 		 - &#36;ref: [#/definitions/driverClass](#/definitions/driverClass)
 		 - Default: _"com.amazon.redshift.jdbc42.Driver"_

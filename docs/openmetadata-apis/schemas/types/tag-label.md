@@ -1,6 +1,6 @@
 # Tag Label
 
-This schema defines type used for labeling an entity or an entity field with a Tag.
+This schema defines the type used for labeling an entity with a Tag.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypetaglabel.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json</b>
 

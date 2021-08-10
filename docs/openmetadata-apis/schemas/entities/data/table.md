@@ -1,6 +1,6 @@
 # Table
 
-This schema defines Table entity. Database contains a collection of schemas. Schemas contain Tables, Views, etc. OpenMetadata does not have a separate hierarchy for Schema. Both Table and Schema are captured in this entity.
+This schema defines the Table entity. A database contains a collection of schemas. Schemas contain Tables, Views, etc. OpenMetadata does not have a separate hierarchy for Schema. Both Table and Schema are captured in this entity.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentitydatatable.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json</b>
 
@@ -11,7 +11,7 @@ Type: `object`
 	 - Unique identifier of this table instance.
 	 - &#36;ref: [../../type/basic.json#/definitions/uuid](#....typebasic.jsondefinitionsuuid)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/name">name</b> `required`
-	 - Name of the table. Expected to be unique with in a database.
+	 - Name of the table. Expected to be unique within a database.
 	 - &#36;ref: [#/definitions/tableName](#/definitions/tableName)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/description">description</b>
 	 - Description of the table.
@@ -27,12 +27,12 @@ Type: `object`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/columns">columns</b> `required`
 	 - Columns in this table.
 	 - Type: `array`
-		 - **_Items_**
+		 - **Items**
 		 - &#36;ref: [#/definitions/column](#/definitions/column)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/tableConstraints">tableConstraints</b>
 	 - Table constraints.
 	 - Type: `array`
-		 - **_Items_**
+		 - **Items**
 		 - &#36;ref: [#/definitions/tableConstraint](#/definitions/tableConstraint)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/usageSummary">usageSummary</b>
 	 - Latest usage information for this table.
@@ -49,7 +49,7 @@ Type: `object`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/tags">tags</b>
 	 - Tags for this table.
 	 - Type: `array`
-		 - **_Items_**
+		 - **Items**
 		 - &#36;ref: [../../type/tagLabel.json](#....typetaglabel.json)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/properties/joins">joins</b>
 	 - Details of other tables this table is frequently joined with.
@@ -59,8 +59,8 @@ Type: `object`
 	 - &#36;ref: [#/definitions/tableData](#/definitions/tableData)
 
 
-## Definitions
-**_tableType_**
+## Types defined in this schema
+**tableType**
 
  - This schema defines the type for a column in a table.
  - Type: `string`
@@ -72,9 +72,9 @@ Type: `object`
 	 5. _"MaterializedView"_
 
 
-**_columnDataType_**
+**columnDataType**
 
- - This enum defines the type for column data type.
+ - This enum defines the type of data stored in a column.
  - Type: `string`
  - The value is restricted to the following: 
 	 1. _"NUMBER"_
@@ -112,7 +112,7 @@ Type: `object`
 	 33. _"JSON"_
 
 
-**_columnConstraint_**
+**columnConstraint**
 
  - This enum defines the type for column constraint.
  - Type: `string`
@@ -124,11 +124,11 @@ Type: `object`
  - Default: _"NULL"_
 
 
-**_tableConstraint_**
+**tableConstraint**
 
  - This enum defines the type for table constraint.
  - Type: `object`
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableConstraint/properties/constraintType">constraintType</b>
 		 - Type: `string`
 		 - The value is restricted to the following: 
@@ -138,11 +138,11 @@ Type: `object`
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableConstraint/properties/columns">columns</b>
 		 - List of column names corresponding to the constraint.
 		 - Type: `array`
-			 - **_Items_**
+			 - **Items**
 			 - Type: `string`
 
 
-**_columnName_**
+**columnName**
 
  - Local name (not fully qualified name) of the column.
  - Type: `string`
@@ -150,7 +150,7 @@ Type: `object`
  - Length: between 1 and 64
 
 
-**_tableName_**
+**tableName**
 
  - Local name (not fully qualified name) of the table.
  - Type: `string`
@@ -158,18 +158,18 @@ Type: `object`
  - Length: between 1 and 64
 
 
-**_fullyQualifiedColumnName_**
+**fullyQualifiedColumnName**
 
  - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
  - Type: `string`
  - Length: between 1 and 256
 
 
-**_column_**
+**column**
 
  - This schema defines the type for a column in a table.
  - Type: `object`
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/column/properties/name">name</b> `required`
 		 - &#36;ref: [#/definitions/columnName](#/definitions/columnName)
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/column/properties/columnDataType">columnDataType</b> `required`
@@ -183,7 +183,7 @@ Type: `object`
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/column/properties/tags">tags</b>
 		 - Tags associated with the column.
 		 - Type: `array`
-			 - **_Items_**
+			 - **Items**
 			 - &#36;ref: [../../type/tagLabel.json](#....typetaglabel.json)
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/column/properties/columnConstraint">columnConstraint</b>
 		 - Column level constraint.
@@ -193,32 +193,32 @@ Type: `object`
 		 - Type: `integer`
 
 
-**_columnJoins_**
+**columnJoins**
 
- - This schema defines the type to capture how frequently a column in this table is joined with columns in the other tables.
+ - This schema defines the type to capture how frequently a column are joined with columns in the other tables.
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/columnJoins/properties/columnName">columnName</b>
 		 - &#36;ref: [#/definitions/columnName](#/definitions/columnName)
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/columnJoins/properties/joinedWith">joinedWith</b>
 		 - Fully qualified names of the columns that this column is joined with.
 		 - Type: `array`
-			 - **_Items_**
+			 - **Items**
 			 - Type: `object`
-			 - **_Properties_**
+			 - **Properties**
 				 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/columnJoins/properties/joinedWith/items/properties/fullyQualifiedName">fullyQualifiedName</b>
 					 - &#36;ref: [#/definitions/fullyQualifiedColumnName](#/definitions/fullyQualifiedColumnName)
 				 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/columnJoins/properties/joinedWith/items/properties/joinCount">joinCount</b>
 					 - Type: `integer`
 
 
-**_tableJoins_**
+**tableJoins**
 
- - This schema defines the type to capture how columns in this table is joined with columns in the other tables.
+ - This schema defines the type to capture how columns in this table are joined with columns in the other tables.
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableJoins/properties/startDate">startDate</b>
 		 - Date can be only from today going back to last 29 days.
 		 - &#36;ref: [../../type/basic.json#/definitions/date](#....typebasic.jsondefinitionsdate)
@@ -227,26 +227,26 @@ Type: `object`
 		 - Default: `1`
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableJoins/properties/columnJoins">columnJoins</b>
 		 - Type: `array`
-			 - **_Items_**
+			 - **Items**
 			 - &#36;ref: [#/definitions/columnJoins](#/definitions/columnJoins)
 
 
-**_tableData_**
+**tableData**
 
  - This schema defines the type to capture rows of sample data for the table.
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableData/properties/columns">columns</b>
 		 - List of local column names (not fully qualified column names) of the table.
 		 - Type: `array`
-			 - **_Items_**
+			 - **Items**
 			 - &#36;ref: [#/definitions/columnName](#/definitions/columnName)
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json/definitions/tableData/properties/rows">rows</b>
-		 - Data for a multiple rows of the table.
+		 - Data for multiple rows of the table.
 		 - Type: `array`
-			 - **_Items_**
-			 - Data for a single row of the table with in the same order as columns fields.
+			 - **Items**
+			 - Data for a single row of the table within the same order as columns fields.
 			 - Type: `array`
 
 

@@ -1,6 +1,6 @@
 # Database
 
-This schema defines Database entity. Database is a collection of schemas. They are also referred to as Database Catalog.
+This schema defines the Database entity. A database is a collection of schemas. They are also referred to as Database Catalog.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentitydatadatabase.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/database.json</b>
 
@@ -36,8 +36,8 @@ Type: `object`
 	 - &#36;ref: [../../type/entityReference.json#/definitions/entityReferenceList](#....typeentityreference.jsondefinitionsentityreferencelist)
 
 
-## Definitions
-**_databaseName_**
+## Types defined in this schema
+**databaseName**
 
  - Name that identifies the database.
  - Type: `string`
