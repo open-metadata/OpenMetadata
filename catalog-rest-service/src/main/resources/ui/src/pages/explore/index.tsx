@@ -16,13 +16,14 @@
 */
 
 import { AxiosError } from 'axios';
+import { cloneDeep } from 'lodash';
 import {
   AggregationType,
   FilterObject,
   FormatedTableData,
   SearchResponse,
 } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
@@ -36,7 +37,7 @@ import { getFilterString } from '../../utils/FilterUtils';
 import { getAggrWithDefaultValue } from './explore.constants';
 import { Params } from './explore.interface';
 
-const visibleFilters = ['tags', 'service', 'service type', 'tier'];
+const visibleFilters = ['tags', 'service type', 'tier'];
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
@@ -60,7 +61,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
 
   const filterObject: FilterObject = {
-    ...{ tags: [], service: [], 'service type': [], tier: [] },
+    ...{ tags: [], 'service type': [], tier: [] },
     ...getQueryParam(location.search),
   };
   const showToast = useToastContext();
@@ -70,10 +71,12 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [filters, setFilters] = useState<FilterObject>(filterObject);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [aggregations, setAggregation] = useState<Array<AggregationType>>([]);
+  const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
+  const isMounting = useRef(true);
+
   const handleSelectedFilter = (
     checked: boolean,
     selectedFilter: string,
@@ -105,21 +108,105 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setCurrentPage(pageNumber);
   };
 
-  const fetchTableData = () => {
+  const updateAggregationCount = useCallback(
+    (newAggregations: Array<AggregationType>) => {
+      const oldAggs = cloneDeep(aggregations);
+      for (const newAgg of newAggregations) {
+        for (const oldAgg of oldAggs) {
+          if (newAgg.title === oldAgg.title) {
+            for (const oldBucket of oldAgg.buckets) {
+              let docCount = 0;
+              for (const newBucket of newAgg.buckets) {
+                if (newBucket.key === oldBucket.key) {
+                  docCount = newBucket.doc_count;
+
+                  break;
+                }
+              }
+              // eslint-disable-next-line @typescript-eslint/camelcase
+              oldBucket.doc_count = docCount;
+            }
+          }
+        }
+      }
+      setAggregations(oldAggs);
+    },
+    [aggregations, filters]
+  );
+
+  const updateSearchResults = (res: SearchResponse) => {
+    const hits = res.data.hits.hits;
+    if (hits.length > 0) {
+      setTotalNumberOfValues(res.data.hits.total.value);
+      setData(formatDataResponse(hits));
+    } else {
+      setData([]);
+      setTotalNumberOfValues(0);
+    }
+  };
+
+  const fetchTableData = (forceSetAgg: boolean) => {
     setIsLoading(true);
-    searchData(searchText, currentPage, PAGE_SIZE, getFilterString(filters))
-      .then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setTotalNumberOfValues(res.data.hits.total.value);
-          setData(formatDataResponse(hits));
-          setIsLoading(false);
-        } else {
-          setData([]);
-          setTotalNumberOfValues(0);
+
+    const searchResults = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters)
+    );
+    const serviceTypeAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['service type'])
+    );
+    const tierAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['tier'])
+    );
+    const tagAgg = searchData(
+      searchText,
+      currentPage,
+      PAGE_SIZE,
+      getFilterString(filters, ['tags'])
+    );
+
+    Promise.all([searchResults, serviceTypeAgg, tierAgg, tagAgg])
+      .then(
+        ([
+          resSearchResults,
+          resAggServiceType,
+          resAggTier,
+          resAggTag,
+        ]: Array<SearchResponse>) => {
+          updateSearchResults(resSearchResults);
+          if (forceSetAgg) {
+            setAggregations(
+              resSearchResults.data.hits.hits.length > 0
+                ? getAggregationList(resSearchResults.data.aggregations)
+                : []
+            );
+          } else {
+            const aggServiceType = getAggregationList(
+              resAggServiceType.data.aggregations,
+              'service type'
+            );
+            const aggTier = getAggregationList(
+              resAggTier.data.aggregations,
+              'tier'
+            );
+            const aggTag = getAggregationList(
+              resAggTag.data.aggregations,
+              'tags'
+            );
+
+            updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
+          }
           setIsLoading(false);
         }
-      })
+      )
       .catch((err: AxiosError) => {
         setError(ERROR404);
         showToast({
@@ -128,26 +215,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         });
 
         setIsLoading(false);
-      });
-  };
-
-  const fetchAggregationData = () => {
-    setIsLoading(true);
-    searchData('*', 1, PAGE_SIZE, '')
-      .then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setAggregation(getAggregationList(res.data.aggregations));
-        } else {
-          setAggregation([]);
-        }
-      })
-      .catch((err: AxiosError) => {
-        // setError(ERROR404);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
       });
   };
 
@@ -175,28 +242,24 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, filters]);
 
   useEffect(() => {
-    fetchAggregationData();
-  }, []);
+    fetchTableData(true);
+  }, [searchText]);
 
   useEffect(() => {
-    fetchTableData();
-  }, [searchText, currentPage, filters]);
-
-  useEffect(() => {
-    if (location.search) {
-      setFilters({
-        ...filterObject,
-        ...getQueryParam(location.search),
-      });
-    } else {
-      setFilters(filterObject);
+    if (!isMounting.current) {
+      fetchTableData(false);
     }
-  }, [location.search]);
+  }, [currentPage, filters]);
+
+  // alwyas Keep this useEffect at the end...
+  useEffect(() => {
+    isMounting.current = false;
+  }, []);
 
   const fetchLeftPanel = () => {
     return (
       <FacetFilter
-        aggregations={getAggrWithDefaultValue(aggregations)}
+        aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
         filters={getFacetedFilter()}
         onSelectHandler={handleSelectedFilter}
       />

@@ -14,6 +14,7 @@ export const formatDataResponse = (hits) => {
     newData.tags = hit._source.tags;
     newData.dailyStats = hit._source.daily_stats;
     newData.service = hit._source.service;
+    newData.serviceType = hit._source.service_type;
     newData.tableEntity = hit._source.table_entity;
     newData.tier = hit._source.tier;
 

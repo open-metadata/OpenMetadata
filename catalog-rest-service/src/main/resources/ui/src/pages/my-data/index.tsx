@@ -45,7 +45,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const fetchTableData = () => {
     setIsLoading(true);
     searchData(
-      `*`,
+      '',
       currentPage,
       PAGE_SIZE,
       filter ? `${filter}:${getCurrentUserId()}` : ''
