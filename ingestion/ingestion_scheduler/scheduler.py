@@ -14,10 +14,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from sdscheduler.server import server
+from simplescheduler.server import server
 import os
 import json
-from sdscheduler.server import server
+from simplescheduler.server import server
 
 
 class SimpleServer(server.SchedulerServer):

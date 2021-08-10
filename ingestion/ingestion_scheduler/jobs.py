@@ -15,7 +15,7 @@
 
 import json
 from metadata.ingestion.workflow.workflow import Workflow
-from sdscheduler.corescheduler import job
+from simplescheduler.corescheduler import job
 
 
 class MetadataLoaderJob(job.JobBase, Workflow):
