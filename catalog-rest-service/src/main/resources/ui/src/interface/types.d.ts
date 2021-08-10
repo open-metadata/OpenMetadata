@@ -23,7 +23,7 @@ declare module 'Models' {
   };
   export type FilterObject = {
     tags: Array<string>;
-    service: Array<string>;
+    // service: Array<string>;
     'service type': Array<string>;
     tier: Array<string>;
   };
@@ -197,6 +197,7 @@ declare module 'Models' {
     dailyStats: number;
     weeklyStats: number;
     service?: string;
+    serviceType?: string;
     tier: string;
   };
 
@@ -277,7 +278,7 @@ declare module 'Models' {
         };
         hits: Array<SearchHit>;
       };
-      aggregations: Aggregation;
+      aggregations: Record<string, Sterm>;
     };
   };
 }

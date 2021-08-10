@@ -143,7 +143,6 @@ FacetFilter.propTypes = {
   onSelectHandler: PropTypes.func.isRequired,
   filters: PropTypes.shape({
     tags: PropTypes.array.isRequired,
-    service: PropTypes.array.isRequired,
     'service type': PropTypes.array.isRequired,
     tier: PropTypes.array.isRequired,
   }).isRequired,

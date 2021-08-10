@@ -1,6 +1,6 @@
 ---
 description: >-
-  This guide will help install Sdscheduler and schedule connectors for
+  This guide will help install Simple Scheduler and schedule connectors for
   ingestion.
 ---
 

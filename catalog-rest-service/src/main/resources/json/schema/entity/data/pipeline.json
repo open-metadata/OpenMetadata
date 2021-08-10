@@ -1,13 +1,13 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Pipeline entity",
-  "description": "Entity that represents a Pipeline",
+  "title": "Pipeline",
+  "description": "This schema defines Pipeline entity.",
   "type": "object",
 
   "properties" : {
     "id": {
-      "description": "Unique identifier that identifies a pipeline instance",
+      "description": "Unique identifier that identifies a pipeline instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
@@ -17,7 +17,7 @@
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "Unique name that identifies a pipeline in the format 'ServiceName.PipelineName'",
+      "description": "Unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
@@ -27,15 +27,15 @@
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this pipeline",
+      "description": "Owner of this pipeline.",
       "$ref": "../../type/entityReference.json"
     },
     "service" : {
-      "description": "Link to service where this pipeline is hosted in",
+      "description": "Link to service where this pipeline is hosted in.",
       "$ref" : "../../type/entityReference.json"
     }
   },
