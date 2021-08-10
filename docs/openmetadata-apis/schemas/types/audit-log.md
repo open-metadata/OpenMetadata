@@ -33,5 +33,3 @@ Type: `object`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json/properties/entityType">entityType</b> `required`
 	 - Entity Type that modified by the operation.
 	 - Type: `string`
-
-_Generated with [json-schema-md-doc](https://brianwendt.github.io/json-schema-md-doc/)_ _Mon Aug 09 2021 19:12:30 GMT-0700 (Pacific Daylight Time)_

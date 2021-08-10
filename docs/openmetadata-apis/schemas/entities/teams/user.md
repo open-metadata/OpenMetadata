@@ -58,5 +58,3 @@ This schema <u>does not</u> accept additional properties.
  - Length: between 1 and 64
 
 
-
-_Generated with [json-schema-md-doc](https://brianwendt.github.io/json-schema-md-doc/)_ _Mon Aug 09 2021 18:41:36 GMT-0700 (Pacific Daylight Time)_
