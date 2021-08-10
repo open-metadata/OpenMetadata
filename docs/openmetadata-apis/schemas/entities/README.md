@@ -73,7 +73,7 @@ Metadata system has the following core entities:
 
 {% page-ref page="data/database.md" %}
 
-{% page-ref page="services/databaseService.md" %}
+{% page-ref page="services/database-service.md" %}
 
 {% page-ref page="feed/thread.md" %}
 
@@ -85,7 +85,7 @@ Metadata system has the following core entities:
 
 {% page-ref page="data/table.md" %}
 
-{% page-ref page="tags/tagCategory.md" %}
+{% page-ref page="tags/tag-category.md" %}
 
 {% page-ref page="teams/team.md" %}
 

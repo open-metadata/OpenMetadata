@@ -5,20 +5,20 @@ JSON schema supports many native types - `null`, `boolean`, `object`, `array`, `
 ## List of Schema Types
 {% page-ref page="basic.md" %}
 
-{% page-ref page="collectionDescriptor.md" %}
+{% page-ref page="collection-descriptor.md" %}
 
-{% page-ref page="dailyDount.md" %}
+{% page-ref page="daily-count.md" %}
 
-{% page-ref page="entityReference.md" %}
+{% page-ref page="entity-reference.md" %}
 
-{% page-ref page="entityUsage.md" %}
+{% page-ref page="entity-usage.md" %}
 
-{% page-ref page="jdbcConnection.md" %}
+{% page-ref page="jdbc-connection.md" %}
 
 {% page-ref page="profile.md" %}
 
 {% page-ref page="schedule.md" %}
 
-{% page-ref page="tagLabel.md" %}
+{% page-ref page="tag-label.md" %}
 
-{% page-ref page="usageDetails.md" %}
+{% page-ref page="usage-details.md" %}
