@@ -13,19 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import pymysql  # noqa: F401
-
-from .sql_source import BasicSQLAlchemyConfig, SQLAlchemySource
+from .sql_source import SQLSource, SQLConnectionConfig
 from ..ometa.auth_provider import MetadataServerConfig
 
 
-class MySQLConfig(BasicSQLAlchemyConfig):
-    # defaults
+class MySQLConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
 
 
-class MySQLSource(SQLAlchemySource):
+class MySQLSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
 

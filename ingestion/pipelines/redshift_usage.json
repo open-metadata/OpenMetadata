@@ -2,7 +2,7 @@
   "source": {
     "type": "redshift-usage",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+       "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
       "username": "username",
       "password": "strong_password",
       "database": "warehouse",

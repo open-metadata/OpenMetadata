@@ -16,7 +16,7 @@
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
+from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Iterator, Union, Dict, Any, Iterable
 
@@ -83,7 +83,7 @@ class SnowflakeUsageSource(Source):
         for row in self._get_raw_extract_iter():
             tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
                             str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
-            self.report.records_produced(tq)
+            self.report.scanned(tq)
             yield tq
 
     def get_report(self):

@@ -13,71 +13,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from abc import abstractmethod
-from metadata.config.common import ConfigModel
-from typing import Any, Iterable, List, Optional, Tuple
-from dataclasses import dataclass, field
+
+from typing import Any, Iterable
 from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.api.source import SourceStatus
 from sqlalchemy import create_engine
-
+from .sql_source import SQLConnectionConfig, SQLSourceStatus
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-
-
-@dataclass
-class SQLSourceStatus(SourceStatus):
-    tables_scanned = 0
-    filtered: List[str] = field(default_factory=list)
-
-    def report_table_scanned(self, table_name: str) -> None:
-        self.tables_scanned += 1
-
-    def report_dropped(self, table_name: str) -> None:
-        self.filtered.append(table_name)
-
-
-class SQLAlchemyConfig(ConfigModel):
-    options: dict = {}
-
-    @abstractmethod
-    def get_sql_alchemy_url(self):
-        pass
-
-    def get_identifier(self, schema: str, table: str) -> str:
-        return f"{schema}.{table}"
-
-    def standardize_schema_table_names(
-            self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        # Some SQLAlchemy dialects need a standardization step to clean the schema
-        # and table names. See BigQuery for an example of when this is useful.
-        return schema, table
-
-
-class BasicSQLQueryConfig(SQLAlchemyConfig):
-    username: Optional[str] = None
-    password: Optional[str] = None
-    host_port: str
-    database: Optional[str] = None
-    scheme: str
-
-    def get_sql_alchemy_url(self):
-        url = f"{self.scheme}://"
-        if self.username:
-            url += f"{self.username}"
-            if self.password:
-                url += f":{self.password}"
-            url += "@"
-        url += f"{self.host_port}"
-        if self.database:
-            url += f"/{self.database}"
-        return url
 
 
 class SQLAlchemyHelper:
     """A helper class for all SQL Sources that use SQLAlchemy to extend"""
 
-    def __init__(self, config: SQLAlchemyConfig, metadata_config: MetadataServerConfig,
+    def __init__(self, config: SQLConnectionConfig, metadata_config: MetadataServerConfig,
                  ctx: WorkflowContext, platform: str, query: str):
         self.config = config
         self.platform = platform
@@ -89,7 +36,7 @@ class SQLAlchemyHelper:
         """
         Create a SQLAlchemy connection to Database
         """
-        engine = create_engine(self.config.get_sql_alchemy_url())
+        engine = create_engine(self.config.get_connection_url())
         conn = engine.connect()
         return conn
 

@@ -44,40 +44,19 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 @dataclass
 class SQLSourceStatus(SourceStatus):
-    tables_scanned: List[str] = field(default_factory=list)
-    filtered: List[str] = field(default_factory=list)
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
 
-    def report_table_scanned(self, table_name: str) -> None:
-        self.tables_scanned.append(table_name)
+    def scanned(self, table_name: str) -> None:
+        self.success.append(table_name)
         logger.info('Table Scanned: {}'.format(table_name))
 
-    def report_dropped(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
-        self.filtered.append(table_name)
+    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+        self.failures.append(table_name)
         logger.error("Dropped Table {} due to {}".format(dataset_name, err))
-        logger.error("column type {}".format(col_type))
 
 
-class SQLAlchemyConfig(ConfigModel):
-    env: str = "PROD"
-    options: dict = {}
-    include_pattern: IncludeFilterPattern
-
-    @abstractmethod
-    def get_sql_alchemy_url(self):
-        pass
-
-    def get_identifier(self, schema: str, table: str) -> str:
-        return f"{schema}.{table}"
-
-    def standardize_schema_table_names(
-            self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        # Some SQLAlchemy dialects need a standardization step to clean the schema
-        # and table names. See BigQuery for an example of when this is useful.
-        return schema, table
-
-
-class BasicSQLAlchemyConfig(SQLAlchemyConfig):
+class SQLConnectionConfig(ConfigModel):
     username: Optional[str] = None
     password: Optional[str] = None
     host_port: str
@@ -85,8 +64,10 @@ class BasicSQLAlchemyConfig(SQLAlchemyConfig):
     scheme: str
     service_name: str
     service_type: str
+    options: dict = {}
+    include_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
-    def get_sql_alchemy_url(self):
+    def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
             url += f"{self.username}"
@@ -101,8 +82,11 @@ class BasicSQLAlchemyConfig(SQLAlchemyConfig):
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
 
+    def get_service_name(self) -> str:
+        return self.service_name
 
-_field_type_mapping: Dict[Type[types.TypeEngine], str] = {
+
+_column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.Integer: "INT",
     types.Numeric: "INT",
     types.Boolean: "BOOLEAN",
@@ -123,7 +107,7 @@ _field_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.JSON: "JSON"
 }
 
-_known_unknown_field_types: Set[Type[types.TypeEngine]] = {
+_known_unknown_column_types: Set[Type[types.TypeEngine]] = {
     types.Interval,
     types.CLOB,
 }
@@ -133,25 +117,25 @@ def register_custom_type(
         tp: Type[types.TypeEngine], output: str = None
 ) -> None:
     if output:
-        _field_type_mapping[tp] = output
+        _column_type_mapping[tp] = output
     else:
-        _known_unknown_field_types.add(tp)
+        _known_unknown_column_types.add(tp)
 
 
-def get_column_type(sql_report: SQLSourceStatus, dataset_name: str, column_type: Any) -> str:
+def get_column_type(status: SQLSourceStatus, dataset_name: str, column_type: Any) -> str:
     type_class: Optional[str] = None
-    for sql_type in _field_type_mapping.keys():
+    for sql_type in _column_type_mapping.keys():
         if isinstance(column_type, sql_type):
-            type_class = _field_type_mapping[sql_type]
+            type_class = _column_type_mapping[sql_type]
             break
     if type_class is None:
-        for sql_type in _known_unknown_field_types:
+        for sql_type in _known_unknown_column_types:
             if isinstance(column_type, sql_type):
                 type_class = "NULL"
                 break
 
     if type_class is None:
-        sql_report.warning(
+        status.warning(
             dataset_name, f"unable to map type {column_type!r} to metadata schema"
         )
         type_class = "NULL"
@@ -159,10 +143,10 @@ def get_column_type(sql_report: SQLSourceStatus, dataset_name: str, column_type:
     return type_class
 
 
-class SQLAlchemySource(Source):
+class SQLSource(Source):
 
-    def __init__(self, config: SQLAlchemyConfig, metadata_config: MetadataServerConfig,
-                 ctx: WorkflowContext, connector: str = None):
+    def __init__(self, config: SQLConnectionConfig, metadata_config: MetadataServerConfig,
+                 ctx: WorkflowContext):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -176,20 +160,25 @@ class SQLAlchemySource(Source):
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
 
+    def standardize_schema_table_names(
+            self, schema: str, table: str
+    ) -> Tuple[str, str]:
+        return schema, table
+
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         sql_config = self.config
-        url = sql_config.get_sql_alchemy_url()
+        url = sql_config.get_connection_url()
         logger.debug(f"sql_alchemy_url={url}")
         engine = create_engine(url, **sql_config.options)
         inspector = inspect(engine)
         for schema in inspector.get_schema_names():
             if not sql_config.include_pattern.included(schema):
-                self.status.report_dropped(schema, "Schema pattern not allowed")
+                self.status.filtered(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
             for table in inspector.get_table_names(schema):
                 try:
-                    schema, table = sql_config.standardize_schema_table_names(schema, table)
+                    schema, table = self.standardize_schema_table_names(schema, table)
                     pk_constraints = inspector.get_pk_constraint(table, schema)
                     pk_columns = pk_constraints['column_constraints'] if len(
                         pk_constraints) > 0 and "column_constraints" in pk_constraints.keys() else {}
@@ -203,11 +192,11 @@ class SQLAlchemySource(Source):
                         if 'column_names' in constraint.keys():
                             unique_columns = constraint['column_names']
 
-                    dataset_name = sql_config.get_identifier(schema, table)
-                    self.status.report_table_scanned('{}.{}'.format(self.config.service_name, dataset_name))
+                    dataset_name = f"{schema}.{table}"
+                    self.status.scanned('{}.{}'.format(self.config.get_service_name(), dataset_name))
                     if not sql_config.include_pattern.included(dataset_name):
-                        self.status.report_dropped('{}.{}'.format(self.config.service_name, dataset_name),
-                                                   "Table pattern not allowed")
+                        self.status.filtered('{}.{}'.format(self.config.get_service_name(), dataset_name),
+                                             "Table pattern not allowed")
                         continue
 
                     columns = inspector.get_columns(table, schema)
@@ -216,14 +205,8 @@ class SQLAlchemySource(Source):
                         table_info: dict = inspector.get_table_comment(table, schema)
                     except NotImplementedError:
                         description: Optional[str] = None
-                        properties: Dict[str, str] = {}
                     else:
                         description = table_info["text"]
-
-                    # The "properties" field is a non-standard addition to SQLAlchemy's interface.
-                    properties = table_info.get("properties", {})
-                    # TODO: capture inspector.get_pk_constraint
-                    # TODO: capture inspector.get_sorted_table_and_fkc_names
 
                     table_columns = []
                     row_order = 1
@@ -255,12 +238,12 @@ class SQLAlchemySource(Source):
                                         columns=table_columns)
 
                     table_and_db = OMetaDatabaseAndTable(table=table, database=db)
-                    self.status.records_produced(table.name)
+                    self.status.scanned(table.name)
                     yield table_and_db
                 except ValidationError as err:
                     logger.error(err)
-                    self.status.report_dropped('{}.{}'.format(self.config.service_name, dataset_name),
-                                               "Validation error")
+                    self.status.filtered('{}.{}'.format(self.config.service_name, dataset_name),
+                                         "Validation error")
                     continue
 
     def close(self):

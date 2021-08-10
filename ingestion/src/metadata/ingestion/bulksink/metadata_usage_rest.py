@@ -73,7 +73,9 @@ class MetadataUsageBulkSink(BulkSink):
                 table_usage_request = TableUsageRequest(date=table_usage.date, count=table_usage.count)
                 try:
                     self.client.publish_usage_for_a_table(table_entity, table_usage_request)
+                    self.status.records.append(table_usage_request)
                 except APIError as err:
+                    self.status.failures.append(table_usage_request)
                     logger.error("Failed to update usage and query join {}".format(err))
 
                 table_join_request = self.__get_table_joins(table_usage)
@@ -81,7 +83,9 @@ class MetadataUsageBulkSink(BulkSink):
                 try:
                     if table_join_request is not None and len(table_join_request.columnJoins) > 0:
                         self.client.publish_frequently_joined_with(table_entity, table_join_request)
+                        self.status.records.append(table_join_request)
                 except APIError as err:
+                    self.status.failures.append(table_join_request)
                     logger.error("Failed to update usage and query join {}".format(err))
 
             else:

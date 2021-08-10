@@ -24,8 +24,8 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 import pymysql  # noqa: F401
 
 from metadata.generated.schema.entity.data.table import TableEntity, Column
-from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
-from .sql_source import BasicSQLAlchemyConfig
+from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
+from .sql_source import SQLConnectionConfig
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from itertools import groupby
@@ -38,23 +38,11 @@ from ...utils.helpers import get_service_or_create
 TableKey = namedtuple('TableKey', ['schema', 'table_name'])
 
 
-class PostgresSourceConfig(BasicSQLAlchemyConfig):
+class PostgresSourceConfig(SQLConnectionConfig):
     # defaults
     scheme = "postgresql+psycopg2"
     service_name = "postgres"
     service_type = "POSTGRES"
-
-    def get_sql_alchemy_url(self):
-        url = f"{self.scheme}://"
-        if self.username:
-            url += f"{self.username}"
-            if self.password:
-                url += f":{self.password}"
-            url += "@"
-        url += f"{self.host_port}"
-        if self.database:
-            url += f"/{self.database}"
-        return url
 
     def get_service_type(self) -> DatabaseServiceType:
         return DatabaseServiceType[self.service_type]
@@ -73,7 +61,6 @@ def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
 
 
 class PostgresSource(Source):
-    # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
             SELECT
           c.table_catalog as cluster, c.table_schema as schema, c.table_name as name, pgtd.description as description
