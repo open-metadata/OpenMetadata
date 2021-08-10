@@ -2,7 +2,7 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Report",
-  "description": "This schema defines Report entity.",
+  "description": "This schema defines the Report entity.",
   "type": "object",
 
   "properties" : {
@@ -17,7 +17,7 @@
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "Unique name that identifies a report in the format 'ServiceName.ReportName'.",
+      "description": "A unique name that identifies a report in the format 'ServiceName.ReportName'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64

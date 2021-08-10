@@ -1,6 +1,6 @@
 # Type used for schedule with start time and repeat frequency
 
-This schema defines type used for Schedule with start time and repeat frequency.
+This schema defines the type used for schedule with start time and repeat frequency.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypeschedule.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/schedule.json</b>
 

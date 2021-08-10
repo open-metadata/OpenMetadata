@@ -1,6 +1,6 @@
 # Team
 
-This schema defines Team entity. A Team is a group of zero or more users. Team can have ownership of data assets.
+This schema defines the Team entity. A Team is a group of zero or more users and can have ownership of data assets.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentityteamsteam.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json</b>
 
@@ -34,10 +34,10 @@ Type: `object`
 	 - &#36;ref: [../../type/entityReference.json#/definitions/entityReferenceList](#....typeentityreference.jsondefinitionsentityreferencelist)
 
 
-## Definitions
-**_teamName_**
+## Types defined in this schema
+**teamName**
 
- - Unique name of the team typically the team ID from the identify provider. Example - group Id from ldap.
+ - A unique name of the team typically the team ID from an identity provider. Example - group Id from ldap.
  - Type: `string`
  - Length: between 1 and 64
 

@@ -1,6 +1,6 @@
 # Type used to return usage details of an entity
 
-This schema defines type used for capturing usage details of an entity.
+This schema defines the type used for capturing usage details. Based on usage, daily, weekly, and monthly aggregation of usage is provided along with the percentile rank based on the usage.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypeusagedetails.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json</b>
 
@@ -21,13 +21,13 @@ Type: `object`
 	 - &#36;ref: [basic.json#/definitions/date](#basic.jsondefinitionsdate)
 
 
-## Definitions
-**_usageStats_**
+## Types defined in this schema
+**usageStats**
 
  - Type used to return usage statistics
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json/definitions/usageStats/properties/count">count</b> `required`
 		 - Usage count of a data asset on the start date.
 		 - Type: `integer`

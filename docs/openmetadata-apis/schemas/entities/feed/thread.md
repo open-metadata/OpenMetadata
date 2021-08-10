@@ -1,6 +1,6 @@
 # Thread
 
-This schema defines Thread entity. A Thread is a collection of posts made the users. First post that starts a thread is about a data asset created by a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mentions Users or other Data Assets.
+This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about a data asset** created by a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentityfeedthread.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json</b>
 
@@ -23,16 +23,16 @@ Type: `object`
 	 - &#36;ref: [../../type/basic.json#/definitions/entityLink](#....typebasic.jsondefinitionsentitylink)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json/properties/posts">posts</b> `required`
 	 - Type: `array`
-		 - **_Items_**
+		 - **Items**
 		 - &#36;ref: [#/definitions/post](#/definitions/post)
 
 
-## Definitions
-**_post_**
+## Types defined in this schema
+**post**
 
  - Post within a feed.
  - Type: `object`
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json/definitions/post/properties/message">message</b> `required`
 		 - Message in markdown format. See markdown support for more details.
 		 - Type: `string`

@@ -1,6 +1,6 @@
 # Database Service
 
-This schema defines Database Service entity, such as MySQL, BigQuery, Redshift, Postgres or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used.
+This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentityservicesdatabaseservice.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json</b>
 
@@ -18,7 +18,7 @@ Type: `object`
 	 - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
 	 - &#36;ref: [#/definitions/databaseServiceType](#/definitions/databaseServiceType)
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json/properties/description">description</b>
-	 - Description of database service instance.
+	 - Description of a database service instance.
 	 - Type: `string`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json/properties/href">href</b> `required`
 	 - Link to the resource corresponding to this database service.
@@ -31,8 +31,8 @@ Type: `object`
 	 - &#36;ref: [../../type/schedule.json](#....typeschedule.json)
 
 
-## Definitions
-**_databaseServiceType_**
+## Types defined in this schema
+**databaseServiceType**
 
  - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  - Type: `string`

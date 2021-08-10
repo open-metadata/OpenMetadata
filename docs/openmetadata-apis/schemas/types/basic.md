@@ -6,15 +6,15 @@ This schema defines basic common types that are used by other schemas.
 
 
 
-## Definitions
-**_uuid_**
+## Types defined in this schema
+**uuid**
 
  - Unique id used to identify an entity.
  - Type: `string`
  - String format must be a "uuid"
 
 
-**_email_**
+**email**
 
  - Email address of a user or other entities.
  - Type: `string`
@@ -23,31 +23,31 @@ This schema defines basic common types that are used by other schemas.
  - Length: between 6 and 127
 
 
-**_entityLink_**
+**entityLink**
 
  - Link to an entity or field of an entity of format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
  - Type: `string`
  - The value must match this pattern: `^<#E/\S+/\S+>$`
 
 
-**_timestamp_**
+**timestamp**
 
- - Time stamp in unixTimeMillis
+ - Timestamp in unixTimeMillis
  - Type: `string`
  - String format must be a "utc-millisec"
 
 
-**_href_**
+**href**
 
  - href that points to a resource.
  - Type: `string`
  - String format must be a "uri"
 
 
-**_timeInterval_**
+**timeInterval**
 
  - Type: `object`
- - **_Properties_**
+ - **Properties**
 	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json/definitions/timeInterval/properties/start">start</b>
 		 - Start time in unixTimeMillis.
 		 - Type: `integer`
@@ -56,20 +56,20 @@ This schema defines basic common types that are used by other schemas.
 		 - Type: `integer`
 
 
-**_duration_**
+**duration**
 
  - Duration in ISO 8601 format in UTC time. Example - 'P23DT23H'.
  - Type: `string`
 
 
-**_date_**
+**date**
 
  - Date in ISO 8601 format in UTC time. Example - '2018-11-13'.
  - Type: `string`
  - String format must be a "date"
 
 
-**_dateTime_**
+**dateTime**
 
  - Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.
  - Type: `string`

@@ -1,6 +1,6 @@
 # User
 
-This schema defines User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner and own zero or more data asset entities. A user can also follow zero or more data asset entities.
+This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner and own zero or more data asset entities. A user can also follow zero or more data asset entities.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentityteamsuser.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json</b>
 
@@ -28,7 +28,7 @@ This schema <u>does not</u> accept additional properties.
 	 - Type: `string`
 	 - String format must be a "timezone"
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json/properties/deactivated">deactivated</b>
-	 - When true indicates user has been deactivated. Users are deactivated instead of deleted.
+	 - When true indicates the user has been deactivated. Users are deactivated instead of deleted.
 	 - Type: `boolean`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json/properties/isBot">isBot</b>
 	 - When true indicates a special type of user called Bot.
@@ -50,10 +50,10 @@ This schema <u>does not</u> accept additional properties.
 	 - &#36;ref: [../../type/entityReference.json#/definitions/entityReferenceList](#....typeentityreference.jsondefinitionsentityreferencelist)
 
 
-## Definitions
-**_userName_**
+## Types defined in this schema
+**userName**
 
- - Unique name of the user typically the user ID from the identify provider. Example - uid from ldap.
+ - A unique name of the user typically the user ID from an identity provider. Example - uid from ldap.
  - Type: `string`
  - Length: between 1 and 64
 

@@ -1,6 +1,6 @@
 # Dashboard
 
-This schema defines Dashboard entity.
+This schema defines the Dashboard entity.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentitydatadashboard.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json</b>
 
@@ -15,11 +15,11 @@ Type: `object`
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json/properties/fullyQualifiedName">fullyQualifiedName</b>
-	 - Unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
+	 - A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json/properties/description">description</b>
-	 - Description of dashboard, what it is and how to use it.
+	 - Description of the dashboard, what it is, and how to use it.
 	 - Type: `string`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json/properties/href">href</b>
 	 - Link to the resource corresponding to this entity.

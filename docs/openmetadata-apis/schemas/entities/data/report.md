@@ -1,6 +1,6 @@
 # Report
 
-This schema defines Report entity.
+This schema defines the Report entity.
 
 <b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschemaentitydatareport.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json</b>
 
@@ -15,7 +15,7 @@ Type: `object`
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json/properties/fullyQualifiedName">fullyQualifiedName</b>
-	 - Unique name that identifies a report in the format 'ServiceName.ReportName'.
+	 - A unique name that identifies a report in the format 'ServiceName.ReportName'.
 	 - Type: `string`
 	 - Length: between 1 and 64
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json/properties/description">description</b>
