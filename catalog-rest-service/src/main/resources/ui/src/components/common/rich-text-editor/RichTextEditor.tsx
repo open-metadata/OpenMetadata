@@ -76,8 +76,6 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
     {
       format = 'markdown',
       initvalue,
-      suggestionList = [],
-      mentionTrigger = '@',
       readonly = false,
       customOptions,
     }: EditorProp,
@@ -110,15 +108,10 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
     }, [initvalue, format]);
 
     return (
-      <div className="tw-min-h-32 tw-border tw-border-gray-300 tw-rounded">
+      <div className="tw-min-h-32 tw-border tw-border-gray-300 tw-rounded tw-overflow-y-auto">
         <Editor
           editorClassName="tw-px-1 tw-min-h-32"
           editorState={editorState}
-          mention={{
-            separator: ' ',
-            trigger: mentionTrigger,
-            suggestions: suggestionList,
-          }}
           readOnly={readonly}
           toolbar={{
             options: [],

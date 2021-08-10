@@ -32,6 +32,7 @@ import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import PopOver from '../../components/common/popover/PopOver';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -47,7 +48,6 @@ import {
 import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -242,9 +242,11 @@ const DatabaseDetails: FunctionComponent = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                  <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                     <div data-testid="description" id="description" />
-                    {stringToHTML(description.trim()) || (
+                    {description.trim() ? (
+                      <RichTextEditorPreviewer markdown={description} />
+                    ) : (
                       <span className="tw-no-description">
                         No description added
                       </span>
@@ -295,7 +297,11 @@ const DatabaseDetails: FunctionComponent = () => {
                           </Link>
                         </td>
                         <td className="tableBody-cell">
-                          {stringToHTML(table.description) || (
+                          {table.description ? (
+                            <RichTextEditorPreviewer
+                              markdown={table.description}
+                            />
+                          ) : (
                             <span className="tw-no-description">
                               No description added
                             </span>
