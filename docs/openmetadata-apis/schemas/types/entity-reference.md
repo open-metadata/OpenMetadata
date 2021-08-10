@@ -32,5 +32,3 @@ Type: `object`
 	 - &#36;ref: [entityReference.json](#entityreference.json)
 
 
-
-_Generated with [json-schema-md-doc](https://brianwendt.github.io/json-schema-md-doc/)_ _Mon Aug 09 2021 19:12:30 GMT-0700 (Pacific Daylight Time)_

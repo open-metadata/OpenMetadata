@@ -40,5 +40,3 @@ Type: `object`
 		 - String format must be a "uri"
 
 
-
-_Generated with [json-schema-md-doc](https://brianwendt.github.io/json-schema-md-doc/)_ _Mon Aug 09 2021 19:12:30 GMT-0700 (Pacific Daylight Time)_

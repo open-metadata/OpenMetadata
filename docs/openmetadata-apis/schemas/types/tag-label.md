@@ -27,5 +27,3 @@ Type: `object`
  - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/tagLabel.json/properties/href">href</b>
 	 - Link to the tag resource.
 	 - &#36;ref: [basic.json#/definitions/href](#basic.jsondefinitionshref)
-
-_Generated with [json-schema-md-doc](https://brianwendt.github.io/json-schema-md-doc/)_ _Mon Aug 09 2021 19:12:30 GMT-0700 (Pacific Daylight Time)_
