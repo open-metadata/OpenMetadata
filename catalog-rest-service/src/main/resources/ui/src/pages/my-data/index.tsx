@@ -75,10 +75,11 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   const getTabs = () => {
     return (
-      <div className="tw-mb-3 tw--mt-4" data-testid="container">
+      <div className="tw-mb-3 tw--mt-4" data-testid="tabs">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
+            data-testid="tab"
             onClick={() => {
               setCurrentTab(1);
               setFilter('');
@@ -88,6 +89,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
+            data-testid="tab"
             onClick={() => {
               setCurrentTab(2);
               setFilter(Ownership.OWNER);
@@ -97,6 +99,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
+            data-testid="tab"
             onClick={() => {
               setCurrentTab(3);
               setFilter(Ownership.FOLLOWERS);

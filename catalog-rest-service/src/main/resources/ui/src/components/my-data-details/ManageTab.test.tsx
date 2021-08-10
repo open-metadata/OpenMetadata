@@ -8,7 +8,7 @@ import React from 'react';
 import ManageTab from './ManageTab';
 
 const mockFunction = jest.fn();
-jest.mock('../../jsons/tiersData.json', () => ({
+jest.mock('../../jsons/tiersData.ts', () => ({
   data: [
     {
       title: 'Tier 1',

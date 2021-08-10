@@ -19,7 +19,7 @@ import { isEmpty } from 'lodash';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
-import cardData from '../../jsons/tiersData.json';
+import { data } from '../../jsons/tiersData';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
@@ -36,7 +36,7 @@ const ManageTab: FunctionComponent<Props> = ({
   currentUser = '',
   onSave,
 }: Props) => {
-  const { data } = cardData;
+  // const { data } = cardData;
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
   const [listOwners] = useState(() => {

@@ -186,7 +186,9 @@ const ServicesPage = () => {
         <PageContainer>
           <div className="container-fluid">
             {serviceList.length ? (
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4">
+              <div
+                className="tw-grid tw-grid-cols-4 tw-gap-4"
+                data-testid="services-container">
                 {serviceList.map((service, index) => (
                   <div
                     className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-gray-500"
