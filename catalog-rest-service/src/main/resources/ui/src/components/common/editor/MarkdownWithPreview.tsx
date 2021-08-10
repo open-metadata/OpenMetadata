@@ -105,60 +105,7 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
             <RichTextEditor
               format={isValidJSONString(initValue) ? 'json' : 'markdown'}
               initvalue={initValue}
-              // mentionTrigger="@"
               ref={editorRef}
-              // suggestionList={[
-              //   {
-              //     text: 'sql_features',
-              //     url: '/dataset/aws_redshift.information_schema.sql_features',
-              //     value: 'sql_features',
-              //   },
-              //   {
-              //     text: 'sql_implementation_info',
-              //     url: '/dataset/aws_redshift.information_schema.sql_implementation_info',
-              //     value: 'sql_implementation_info',
-              //   },
-              //   {
-              //     text: 'sql_languages',
-              //     url: '/dataset/aws_redshift.information_schema.sql_languages',
-              //     value: 'sql_languages',
-              //   },
-              //   {
-              //     text: 'sql_packages',
-              //     url: '/dataset/aws_redshift.information_schema.sql_packages',
-              //     value: 'sql_packages',
-              //   },
-              //   {
-              //     text: 'sql_sizing',
-              //     url: '/dataset/aws_redshift.information_schema.sql_sizing',
-              //     value: 'sql_sizing',
-              //   },
-              //   {
-              //     text: 'sql_sizing_profiles',
-              //     url: '/dataset/aws_redshift.information_schema.sql_sizing_profiles',
-              //     value: 'sql_sizing_profiles',
-              //   },
-              //   {
-              //     text: 'category',
-              //     url: '/dataset/aws_redshift.public.category',
-              //     value: 'category',
-              //   },
-              //   {
-              //     text: 'date',
-              //     url: '/dataset/aws_redshift.public.date',
-              //     value: 'date',
-              //   },
-              //   {
-              //     text: 'event',
-              //     url: '/dataset/aws_redshift.public.event',
-              //     value: 'event',
-              //   },
-              //   {
-              //     text: 'listing',
-              //     url: '/dataset/aws_redshift.public.listing',
-              //     value: 'listing',
-              //   },
-              // ]}
             />
           )}
           {activeTab === 2 && (
