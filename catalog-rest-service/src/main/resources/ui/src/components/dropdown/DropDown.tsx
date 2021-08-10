@@ -70,7 +70,7 @@ const DropDown: React.FC<DropDownProp> = ({
             aria-haspopup="true"
             className={`tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none ${
               type === DropDownType.CHECKBOX
-                ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-gray-300 focus:tw-border-gray-500 tw-w-full`
+                ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
             }`}
             id="menu-button"

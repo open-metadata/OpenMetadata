@@ -27,7 +27,7 @@ const QualityTable: FunctionComponent<Props> = ({ header }: Props) => {
     <div
       className="tw-flex tw-flex-col tw-relative"
       data-testid="quality-table-container">
-      <div className="tw-flex tw-items-center tw-border-b tw-py-1 tw-px-3">
+      <div className="tw-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
         <h6
           className="tw-flex tw-flex-1 tw-leading-8 tw-m-0 tw-font-medium"
           data-testid="quality-table-header">

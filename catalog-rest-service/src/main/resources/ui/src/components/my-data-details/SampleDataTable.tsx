@@ -51,7 +51,7 @@ const SampleDataTable: FunctionComponent<Props> = ({
         className="tw-min-w-max tw-w-full tw-table-auto"
         data-testid="sample-data-table">
         <thead>
-          <tr className="tw-border tw-border-gray-200 tw-bg-gray-200 tw-text-gray-600 tw-text-sm tw-leading-normal">
+          <tr className="tw-border tw-border-main tw-bg-gray-200 tw-text-gray-600 tw-text-sm tw-leading-normal">
             {columns.map((column) => {
               return (
                 <th
@@ -71,8 +71,8 @@ const SampleDataTable: FunctionComponent<Props> = ({
           {data.map((row, rowIndex) => {
             return (
               <tr
-                className={`tw-border tw-border-gray-200 hover:tw-bg-gray-100 ${
-                  isEven(rowIndex + 1) && 'tw-bg-gray-50'
+                className={`tw-border tw-border-main tableBody-row ${
+                  !isEven(rowIndex + 1) && 'odd-row'
                 }`}
                 data-testid="row"
                 key={rowIndex}>

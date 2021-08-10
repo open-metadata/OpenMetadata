@@ -224,8 +224,8 @@ const TagsPage = () => {
                   </Button>
                 </div>
               )}
-              <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
-                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+              <div className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
+                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                   <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
                     Description
                   </span>
@@ -254,10 +254,10 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-border tw-rounded-md tw-bg-white">
+              <div className="tw-border tw-border-main tw-rounded-md tw-bg-white">
                 <table className="tw-w-full tw-overflow-x-auto">
                   <thead>
-                    <tr className="tw-border-b tw-text-sm tw-leading-normal">
+                    <tr className="tw-border-b tw-border-main tw-text-sm tw-leading-normal">
                       <th className="tableHead-cell">Name</th>
                       <th className="tableHead-cell">Description</th>
                       <th className="tableHead-cell tw-w-60">
@@ -273,8 +273,8 @@ const TagsPage = () => {
                             className={`${
                               currentCategory.children?.length !== index + 1 &&
                               'tw-border-b'
-                            } tw-border-gray-200 hover:tw-bg-gray-100 ${
-                              isEven(index + 1) && 'tw-bg-gray-50'
+                            } tw-border-main tableBody-row ${
+                              !isEven(index + 1) && 'odd-row'
                             }`}
                             key={index}>
                             <td className="tw-py-3 tw-px-6 tw-text-left">
@@ -341,7 +341,7 @@ const TagsPage = () => {
                                 ) : (
                                   <span className="tw-opacity-0 group-hover:tw-opacity-100">
                                     <Tags
-                                      className="tw-border-gray-500"
+                                      className="tw-border-main"
                                       tag="+ Add new tag"
                                       type="outlined"
                                     />

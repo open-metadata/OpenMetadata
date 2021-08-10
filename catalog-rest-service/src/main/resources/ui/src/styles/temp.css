@@ -401,7 +401,7 @@
   height: calc(100vh - 56px);
   padding: 15px;
   background-color: #fff;
-  border-right: 1px solid #d1cfc7;
+  /* border-right: 1px solid #d1cfc7; */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -425,11 +425,6 @@
 .side-panel-list {
   border-top: 1px solid #e2dfd4;
   padding: 5px;
-}
-
-.side-panel .seperator,
-.horz-separator {
-  border-bottom: 1px solid #d5d6d9;
 }
 
 .side-panel .show-more span,

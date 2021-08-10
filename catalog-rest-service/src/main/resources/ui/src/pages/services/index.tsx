@@ -189,7 +189,7 @@ const ServicesPage = () => {
               <div className="tw-grid tw-grid-cols-4 tw-gap-4">
                 {serviceList.map((service, index) => (
                   <div
-                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-gray-500"
+                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                     key={index}>
                     <div className="tw-flex-auto">
                       <Link to={getServiceDetailsPath(service.name)}>
@@ -200,8 +200,11 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div className="tw-text-grey-body tw-pb-1">
-                        {stringToHTML(service.description) ||
-                          'No description added'}
+                        {stringToHTML(service.description) || (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
                       </div>
                       {/* <div className="tw-my-2">
                     <label className="tw-font-semibold ">Tags:</label>
@@ -220,10 +223,10 @@ const ServicesPage = () => {
                         <button
                           className="tw-pr-2"
                           onClick={() => handleEdit(service)}>
-                          <i className="far fa-edit tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                          <i className="far fa-edit tw-text-grey-muted tw-cursor-pointer hover:tw-text-gray-700" />
                         </button>
                         <button onClick={() => handleDelete(service.id)}>
-                          <i className="far fa-trash-alt tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                          <i className="far fa-trash-alt tw-text-grey-muted tw-cursor-pointer hover:tw-text-gray-700" />
                         </button>
                       </div>
                       <div className="tw-flex tw-justify-end">

@@ -75,9 +75,9 @@ const Form: React.FC<FormProp> = forwardRef(
                 </label>
                 <select
                   required
-                  className="tw-text-sm tw-appearance-none tw-border tw-border-gray-300 
+                  className="tw-text-sm tw-appearance-none tw-border tw-border-main 
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-                focus:tw-outline-none focus:tw-border-gray-500 tw-h-10 tw-bg-white"
+                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
                   name="categoryType"
                   value={data.categoryType}
                   onChange={onChangeHadler}>
@@ -91,9 +91,9 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 required
                 autoComplete="off"
-                className="tw-text-sm tw-appearance-none tw-border tw-border-gray-300 
+                className="tw-text-sm tw-appearance-none tw-border tw-border-main 
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-                focus:tw-outline-none focus:tw-border-gray-500 tw-h-10"
+                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 name="name"
                 placeholder="Name"
                 type="text"

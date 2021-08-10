@@ -19,13 +19,32 @@ const defaultTheme = require('tailwindcss/defaultTheme');
 
 const bluePrimaryDark = '#0366D6';
 const bluePrimaryLight = '#D4E2FC';
+
+// Primary colors for text and controls
 const primary = '#7147E8';
 const primaryHover = '#5523E0';
 const primaryActive = '#450DE2';
 const primaryHoverLite = '#DBD1F9';
+
+// state colors
+const success = '#51C41A';
+const error = '#FF4C3B';
+const info = '#1890FF';
+const warning = '#FFC34E';
+
+// Background colors
 const bodyBG = '#F9F8FD';
+const bodyHoverBG = '#F5F3FC';
 const tagBG = '#EEEAF8';
+
+// Borders and Separators
 const mainBorder = '#AFA8BA';
+const mainSeparator = '#D9CEEE';
+
+// Text color - Gray variants
+const textBody = '#37352f';
+const textMuted = '#6B7280';
+const textDark = '#000000';
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -41,8 +60,12 @@ module.exports = {
     extend: {
       backgroundColor: {
         body: bodyBG,
+        'body-hover': bodyHoverBG,
         tag: tagBG,
-        success: '#28a745',
+        success: success,
+        error: error,
+        warning: warning,
+        info: info,
         'primary-dark': bluePrimaryDark,
         'primary-light': bluePrimaryLight,
         primary: primary,
@@ -53,7 +76,13 @@ module.exports = {
       borderColor: {
         'orange-400': '#F9826C',
         main: mainBorder,
-        success: '#28a745',
+        separator: mainSeparator,
+        hover: textBody,
+        focus: primary,
+        success: success,
+        error: error,
+        warning: warning,
+        info: info,
         'primary-dark': bluePrimaryDark,
         'primary-light': bluePrimaryLight,
         search: '#D5D6D9',
@@ -62,8 +91,13 @@ module.exports = {
         'primary-active': primaryActive,
       },
       textColor: {
-        success: '#28a745',
-        'grey-body': '#37352f',
+        success: success,
+        error: error,
+        warning: warning,
+        info: info,
+        'grey-body': textBody,
+        'grey-muted': textMuted,
+        'grey-dark': textDark,
         primary: primary,
         'primary-hover': primaryHover,
         'primary-active': primaryActive,

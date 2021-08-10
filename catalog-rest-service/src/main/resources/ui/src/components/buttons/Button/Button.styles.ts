@@ -42,7 +42,7 @@ export const button = {
   },
   outlined: {
     default: {
-      base: 'tw-text-gray-500 tw-border-gray-300 tw-border dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted tw-border-gray-300 tw-border dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-border-gray-600 focus:tw-border-gray-600 
       hover:tw-text-gray-600 active:tw-text-gray-600 focus:tw-ring focus:tw-ring-gray-300`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
@@ -56,7 +56,7 @@ export const button = {
   },
   link: {
     default: {
-      base: 'tw-text-gray-500 dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-underline focus:tw-underline 
         hover:tw-text-gray-600 active:tw-text-gray-600`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
@@ -70,7 +70,7 @@ export const button = {
   },
   text: {
     default: {
-      base: 'tw-text-gray-500 dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-text-gray-600 active:tw-text-gray-600`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },

@@ -114,7 +114,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               {listGroups.map((grp, index) => {
                 return (
                   <div key={index}>
-                    <span className="tw-flex tw-my-1 tw-text-gray-500">
+                    <span className="tw-flex tw-my-1 tw-text-grey-muted">
                       <hr className="tw-mt-2 tw-w-full " />
                       <span className="tw-text-xs tw-px-0.5">{grp}</span>{' '}
                       <hr className="tw-mt-2 tw-w-full" />

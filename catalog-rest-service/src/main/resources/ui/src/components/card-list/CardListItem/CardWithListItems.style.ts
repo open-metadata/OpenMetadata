@@ -31,7 +31,7 @@ export const cardStyle = {
     default: 'tw-hidden',
     active: 'tw-block',
     content: {
-      withBorder: 'tw-py-3 tw-border-b',
+      withBorder: 'tw-py-3 tw-border-b tw-border-main',
       withoutBorder: 'tw-py-1',
     },
   },

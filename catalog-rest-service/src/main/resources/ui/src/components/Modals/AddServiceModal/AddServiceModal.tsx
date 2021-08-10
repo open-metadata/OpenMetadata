@@ -495,7 +495,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               <label className="tw-form-label tw-mb-0">Enable Ingestion</label>
               <div
                 className={`tw-w-9 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full tw-mx-2 tw-px-1 tw-transition tw-duration-500 tw-ease-in-out ${
-                  ingestion ? 'tw-bg-blue-700' : 'tw-bg-gray-100 tw-border-2'
+                  ingestion
+                    ? 'tw-bg-blue-700'
+                    : 'tw-bg-gray-100 tw-border-2 tw-border-main'
                 }`}
                 onClick={() => setIngestion(!ingestion)}>
                 <div
