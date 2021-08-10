@@ -68,7 +68,7 @@ connector_requirements = {
 }
 scheduler_requirements = {
     "apns@git+git://github.com/djacobs/PyAPNs.git#egg=apns",
-    "sdscheduler@git+https://github.com/StreamlineData/sdscheduler.git#egg=sdscheduler"
+    "simplescheduler@git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler"
 }
 base_plugins = {
     "pii-tags",
@@ -113,7 +113,7 @@ setup(
     package_dir={"": "src"},
     packages=find_namespace_packages(where='src', exclude=['tests*']),
     dependency_links=['git+git://github.com/djacobs/PyAPNs.git#egg=apns',
-                      'git+https://github.com/StreamlineData/sdscheduler.git#egg=sdscheduler'],
+                      'git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler'],
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
         "metadata.ingestion.source.plugins": [
