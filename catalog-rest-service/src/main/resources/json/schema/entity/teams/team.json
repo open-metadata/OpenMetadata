@@ -1,11 +1,11 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/team.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Team entity",
-  "description": "Team entity",
+  "title": "Team",
+  "description": "This schema defines Team entity. A Team is a group of zero or more users. Team can have ownership of data assets.",
   "type": "object",
 
-  "defintions" : {
+  "definitions" : {
     "teamName" : {
       "description": "Unique name of the team typically the team ID from the identify provider. Example - group Id from ldap.",
       "type": "string",
@@ -19,33 +19,34 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "$ref": "#/defintions/teamName"
+      "$ref": "#/definitions/teamName"
     },
     "displayName": {
-      "description": "Name used for display purposes. Example 'Data Science team'",
+      "description": "Name used for display purposes. Example 'Data Science team'.",
       "type": "string"
     },
     "description": {
-      "description": "Description of the team",
+      "description": "Description of the team.",
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "profile": {
-      "description": "Team profile information",
+      "description": "Team profile information.",
       "$ref": "../../type/profile.json"
     },
     "deleted" : {
+      "description": "When true the team has been deleted.",
       "type": "boolean"
     },
     "users" : {
-      "description": "Users that are part of the team",
+      "description": "Users that are part of the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "owns" : {
-      "description": "Entities owned by the team",
+      "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     }
   },

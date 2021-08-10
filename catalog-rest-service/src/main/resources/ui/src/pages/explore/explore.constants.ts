@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { lowerCase } from 'lodash';
 import { AggregationType, Bucket } from 'Models';
 import { tiers } from '../../constants/constants';
 
@@ -34,18 +35,21 @@ export const getBucketList = (buckets: Array<Bucket>) => {
 };
 
 export const getAggrWithDefaultValue = (
-  aggregations: Array<AggregationType>
+  aggregations: Array<AggregationType>,
+  visibleAgg: Array<string> = []
 ) => {
   const aggregation = aggregations.find(
     (aggregation) => aggregation.title === 'Tier'
   );
 
+  const allowedAgg = visibleAgg.map((item) => lowerCase(item));
+
   if (aggregation) {
     const index = aggregations.indexOf(aggregation);
     aggregations[index].buckets = getBucketList(aggregations[index].buckets);
-
-    return aggregations;
-  } else {
-    return aggregations;
   }
+
+  return !allowedAgg.length
+    ? aggregations
+    : aggregations.filter((item) => allowedAgg.includes(lowerCase(item.title)));
 };

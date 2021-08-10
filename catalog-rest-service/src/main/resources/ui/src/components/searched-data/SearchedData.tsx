@@ -52,50 +52,58 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 }) => {
   return (
     <>
-      {isLoading ? (
-        <Loader />
-      ) : totalValue > 0 || showOnboardingTemplate ? (
-        <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
-          <div className="container-fluid" data-testid="fluid-container">
-            {children}
-            {showResultCount && searchText ? (
-              <div className="tw-mb-1">{pluralize(totalValue, 'result')}</div>
-            ) : null}
-            {data.length > 0 ? (
-              <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                {data.map((table, index) => (
-                  <div className="tw-mb-3" key={index}>
-                    <TableDataCard
-                      description={table.description}
-                      fullyQualifiedName={table.fullyQualifiedName}
-                      name={table.name}
-                      owner={table.tableEntity.owner?.name}
-                      service={table.service || '--'}
-                      tableType={table.tableType}
-                      tags={table.tags}
-                      tier={table.tier?.split('.')[1]}
-                      usage={table.weeklyStats}
-                    />
-                  </div>
-                ))}
+      <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
+        <div className="container-fluid" data-testid="fluid-container">
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <>
+              {totalValue > 0 || showOnboardingTemplate ? (
+                <>
+                  {children}
+                  {showResultCount && searchText ? (
+                    <div className="tw-mb-1">
+                      {pluralize(totalValue, 'result')}
+                    </div>
+                  ) : null}
+                  {data.length > 0 ? (
+                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                      {data.map((table, index) => (
+                        <div className="tw-mb-3" key={index}>
+                          <TableDataCard
+                            description={table.description}
+                            fullyQualifiedName={table.fullyQualifiedName}
+                            name={table.name}
+                            owner={table.tableEntity.owner?.name}
+                            serviceType={table.serviceType || '--'}
+                            tableType={table.tableType}
+                            tags={table.tags}
+                            tier={table.tier?.split('.')[1]}
+                            usage={table.weeklyStats}
+                          />
+                        </div>
+                      ))}
 
-                {totalValue > 0 && data.length > 0 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    paginate={paginate}
-                    sizePerPage={PAGE_SIZE}
-                    totalNumberOfValues={totalValue}
-                  />
-                )}
-              </div>
-            ) : (
-              <Onboarding />
-            )}
-          </div>
-        </PageContainer>
-      ) : (
-        <ErrorPlaceHolder />
-      )}
+                      {totalValue > 0 && data.length > 0 && (
+                        <Pagination
+                          currentPage={currentPage}
+                          paginate={paginate}
+                          sizePerPage={PAGE_SIZE}
+                          totalNumberOfValues={totalValue}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <Onboarding />
+                  )}
+                </>
+              ) : (
+                <ErrorPlaceHolder />
+              )}
+            </>
+          )}
+        </div>
+      </PageContainer>
     </>
   );
 };

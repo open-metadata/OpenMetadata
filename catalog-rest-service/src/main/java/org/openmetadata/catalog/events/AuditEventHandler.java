@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.events;
 
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.entity.audit.AuditLog;
+import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.jdbi3.AuditLogRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -31,7 +31,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.TimeZone;
-import java.util.UUID;
 
 public class AuditEventHandler implements  EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
@@ -59,14 +58,13 @@ public class AuditEventHandler implements  EventHandler {
         EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
                 responseContext.getEntity().getClass());
         if (entityReference != null) {
-          AuditLog auditLog = new AuditLog().withId(UUID.randomUUID())
+          AuditLog auditLog = new AuditLog()
                   .withPath(path)
-                  .withDate(nowAsISO)
+                  .withDateTime(nowAsISO)
                   .withEntityId(entityReference.getId())
                   .withEntityType(entityReference.getType())
-                  .withEntity(entityReference)
-                  .withMethod(method)
-                  .withUsername(username)
+                  .withMethod(AuditLog.Method.fromValue(method))
+                  .withUserName(username)
                   .withResponseCode(responseCode);
           auditLogRepository.create(auditLog);
           LOG.debug("Added audit log entry: {}", auditLog);

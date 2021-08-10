@@ -26,14 +26,13 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   type,
 }: FilterContainerProp) => {
   return (
-    <div
-      className={`filter-group tw-mb-2 ${count > 0 ? '' : 'tw-text-gray-500'}`}>
+    <div className="filter-group tw-mb-2">
       <input
         checked={isSelected}
         className="mr-1"
-        disabled={count > 0 ? false : true}
+        // disabled={count > 0 ? false : true}
         type="checkbox"
-        onClick={() => {
+        onChange={() => {
           onSelect(!isSelected, name, type);
         }}
       />

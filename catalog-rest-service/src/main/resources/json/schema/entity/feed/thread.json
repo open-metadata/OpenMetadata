@@ -1,27 +1,27 @@
 {
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Feed entity",
-  "description": "Entity that represents a feed",
+  "title": "Thread",
+  "description": "This schema defines Thread entity. A Thread is a collection of posts made the users. First post that starts a thread is about a data asset created by a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mentions Users or other Data Assets.",
   "type": "object",
 
   "definitions": {
     "post": {
       "javaType": "org.openmetadata.catalog.type.Post",
       "type": "object",
-      "description": "Post within a feed",
+      "description": "Post within a feed.",
       "properties": {
         "message": {
           "description": "Message in markdown format. See markdown support for more details.",
           "type": "string"
         },
         "postTs": {
-          "description": "Timestamp of the post",
+          "description": "Timestamp of the post.",
           "type": "string",
           "format": "date-time"
         },
         "from": {
-          "description": "ID of User (regular user or a bot) posting the message",
+          "description": "ID of User (regular user or a bot) posting the message.",
           "$ref": "../../type/basic.json#/definitions/uuid"
         }
       },
@@ -30,23 +30,23 @@
   },
   "properties": {
     "id": {
-      "description": "Unique identifier that identifies an entity instance",
+      "description": "Unique identifier that identifies an entity instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity",
+      "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "threadTs": {
-      "description": "Timestamp of the when the first post created the thread",
+      "description": "Timestamp of the when the first post created the thread.",
       "format": "date-time"
     },
     "about": {
-      "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}",
+      "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "addressedTo": {
-      "description": "User or team this thread is addressed to in format <#E/{enties}/{entityName}/{field}/{fieldValue}",
+      "description": "User or team this thread is addressed to in format <#E/{enties}/{entityName}/{field}/{fieldValue}.",
       "$ref" : "../../type/basic.json#/definitions/entityLink"
     },
     "posts": {
