@@ -26,6 +26,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.JdbcConnection;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import io.swagger.annotations.Api;
@@ -37,6 +38,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 
 import javax.validation.Valid;
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -52,6 +54,9 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -156,6 +161,30 @@ public class DatabaseServiceResource {
 
     addHref(uriInfo, dao.create(databaseService));
     return Response.created(databaseService.getHref()).entity(databaseService).build();
+  }
+
+  @POST
+  @Path("/checkConnection")
+  @Operation(summary = "Check service connection", tags = "services",
+          description = "Check a new service connection.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Database service instance",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = DatabaseService.class))),
+                  @ApiResponse(responseCode = "400", description = "Bad request")
+          })
+  public Response checkConnection(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Valid JdbcConnection jdbcConnection) throws JsonProcessingException, SQLException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    String username = "openmetadata_user";
+    String password = "openmetadata_password";
+    String connectionUrl = jdbcConnection.getConnectionUrl().toString();
+    try (Connection connection = DriverManager.getConnection(connectionUrl, username, password)) {
+      return Response.ok("Connection Successful").build();
+    } catch (SQLException e) {
+      throw new BadRequestException("Cannot connect to the database", e);
+    }
   }
 
   @PUT
