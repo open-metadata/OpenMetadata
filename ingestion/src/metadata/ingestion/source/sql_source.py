@@ -46,14 +46,15 @@ logger: logging.Logger = logging.getLogger(__name__)
 class SQLSourceStatus(SourceStatus):
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
     def scanned(self, table_name: str) -> None:
         self.success.append(table_name)
         logger.info('Table Scanned: {}'.format(table_name))
 
     def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
-        self.failures.append(table_name)
-        logger.error("Dropped Table {} due to {}".format(dataset_name, err))
+        self.warnings.append(table_name)
+        logger.warning("Dropped Table {} due to {}".format(dataset_name, err))
 
 
 class SQLConnectionConfig(ConfigModel):
@@ -67,6 +68,7 @@ class SQLConnectionConfig(ConfigModel):
     options: dict = {}
     include_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
+    @abstractmethod
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
@@ -238,7 +240,6 @@ class SQLSource(Source):
                                         columns=table_columns)
 
                     table_and_db = OMetaDatabaseAndTable(table=table, database=db)
-                    self.status.scanned(table.name)
                     yield table_and_db
                 except ValidationError as err:
                     logger.error(err)

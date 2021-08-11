@@ -31,6 +31,9 @@ register_custom_type(HiveDecimal, "NUMBER")
 class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
 
+    def get_connection_url(self):
+        return super().get_connection_url()
+
 
 class HiveSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

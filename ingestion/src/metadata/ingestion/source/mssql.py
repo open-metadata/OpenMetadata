@@ -24,6 +24,9 @@ class SQLServerConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
 
+    def get_connection_url(self):
+        return super().get_connection_url()
+
 
 class SQLServerSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

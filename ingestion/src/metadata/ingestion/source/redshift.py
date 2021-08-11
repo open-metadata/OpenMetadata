@@ -34,6 +34,9 @@ class RedshiftConfig(SQLConnectionConfig):
             return f"{self.database}.{regular}"
         return regular
 
+    def get_connection_url(self):
+        return super().get_connection_url()
+
 
 class RedshiftSource(SQLSource):
 

@@ -21,6 +21,8 @@ class MySQLConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
 
+    def get_connection_url(self):
+        return super().get_connection_url()
 
 class MySQLSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

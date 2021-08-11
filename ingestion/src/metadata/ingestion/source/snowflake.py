@@ -37,7 +37,7 @@ class SnowflakeConfig(SQLConnectionConfig):
     role: Optional[str]
     duration: Optional[int]
 
-    def get_sql_alchemy_url(self):
+    def get_connection_url(self):
         connect_string = super().get_connection_url()
         options = {
             "account": self.account,
