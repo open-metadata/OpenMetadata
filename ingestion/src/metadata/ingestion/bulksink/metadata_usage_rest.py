@@ -119,7 +119,6 @@ class MetadataUsageBulkSink(BulkSink):
         for key, value in column_joins_dict.items():
             table_joins.columnJoins.append(ColumnJoins(columnName=key,
                                                        joinedWith=list(value.values())))
-        print(table_joins)
         return table_joins
 
     def __get_column_fqdn(self, table_column: TableColumn):
