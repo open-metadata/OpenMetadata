@@ -24,7 +24,7 @@
       "type": "string"
     },
     "name": {
-      "description": "Name of the entity instance.",
+      "description": "Name of the entity instance. For entities such as tables, database where name is not unique, fullyQualifiedName is returned in this field.",
       "type": "string"
     },
     "description": {
