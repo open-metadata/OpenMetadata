@@ -17,12 +17,15 @@
 package org.openmetadata.catalog.events;
 
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.util.ParallelStreamUtil;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.ext.Provider;
@@ -30,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 
 @Provider
@@ -48,12 +52,21 @@ public class EventFilter implements ContainerResponseFilter {
     this.jdbi = jdbi;
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
-    AuditEventHandler auditEventHandler = new AuditEventHandler();
-    auditEventHandler.init(config, jdbi);
-    eventHandlers.add(auditEventHandler);
-    ElasticSearchEventHandler elasticSearchEventHandler = new ElasticSearchEventHandler();
-    elasticSearchEventHandler.init(config, jdbi);
-    eventHandlers.add(elasticSearchEventHandler);
+    registerEventHandlers(config, jdbi);
+  }
+
+  private void registerEventHandlers(CatalogApplicationConfig config, DBI jdbi) {
+    try {
+      Set<String> eventHandlerClassNames = config.getEventHandlerConfiguration().getEventHandlerClassNames();
+      for (String eventHandlerClassName : eventHandlerClassNames) {
+        EventHandler eventHandler = ((Class<EventHandler>) Class.forName(eventHandlerClassName))
+                .getConstructor().newInstance();
+        eventHandler.init(config, jdbi);
+        eventHandlers.add(eventHandler);
+      }
+    } catch (Exception e) {
+        LOG.info("Failed instantiate and regisger event handler {}".format(e.getMessage()));
+    }
   }
 
   @Override
