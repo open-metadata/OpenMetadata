@@ -128,7 +128,7 @@ class PostgresSource(Source):
                 col_type = ''
                 if row['col_type'].upper() == 'CHARACTER VARYING':
                     col_type = 'VARCHAR'
-                elif row['col_type'].upper() == 'CHARACTER':
+                elif row['col_type'].upper() == 'CHARACTER' or row['col_type'].upper() == 'NAME':
                     col_type = 'CHAR'
                 elif row['col_type'].upper() == 'INTEGER':
                     col_type = 'INT'
@@ -138,16 +138,18 @@ class PostgresSource(Source):
                     col_type = 'DOUBLE'
                 elif row['col_type'].upper() == 'OID':
                     col_type = 'NUMBER'
-                elif row['col_type'].upper() == 'NAME':
-                    col_type = 'CHAR'
+                elif row['col_type'].upper() == 'ARRAY':
+                    col_type = 'ARRAY'
+                elif row['col_type'].upper() == 'BOOLEAN':
+                    col_type = 'BOOLEAN'
                 else:
-                    col_type = row['col_type'].upper()
+                    col_type = None
                 if not self.pattern.include_pattern.included(f'{last_row[1]}.{last_row[2]}'):
                     self.status.filtered(f'{last_row[1]}.{last_row[2]}', "pattern not allowed", last_row[2])
                     continue
-                columns.append(Column(name=row['col_name'], description=row['col_description'],
-                                      columnDataType=col_type, ordinalPosition=int(row['col_sort_order'])))
-
+                if col_type is not None:
+                    columns.append(Column(name=row['col_name'], description=row['col_description'],
+                                          columnDataType=col_type, ordinalPosition=int(row['col_sort_order'])))
             table_metadata = TableEntity(name=last_row['name'],
                                          description=last_row['description'],
                                          columns=columns)
