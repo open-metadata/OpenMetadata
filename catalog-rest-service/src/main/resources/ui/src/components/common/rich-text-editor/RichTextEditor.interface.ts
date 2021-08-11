@@ -15,11 +15,18 @@
   * limitations under the License.
 */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'react-js-pagination';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-syntax-highlighter';
+import { ReactNode } from 'react';
+
+export type editorRef = ReactNode | HTMLElement | string;
+export enum Format {
+  JSON = 'json',
+  MARKDOWN = 'markdown',
+}
+export type EditorProp = {
+  format: 'json' | 'markdown';
+  initvalue?: string;
+  suggestionList?: { text: string; value: string; url: string }[];
+  mentionTrigger?: string;
+  readonly?: boolean;
+  customOptions?: ReactNode[];
+};

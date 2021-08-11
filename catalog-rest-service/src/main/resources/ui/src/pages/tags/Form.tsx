@@ -23,14 +23,14 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { MarkdownWithPreview } from '../../components/common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
 import { TagsCategory } from './tagsTypes';
 type FormProp = {
   saveData: (value: {}) => void;
   initialData: TagsCategory;
 };
-type MarkdownRef = {
-  fetchUpdatedHTML: () => string;
+type EditorContentRef = {
+  getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
   ({ saveData, initialData }, ref): JSX.Element => {
@@ -39,7 +39,7 @@ const Form: React.FC<FormProp> = forwardRef(
       description: initialData.description,
       categoryType: initialData.categoryType,
     });
-    const markdownRef = useRef<MarkdownRef>();
+    const markdownRef = useRef<EditorContentRef>();
     const onChangeHadler = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
@@ -54,7 +54,7 @@ const Form: React.FC<FormProp> = forwardRef(
 
     useImperativeHandle(ref, () => ({
       fetchMarkDownData() {
-        return markdownRef.current?.fetchUpdatedHTML();
+        return markdownRef.current?.getEditorContent();
       },
     }));
 
@@ -81,8 +81,8 @@ const Form: React.FC<FormProp> = forwardRef(
                   name="categoryType"
                   value={data.categoryType}
                   onChange={onChangeHadler}>
-                  <option value="DESCRIPTIVE">Descriptive </option>
-                  <option value="CLASSIFICATION">Classification</option>
+                  <option value="Descriptive">Descriptive </option>
+                  <option value="Classification">Classification</option>
                 </select>
               </div>
             )}
@@ -105,11 +105,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <label className="tw-form-label required-field">
                 Description
               </label>
-              <MarkdownWithPreview
-                editorRef={(Ref: MarkdownRef) => (markdownRef.current = Ref)}
-                placeholder="Description"
-                value={data.description}
-              />
+              <MarkdownWithPreview ref={markdownRef} value={data.description} />
             </div>
           </div>
         </div>

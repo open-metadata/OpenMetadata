@@ -27,6 +27,7 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
@@ -34,7 +35,6 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
 import { isEven } from '../../utils/CommonUtils';
-import { stringToDOMElement } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
@@ -154,12 +154,6 @@ const TagsPage = () => {
     setEditTag(undefined);
   };
 
-  const getDescription = (description: string) => {
-    const desc = stringToDOMElement(description).textContent;
-
-    return desc && desc.length > 1 ? desc : 'No description added';
-  };
-
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -237,10 +231,18 @@ const TagsPage = () => {
                     </button>
                   </div>
                 </div>
-                <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                   {currentCategory && (
                     <div data-testid="description" id="description">
-                      {getDescription(currentCategory.description)}
+                      {currentCategory.description.trim() ? (
+                        <RichTextEditorPreviewer
+                          markdown={currentCategory.description}
+                        />
+                      ) : (
+                        <span className="tw-no-description">
+                          No description added
+                        </span>
+                      )}
                       {isEditCategory && (
                         <ModalWithMarkdownEditor
                           header={`Edit description for ${currentCategory.name}`}
@@ -286,8 +288,16 @@ const TagsPage = () => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
                               }}>
-                              <div className="child-inline tw-cursor-pointer hover:tw-underline">
-                                {getDescription(tag.description)}
+                              <div className="tw-cursor-pointer hover:tw-underline">
+                                {tag.description ? (
+                                  <RichTextEditorPreviewer
+                                    markdown={tag.description}
+                                  />
+                                ) : (
+                                  <span className="tw-no-description">
+                                    No description added
+                                  </span>
+                                )}
                                 <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                   <SVGIcons
                                     alt="edit"
@@ -375,7 +385,7 @@ const TagsPage = () => {
                   initialData={{
                     name: '',
                     description: '',
-                    categoryType: 'DESCRIPTIVE',
+                    categoryType: 'Descriptive',
                   }}
                   onCancel={() => setIsAddingCategory(false)}
                   onSave={(data) => createCategory(data)}

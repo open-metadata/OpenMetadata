@@ -32,10 +32,10 @@ import {
   getTableFQNFromColumnFQN,
   isEven,
 } from '../../utils/CommonUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 // import { EditSchemaColumnModal } from '../Modals/EditSchemaColumnModal/EditSchemaColumnModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
@@ -197,6 +197,9 @@ const SchemaTable: FunctionComponent<Props> = ({
         ...columns.slice(editColumn.index + 1),
       ];
       onUpdate(updatedColumns);
+      setEditColumn(undefined);
+    } else {
+      setEditColumn(undefined);
     }
   };
   useEffect(() => {
@@ -262,11 +265,15 @@ const SchemaTable: FunctionComponent<Props> = ({
                 <td className="tw-group tableBody-cell tw-relative">
                   <div>
                     <div
-                      className="child-inline tw-cursor-pointer hover:tw-underline"
+                      className="tw-cursor-pointer hover:tw-underline"
                       data-testid="description"
                       id={`column-description-${index}`}
                       onClick={() => handleEditColumn(column, index)}>
-                      {stringToHTML(column.description) || (
+                      {column.description ? (
+                        <RichTextEditorPreviewer
+                          markdown={column.description}
+                        />
+                      ) : (
                         <span className="tw-no-description">
                           No description added
                         </span>

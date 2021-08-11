@@ -15,11 +15,35 @@
   * limitations under the License.
 */
 
-/* eslint-disable */
-/// <reference types="react-scripts" />
-declare module 'classnames';
-declare module 'react-js-pagination';
-declare module 'draft-js';
-declare module 'react-draft-wysiwyg';
-declare module 'markdown-draft-js';
-declare module 'react-syntax-highlighter';
+import React, { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import gfm from 'remark-gfm';
+
+/*eslint-disable  */
+const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
+  const [content, setContent] = useState<string>('');
+  useEffect(() => {
+    setContent(markdown);
+  }, [markdown]);
+  return (
+    <div className="content-container">
+      <ReactMarkdown
+        children={content
+          .replaceAll(/&lt;/g, '<')
+          .replaceAll(/&gt;/g, '>')
+          .replaceAll('\\', '')}
+        components={{
+          h1: 'p',
+          h2: 'p',
+          h3: 'p',
+          h4: 'p',
+          h5: 'p',
+          h6: 'p',
+        }}
+        remarkPlugins={[gfm]}
+      />
+    </div>
+  );
+};
+
+export default RichTextEditorPreviewer;
