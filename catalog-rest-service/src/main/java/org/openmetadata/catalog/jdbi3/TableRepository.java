@@ -75,10 +75,10 @@ import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 
 public abstract class TableRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
-  // Table that can be patched in a patch request
-
+  // Table fields that can be patched in a PATCH request
   private static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
+  // Table fields that can be updated in a PUT request
   private static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags, tableConstraints");
 
@@ -385,7 +385,6 @@ public abstract class TableRepository {
 
     // Remove previous tags. Merge tags from the update and the existing tags
     EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updated.setTags(EntityUtil.mergeTags(updated.getTags(), original.getTags()));
 
     storeTable(updated, true);
     updateRelationships(original, updated);

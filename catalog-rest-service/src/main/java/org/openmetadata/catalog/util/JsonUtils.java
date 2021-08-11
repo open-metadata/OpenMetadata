@@ -128,7 +128,6 @@ public final class JsonUtils {
     //
     // Reverse sorting the operations by "path" fields before applying the patch as a workaround.
     //
-    patch.toJsonArray().forEach(a -> LOG.info("Unsorted operation {}", a));
     JsonArray array = patch.toJsonArray();
     List<JsonObject> operations = new ArrayList<>();
     array.forEach(entry -> operations.add(entry.asJsonObject()));
@@ -139,7 +138,6 @@ public final class JsonUtils {
     JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
     operations.forEach(o -> arrayBuilder.add(o));
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
-    sortedPatch.toJsonArray().forEach(a -> LOG.info("Sorted operation {}", a));
 
     // Apply sortedPatch
     JsonValue patchedJson = sortedPatch.apply(targetJson);
