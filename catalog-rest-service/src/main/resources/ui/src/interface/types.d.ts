@@ -178,6 +178,7 @@ declare module 'Models' {
   export type User = {
     displayName: string;
     isBot: boolean;
+    isAdmin: boolean;
     id: string;
     name?: string;
     profile: UserProfile;
