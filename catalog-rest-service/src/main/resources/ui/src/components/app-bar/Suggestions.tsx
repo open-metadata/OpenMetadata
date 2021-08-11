@@ -80,19 +80,19 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                   <div
                     className="tw-flex tw-items-center hover:tw-bg-gray-200"
                     key={fqdn}>
+                    <img
+                      alt={serviceType}
+                      className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
+                      src={serviceTypeLogo(serviceType)}
+                    />
                     <Link
-                      className="tw-block tw-px-4 tw-pr-2 tw-py-2 tw-text-sm 
+                      className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm 
                     "
                       data-testid="data-name"
                       to={getDatasetDetailsPath(fqdn)}
                       onClick={() => setIsOpen(false)}>
                       {name}
                     </Link>
-                    <img
-                      alt={serviceType}
-                      className="tw-inline tw-h-4 tw-w-4"
-                      src={serviceTypeLogo(serviceType)}
-                    />
                   </div>
                 );
               })}
