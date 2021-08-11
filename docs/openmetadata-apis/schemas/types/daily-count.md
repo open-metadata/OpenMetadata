@@ -1,17 +1,15 @@
-# Daily Count
+# Daily count of some measurement
 
-This schema defines the type used for capturing and reporting the daily count of some measurement, such as usage, joins.
+This schema defines the type for reporting the daily count of some measurement. Example - number of times a table was used in queries per day.
 
-**$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json)
+<b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypedailycount.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json</b>
 
 Type: `object`
 
 ## Properties
-
-* **count** `required`
-  * Daily count of a measurement on the given date.
-  * Type: `integer`
-  * Range:  ≥ 0
-* **date** `required`
-  * $ref: [basic.json\#/definitions/date](daily-count.md#basic.jsondefinitionsdate)
-
+ - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json/properties/count">count</b> `required`
+	 - Daily count of a measurement on the given date.
+	 - Type: `integer`
+	 - Range:  &ge; 0
+ - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json/properties/date">date</b> `required`
+	 - &#36;ref: [basic.json#/definitions/date](#basic.jsondefinitionsdate)

@@ -71,21 +71,25 @@ Metadata system has the following core entities:
 
 {% page-ref page="bots.md" %}
 
-{% page-ref page="dashboard.md" %}
+{% page-ref page="data/dashboard.md" %}
 
-{% page-ref page="database.md" %}
+{% page-ref page="data/database.md" %}
 
-{% page-ref page="thread.md" %}
+{% page-ref page="services/database-service.md" %}
 
-{% page-ref page="metrics.md" %}
+{% page-ref page="feed/thread.md" %}
 
-{% page-ref page="pipeline.md" %}
+{% page-ref page="data/metrics.md" %}
 
-{% page-ref page="report.md" %}
+{% page-ref page="data/pipeline.md" %}
 
-{% page-ref page="table.md" %}
+{% page-ref page="data/report.md" %}
 
-{% page-ref page="team.md" %}
+{% page-ref page="data/table.md" %}
 
-{% page-ref page="user.md" %}
+{% page-ref page="teams/team.md" %}
+
+{% page-ref page="teams/user.md" %}
+
+{% page-ref page="tags/tag-category.md" %}
 
