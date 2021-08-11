@@ -118,7 +118,6 @@ class PostgresSource(Source):
                 Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
                 :return:
                 """
-        counter = 0
         for key, group in groupby(self._get_raw_extract_iter(), get_table_key):
             columns = []
             for row in group:
