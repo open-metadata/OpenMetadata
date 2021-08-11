@@ -117,7 +117,7 @@ const TeamsPage = () => {
             onClick={() => {
               setCurrentTab(2);
             }}>
-            Datasets
+            Assets
           </button>
         </nav>
       </div>

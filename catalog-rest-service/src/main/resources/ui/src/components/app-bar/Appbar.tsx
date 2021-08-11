@@ -131,7 +131,25 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </div>
             </div>
-
+            <NavLink
+              className="tw-nav focus:tw-no-underline"
+              data-testid="appbar-item"
+              style={navStyle(location.pathname.startsWith('/documents'))}
+              target="_blank"
+              to={{
+                pathname: 'https://docs.open-metadata.org/',
+              }}>
+              Docs
+            </NavLink>
+            <NavLink
+              className="tw-nav focus:tw-no-underline"
+              data-testid="appbar-item"
+              style={navStyle(location.pathname.startsWith('/docs'))}
+              to={{
+                pathname: '/docs',
+              }}>
+              API
+            </NavLink>
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
