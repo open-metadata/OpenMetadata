@@ -1,20 +1,19 @@
 # Introduction
 
-Data is an important asset of an organization and metadata is the key to unlock the value from that asset. Metadata provides crucial context to turn data into information and powers not just the current limited use cases of data discovery, and governance, but also emerging use cases related to data quality, observability, and most importantly people collaboration. 
+Data is an important asset of an organization and metadata is the key to unlock the value from that asset. It provides crucial context to turn data into information and powers not just the current limited use cases of data discovery, and governance, but also emerging use cases related to data quality, observability, and most importantly people collaboration. 
 
 Poorly organized metadata is preventing organizations from realizing the full potential of data. Metadata is incorrect, inconsistent, stale, often missing, and fragmented in silos across various disconnected tools in proprietary formats obscuring a holistic picture of data.
 
-OpenMetadata community wants to address these challenges with the following goals:
+OpenMetadata is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability. OpenMetadata includes the following:
 
-* Centralise and connect all data assets together as a Single Source Of Truth
-* Define extensible metadata schemas and APIs as an Open Metadata Standard to foster consistent understanding and easy sharing of metadata
-* Empower users with end-to-end data context by making data easy to discover, understand, and collaborate on
+* **Metadata schema specifications** - defines core abastractions and vocabulary for metadata with Types, Entities, Relationships between entities
+* **Metadata APIs** - for producing and consuming metadata
+* **Ingestion framework** - for integrating tools and ingesting metadata to the metadata store
+* **Metadata store** - stores metadata graph that connects data assets, user and tool generated metadata 
+* **Data collaboration workspace** - for users to discover, and collaborate on data
+* **Bots for automation** - to automate mundane data tasks
 
-A centralized, standards based metadata system has several benefits:
 
-* Brings together disconnected tools and users around a single unified view of data
-* Eliminates the burden of creating redundant copies of metadata by every tool and simplifies the tool
-* Enables rich insights about the data making  TODO
 
 
 
