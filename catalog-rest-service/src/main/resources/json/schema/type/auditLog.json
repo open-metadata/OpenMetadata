@@ -2,7 +2,7 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Audit Log",
-  "description": "This schema defines the type for Audit Log to capture the audit trail of POST, PUT, and PATCH API operations.",
+  "description": "This schema defines Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.",
   "type": "object",
 
   "properties" : {
