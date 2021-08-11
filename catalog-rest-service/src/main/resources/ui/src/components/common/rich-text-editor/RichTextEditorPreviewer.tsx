@@ -17,37 +17,10 @@
 
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import gfm from 'remark-gfm';
 
 /*eslint-disable  */
-const components = {
-  code({ node, inline, className, children, ...props }: any) {
-    const match = /language-(\w+)/.exec(className || '');
-    return !inline && match ? (
-      <SyntaxHighlighter
-        children={String(children)
-          .replace(/\n$/, '')
-          .replaceAll(/&nbsp;/g, ' ')
-          .replaceAll('<br/>', ' ')}
-        {...props}
-        language={match[1]}
-        PreTag="code"
-      />
-    ) : (
-      <SyntaxHighlighter
-        children={String(children)
-          .replace(/\n$/, '')
-          .replaceAll(/&nbsp;/g, ' ')
-          .replaceAll('<br/>', ' ')}
-        {...props}
-        PreTag="code"
-      />
-    );
-  },
-};
-
-function RichTextEditorPreviewer({ markdown }: { markdown: string }) {
+const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
   const [content, setContent] = useState<string>('');
   useEffect(() => {
     setContent(markdown);
@@ -55,16 +28,22 @@ function RichTextEditorPreviewer({ markdown }: { markdown: string }) {
   return (
     <div className="content-container">
       <ReactMarkdown
-        /*eslint-disable */
         children={content
           .replaceAll(/&lt;/g, '<')
           .replaceAll(/&gt;/g, '>')
           .replaceAll('\\', '')}
-        components={components}
+        components={{
+          h1: 'p',
+          h2: 'p',
+          h3: 'p',
+          h4: 'p',
+          h5: 'p',
+          h6: 'p',
+        }}
         remarkPlugins={[gfm]}
       />
     </div>
   );
-}
+};
 
 export default RichTextEditorPreviewer;

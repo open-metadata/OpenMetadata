@@ -26,7 +26,7 @@ import React, {
 import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Heading, Italic, Link, ULLIST } from './ToolBarOptions';
+import { Bold, Italic, Link, ULLIST } from './ToolBarOptions';
 
 const getIntialContent = (format: string, content?: string) => {
   /*eslint-disable  */
@@ -108,29 +108,33 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
     }, [initvalue, format]);
 
     return (
-      <div className="tw-min-h-32 tw-border tw-border-gray-300 tw-rounded tw-overflow-y-auto">
-        <Editor
-          editorClassName="tw-px-1 tw-min-h-32"
-          editorState={editorState}
-          readOnly={readonly}
-          toolbar={{
-            options: [],
-          }}
-          toolbarClassName="tw-py-2 tw-border tw-border-gray-300"
-          toolbarCustomButtons={
-            customOptions ?? [
-              <Heading key="heading" />,
-              <Bold key="bold" />,
-              <Italic key="italic" />,
-              <Link key="link" />,
-              <ULLIST key="ulList" />,
-            ]
-          }
-          toolbarHidden={readonly}
-          wrapperClassName="editor-wrapper"
-          onEditorStateChange={onEditorStateChange}
-        />
-      </div>
+      <>
+        <div className="tw-min-h-32 tw-border tw-border-gray-300 tw-rounded tw-overflow-y-auto">
+          <Editor
+            editorClassName="tw-px-1 tw-min-h-32"
+            editorState={editorState}
+            readOnly={readonly}
+            toolbar={{
+              options: [],
+            }}
+            toolbarClassName="tw-py-2 tw-border tw-border-gray-300"
+            toolbarCustomButtons={
+              customOptions ?? [
+                <Bold key="bold" />,
+                <Italic key="italic" />,
+                <Link key="link" />,
+                <ULLIST key="ulList" />,
+              ]
+            }
+            toolbarHidden={readonly}
+            wrapperClassName="editor-wrapper"
+            onEditorStateChange={onEditorStateChange}
+          />
+        </div>
+        <p className="tw-pt-2">
+          <strong>Note :</strong> Using headings in markdown is not allowed
+        </p>
+      </>
     );
   }
 );
