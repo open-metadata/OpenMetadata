@@ -1,17 +1,19 @@
-# Usage details of an entity
+# Entity Usage
 
 This schema defines the type used for capturing usage details of an entity.
 
-<b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypeentityusage.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json</b>
+**$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json)
 
 Type: `object`
 
 ## Properties
- - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json/properties/entity">entity</b> `required`
-	 - Entity for which usage is returned.
-	 - &#36;ref: [entityReference.json](#entityreference.json)
- - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/entityUsage.json/properties/usage">usage</b> `required`
-	 - List usage details per day.
-	 - Type: `array`
-		 - **Items**
-		 - &#36;ref: [usageDetails.json](#usagedetails.json)
+
+* **entity** `required`
+  * Entity for which usage is returned.
+  * $ref: [entityReference.json](entity-usage.md#entityreference.json)
+* **usage** `required`
+  * List usage details per day.
+  * Type: `array`
+    * **Items**
+    * $ref: [usageDetails.json](entity-usage.md#usagedetails.json)
+
