@@ -35,6 +35,7 @@ import { ERROR404 } from '../../constants/constants';
 import { isEven } from '../../utils/CommonUtils';
 import { stringToDOMElement } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
+import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import Form from './Form';
 
 const TeamsPage = () => {
@@ -130,8 +131,8 @@ const TeamsPage = () => {
         <table className="tw-w-full tw-overflow-x-auto">
           <thead>
             <tr className="tw-border-b tw-text-sm tw-leading-normal">
+              <th className="tableHead-cell">Name</th>
               <th className="tableHead-cell">Username</th>
-              <th className="tableHead-cell">Display name</th>
               <th className="tableHead-cell tw-w-60">Type</th>
             </tr>
           </thead>
@@ -146,10 +147,19 @@ const TeamsPage = () => {
                   }`}
                   key={index}>
                   <td className="tw-py-3 tw-px-6 tw-text-left">
-                    <p>{user.name}</p>
+                    <div className="tw-flex tw-items-center">
+                      <IconDefaultUserProfile
+                        style={{
+                          height: '24px',
+                          width: '24px',
+                          borderRadius: '50%',
+                        }}
+                      />
+                      <p className="tw-pl-4">{user.description}</p>
+                    </div>
                   </td>
                   <td className="tw-py-3 tw-px-6 tw-text-left">
-                    <p>{user.description.trim() || 'No description added'}</p>
+                    <p>{user.name}</p>
                   </td>
                   <td className="tw-py-3 tw-px-6 tw-text-left">
                     <p>{user.type}</p>
@@ -200,7 +210,7 @@ const TeamsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3">
+        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Teams</h6>
           <Button
             className="tw-h-8 tw-px-3"
