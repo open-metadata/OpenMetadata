@@ -281,4 +281,17 @@ declare module 'Models' {
       aggregations: Record<string, Sterm>;
     };
   };
+
+  export type ServiceCollection = {
+    name: string;
+    value: string;
+  };
+
+  export type ServiceData = {
+    collection: {
+      documentation: string;
+      href: string;
+      name: string;
+    };
+  };
 }

@@ -16,6 +16,7 @@
 */
 
 export const PAGE_SIZE = 10;
+export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;

@@ -38,7 +38,12 @@ import {
   getUserByName,
   getUsers,
 } from '../axiosAPIs/userAPI';
-import { oidcTokenKey, ROUTES, TIMEOUT } from '../constants/constants';
+import {
+  API_RES_MAX_SIZE,
+  oidcTokenKey,
+  ROUTES,
+  TIMEOUT,
+} from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { useAuth } from '../hooks/authHooks';
 import useToastContext from '../hooks/useToastContext';
@@ -94,7 +99,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
 
   // Moving this code here from App.tsx
   const getAllUsersList = (): void => {
-    getUsers().then((res) => {
+    getUsers('', API_RES_MAX_SIZE).then((res) => {
       appState.users = res.data.data;
     });
   };

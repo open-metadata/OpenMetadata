@@ -36,7 +36,7 @@ export type DatabaseObj = {
   serviceType: string;
 };
 
-export type DataObj = {
+export type ServiceDataObj = {
   connectionUrl: string;
   description: string;
   driverClass: string;
@@ -56,8 +56,8 @@ export type EditObj = {
 type Props = {
   header: string;
   serviceName: string;
-  serviceList: Array<DataObj>;
-  data?: DataObj;
+  serviceList: Array<ServiceDataObj>;
+  data?: ServiceDataObj;
   onSave: (obj: DatabaseObj, text: string, editData: EditObj) => void;
   onCancel: () => void;
 };
@@ -88,7 +88,7 @@ const generateOptions = (count: number, initialValue = 0) => {
     ));
 };
 
-const generateName = (data: Array<DataObj>) => {
+const generateName = (data: Array<ServiceDataObj>) => {
   const newArr: string[] = [];
   data.forEach((d) => {
     newArr.push(d.name);

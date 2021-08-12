@@ -164,12 +164,12 @@ const TagsPage = () => {
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3">
           <h6 className="tw-heading">Tag Categories</h6>
           <Button
-            className="tw-h-8 tw-px-3"
+            className="tw-h-7 tw-px-2"
             size="small"
             theme="primary"
             variant="contained"
             onClick={() => setIsAddingCategory((prevState) => !prevState)}>
-            +
+            <i aria-hidden="true" className="fa fa-plus" />
           </Button>
         </div>
         {categories &&

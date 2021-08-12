@@ -1,5 +1,6 @@
 import React, { FunctionComponent } from 'react';
 import IconSuccess from '../assets/svg/check.svg';
+import IconAsstest from '../assets/svg/data-assets.svg';
 import IconError from '../assets/svg/error.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
@@ -39,6 +40,9 @@ import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconSetting from '../assets/svg/service.svg';
+import IconTerns from '../assets/svg/terms.svg';
+import IconUser from '../assets/svg/user.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
 type Props = {
@@ -90,6 +94,10 @@ export const Icons = {
   KEY: 'key',
   NOT_NULL: 'not-null',
   UNIQUE: 'unique',
+  ASSETS: 'assets',
+  SERVICE: 'service',
+  USERS: 'users',
+  TERMS: 'terms',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -264,8 +272,24 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconUnique;
 
       break;
+    case Icons.ASSETS:
+      IconComponent = IconAsstest;
+
+      break;
     case Icons.TOAST_INFO:
       IconComponent = IconInfo;
+
+      break;
+    case Icons.SERVICE:
+      IconComponent = IconSetting;
+
+      break;
+    case Icons.USERS:
+      IconComponent = IconUser;
+
+      break;
+    case Icons.TERMS:
+      IconComponent = IconTerns;
 
       break;
 

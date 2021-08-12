@@ -20,8 +20,13 @@ import { UserProfile } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
-export const getUsers = (arrQueryFields?: string): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields('/users', arrQueryFields);
+export const getUsers = (
+  arrQueryFields?: string,
+  limit?: number
+): Promise<AxiosResponse> => {
+  const url =
+    `${getURLWithQueryFields('/users', arrQueryFields)}` +
+    (limit ? `${arrQueryFields?.length ? '&' : '?'}limit=${limit}` : '');
 
   return APIClient.get(url);
 };

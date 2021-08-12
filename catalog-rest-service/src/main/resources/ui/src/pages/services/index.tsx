@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { ServiceCollection, ServiceData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -30,21 +31,14 @@ import Loader from '../../components/Loader/Loader';
 import {
   AddServiceModal,
   DatabaseObj,
-  DataObj,
   EditObj,
+  ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { NOSERVICE, PLUS } from '../../constants/services.const';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-type ServiceData = {
-  collection: {
-    documentation: string;
-    href: string;
-    name: string;
-  };
-};
 
 export type ApiData = {
   description: string;
@@ -56,13 +50,11 @@ export type ApiData = {
   ingestionSchedule?: { repeatFrequency: string; startDate: string };
 };
 
-type ServiceCollection = { name: string; value: string };
-
 const ServicesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName] = useState('databaseServices');
-  const [serviceList, setServiceList] = useState<Array<DataObj>>([]);
-  const [editData, setEditData] = useState<DataObj>();
+  const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
+  const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const updateServiceList = (
@@ -102,7 +94,7 @@ const ServicesPage = () => {
     setEditData(undefined);
   };
 
-  const handleEdit = (value: DataObj) => {
+  const handleEdit = (value: ServiceDataObj) => {
     setEditData(value);
     setIsModalOpen(true);
   };
