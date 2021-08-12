@@ -42,6 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.Valid;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.ForbiddenException;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -367,6 +369,86 @@ public class TagResource {
     URI parentHRef = RestUtil.getHref(categoryHref, primaryTag);
     tag = addHref(parentHRef, dao.updateSecondaryTag(categoryName, primaryTag, secondaryTag, tag));
     return Response.ok(tag).build();
+  }
+
+  @DELETE
+  @Path("{category}")
+  @Operation(summary = "Delete a Category", tags = "tags",
+          description = "Delete a Category identified by name",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Category for name {category} is not found")
+          })
+  public Response deleteCategory(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Parameter(description = "Tag category name",
+                                         schema = @Schema(type = "string"))
+                                 @PathParam("category") String category,
+                                 @Valid TagCategory tagCategory) throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    if (dao.getUsageCount(tagCategory) > 0) {
+      throw new ForbiddenException("Category is in use");
+    }
+    dao.deleteCategory(category);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("{category}/{primaryTag}")
+  @Operation(summary = "Delete a primary tag", tags = "tags",
+          description = "Delete a primary tag identified by name",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Category for name {category} is not found"),
+                  @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
+          })
+  public Response deletePrimaryTag(@Context UriInfo uriInfo,
+                                   @Context SecurityContext securityContext,
+                                   @Parameter(description = "Tag category name",
+                                           schema = @Schema(type = "string"))
+                                   @PathParam("category") String category,
+                                   @Parameter(description = "Primary tag name",
+                                           schema = @Schema(type = "string"))
+                                   @PathParam("primaryTag") String primaryTag,
+                                   @Valid Tag tag) throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    String fqn = category + "." + primaryTag;
+    if (dao.getUsageCount(tag) > 0) {
+      throw new ForbiddenException("Primary tag is in use");
+    }
+    dao.deleteTag(category, fqn);
+    return Response.ok().build();
+  }
+
+  @DELETE
+  @Path("{category}/{primaryTag}/{secondaryTag}")
+  @Operation(summary = "Delete a primary tag", tags = "tags",
+          description = "Delete a primary tag identified by name",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Category for name {category} is not found"),
+                  @ApiResponse(responseCode = "404", description = "Tag for instance {primaryTag} is not found"),
+                  @ApiResponse(responseCode = "404", description = "Tag for instance {secondaryTag} is not found"),
+          })
+  public Response deleteSecondaryTag(@Context UriInfo uriInfo,
+                                     @Context SecurityContext securityContext,
+                                     @Parameter(description = "Tag category name",
+                                             schema = @Schema(type = "string"))
+                                     @PathParam("category") String category,
+                                     @Parameter(description = "Primary tag name",
+                                             schema = @Schema(type = "string"))
+                                     @PathParam("primaryTag") String primaryTag,
+                                     @Parameter(description = "Secondary tag name",
+                                             schema = @Schema(type = "string"))
+                                     @PathParam("secondaryTag") String secondaryTag,
+                                     @Valid Tag tag) throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    String fqn = category + "." + primaryTag + "." + secondaryTag;
+    if (dao.getUsageCount(tag) > 0) {
+      throw new ForbiddenException("Secondary tag is in use");
+    }
+    dao.deleteTag(category, fqn);
+    return Response.ok().build();
   }
 
   private TagCategory addHref(UriInfo uriInfo, TagCategory category) {
