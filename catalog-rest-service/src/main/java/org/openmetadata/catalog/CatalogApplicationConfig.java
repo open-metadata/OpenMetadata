@@ -18,6 +18,7 @@ package org.openmetadata.catalog;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.health.conf.HealthConfiguration;
+import org.openmetadata.catalog.events.EventHandlerConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import io.dropwizard.Configuration;
@@ -44,6 +45,9 @@ public class CatalogApplicationConfig extends Configuration {
 
     @JsonProperty("elasticsearch")
     private ElasticSearchConfiguration elasticSearchConfiguration;
+
+    @JsonProperty("eventHandlerConfiguration")
+    private EventHandlerConfiguration eventHandlerConfiguration;
 
     public DataSourceFactory getDataSourceFactory() {
         return dataSourceFactory;
@@ -75,6 +79,13 @@ public class CatalogApplicationConfig extends Configuration {
 
     public void setElasticSearchConfiguration(ElasticSearchConfiguration elasticSearchConfiguration) {
         this.elasticSearchConfiguration = elasticSearchConfiguration;
+    }
+
+    public EventHandlerConfiguration getEventHandlerConfiguration() {
+        return eventHandlerConfiguration;
+    }
+    public void setEventHandlerConfiguration(EventHandlerConfiguration eventHandlerConfiguration) {
+        this.eventHandlerConfiguration = eventHandlerConfiguration;
     }
 
     @Valid

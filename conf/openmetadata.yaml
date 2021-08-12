@@ -99,8 +99,8 @@ logging:
     - type: file
       threshold: TRACE
       logFormat: "%level [%d{HH:mm:ss.SSS}] [%t] %logger{5} - %msg %n"
-      currentLogFilename: ./logs/catalog.log
-      archivedLogFilenamePattern: ./logs/catalog-%d{yyyy-MM-dd}-%i.log.gz
+      currentLogFilename: ./logs/openmetadata.log
+      archivedLogFilenamePattern: ./logs/openmetadata-%d{yyyy-MM-dd}-%i.log.gz
       archivedFileCount: 7
       timeZone: UTC
       maxFileSize: 50MB
@@ -118,6 +118,11 @@ database:
 elasticsearch:
   host: localhost
   port: 9200
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.catalog.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
 
 health:
   delayedShutdownHandlerEnabled: true
