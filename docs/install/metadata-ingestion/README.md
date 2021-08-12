@@ -6,7 +6,7 @@ It could be used in an orchestration framework(e.g. Apache Airflow) to ingest me
 
 ## Guides
 
-* [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)
-* [Explore Connectors & Install](install/metadata-ingestion/connectors/README.md)
-* [Run Simple Scheduler](install/metadata-ingestion/scheduler.md)
-* [Configure Airflow](install/metadata-ingestion/airflow.md)
+* [Ingest Sample Data](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/ingest-sample-data)
+* [Explore Connectors & Install](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/connectors/)
+* [Run Simple Scheduler](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/scheduler)
+* [Configure Airflow](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/airflow)
