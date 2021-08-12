@@ -33,6 +33,7 @@
     * [User](openmetadata-apis/schemas/entities/user.md)
 * [APIs](openmetadata-apis/apis/README.md)
   * [Overview](openmetadata-apis/apis/overview.md)
+  * [Implementation notes](openmetadata-apis/apis/implementation-notes.md)
 
 ## Install
 
