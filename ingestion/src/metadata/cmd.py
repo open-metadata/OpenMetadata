@@ -21,7 +21,6 @@ import sys
 import click
 from pydantic import ValidationError
 
-from metadata.check.check_cli import check
 from metadata.config.config_loader import load_config_file
 from metadata.ingestion.workflow.workflow import Workflow
 
@@ -35,11 +34,14 @@ BASE_LOGGING_FORMAT = (
 )
 logging.basicConfig(format=BASE_LOGGING_FORMAT)
 
+@click.group()
+def check() -> None:
+    pass
 
 @click.group()
 @click.option("--debug/--no-debug", default=False)
 def metadata(debug: bool) -> None:
-    if debug or os.getenv("METADATA_DEBUG", False):
+    if os.getenv("METADATA_DEBUG", False):
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
     else:
@@ -52,12 +54,11 @@ def metadata(debug: bool) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="Config file in .toml or .yaml format",
+    help="Workflow config",
     required=True,
 )
 def ingest(config: str) -> None:
     """Main command for ingesting metadata into Metadata"""
-
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
 
@@ -71,6 +72,7 @@ def ingest(config: str) -> None:
 
     workflow.execute()
     ret = workflow.print_status()
+    workflow.stop()
     sys.exit(ret)
 
 

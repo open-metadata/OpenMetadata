@@ -17,8 +17,8 @@ from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
 from .sql_source import (
-    BasicSQLAlchemyConfig,
-    SQLAlchemySource,
+    SQLConnectionConfig,
+    SQLSource,
     register_custom_type,
 )
 from ..ometa.auth_provider import MetadataServerConfig
@@ -28,13 +28,16 @@ register_custom_type(HiveTimestamp, "TIME")
 register_custom_type(HiveDecimal, "NUMBER")
 
 
-class HiveConfig(BasicSQLAlchemyConfig):
+class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
 
+    def get_connection_url(self):
+        return super().get_connection_url()
 
-class HiveSource(SQLAlchemySource):
+
+class HiveSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx, "hive")
+        super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

@@ -17,7 +17,7 @@
 import logging
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
+from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.utils.helpers import get_start_and_end
@@ -99,8 +99,8 @@ class RedshiftUsageSource(Source):
                 """
         for row in self._get_raw_extract_iter():
             tq = TableQuery(row['query'], row['label'], row['userid'], row['xid'], row['pid'], str(row['starttime']),
-                            str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'], row['aborted'], row['sql'])
-            self.status.records_produced(tq)
+                            str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'],
+                            row['aborted'], row['sql'])
             yield tq
 
     def close(self):

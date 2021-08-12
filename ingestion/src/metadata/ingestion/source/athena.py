@@ -16,11 +16,11 @@
 from typing import Optional
 from urllib.parse import quote_plus
 
-from .sql_source import SQLAlchemyConfig, SQLAlchemySource
+from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.auth_provider import MetadataServerConfig
 
 
-class AthenaConfig(SQLAlchemyConfig):
+class AthenaConfig(SQLConnectionConfig):
     scheme: str = "awsathena+rest"
     username: Optional[str] = None
     password: Optional[str] = None
@@ -29,7 +29,7 @@ class AthenaConfig(SQLAlchemyConfig):
     s3_staging_dir: str
     work_group: str
 
-    def get_sql_alchemy_url(self):
+    def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
             url += f"{quote_plus(self.username)}"
@@ -46,9 +46,9 @@ class AthenaConfig(SQLAlchemyConfig):
         return url
 
 
-class AthenaSource(SQLAlchemySource):
+class AthenaSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx, "athena")
+        super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
