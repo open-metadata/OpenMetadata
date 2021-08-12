@@ -647,8 +647,7 @@
   color: #5e5c58;
 }
 /* My data details page realted CSS */
-.sl-box.description,
-.schema-description {
+.sl-box.description {
   min-height: 138px;
 }
 

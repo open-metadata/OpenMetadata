@@ -157,7 +157,7 @@
   }
 
   .tw-tag {
-    @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-gray-200;
+    @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-tag;
   }
 
   .tw-signin-button {
