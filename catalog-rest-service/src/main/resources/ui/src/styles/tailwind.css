@@ -41,11 +41,6 @@
   body {
     @apply tw-text-body tw-text-grey-body tw-font-light;
   }
-  /* input[type="checkbox"] {
-    @apply tw-border tw-border-text disabled:tw-opacity-50 
-    hover:tw-border-primary hover:tw-bg-primary-lite 
-    focus:tw-border-primary focus:tw-bg-primary;
-  } */
 
   .tw-table {
     @apply tw-w-full;

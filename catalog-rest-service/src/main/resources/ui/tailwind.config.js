@@ -31,16 +31,12 @@ const warning = '#FFC34E';
 
 // Background colors
 const bodyBG = '#FCFBFE';
-// const bodyBG = '#F9F8FD';
 const bodyHoverBG = '#F9F8FD';
-// const bodyHoverBG = '#F5F3FC';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 
 // Borders and Separators
 const mainBorder = '#E2DCE4';
-// const mainBorder = '#D4CED9';
-// const mainBorder = '#AFA8BA';
 const mainSeparator = '#D9CEEE';
 
 // Text color - Gray variants
