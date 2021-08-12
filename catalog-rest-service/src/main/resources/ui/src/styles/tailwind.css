@@ -98,7 +98,7 @@
     @apply tw-border-b tw-border-separator;
   }
   .tw-gh-tabs {
-    @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-block tw-border-b-2 tw-border-transparent hover:tw-border-gray-300 focus:tw-outline-none;
+    @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-block tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
   }
   .tw-gh-tabs.active {
     @apply tw-text-grey-body tw-border-b-2 tw-border-orange-400;
