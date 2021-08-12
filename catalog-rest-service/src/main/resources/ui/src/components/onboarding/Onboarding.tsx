@@ -28,7 +28,7 @@ const Onboarding: React.FC = () => {
   return (
     <div className="tw-flex tw-items-center tw-justify-around tw-mt-28">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
-        <div className="tw-mb-5">
+        <div className="tw-mb-6">
           <h4>Welcome to OpenMetadata.</h4>
           <p className="tw-text-lg tw-font-normal">
             A central place to discover and collaborate on all your data.
@@ -36,7 +36,7 @@ const Onboarding: React.FC = () => {
         </div>
         <div className="tw-text-base">
           {data.map((d, i) => (
-            <div className="tw-flex tw-items-center tw-gap-4 tw-mb-3" key={i}>
+            <div className="tw-flex tw-items-center tw-gap-4 tw-mb-5" key={i}>
               <div className="tw-flex tw-items-center">
                 <span
                   className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-2 
