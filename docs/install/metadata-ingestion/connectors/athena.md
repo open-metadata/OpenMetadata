@@ -27,7 +27,7 @@ git clone https://github.com/open-metadata/OpenMetadata.git
 cd OpenMetadata/ingestion
 python3 -m venv env
 source env/bin/activate
-pip install '.[athean]'
+pip install '.[athena]'
 ```
 {% endtab %}
 {% endtabs %}
