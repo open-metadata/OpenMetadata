@@ -25,7 +25,7 @@ docker-compose up
 ```
 
 
-# Run Locally
+# Run Manually
 
 {% hint style="success" %}
 This is a quick start guide that will show you how to quickly start a standalone server.
