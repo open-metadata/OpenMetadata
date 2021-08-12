@@ -6,7 +6,8 @@
 ## OpenMetadata APIs
 
 * [Schemas](openmetadata-apis/schemas/README.md)
-  * [Types](openmetadata-apis/schemas/types/README.md)
+  * [Overview](openmetadata-apis/schemas/overview.md)
+  * [OpenMetadata Types](openmetadata-apis/schemas/types/README.md)
     * [Basic](openmetadata-apis/schemas/types/basic.md)
     * [Audit Log](openmetadata-apis/schemas/types/audit-log.md)
     * [Daily Count](openmetadata-apis/schemas/types/daily-count.md)
@@ -17,7 +18,7 @@
     * [Schedule](openmetadata-apis/schemas/types/schedule.md)
     * [Tag Label](openmetadata-apis/schemas/types/tag-label.md)
     * [Usage Details](openmetadata-apis/schemas/types/usage-details.md)
-  * [Entities](openmetadata-apis/schemas/entities/README.md)
+  * [OpenMetadata Entities](openmetadata-apis/schemas/entities/README.md)
     * [Bot](openmetadata-apis/schemas/entities/bot.md)
     * [Dashboard](openmetadata-apis/schemas/entities/dashboard.md)
     * [Database](openmetadata-apis/schemas/entities/database.md)
