@@ -66,7 +66,7 @@ const Appbar: React.FC = (): JSX.Element => {
   return (
     <>
       {isAuthenticatedRoute && isSignedIn ? (
-        <div className="tw-h-14 tw-py-2 tw-px-8 tw-border-b-2 tw-border-separator">
+        <div className="tw-h-14 tw-py-2 tw-px-5 tw-border-b-2 tw-border-separator">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-mr-auto">
               <NavLink to="/">
@@ -77,7 +77,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </NavLink>
               <div
-                className="tw-flex-none tw-relative tw-pl-3 "
+                className="tw-flex-none tw-relative tw-pl-5 "
                 data-testid="appbar-item">
                 <span className="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400" />
                 <input
