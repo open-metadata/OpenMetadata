@@ -37,9 +37,7 @@ def get_long_description():
 
 
 base_requirements = {
-    "elasticsearch>=7.0.0,<8.0.0",
     "commonregex",
-    "requests>=2.25.1",
     "click<7.2.0,>=7.1.1",
     "expandvars>=0.6.5"
     "dataclasses>=0.8"
