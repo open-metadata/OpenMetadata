@@ -8,7 +8,7 @@ Poorly organized metadata is preventing organizations from realizing the full po
 
 OpenMetadata includes the following:
 
-* **Metadata schema specifications** - defines core abastractions and vocabulary for metadata with Types, Entities, Relationships between entities
+* **Metadata schema specifications** - defines core abstractions and vocabulary for metadata with Types, Entities, Relationships between entities
 * **Metadata APIs** - for producing and consuming metadata
 * **Ingestion framework** - for integrating tools and ingesting metadata to the metadata store
 * **Metadata store** - stores metadata graph that connects data assets, user and tool generated metadata 
