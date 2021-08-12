@@ -12,14 +12,14 @@ OpenMetadata Ingesiton is a simple framework to build connectors and ingest meta
 ### Install From PyPI
 
 ```text
-python3 -m pip install --upgrade pip wheel setuptools
-python3 -m pip install --upgrade openmetadata-ingestion
+python3 -m pip install --upgrade pip wheel setuptools openmetadata-ingestion
 python3 -m spacy download en_core_web_sm
 ```
 
 ### Install Ingestion Connector Dependencies
 
 Click here to go to [Ingestion Connector's Documentation](https://docs.open-metadata.org/install/metadata-ingestion)
+
 #### Generate Redshift Data
 
 ```text

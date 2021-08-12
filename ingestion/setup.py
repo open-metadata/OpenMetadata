@@ -55,9 +55,7 @@ base_requirements = {
     "wheel~=0.36.2",
     "python-jose==3.3.0",
     "okta==1.7.0",
-    "pandas~=1.3.1"
-}
-connector_requirements = {
+    "pandas~=1.3.1",
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "spacy==3.0.5",
@@ -71,28 +69,28 @@ base_plugins = {
     "sql-metadata~=2.0.0",
 }
 plugins: Dict[str, Set[str]] = {
-    "athena": connector_requirements | {"PyAthena[SQLAlchemy]"},
-    "bigquery": connector_requirements | {"pybigquery >= 0.6.0"},
+    "athena": {"PyAthena[SQLAlchemy]"},
+    "bigquery": {"pybigquery >= 0.6.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
-    "hive": connector_requirements | {"pyhive~=0.6.3", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
+    "hive": {"pyhive~=0.6.3", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
     "ldap-users": {"ldap3==2.9.1"},
-    "mssql": connector_requirements | {"sqlalchemy-pytds>=0.3"},
-    "mssql-odbc": connector_requirements | {"pyodbc"},
-    "mysql": connector_requirements | {"pymysql>=1.0.2"},
-    "oracle": connector_requirements | {"cx_Oracle"},
-    "postgres": connector_requirements | {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
-    "redshift": connector_requirements | {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
-    "redshift-usage": connector_requirements | {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
-    "snowflake": connector_requirements | {"snowflake-sqlalchemy<=1.2.4"},
-    "snowflake-usage": connector_requirements | {"snowflake-sqlalchemy<=1.2.4"},
-    "sample-tables": connector_requirements | {"faker~=8.1.1", }
+    "mssql": {"sqlalchemy-pytds>=0.3"},
+    "mssql-odbc": {"pyodbc"},
+    "mysql": {"pymysql>=1.0.2"},
+    "oracle": {"cx_Oracle"},
+    "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
+    "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
+    "sample-tables": {"faker~=8.1.1", }
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.2.0",
+    version="0.2.1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
