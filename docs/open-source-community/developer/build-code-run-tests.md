@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-First of all you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
+First of all, you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
 
 ## Building
 
@@ -32,7 +32,7 @@ dist/target/open-metadata-<version>.tar.gz
 
 ## Run instance through IntelliJ IDEA
 
-1. Add new Run/Debug configuration like below screenshot.
+1. Add new Run/Debug configuration like the below screenshot.
 
    ![Intellj Run Configuration](https://github.com/open-metadata/OpenMetadata/blob/main/docs/install/images/ingestion-bot-service-account.png)
 

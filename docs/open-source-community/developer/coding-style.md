@@ -11,9 +11,9 @@ description: >-
 1. Avoid cryptic abbreviations. Single letter variable names are fine in very short methods with few variables, otherwise make them informative.
 2. Clear code is preferable to comments. When possible make your naming so good you don't need comments. When that isn't possible comments should be thought of as mandatory, write them to be read.
 3. Logging, configuration, and public APIs are our "UI". Make them pretty, consistent, and usable.
-4. Maximum line length is 120.
+4. The maximum line length is 120.
 5. Don't leave TODOs in the code or FIXMEs if you can help it. Don't leave println statements in the code. TODOs should be filed as github tasks.
-6. User documentation should be considered a part of any user-facing the feature, just like unit tests. Example REST apis should've accompanying documentation.
+6. User documentation should be considered a part of any user-facing feature, just like unit tests. Example REST APIs should've accompanying documentation.
 7. Tests should never rely on timing in order to pass.  
 8. Every unit test should leave no side effects, i.e., any test dependencies should be set during setup and clean during tear down.
 
@@ -33,7 +33,7 @@ description: >-
 
 4. No wildcard imports.
 5. No unused imports. Remove all unused imports.
-6. No raw types. Do not use raw generic types, unless strictly necessary \(sometime necessary for signature matches, arrays\).
+6. No raw types. Do not use raw generic types, unless strictly necessary \(sometimes necessary for signature matches, arrays\).
 7. Suppress warnings. Add annotations to suppress warnings, if they cannot be avoided \(such as “unchecked”, or “serial”\).
 8. Comments.  Add JavaDocs to public methods or inherit them by not adding any comments to the methods. 
 9. logger instance should be upper case LOG.  
@@ -63,7 +63,7 @@ description: >-
 3. Logging statements should be complete sentences with proper capitalization that are written to be read by a person not necessarily familiar with the source code.
 4. String appending using StringBuilders should not be used for building log messages.
 
-   Formatting should be used. For ex:
+   Formatting should be used. For example:
 
    LOG.debug\("Loaded class \[{}\] from jar \[{}\]", className, jarFile\);
 

@@ -15,7 +15,7 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-* Update authorizationConfiguraiton to add adminPrincipals
+* Update authorizerConfiguration to add adminPrincipals
 
 ```text
 authorizerConfiguration:

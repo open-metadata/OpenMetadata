@@ -81,7 +81,7 @@ server:
       port: 8586
 ```
 
-By default OpenMetadata server runs on port 8585. It uses Jetty Server. The above config can be changed to make it run on a different port. Once you have updated the port details in config restart the server.
+By default, the OpenMetadata server runs on port 8585. It uses Jetty Server. The above config can be changed to make it run on a different port. Once you have updated the port details in config restart the server.
 
 ## Database
 
@@ -96,7 +96,7 @@ database:
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 ```
 
-The above section is database connection details to MySQL database. We recommend you to create a MySQL user with strong password and update this section accordingly.
+The above section is database connection details to MySQL database. We recommend you create a MySQL user with a strong password and update this section accordingly.
 
 ## ElasticSearch
 
@@ -106,7 +106,7 @@ elasticsearch:
   port: 9200
 ```
 
-ElasticSearch is one of the pre-requisities to run OpenMetadata. Default configuration expects a single instance of ElasticSearch running on local machine. Please make sure you update it with your production elastic search.
+ElasticSearch is one of the pre-requisites to run OpenMetadata. Default configuration expects a single instance of ElasticSearch running on the local machine. Please make sure you update it with your production elastic search.
 
 ## EventHandlers
 
@@ -136,7 +136,7 @@ health:
         successAttempts: 1
 ```
 
-Healthcheck api provides a API endpoint to check the OpenMetadata server health. We recommend in production settign to use this api to monitor the health of your OpenMetadata instance. Please tune the above configuration according to your production needs.
+Healthcheck API provides an API endpoint to check the OpenMetadata server health. We recommend in production settings to use this API to monitor the health of your OpenMetadata instance. Please tune the above configuration according to your production needs.
 
 ## Security
 

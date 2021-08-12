@@ -4,7 +4,7 @@
 
 * Once the **Client Id**, **Client secret**, **issuer** and **audience** is generated.
 
-  Add those details in openmetadata-security.yaml file in the respective field.
+  Add those details in `openmetadata-security.yaml` file in the respective field.
 
 ```text
 authenticationConfiguration:
@@ -15,7 +15,7 @@ authenticationConfiguration:
   callbackUrl: "http://localhost:8585/callback"
 ```
 
-* Update authorizationConfiguraiton to add adminPrincipals
+* Update `authorizerConfiguration` to add `adminPrincipals`
 
 ```text
 authorizerConfiguration:

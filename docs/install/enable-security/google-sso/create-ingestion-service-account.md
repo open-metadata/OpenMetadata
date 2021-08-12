@@ -10,7 +10,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935620-63a9c619-7e0c-49f7-a1a4-c190194a7f30.png)
 
-* Click on **Credentails** available on the left side panel
+* Click on **Credentials** available on the left side panel
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935630-254cc611-f959-4c5e-b33d-73c1a09cc384.png)
 
@@ -30,7 +30,7 @@ Makesure the Service Account Id as **ingestion-bot** and click on **CREATE AND C
 
 ![](../../../.gitbook/assets/ingestion-bot-service-account.png)
 
-* Click on **role** and give the **owner** role. Then click **CONTINUE**
+* Click on **Select a role** and give the **Owner** role. Then click **Continue.**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935643-748b30ee-526b-473b-9c39-8b86e50605a8.png)
 
@@ -62,7 +62,7 @@ Makesure the Service Account Id as **ingestion-bot** and click on **CREATE AND C
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935657-df55ad24-303f-4c65-931b-39ebf65acf09.png)
 
-* Click on **ADD KEY** and then **create new key**
+* Click on **ADD KEY** and then C**reate new key**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935661-ce32b714-a67a-42fa-b989-395a29678e84.png)
 

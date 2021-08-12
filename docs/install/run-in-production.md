@@ -25,11 +25,11 @@ cd openmetdata-0.3.0
 ./bin/openmetdata start
 ```
 
-We recommend to configure serviced to monitor openmetadata command to restart incase of any failures.
+We recommend configuring serviced to monitor openmetadata command to restart in case of any failures.
 
 ## Running with a load balancer
 
-One or more OpenMetadata instances can be put behind a load balancer for reverse proxying, in that case appropriate OpenMetdata url must be mentioned in the load balancer's configuraiton file.
+One or more OpenMetadata instances can be put behind a load balancer for reverse proxying, in that case, an appropriate OpenMetdata URL must be mentioned in the load balancer's configuration file.
 
 For example, in case Apache mod proxy the VirtualHost tag in the configuration file should be edited out with the following
 

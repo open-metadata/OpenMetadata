@@ -18,7 +18,7 @@
 
 ## Step 3: How to configure OAuth consent
 
-* Select the project you created above and Click on **APIs & Services** on the left-side panel.
+* Select the project you created above and click on **APIs & Services** on the left-side panel.
 
 ![OAuth Consent](../../../.gitbook/assets/g-project-oauth-consent.png)
 
@@ -57,7 +57,7 @@
 ![Alt text](https://user-images.githubusercontent.com/83201188/123220655-c7d59b00-d4eb-11eb-96c0-711f2938ec99.png)
 
 * Select **OAuth client ID** from the dropdown.
-* Once selected, you will be asked to select the **Application Type** . Select **Web Application**
+* Once selected, you will be asked to select the **Application type**. Select **Web application**
 
 ![OAuth Consent](https://user-images.githubusercontent.com/83201188/123220661-c906c800-d4eb-11eb-8ffb-5a7dbc4fc5b6.png)
 
@@ -73,7 +73,7 @@
 ## Step 5: Where to find the credentials
 
 * Go to **Credentials**
-* Click on the **pencil icon \(Edit OAuth Client\)** of the right side of the screen
+* Click on the **pencil icon \(Edit OAuth Client\)** on the right side of the screen
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123220675-cad08b80-d4eb-11eb-9c46-2c7c81b02509.png)
 
