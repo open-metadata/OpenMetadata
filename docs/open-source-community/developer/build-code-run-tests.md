@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Firt of all you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
+First of all you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
 
 ## Building
 
@@ -28,10 +28,9 @@ The binaries will be created at:
 ```text
 dist/target/open-metadata-<version>.pom
 dist/target/open-metadata-<version>.tar.gz
-dist/target/open-metadata-<version>.zip
 ```
 
-## Run instance through Intellij
+## Run instance through IntelliJ IDEA
 
 1. Add new Run/Debug configuration like below screenshot.
 
@@ -40,7 +39,7 @@ dist/target/open-metadata-<version>.zip
 ## Coding Style
 
 1. [Refer to coding guidelines](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/coding-style.md)
-2. Configure Intellij to disable the \[wild-card imports\]
+2. Configure IntelliJ to disable the \[wild-card imports\]
 
    \([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html\#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports)\)
 
