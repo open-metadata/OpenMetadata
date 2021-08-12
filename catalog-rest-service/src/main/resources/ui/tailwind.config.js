@@ -17,9 +17,6 @@
 
 const defaultTheme = require('tailwindcss/defaultTheme');
 
-const bluePrimaryDark = '#0366D6';
-const bluePrimaryLight = '#D4E2FC';
-
 // Primary colors for text and controls
 const primary = '#7147E8';
 const primaryHover = '#5523E0';

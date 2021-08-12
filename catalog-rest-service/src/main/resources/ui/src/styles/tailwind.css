@@ -143,7 +143,7 @@
   .show-more,
   a[href],
   .link-text {
-    @apply tw-text-primary hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
+    @apply tw-text-primary-hover hover:tw-text-primary-hover focus:tw-text-primary-hover hover:tw-underline focus:tw-underline tw-cursor-pointer;
   }
 
   .page-container {
