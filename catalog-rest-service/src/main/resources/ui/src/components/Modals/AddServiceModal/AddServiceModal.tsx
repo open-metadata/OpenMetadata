@@ -561,8 +561,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         </div>
         <div className="tw-modal-footer tw-justify-end">
           <Button
-            className="tw-mr-2 tw-text-blue-600 hover:tw-text-blue-600"
+            className="tw-mr-2"
             size="regular"
+            theme="primary"
             variant="text"
             onClick={onCancel}>
             Discard

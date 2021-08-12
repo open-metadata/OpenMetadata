@@ -250,7 +250,7 @@ const ServicesPage = () => {
                   className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
                   onClick={() => handleAddService()}>
                   <img alt="" src={PLUS} />
-                  <p className="tw-text-base tw-font-medium tw-mt-1">
+                  <p className="tw-text-base tw-font-normal tw-mt-1">
                     Add new service
                   </p>
                 </div>
