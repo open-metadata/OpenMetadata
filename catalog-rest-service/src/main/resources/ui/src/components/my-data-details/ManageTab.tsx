@@ -108,7 +108,7 @@ const ManageTab: FunctionComponent<Props> = ({
 
   return (
     <div className="tw-max-w-3xl tw-mx-auto">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-gray-300">
+      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
         <span className="tw-mr-2">Owner:</span>
         <span className="tw-relative">
           <Button

@@ -32,9 +32,9 @@ const Pagination: React.FC<PaginationProps> = ({
         hideFirstLastPages
         activePage={currentPage}
         disabledClass="tw-opacity-60 disabled"
-        itemClass="tw-border tw-border-blue-500 tw-text-blue-500 tw-rounded tw-px-3 tw-py-1.5 tw-text-sm tw-mx-2"
+        itemClass="tw-border tw-border-primary tw-text-blue-500 tw-rounded tw-px-3 tw-py-1.5 tw-text-sm tw-mx-2"
         itemsCountPerPage={sizePerPage}
-        linkClass="tw-text-blue-500 tw-font-medium tw-link"
+        linkClass="tw-text-primary tw-font-medium tw-link"
         nextPageText={
           <>
             Next{' '}

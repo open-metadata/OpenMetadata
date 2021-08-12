@@ -158,7 +158,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     <div
       className={classNames(
         editable
-          ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-blue-500 tw-cursor-text'
+          ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-primary tw-cursor-text'
           : null
       )}
       onClick={(event) => {

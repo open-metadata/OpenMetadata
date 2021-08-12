@@ -349,7 +349,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                     ) : (
                       <span className="tw-opacity-0 group-hover:tw-opacity-100">
                         <Tags
-                          className="tw-border-gray-500"
+                          className="tw-border-main"
                           tag="+ Add new tag"
                           type="outlined"
                         />

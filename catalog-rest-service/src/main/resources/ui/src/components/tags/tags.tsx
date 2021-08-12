@@ -39,7 +39,7 @@ const Tags: FunctionComponent<TagProps> = ({
       <span className={classNames(textBaseStyle, textLayoutStyles)}>{tag}</span>
       {editable && (
         <span
-          className="tw-py-1 tw-px-2 tw-rounded hover:tw-bg-gray-300"
+          className="tw-py-1 tw-px-2 tw-rounded"
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
             e.stopPropagation();

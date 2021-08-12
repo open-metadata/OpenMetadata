@@ -17,8 +17,33 @@
 
 const defaultTheme = require('tailwindcss/defaultTheme');
 
-const bluePrimaryDark = '#0366D6';
-const bluePrimaryLight = '#D4E2FC';
+// Primary colors for text and controls
+const primary = '#7147E8';
+const primaryHover = '#5523E0';
+const primaryActive = '#450DE2';
+const primaryHoverLite = '#DBD1F9';
+
+// state colors
+const success = '#51C41A';
+const error = '#FF4C3B';
+const info = '#1890FF';
+const warning = '#FFC34E';
+
+// Background colors
+const bodyBG = '#FCFBFE';
+const bodyHoverBG = '#F9F8FD';
+const tagBG = '#EEEAF8';
+const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
+
+// Borders and Separators
+const mainBorder = '#E2DCE4';
+const mainSeparator = '#D9CEEE';
+
+// Text color - Gray variants
+const textBody = '#37352f';
+const textMuted = '#6B7280';
+const textDark = '#000000';
+const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -32,24 +57,32 @@ module.exports = {
       xl: '1440px',
     },
     extend: {
-      backgroundColor: {
-        success: '#28a745',
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
-        'primary-tag': '#EECEDD',
-        'secondary-tag': '#F2E8D0',
-        search: '#F4F6FA',
-      },
       borderColor: {
         'orange-400': '#F9826C',
-        success: '#28a745',
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
+        main: mainBorder,
+        separator: mainSeparator,
+        text: textBody,
+        hover: textBody,
+        focus: primary,
         search: '#D5D6D9',
       },
-      textColor: {
-        success: '#28a745',
-        'grey-body': '#37352f',
+      colors: {
+        success: success,
+        error: error,
+        warning: warning,
+        info: info,
+        'grey-body': textBody,
+        'grey-muted': textMuted,
+        'grey-muted-lite': textMutedLite,
+        'grey-dark': textDark,
+        'primary-lite': primaryBG,
+        primary: primary,
+        'primary-hover': primaryHover,
+        'primary-active': primaryActive,
+        'primary-hover-lite': primaryHoverLite,
+        'body-main': bodyBG,
+        'body-hover': bodyHoverBG,
+        tag: tagBG,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -79,10 +112,11 @@ module.exports = {
   },
   variants: {
     extend: {
+      backgroundColor: ['checked'],
       borderStyle: ['hover'],
       borderWidth: ['hover'],
       display: ['group-hover'],
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/custom-forms')],
 };

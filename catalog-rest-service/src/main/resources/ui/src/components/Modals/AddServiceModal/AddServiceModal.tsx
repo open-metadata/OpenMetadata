@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import classNames from 'classnames';
 import React, { FunctionComponent, useState } from 'react';
 import { Button } from '../../buttons/Button/Button';
 // import { serviceType } from '../../../constants/services.const';
@@ -315,7 +316,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               {!editData.edit ? (
                 <select
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="selectService"
                   name="selectService"
                   value={selectService}
@@ -330,7 +331,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               ) : (
                 <input
                   disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
+                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
                   id="selectService"
                   name="selectService"
                   value={selectService}
@@ -345,7 +346,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               {!editData.edit ? (
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="name"
                   name="name"
                   type="text"
@@ -355,7 +356,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               ) : (
                 <input
                   disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
+                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
                   id="name"
                   name="name"
                   value={name}
@@ -370,7 +371,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   {requiredField('Connection Url:')}
                 </label>
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="url"
                   name="url"
                   type="text"
@@ -384,7 +385,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   {requiredField('Connection Port:')}
                 </label>
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="port"
                   name="port"
                   type="number"
@@ -400,7 +401,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   {requiredField('Username:')}
                 </label>
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="userName"
                   name="userName"
                   type="text"
@@ -414,7 +415,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   {requiredField('Password:')}
                 </label>
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="password"
                   name="password"
                   type="password"
@@ -429,7 +430,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 Database:
               </label>
               <input
-                className="tw-form-input tw-px-3 tw-py-1"
+                className="tw-form-inputs tw-px-3 tw-py-1"
                 id="database"
                 name="database"
                 type="text"
@@ -443,7 +444,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               {!editData.edit ? (
                 <select
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   id="driverClass"
                   name="driverClass"
                   value={driverClass}
@@ -453,7 +454,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               ) : (
                 <input
                   disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
+                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
                   id="driverClass"
                   name="driverClass"
                   value={driverClass}
@@ -466,7 +467,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 Description:
               </label>
               <textarea
-                className="tw-form-input tw-px-3 tw-py-1 "
+                className="tw-form-inputs tw-px-3 tw-py-1 "
                 id="description"
                 name="description"
                 rows={4}
@@ -479,7 +480,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 Tags:
               </label>
               <select
-                className="tw-form-input tw-px-3 tw-py-1 "
+                className="tw-form-inputs tw-px-3 tw-py-1 "
                 name="tags"
                 id="tags"
                 value={tags}
@@ -494,15 +495,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             <div className="tw-mt-4 tw-flex tw-items-center">
               <label className="tw-form-label tw-mb-0">Enable Ingestion</label>
               <div
-                className={`tw-w-9 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full tw-mx-2 tw-px-1 tw-transition tw-duration-500 tw-ease-in-out ${
-                  ingestion ? 'tw-bg-blue-700' : 'tw-bg-gray-100 tw-border-2'
-                }`}
+                className={classNames(
+                  'toggle-switch',
+                  ingestion ? 'open' : null
+                )}
                 onClick={() => setIngestion(!ingestion)}>
-                <div
-                  className={`tw-bg-white tw-w-3 tw-h-3 tw-rounded-full tw-shadow-md tw-transform tw-transition tw-duration-500 tw-ease-in-out ${
-                    ingestion && 'tw-translate-x-4'
-                  }`}
-                />
+                <div className="switch" />
               </div>
             </div>
             {ingestion && (
@@ -519,7 +517,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     Day:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1 flex-auto"
+                    className="tw-form-inputs tw-px-3 tw-py-1 flex-auto"
                     id="frequency"
                     name="day"
                     value={frequency.day}
@@ -534,7 +532,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     Hour:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-px-3 tw-py-1"
                     id="hour"
                     name="hour"
                     value={frequency.hour}
@@ -549,7 +547,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                     Minute:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1 "
+                    className="tw-form-inputs tw-px-3 tw-py-1 "
                     id="minute"
                     name="minute"
                     value={frequency.minute}
@@ -563,8 +561,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         </div>
         <div className="tw-modal-footer tw-justify-end">
           <Button
-            className="tw-mr-2 tw-text-blue-600 hover:tw-text-blue-600"
+            className="tw-mr-2"
             size="regular"
+            theme="primary"
             variant="text"
             onClick={onCancel}>
             Discard

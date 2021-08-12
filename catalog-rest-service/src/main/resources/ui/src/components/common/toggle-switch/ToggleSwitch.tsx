@@ -32,7 +32,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       <div className="toggle-label" data-testid="toggle-label">
         {label}
       </div>
-      <label className="toggle-switch">
+      <label className="cb-toggle-switch">
         <input
           checked={isEnabled}
           className="toggle-checkbox"

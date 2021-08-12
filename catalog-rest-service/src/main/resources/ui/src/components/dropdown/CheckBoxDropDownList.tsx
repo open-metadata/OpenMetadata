@@ -34,7 +34,7 @@ const CheckBoxDropDownList = ({
         aria-labelledby="menu-button"
         aria-orientation="vertical"
         className="tw-origin-top-right tw-absolute tw-z-10
-              tw-right-0 tw-w-full tw-mt-1 tw-shadow-lg tw-border tw-border-gray-300
+              tw-right-0 tw-w-full tw-mt-1 tw-shadow-lg tw-border tw-border-main
               tw-bg-white tw-rounded focus:tw-outline-none"
         role="menu">
         <div className="py-1" role="none">
@@ -45,7 +45,7 @@ const CheckBoxDropDownList = ({
               onClick={(e) => onSelect && onSelect(e, item.value as string)}>
               <input
                 checked={selectedItems?.includes(item.value as string)}
-                className="ml-3 mr-2 tw-align-middle"
+                className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
                 type="checkbox"
               />
               <p className="tw-inline-block">{item.name}</p>

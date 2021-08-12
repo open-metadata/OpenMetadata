@@ -49,8 +49,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <span
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-gray-200',
-          !isNil(value) && item.value === value ? 'tw-bg-primary-light' : null
+          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover',
+          !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null
         )}
         id={`menu-item-${index}`}
         key={index}
@@ -114,7 +114,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               {listGroups.map((grp, index) => {
                 return (
                   <div key={index}>
-                    <span className="tw-flex tw-my-1 tw-text-gray-500">
+                    <span className="tw-flex tw-my-1 tw-text-grey-muted">
                       <hr className="tw-mt-2 tw-w-full " />
                       <span className="tw-text-xs tw-px-0.5">{grp}</span>{' '}
                       <hr className="tw-mt-2 tw-w-full" />

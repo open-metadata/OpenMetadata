@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEqual, isNil } from 'lodash';
 import { ColumnTags, TableColumn, TableDetail, TableJoinsData } from 'Models';
@@ -323,42 +324,53 @@ const MyDataDetailsPage = () => {
         <div className="tw-flex tw-flex-col">
           <div className="tw-flex tw-flex-initial tw-justify-between tw-items-center">
             <TitleBreadcrumb titleLinks={slashedTableName} />
-            <div className="tw-flex tw-h-6 tw-ml-2  tw-mt-2">
-              <button
-                className="tw-text-xs tw-border tw-border-gray-300 tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none"
-                data-testid="follow-button"
-                onClick={followTable}>
-                {isFollowing ? (
-                  <>
-                    <i className="fas fa-star tw-text-grey-body" /> Unfollow
-                  </>
-                ) : (
-                  <>
-                    <i className="far fa-star tw-text-grey-body" /> Follow
-                  </>
-                )}
-              </button>
-              <span className="tw-text-xs tw-border tw-border-gray-300 tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r">
-                {followers}
+            <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
+              <span
+                className={classNames(
+                  'tw-flex tw-border tw-border-primary tw-rounded',
+                  isFollowing
+                    ? 'tw-bg-primary tw-text-white'
+                    : 'tw-text-primary'
+                )}>
+                <button
+                  className={classNames(
+                    'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+                    isFollowing ? 'tw-border-white' : 'tw-border-primary'
+                  )}
+                  data-testid="follow-button"
+                  onClick={followTable}>
+                  {isFollowing ? (
+                    <>
+                      <i className="fas fa-star" /> Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <i className="far fa-star" /> Follow
+                    </>
+                  )}
+                </button>
+                <span className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r">
+                  {followers}
+                </span>
               </span>
             </div>
           </div>
         </div>
         <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
           <span>
-            <span className="tw-text-gray-500 tw-font-normal">Owner :</span>{' '}
+            <span className="tw-text-grey-muted tw-font-normal">Owner :</span>{' '}
             <span className="tw-pl-1tw-font-normal ">
               {owner?.name || '--'}
             </span>
             <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
           </span>
           <span>
-            <span className="tw-text-gray-500 tw-font-normal">Usage :</span>{' '}
+            <span className="tw-text-grey-muted tw-font-normal">Usage :</span>{' '}
             <span className="tw-pl-1 tw-font-normal"> {usage}</span>
             <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
           </span>
           <span>
-            <span className="tw-text-gray-500 tw-font-normal">Queries :</span>{' '}
+            <span className="tw-text-grey-muted tw-font-normal">Queries :</span>{' '}
             <span className="tw-pl-1 tw-font-normal">
               {weeklyUsageCount} past week
             </span>
@@ -366,7 +378,7 @@ const MyDataDetailsPage = () => {
         </div>
         <div className="tw-flex tw-flex-wrap tw-pt-1">
           {(tableTags.length > 0 || tier) && (
-            <i className="fas fa-tags tw-px-1 tw-mt-2 tw-text-gray-500" />
+            <i className="fas fa-tags tw-px-1 tw-mt-2 tw-text-grey-muted" />
           )}
           {tier && (
             <Tags className="tw-bg-gray-200" tag={`#${tier.split('.')[1]}`} />
@@ -430,8 +442,8 @@ const MyDataDetailsPage = () => {
             {activeTab === 1 && (
               <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
                 <div className="tw-col-span-3">
-                  <div className="schema-description tw-flex tw-flex-col tw-h-full tw-max-h-32 tw-relative tw-border tw-rounded-md">
-                    <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+                  <div className="schema-description tw-flex tw-flex-col tw-h-full tw-max-h-32 tw-relative tw-border tw-border-main tw-rounded-md">
+                    <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                       <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
                         Description
                       </span>
@@ -469,7 +481,7 @@ const MyDataDetailsPage = () => {
                     </div>
                   </div>
                 </div>
-                <div className="tw-col-span-1 tw-border tw-rounded-md">
+                <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
                   <FrequentlyJoinedTables
                     header="Frequently Joined Tables"
                     tableList={getFrequentlyJoinedWithTables()}

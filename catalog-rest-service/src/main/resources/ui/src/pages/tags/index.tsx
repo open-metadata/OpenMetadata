@@ -182,7 +182,9 @@ const TagsPage = () => {
               onClick={() => {
                 fetchCurrentCategory(category.name);
               }}>
-              <p className="tw-text-center tw-self-center">{category.name}</p>
+              <p className="tw-text-center tw-self-center tag-category">
+                {category.name}
+              </p>
 
               <p className="tw-bg-gray-200 tw-px-2 tw-py-1 tw-rounded tw-text-xs">
                 {category.usageCount}
@@ -205,7 +207,7 @@ const TagsPage = () => {
             <div className="container-fluid py-3">
               {currentCategory && (
                 <div className="tw-flex tw-justify-between tw-pl-1">
-                  <div className="tw-heading tw-text-blue-600 tw-text-base">
+                  <div className="tw-heading tw-text-link tw-text-base">
                     {currentCategory.name}
                   </div>
                   <Button
@@ -218,8 +220,8 @@ const TagsPage = () => {
                   </Button>
                 </div>
               )}
-              <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
-                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+              <div className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
+                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                   <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
                     Description
                   </span>
@@ -256,10 +258,10 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-border tw-rounded-md tw-bg-white">
+              <div className="tw-bg-white">
                 <table className="tw-w-full tw-overflow-x-auto">
                   <thead>
-                    <tr className="tw-border-b tw-text-sm tw-leading-normal">
+                    <tr className="tableHead-row">
                       <th className="tableHead-cell">Name</th>
                       <th className="tableHead-cell">Description</th>
                       <th className="tableHead-cell tw-w-60">
@@ -272,18 +274,15 @@ const TagsPage = () => {
                       (tag: Tag, index: number) => {
                         return (
                           <tr
-                            className={`${
-                              currentCategory.children?.length !== index + 1 &&
-                              'tw-border-b'
-                            } tw-border-gray-200 hover:tw-bg-gray-100 ${
-                              isEven(index + 1) && 'tw-bg-gray-50'
+                            className={`tableBody-row ${
+                              !isEven(index + 1) && 'odd-row'
                             }`}
                             key={index}>
-                            <td className="tw-py-3 tw-px-6 tw-text-left">
+                            <td className="tableBody-cell">
                               <p>{tag.name}</p>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
@@ -319,7 +318,7 @@ const TagsPage = () => {
                               </div>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setEditTag(tag);
                               }}>
@@ -351,7 +350,7 @@ const TagsPage = () => {
                                 ) : (
                                   <span className="tw-opacity-0 group-hover:tw-opacity-100">
                                     <Tags
-                                      className="tw-border-gray-500"
+                                      className="tw-border-main"
                                       tag="+ Add new tag"
                                       type="outlined"
                                     />

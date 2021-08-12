@@ -61,7 +61,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
     <div
       className="tw-flex tw-flex-col tw-relative"
       data-testid="related-tables-container">
-      <div className="tw-flex tw-items-center tw-border-b tw-py-1 tw-px-3">
+      <div className="tw-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3">
         <span
           className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal"
           data-testid="related-tables-header">

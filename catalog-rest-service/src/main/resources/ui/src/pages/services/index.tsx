@@ -37,6 +37,7 @@ import { getServiceDetailsPath } from '../../constants/constants';
 import { NOSERVICE, PLUS } from '../../constants/services.const';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
+import SVGIcons from '../../utils/SvgUtils';
 type ServiceData = {
   collection: {
     documentation: string;
@@ -189,7 +190,7 @@ const ServicesPage = () => {
               <div className="tw-grid tw-grid-cols-4 tw-gap-4">
                 {serviceList.map((service, index) => (
                   <div
-                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-gray-500"
+                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                     key={index}>
                     <div className="tw-flex-auto">
                       <Link to={getServiceDetailsPath(service.name)}>
@@ -200,14 +201,17 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div className="tw-text-grey-body tw-pb-1">
-                        {stringToHTML(service.description) ||
-                          'No description added'}
+                        {stringToHTML(service.description) || (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
                       </div>
                       {/* <div className="tw-my-2">
-                    <label className="tw-font-semibold ">Tags:</label>
-                    <span className="tw-tag tw-ml-3">mysql</span>
-                    <span className="tw-tag tw-ml-2">sales</span>
-                  </div> */}
+                        <label className="tw-font-semibold ">Tags:</label>
+                        <span className="tw-tag tw-ml-3">mysql</span>
+                        <span className="tw-tag tw-ml-2">sales</span>
+                      </div> */}
                       <div className="">
                         <label className="tw-mb-0">Type:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
@@ -215,21 +219,27 @@ const ServicesPage = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-1">
+                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                       <div className="tw-flex tw-justify-end">
                         <button
-                          className="tw-pr-2"
+                          className="tw-pr-2 focus:tw-outline-none"
                           onClick={() => handleEdit(service)}>
-                          <i className="far fa-edit tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                          <SVGIcons alt="edit" icon="icon-edit" title="edit" />
                         </button>
-                        <button onClick={() => handleDelete(service.id)}>
-                          <i className="far fa-trash-alt tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                        <button
+                          className="focus:tw-outline-none"
+                          onClick={() => handleDelete(service.id)}>
+                          <SVGIcons
+                            alt="delete"
+                            icon="icon-delete"
+                            title="delete"
+                          />
                         </button>
                       </div>
                       <div className="tw-flex tw-justify-end">
                         <img
                           alt=""
-                          className="tw-h-10 tw-w-10 tw-filter tw-grayscale tw-opacity-50"
+                          className="tw-h-10 tw-w-10"
                           src={serviceTypeLogo(service.serviceType)}
                         />
                       </div>
@@ -237,12 +247,10 @@ const ServicesPage = () => {
                   </div>
                 ))}
                 <div
-                  className="tw-cursor-pointer tw-card tw-bg-gray-200 tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
+                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
                   onClick={() => handleAddService()}>
                   <img alt="" src={PLUS} />
-                  <p
-                    className="tw-text-base tw-font-medium tw-mt-1"
-                    style={{ color: 'rgba(3, 102, 214, 1)' }}>
+                  <p className="tw-text-base tw-font-normal tw-mt-1">
                     Add new service
                   </p>
                 </div>
