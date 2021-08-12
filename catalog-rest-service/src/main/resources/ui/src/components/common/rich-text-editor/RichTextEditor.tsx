@@ -109,7 +109,7 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
 
     return (
       <>
-        <div className="tw-min-h-32 tw-border tw-border-gray-300 tw-rounded tw-overflow-y-auto">
+        <div className="tw-min-h-32 tw-border tw-border-main tw-rounded tw-overflow-y-auto">
           <Editor
             editorClassName="tw-px-1 tw-min-h-32"
             editorState={editorState}
@@ -117,7 +117,7 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
             toolbar={{
               options: [],
             }}
-            toolbarClassName="tw-py-2 tw-border tw-border-gray-300"
+            toolbarClassName="tw-py-2 tw-border-0 tw-border-b tw-border-main"
             toolbarCustomButtons={
               customOptions ?? [
                 <Bold key="bold" />,
