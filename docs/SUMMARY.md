@@ -37,8 +37,7 @@
 
 ## Install
 
-* [Run Locally](install/run-locally.md)
-* [Run Docker](install/run-docker.md)
+* [Run OpenMetadata](install/run-openmetadata.md)
 * [Run in production](install/run-in-production.md)
 * [Metadata Ingestion](install/metadata-ingestion/README.md)
   * [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)

@@ -4,6 +4,27 @@ description: >-
   on your local machine.
 ---
 
+# Run Docker
+
+[Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
+
+{% hint style="info" %}
+**Prerequisites**
+
+* Docker &gt;= 20.10.x
+
+**Ports to access once the docker is up:**
+
+* OpenMetadata UI: 8585
+* Scheduler UI: 7777
+{% endhint %}
+
+```text
+cd docker/metadata
+docker-compose up
+```
+
+
 # Run Locally
 
 {% hint style="success" %}
@@ -22,6 +43,18 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% endhint %}
 
 {% tabs %}
+{% tab title="Download the release" %}
+Download the latest binary release from [OpenMetadata](https://open-metadata.org/download/), Once you have the tar file,
+
+```bash
+# untar it
+tar -zxvf openmetadata-0.3.0.tar.gz
+
+# navigate to directory containing the launcher scripts
+cd openmetadata-0.3.0
+```
+{% endtab %}
+
 {% tab title="Build from source " %}
 Follow these steps to checkout code from [Github](https://github.com/open-metadata/OpenMetadata) and build OpenMetadata locally
 
@@ -46,17 +79,7 @@ cd openmetadata-1.0.0-SNAPSHOT
 ```
 {% endtab %}
 
-{% tab title="Download the release" %}
-Download the latest binary release from [OpenMetadata](https://open-metadata.org/download/), Once you have the tar file,
 
-```bash
-# untar it
-tar -zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
-
-# navigate to directory containing the launcher scripts
-cd openmetadata-1.0.0-SNAPSHOT
-```
-{% endtab %}
 {% endtabs %}
 
 ## Install on your local machine
@@ -91,13 +114,14 @@ cd openmetadata-1.0.0-SNAPSHOT
 2. Run bootstrap scripts to initiate the database and tables
 
    ```text
-   cd $METADATA_HOME
+   cd openmetadata-0.3.0
    ./boostrap/bootstrap-storage.sh migrate
    ```
 
 3. Start the OpenMetadata Server
 
    ```text
+      cd openmetadata-0.3.0 
       ./bin/openmetadata.sh start
    ```
 
