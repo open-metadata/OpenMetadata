@@ -45,7 +45,7 @@ const CheckBoxDropDownList = ({
               onClick={(e) => onSelect && onSelect(e, item.value as string)}>
               <input
                 checked={selectedItems?.includes(item.value as string)}
-                className="ml-3 mr-2 tw-align-middle"
+                className="tw-ml-3 tw-mr-2 tw-align-middle custom-checkbox"
                 type="checkbox"
               />
               <p className="tw-inline-block">{item.name}</p>

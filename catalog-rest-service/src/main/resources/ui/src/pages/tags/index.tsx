@@ -188,7 +188,9 @@ const TagsPage = () => {
               onClick={() => {
                 fetchCurrentCategory(category.name);
               }}>
-              <p className="tw-text-center tw-self-center">{category.name}</p>
+              <p className="tw-text-center tw-self-center tag-category">
+                {category.name}
+              </p>
 
               <p className="tw-bg-gray-200 tw-px-2 tw-py-1 tw-rounded tw-text-xs">
                 {category.usageCount}
@@ -254,10 +256,10 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-border tw-border-main tw-rounded-md tw-bg-white">
+              <div className="tw-bg-white">
                 <table className="tw-w-full tw-overflow-x-auto">
                   <thead>
-                    <tr className="tw-border-b tw-border-main tw-text-sm tw-leading-normal">
+                    <tr className="tableHead-row">
                       <th className="tableHead-cell">Name</th>
                       <th className="tableHead-cell">Description</th>
                       <th className="tableHead-cell tw-w-60">
@@ -270,18 +272,15 @@ const TagsPage = () => {
                       (tag: Tag, index: number) => {
                         return (
                           <tr
-                            className={`${
-                              currentCategory.children?.length !== index + 1 &&
-                              'tw-border-b'
-                            } tw-border-main tableBody-row ${
+                            className={`tableBody-row ${
                               !isEven(index + 1) && 'odd-row'
                             }`}
                             key={index}>
-                            <td className="tw-py-3 tw-px-6 tw-text-left">
+                            <td className="tableBody-cell">
                               <p>{tag.name}</p>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
@@ -309,7 +308,7 @@ const TagsPage = () => {
                               </div>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setEditTag(tag);
                               }}>

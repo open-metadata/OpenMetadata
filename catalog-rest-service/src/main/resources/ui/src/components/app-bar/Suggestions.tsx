@@ -76,7 +76,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                 return (
                   <Link
                     className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-gray-200"
+                    hover:tw-bg-body-hover"
                     data-testid="data-name"
                     key={fqdn}
                     to={getDatasetDetailsPath(fqdn)}

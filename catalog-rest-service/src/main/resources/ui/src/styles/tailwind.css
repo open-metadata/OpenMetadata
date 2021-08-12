@@ -41,6 +41,11 @@
   body {
     @apply tw-text-body tw-text-grey-body tw-font-light;
   }
+  /* input[type="checkbox"] {
+    @apply tw-border tw-border-text disabled:tw-opacity-50 
+    hover:tw-border-primary hover:tw-bg-primary-lite 
+    focus:tw-border-primary focus:tw-bg-primary;
+  } */
 
   .tw-table {
     @apply tw-w-full;
@@ -84,7 +89,7 @@
     @apply tw-border tw-border-main hover:tw-bg-body-hover;
   }
   .tableBody-row.odd-row {
-    @apply tw-bg-body hover:tw-bg-body-hover;
+    @apply tw-bg-body-main hover:tw-bg-body-hover;
   }
   .tableBody-cell {
     @apply tw-py-3 tw-px-6 tw-text-left;
@@ -142,7 +147,7 @@
   }
 
   .page-container {
-    @apply tw-bg-body;
+    @apply tw-bg-body-main;
   }
 
   .child-inline * {
@@ -174,8 +179,9 @@
     @apply tw-text-sm tw-text-gray-700 tw-mb-1;
   }
 
-  .tw-form-input {
-    @apply tw-w-full tw-text-gray-700 tw-bg-gray-100 tw-border-2 tw-border-main tw-rounded;
+  .tw-form-inputs {
+    @apply tw-w-full tw-text-grey-body tw-rounded tw-border tw-border-main 
+    focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
   /* Dropdown CSS start */
@@ -230,5 +236,37 @@
   .side-panel .seperator,
   .horz-separator {
     @apply tw-border-b tw-border-separator;
+  }
+  .side-panel .activeCategory {
+    @apply tw--mx-4 tw-pl-4 tw-pr-3 tw-py-1 tw-border-r-4 tw-border-orange-400;
+  }
+  .side-panel .activeCategory .tag-category {
+    @apply tw-text-primary tw-font-medium;
+  }
+
+  .custom-checkbox {
+    @apply tw-form-checkbox tw-text-primary tw-rounded-sm tw-border tw-border-text hover:tw-border-primary focus:tw-border-primary;
+  }
+  .custom-checkbox:not(:checked) {
+    @apply hover:tw-bg-primary-lite;
+  }
+  .custom-checkbox:checked ~ .custom-checkbox-label {
+    @apply tw-text-primary tw-font-normal;
+  }
+
+  .toggle-switch {
+    @apply tw-w-9 tw-border-2 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full 
+    tw-mx-2 tw-px-0.5 tw-transition tw-duration-500 tw-ease-in-out
+    tw-bg-grey-muted-lite tw-border-grey-muted;
+  }
+  .toggle-switch.open {
+    @apply tw-bg-primary-lite tw-border-primary;
+  }
+  .toggle-switch .switch {
+    @apply tw-w-3 tw-h-3 tw-rounded-full tw-shadow-md tw-transform tw-transition tw-duration-500 
+    tw-ease-in-out tw-bg-grey-muted;
+  }
+  .toggle-switch.open .switch {
+    @apply tw-bg-primary tw-translate-x-4;
   }
 }

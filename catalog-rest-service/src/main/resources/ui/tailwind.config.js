@@ -33,18 +33,24 @@ const info = '#1890FF';
 const warning = '#FFC34E';
 
 // Background colors
-const bodyBG = '#F9F8FD';
-const bodyHoverBG = '#F5F3FC';
+const bodyBG = '#FCFBFE';
+// const bodyBG = '#F9F8FD';
+const bodyHoverBG = '#F9F8FD';
+// const bodyHoverBG = '#F5F3FC';
 const tagBG = '#EEEAF8';
+const primaryBG = 'rgba(113, 71, 232, 0.25)';
 
 // Borders and Separators
-const mainBorder = '#AFA8BA';
+const mainBorder = '#E2DCE4';
+// const mainBorder = '#D4CED9';
+// const mainBorder = '#AFA8BA';
 const mainSeparator = '#D9CEEE';
 
 // Text color - Gray variants
 const textBody = '#37352f';
 const textMuted = '#6B7280';
 const textDark = '#000000';
+const textMutedLite = 'rgba(107, 114, 128, 0.15)';
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -58,49 +64,32 @@ module.exports = {
       xl: '1440px',
     },
     extend: {
-      backgroundColor: {
-        body: bodyBG,
-        'body-hover': bodyHoverBG,
-        tag: tagBG,
-        success: success,
-        error: error,
-        warning: warning,
-        info: info,
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
-        primary: primary,
-        'primary-hover': primaryHover,
-        'primary-active': primaryActive,
-        'primary-hover-lite': primaryHoverLite,
-      },
       borderColor: {
         'orange-400': '#F9826C',
         main: mainBorder,
         separator: mainSeparator,
+        text: textBody,
         hover: textBody,
         focus: primary,
-        success: success,
-        error: error,
-        warning: warning,
-        info: info,
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
         search: '#D5D6D9',
-        primary: primary,
-        'primary-hover': primaryHover,
-        'primary-active': primaryActive,
       },
-      textColor: {
+      colors: {
         success: success,
         error: error,
         warning: warning,
         info: info,
         'grey-body': textBody,
         'grey-muted': textMuted,
+        'grey-muted-lite': textMutedLite,
         'grey-dark': textDark,
+        'primary-lite': primaryBG,
         primary: primary,
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
+        'primary-hover-lite': primaryHoverLite,
+        'body-main': bodyBG,
+        'body-hover': bodyHoverBG,
+        tag: tagBG,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -130,10 +119,11 @@ module.exports = {
   },
   variants: {
     extend: {
+      backgroundColor: ['checked'],
       borderStyle: ['hover'],
       borderWidth: ['hover'],
       display: ['group-hover'],
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/custom-forms')],
 };
