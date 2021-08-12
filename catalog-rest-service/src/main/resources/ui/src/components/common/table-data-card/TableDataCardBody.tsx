@@ -17,8 +17,8 @@
 
 import { isNil } from 'lodash';
 import React, { FunctionComponent } from 'react';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import Tag from '../../tags/tags';
+import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
   description: string;
@@ -37,7 +37,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   return (
     <>
       <div className="tw-mb-1 description-text">
-        {stringToHTML(description)}
+        <RichTextEditorPreviewer markdown={description} />
       </div>
       <p className="tw-py-1">
         {extraInfo.map(({ key, value }, i) =>
@@ -63,7 +63,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
             <Tag
               className="tw-border-none tw-bg-gray-200"
               key={index}
-              tag={`#${tag}`}
+              tag={`#${tag.startsWith('Tier.Tier') ? tag.split('.')[1] : tag}`}
               type="contained"
             />
           ))}

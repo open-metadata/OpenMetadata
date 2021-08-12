@@ -24,6 +24,7 @@ import { Link, useParams } from 'react-router-dom';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -33,7 +34,6 @@ import { pagingObject } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 
@@ -156,9 +156,11 @@ const ServicePage: FunctionComponent = () => {
                       </button>
                     </div>
                   </div>
-                  <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                  <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                     <div data-testid="description" id="description" />
-                    {stringToHTML(description.trim()) || (
+                    {description.trim() ? (
+                      <RichTextEditorPreviewer markdown={description} />
+                    ) : (
                       <span className="tw-no-description">
                         No description added
                       </span>
@@ -207,7 +209,11 @@ const ServicePage: FunctionComponent = () => {
                             </Link>
                           </td>
                           <td className="tableBody-cell">
-                            {stringToHTML(database.description?.trim()) || (
+                            {database.description?.trim() ? (
+                              <RichTextEditorPreviewer
+                                markdown={database.description}
+                              />
+                            ) : (
                               <span className="tw-no-description">
                                 No description added
                               </span>

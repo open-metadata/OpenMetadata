@@ -2,17 +2,16 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/bots.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Bot",
-  "description": "Bot entity to capture the details of a bot.",
-  "description": "This schema defines Bot entity. A bot automates tasks, such as adding description, identifying importance of data. It runs as a special user in the system.",
+  "description": "This schema defines Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It runs as a special user in the system.",
   "type": "object",
 
   "properties" : {
     "id": {
-      "description": "Unique identifier that identifies an entity instance.",
+      "description": "Unique identifier of a bot instance.",
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Optional name that identifies this entity. Same as id if name is not available.",
+      "description": "Name of the bot.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
@@ -22,11 +21,11 @@
       "type": "string"
     },
     "description": {
-      "description": "Description of entity instance.",
+      "description": "Description of the bot.",
       "type": "string"
     },
     "href": {
-      "description": "Link to the resource corresponding to this entity.",
+      "description": "Link to the resource corresponding to this bot.",
       "$ref": "../type/basic.json#/definitions/href"
     }
   }

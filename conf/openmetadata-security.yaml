@@ -138,6 +138,12 @@ elasticsearch:
   host: localhost
   port: 9200
 
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.catalog.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
+
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s

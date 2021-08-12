@@ -44,14 +44,15 @@ public class EmbeddedMySqlSupport implements BeforeAllCallback, AfterAllCallback
               .withUser("test", "")
               .build();
 
-      SchemaConfig schemaConfig = SchemaConfig.aSchemaConfig("catalog_test_db").build();
+      SchemaConfig schemaConfig = SchemaConfig.aSchemaConfig("openmetadata_test_db").build();
 
       embeddedMysql = EmbeddedMysql.anEmbeddedMysql(config).addSchema(schemaConfig).start();
       LOG.info("Embedded MySQL is started");
 
       Flyway flyway = Flyway.configure()
               // TODO Remove hardcoding
-              .dataSource("jdbc:mysql://localhost:3307/catalog_test_db?useSSL=false&serverTimezone=UTC", "test", "")
+              .dataSource("jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC",
+                      "test", "")
               .sqlMigrationPrefix("v")
               .load();
       flyway.clean();

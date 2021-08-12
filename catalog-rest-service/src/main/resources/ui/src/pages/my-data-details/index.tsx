@@ -32,6 +32,7 @@ import {
   removeFollower,
 } from '../../axiosAPIs/tableAPI';
 import PopOver from '../../components/common/popover/PopOver';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -54,7 +55,6 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
   getTagsWithoutTier,
@@ -202,6 +202,8 @@ const MyDataDetailsPage = () => {
         setDescription(updatedHTML);
         setIsEdit(false);
       });
+    } else {
+      setIsEdit(false);
     }
   };
 
@@ -454,12 +456,18 @@ const MyDataDetailsPage = () => {
                       </div>
                     </div>
                     <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
-                      <div data-testid="description" id="description" />
-                      {stringToHTML(description?.trim()) || (
-                        <span className="tw-no-description">
-                          No description added
-                        </span>
-                      )}
+                      <div
+                        className="tw-pl-3"
+                        data-testid="description"
+                        id="description">
+                        {description?.trim() ? (
+                          <RichTextEditorPreviewer markdown={description} />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
+                      </div>
                       {isEdit && (
                         <ModalWithMarkdownEditor
                           header={`Edit description for ${name}`}

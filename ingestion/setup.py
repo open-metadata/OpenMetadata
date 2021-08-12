@@ -101,19 +101,17 @@ build_options = {"includes": ["_cffi_backend"]}
 
 setup(
     name="metadata",
-    version=get_version(),
-    url="https://github.com/streamlinedata/metadata",
+    version="0.2.0",
+    url="https://github.com/open-metadata/OpenMetadata",
     author="Metadata Committers",
     license="Apache License 2.0",
     description="Ingestion Framework for  OpenMetadata",
-    long_description="Ingestion Framework for  OpenMetadata",
+    long_description="Ingestion Framework for OpenMetadata",
     long_description_content_type="text/markdown",
     python_requires=">=3.8",
     options={"build_exe": build_options},
     package_dir={"": "src"},
     packages=find_namespace_packages(where='src', exclude=['tests*']),
-    dependency_links=['git+git://github.com/djacobs/PyAPNs.git#egg=apns',
-                      'git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler'],
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
         "metadata.ingestion.source.plugins": [

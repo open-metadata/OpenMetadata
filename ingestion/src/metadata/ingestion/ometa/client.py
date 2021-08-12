@@ -31,7 +31,7 @@ from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoi
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
     GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.generated.schema.entity.data.table import TableEntity
+from metadata.generated.schema.entity.data.table import TableEntity, TableJoins
 from metadata.generated.schema.entity.data.database import DatabaseEntity
 
 logger = logging.getLogger(__name__)
@@ -296,11 +296,11 @@ class REST(object):
     def publish_usage_for_a_table(self, table: TableEntity, table_usage_request: TableUsageRequest) -> None:
         """publish usage details for a table"""
         resp = self.post('/usage/table/{}'.format(table.id.__root__), data=table_usage_request.json())
-        # self.post('/usage/compute.percentile/table/{}'.format(table.id.__root__), table_usage_request.date)
+        logger.debug("published table usage {}".format(resp))
 
-    def publish_frequently_joined_with(self, table: TableEntity, table_join_request: ColumnJoinsList) -> None:
+    def publish_frequently_joined_with(self, table: TableEntity, table_join_request: TableJoins) -> None:
         """publish frequently joined with for a table"""
-        print(table_join_request.json())
+        logger.debug(table_join_request.json())
         logger.info("table join request {}".format(table_join_request.json()))
         resp = self.put('/tables/{}/joins'.format(table.id.__root__), data=table_join_request.json())
         logger.debug("published frequently joined with {}".format(resp))

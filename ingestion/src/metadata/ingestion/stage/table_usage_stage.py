@@ -42,7 +42,6 @@ def get_table_column_join(table, table_aliases, joins):
         except ValueError as err:
             logger.error("Error in parsing sql query joins {}".format(err))
             pass
-
     return TableColumnJoin(table_column=table_column, joined_with=joined_with)
 
 

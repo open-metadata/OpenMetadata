@@ -118,6 +118,8 @@ class Workflow:
             if hasattr(self, 'sink'):
                 self.sink.write_record(processed_record)
                 self.report['sink'] = self.sink.get_status().as_obj()
+
+    def stop(self):
         if hasattr(self, 'processor'):
             self.processor.close()
         if hasattr(self, 'stage'):

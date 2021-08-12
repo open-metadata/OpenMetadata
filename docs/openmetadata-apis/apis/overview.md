@@ -129,7 +129,7 @@ GET /v1/tables/name/service.database.dim_user
 
 ### Getting entities with only necessary fields
 
-To GET an entity with only necessary fields, pass `fields` query parameter while listing or getting an entity. This help clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
+To GET an entity with only necessary fields, pass `fields` query parameter while listing or getting an entity. This helps clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
 
 ```text
 GET /v1/tables/123e4567-e89b-42d3-a456-556642440000?fields=columns,tableConstraints,usage

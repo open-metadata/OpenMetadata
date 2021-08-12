@@ -28,7 +28,7 @@ class SourceStatus(Status):
     warnings: Dict[str, List[str]] = field(default_factory=dict)
     failures: Dict[str, List[str]] = field(default_factory=dict)
 
-    def records_produced(self, record: Record) -> None:
+    def scanned(self, record: Record) -> None:
         self.records += 1
 
     def warning(self, key: str, reason: str) -> None:

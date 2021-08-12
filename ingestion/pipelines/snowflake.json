@@ -10,7 +10,7 @@
       "service_name": "snowflake",
       "service_type": "Snowflake",
       "include_pattern": {
-        "include": [
+        "includes": [
           "(\\w)*.tpcds_sf100tcl.catalog_page",
           "(\\w)*.tpcds_sf100tcl.time_dim",
           "(\\w)*.tpcds_sf10tcl.catalog_page"
