@@ -8,7 +8,7 @@ JSON schema supports many native types - `null`, `boolean`, `object`, `array`, `
 
 An Entity is a special type that has an identity and represents an object that is either real or conceptual. An entity can be related to another entity through relationships. An Entity has two types of **Fields** - **Attributes** and **Relationships**:
 
-### **Attributes**
+#### **Attributes**
 
 **Attributes** represent an Entity’s data. Entities MUST include an attribute called **ID** that uniquely identifies an instance of an entity. It might optionally include a human-readable **fullyQualitifedName** attribute that uniquely identifies the entity. An attribute of an entity MUST not be another Entity and should be captured through a relationship. Entities typically SHOULD have the following common attributes:
 
@@ -22,7 +22,7 @@ An Entity is a special type that has an identity and represents an object that i
 | **Owner** | Optional attribute used to capture the ownership information. Not all entities have ownership information \(for example `User, Team`, and `Organization`\). |
 | **href** | An attribute generated on the fly as part of API response to provide the URL link to the entity returned. |
 
-### **Relationships**
+#### **Relationships**
 
 **Relationships** capture information about the association of an Entity with another Entity. Relationships can have cardinality - **One-to-one**, **One-to-many**, **Many-to-one**, and **Many-to-many**. Example of relationships:
 
