@@ -60,7 +60,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
 
   const additionalOptions = () => {
     return (
-      <div>
+      <div className="tw-text-left">
         {joinedTables?.slice(viewCap).map((table, index) => (
           <div
             className="tw-py-1 tw-cursor-pointer"
