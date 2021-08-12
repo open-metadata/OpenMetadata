@@ -37,9 +37,21 @@
 
 ## Install
 
-* [Run Locally](install/run-locally.md)
-* [Run Docker](install/run-docker.md)
-* [Run in production](install/run-in-production.md)
+* [Run OpenMetadata](install/run-openmetadata.md)
+* [Run in Production](install/run-in-production.md)
+* [Configuration](install/configuration.md)
+* [Enable Security](install/enable-security/README.md)
+  * [Google SSO](install/enable-security/google-sso/README.md)
+    * [Create Server Credentials](install/enable-security/google-sso/google-server-creds.md)
+    * [Create Service Account](install/enable-security/google-sso/create-ingestion-service-account.md)
+    * [Configure OpenMetadata Server](install/enable-security/google-sso/google-config.md)
+    * [Configure Ingestion](install/enable-security/google-sso/configure-security-ingestion.md)
+  * [Okta SSO](install/enable-security/okta-sso/README.md)
+    * [Create Server Credentials](install/enable-security/okta-sso/okta-server-creds.md)
+    * [Configure OpenMetadata Server](install/enable-security/okta-sso/okta-config.md)
+    * [Create Service Account](install/enable-security/okta-sso/create-ingestion-service-account.md)
+    * [Configure Ingestion](install/enable-security/okta-sso/configure-security-ingestion.md)
+
 * [Metadata Ingestion](install/metadata-ingestion/README.md)
   * [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)
   * [Connectors](install/metadata-ingestion/connectors/README.md)
@@ -56,17 +68,6 @@
     * [ElasticSearch](install/metadata-ingestion/connectors/elastic-search.md)
   * [Scheduler](install/metadata-ingestion/scheduler.md)
   * [Airflow](install/metadata-ingestion/airflow.md)
-* [Enable Security](install/enable-security/README.md)
-  * [Google SSO](install/enable-security/google-sso/README.md)
-    * [Create Server Credentials](install/enable-security/google-sso/google-server-creds.md)
-    * [Create Service Account](install/enable-security/google-sso/create-ingestion-service-account.md)
-    * [Configure OpenMetadata Server](install/enable-security/google-sso/google-catalog-config.md)
-    * [Configure Ingestion](install/enable-security/google-sso/configure-security-ingestion.md)
-  * [Okta SSO](install/enable-security/okta-sso/README.md)
-    * [Create Server Credentials](install/enable-security/okta-sso/okta-server-creds.md)
-    * [Configure OpenMetadata Server](install/enable-security/okta-sso/okta-catalog-config.md)
-    * [Create Service Account](install/enable-security/okta-sso/create-ingestion-service-account.md)
-    * [Configure Ingestion](install/enable-security/okta-sso/configure-security-ingestion.md)
 
 ## Open Source Community
 
