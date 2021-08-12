@@ -5,7 +5,7 @@
   "children": [
     {
       "name": "Address",
-      "description": "todo",
+      "description": "User's address.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -13,7 +13,7 @@
     },
     {
       "name": "BankAccount",
-      "description": "todo",
+      "description": "Bank account number of the user.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -21,7 +21,7 @@
     },
     {
       "name": "CreditCardNumber",
-      "description": "todo",
+      "description": "Credit card number of the user.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -29,7 +29,7 @@
     },
     {
       "name": "Driver'sLicense",
-      "description": "todo",
+      "description": "User's driver's license image or number.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -37,7 +37,7 @@
     },
     {
       "name": "Email",
-      "description": "todo",
+      "description": "User's email address.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -45,7 +45,7 @@
     },
     {
       "name": "FacePhoto",
-      "description": "todo",
+      "description": "User's face photo.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -53,7 +53,7 @@
     },
     {
       "name": "Login",
-      "description": "todo",
+      "description": "User's login name or other identities used for login purposes.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -61,7 +61,7 @@
     },
     {
       "name": "Name",
-      "description": "todo",
+      "description": "Name of the user. This includes full name or partial first name or last name.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -69,7 +69,7 @@
     },
     {
       "name": "NationalId",
-      "description": "todo",
+      "description": "National identification number of the user. This varies from countries to countries. See [National identification number](https://en.wikipedia.org/wiki/National_identification_number) for more details.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -77,7 +77,7 @@
     },
     {
       "name": "Passport",
-      "description": "todo",
+      "description": "User's passport information that includes passport number and passport images.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -85,7 +85,7 @@
     },
     {
       "name": "Phone",
-      "description": "todo",
+      "description": "User's phone number.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -93,7 +93,7 @@
     },
     {
       "name": "SocialMedia",
-      "description": "todo",
+      "description": "User's social media profile information.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -101,7 +101,7 @@
     },
     {
       "name": "SSN",
-      "description": "todo",
+      "description": "User's Social Security Number. This might be National Identification Number in some countries.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -109,7 +109,7 @@
     },
     {
       "name": "TaxId",
-      "description": "todo",
+      "description": "User's Tax Identification Number.",
       "associatedTags": [
         "PII.Sensitive",
         "PersonalData.Personal"
@@ -117,7 +117,7 @@
     },
     {
       "name": "DOB",
-      "description": "todo",
+      "description": "User's date of birth.",
       "associatedTags": [
         "PII.nonSensitive",
         "PersonalData.Personal"
@@ -125,7 +125,7 @@
     },
     {
       "name": "Ethnicity",
-      "description": "todo",
+      "description": "Ethnicity of the user.",
       "associatedTags": [
         "PII.nonSensitive",
         "PersonalData.SpecialCategory"
@@ -133,23 +133,15 @@
     },
     {
       "name": "Gender",
-      "description": "todo",
+      "description": "Gender of the user.",
       "associatedTags": [
         "PII.nonSensitive",
         "PersonalData.SpecialCategory"
       ]
     },
     {
-      "name": "AddressLocation",
-      "description": "todo",
-      "associatedTags": [
-        "PII.nonSensitive",
-        "PersonalData.Personal"
-      ]
-    },
-    {
       "name": "MaritalStatus",
-      "description": "todo",
+      "description": "Marital status of the user.",
       "associatedTags": [
         "PII.None",
         "PersonalData.Personal"
@@ -157,7 +149,7 @@
     },
     {
       "name": "IPAddress",
-      "description": "todo",
+      "description": "User's online IP address information.",
       "associatedTags": [
         "PII.None",
         "PersonalData.Personal"
@@ -165,7 +157,7 @@
     },
     {
       "name": "Password",
-      "description": "todo",
+      "description": "User's password.",
       "associatedTags": [
         "PII.None",
         "PersonalData.Personal"
@@ -173,7 +165,7 @@
     },
     {
       "name": "Biometric",
-      "description": "todo",
+      "description": "Biometric information of the user, such as Face recognition, Iris Recognition, Fingerprint, Voice Recognition, Hand geometry, and Behavior characteristics.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -181,7 +173,7 @@
     },
     {
       "name": "Genetic",
-      "description": "todo",
+      "description": "User's generic data acquired through DNA or RNA analysis.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -189,7 +181,7 @@
     },
     {
       "name": "MedicalRecords",
-      "description": "todo",
+      "description": "User's medical records that tracks events and transaction between user and health care provider.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -197,7 +189,7 @@
     },
     {
       "name": "Politics",
-      "description": "todo",
+      "description": "User's political opinions",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -205,7 +197,7 @@
     },
     {
       "name": "Religion",
-      "description": "todo",
+      "description": "User's religion information, religious and philosophical beliefs.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -213,7 +205,7 @@
     },
     {
       "name": "SexualOrientation",
-      "description": "todo",
+      "description": "User's sexual orientation.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
@@ -221,7 +213,7 @@
     },
     {
       "name": "TradeUnions",
-      "description": "todo",
+      "description": "User's trade union membership information.",
       "associatedTags": [
         "PII.None",
         "PersonalData.SpecialCategory"
