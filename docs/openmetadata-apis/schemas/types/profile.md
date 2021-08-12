@@ -1,6 +1,6 @@
 # Profile
 
-This schema defines the type used to capture profile of a user, team, or an organization.
+This schema defines the type for profile of a user, team, or an organization.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/profile.json)
 
@@ -11,7 +11,7 @@ Type: `object`
 * **images**
   * $ref: [\#/definitions/imageList](profile.md#/definitions/imageList)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **imageList**
 

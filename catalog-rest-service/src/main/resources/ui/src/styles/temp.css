@@ -680,3 +680,15 @@
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
+
+blockquote {
+  border-left: 5px solid #f1f1f1;
+  padding-left: 5px;
+}
+
+strong {
+  font-weight: bold;
+}
+body .rdw-editor-main pre {
+  background: none;
+}

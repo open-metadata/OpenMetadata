@@ -1,6 +1,6 @@
 # Daily Count
 
-This schema defines the type used for capturing and reporting the daily count of some measurement, such as usage, joins.
+This schema defines the type for reporting the daily count of some measurement. Example - number of times a table was used in queries per day.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/dailyCount.json)
 

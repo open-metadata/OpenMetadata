@@ -1,6 +1,6 @@
 # Tag Category
 
-This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can have children Tags called Secondary Tags. Only two levels of tags are supported currently.
+This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json)
 
@@ -29,7 +29,7 @@ This schema does not accept additional properties.
     * **Items**
     * $ref: [\#/definitions/tag](tag-category.md#/definitions/tag)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **tagName**
 

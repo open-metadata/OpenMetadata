@@ -1,6 +1,6 @@
 # Usage Details
 
-This schema defines the type used for capturing usage details. Based on usage, daily, weekly, and monthly aggregation of usage is provided along with the percentile rank based on the usage.
+This schema defines the type for usage details. Daily, weekly, and monthly aggregation of usage is computed along with the percentile rank based on the usage for a given day.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/usageDetails.json)
 
@@ -18,10 +18,10 @@ Type: `object`
   * Monthly \(last 30 days\) rolling usage stats of a data asset on the start date.
   * $ref: [\#/definitions/usageStats](usage-details.md#/definitions/usageStats)
 * **date** `required`
-  * Date in UTC time.
+  * Date in UTC.
   * $ref: [basic.json\#/definitions/date](usage-details.md#basic.jsondefinitionsdate)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **usageStats**
 

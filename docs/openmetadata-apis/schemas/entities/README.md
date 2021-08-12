@@ -59,7 +59,7 @@ Following is an example of a JSON schema of the User entity with attributes id, 
 
 ## Metadata system entities
 
-Metadata system has the following core entities: 
+Metadata system has the following core entities:
 
 1. **Data Entities** - These entities represent data, such as databases, tables, and topics, and assets created using data, such as Dashboards, Reports, Metrics, and ML Features. It also includes entities such as Pipelines that are used for creating data assets.  
 2. **Services** - Services represent platforms and services used for storing and processing data. It includes Online Data Stores, Data Warehouses, ETL tools, Dashboard services, etc.  
@@ -69,11 +69,11 @@ Metadata system has the following core entities:
 
 ## List of Schema Entities
 
-{% page-ref page="bots.md" %}
-
 {% page-ref page="dashboard.md" %}
 
 {% page-ref page="database.md" %}
+
+{% page-ref page="database-service.md" %}
 
 {% page-ref page="thread.md" %}
 
@@ -88,4 +88,6 @@ Metadata system has the following core entities:
 {% page-ref page="team.md" %}
 
 {% page-ref page="user.md" %}
+
+{% page-ref page="tag-category.md" %}
 

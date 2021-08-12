@@ -1,6 +1,6 @@
 # Report
 
-This schema defines the Report entity.
+This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and in visual form.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/report.json)
 

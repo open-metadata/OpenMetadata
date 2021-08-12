@@ -1,6 +1,6 @@
 # User
 
-This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner and own zero or more data asset entities. A user can also follow zero or more data asset entities.
+This schema defines the User entity. A user can be part of 0 or more teams. A special type of user called Bot is used for automation. A user can be an owner of zero or more data assets. A user can also follow zero or more data assets.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/teams/user.json)
 
@@ -50,7 +50,7 @@ This schema does not accept additional properties.
   * List of entities followed by the user.
   * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](user.md#....typeentityreference.jsondefinitionsentityreferencelist)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **userName**
 

@@ -21,7 +21,7 @@ Type: `object`
   * Login password.
   * Type: `string`
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **driverClass**
 

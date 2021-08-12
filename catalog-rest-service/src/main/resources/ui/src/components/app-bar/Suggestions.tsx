@@ -20,6 +20,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { getDatasetDetailsPath } from '../../constants/constants';
+import { serviceTypeLogo } from '../../utils/ServiceUtils';
 
 type SuggestionProp = {
   searchText: string;
@@ -31,6 +32,7 @@ type Option = {
     table_id: string;
     fqdn: string;
     table_name: string;
+    service_type: string;
   };
 };
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
@@ -72,17 +74,26 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
               {options.map((item: Option) => {
                 const fqdn = item['_source'].fqdn;
                 const name = item['_source'].table_name;
+                const serviceType = item['_source']['service_type'];
 
                 return (
-                  <Link
-                    className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-gray-200"
-                    data-testid="data-name"
-                    key={fqdn}
-                    to={getDatasetDetailsPath(fqdn)}
-                    onClick={() => setIsOpen(false)}>
-                    {name}
-                  </Link>
+                  <div
+                    className="tw-flex tw-items-center hover:tw-bg-gray-200"
+                    key={fqdn}>
+                    <img
+                      alt={serviceType}
+                      className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
+                      src={serviceTypeLogo(serviceType)}
+                    />
+                    <Link
+                      className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm 
+                    "
+                      data-testid="data-name"
+                      to={getDatasetDetailsPath(fqdn)}
+                      onClick={() => setIsOpen(false)}>
+                      {name}
+                    </Link>
+                  </div>
                 );
               })}
             </div>

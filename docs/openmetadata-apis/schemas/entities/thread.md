@@ -1,6 +1,6 @@
 # Feed
 
-This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about a data asset** created by a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.
+This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/feed/thread.json)
 
@@ -27,7 +27,7 @@ Type: `object`
     * **Items**
     * $ref: [\#/definitions/post](thread.md#/definitions/post)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **post**
 

@@ -5,7 +5,7 @@
 * Go to [Create Google Cloud Account](https://console.cloud.google.com)
 * Click on `Create Project`
 
-  ![Create Project](../../../.gitbook/assets/g-create-project%20%282%29%20%282%29%20%282%29%20%282%29%20%282%29%20%283%29.png)
+  ![Create Project](../../../.gitbook/assets/g-create-project%20%282%29%20%282%29%20%282%29%20%282%29%20%282%29%20%283%29%20%281%29.png)
 
 ## Step 2: Create a new project
 

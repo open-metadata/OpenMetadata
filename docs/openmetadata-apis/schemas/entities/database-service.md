@@ -31,7 +31,7 @@ Type: `object`
   * Schedule for running metadata ingestion jobs.
   * $ref: [../../type/schedule.json](database-service.md#....typeschedule.json)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **databaseServiceType**
 

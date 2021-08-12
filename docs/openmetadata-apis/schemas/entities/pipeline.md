@@ -1,6 +1,6 @@
 # Pipeline
 
-This schema defines the Pipeline entity.
+This schema defines the Pipeline entity. A pipeline enables flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform, and load the data.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/pipeline.json)
 

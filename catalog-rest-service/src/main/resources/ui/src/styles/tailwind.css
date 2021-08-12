@@ -219,4 +219,13 @@
   .tw-form-label {
     @apply tw-block tw-text-body tw-font-normal tw-text-grey-body tw-mb-2;
   }
+  body .content-container h1,
+  body .content-container h2 {
+    @apply tw-text-h3;
+  }
+  body .editor-wrapper ul,
+  body #description ul,
+  body .content-container ul {
+    @apply tw-list-disc;
+  }
 }

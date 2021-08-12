@@ -1,6 +1,6 @@
 # Audit Log
 
-This schema defines the type for Audit Log to capture the audit trail of POST, PUT, and PATCH API operations.
+This schema defines Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/auditLog.json)
 

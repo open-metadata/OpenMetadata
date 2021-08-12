@@ -18,7 +18,7 @@
     * [Tag Label](openmetadata-apis/schemas/types/tag-label.md)
     * [Usage Details](openmetadata-apis/schemas/types/usage-details.md)
   * [Entities](openmetadata-apis/schemas/entities/README.md)
-    * [Bot](openmetadata-apis/schemas/entities/bots.md)
+    * [Bot](openmetadata-apis/schemas/entities/bot.md)
     * [Dashboard](openmetadata-apis/schemas/entities/dashboard.md)
     * [Database](openmetadata-apis/schemas/entities/database.md)
     * [Database Service](openmetadata-apis/schemas/entities/database-service.md)

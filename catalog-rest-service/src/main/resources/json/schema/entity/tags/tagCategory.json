@@ -2,7 +2,7 @@
   "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/tags/tagCategory.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Tag Category",
-  "description": "This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
+  "description": "This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagCategory",
   "definitions": {
@@ -33,6 +33,7 @@
     "tag": {
       "javaType": "org.openmetadata.catalog.type.Tag",
       "properties": {
+        "description" : "Name of the tag",
         "name": {
           "$ref": "#/definitions/tagName"
         },
@@ -58,14 +59,14 @@
           "default": false
         },
         "associatedTags": {
-          "description": "Fully qualified names of tags associated with this tag.",
+          "description": "Fully qualified names of tags associated with this tag. Associated tags captures relationship of one tag to another automatically. As an example a tag 'User.PhoneNumber' might have an associated tag 'PII.Sensitive'. When 'User.Address' is used to label a column in a table, 'PII.Sensitive' label is also applied automatically due to Associated tag relationship.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "children": {
-          "description": "Tags under this tag group or empty for tags at leaf level.",
+          "description": "Tags under this tag group or empty for tags at the leaf level.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/tag"

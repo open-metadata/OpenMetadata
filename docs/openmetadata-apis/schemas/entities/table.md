@@ -1,6 +1,6 @@
 # Table
 
-This schema defines the Table entity. A database contains a collection of schemas. Schemas contain Tables, Views, etc. OpenMetadata does not have a separate hierarchy for Schema. Both Table and Schema are captured in this entity.
+This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/table.json)
 
@@ -12,10 +12,10 @@ Type: `object`
   * Unique identifier of this table instance.
   * $ref: [../../type/basic.json\#/definitions/uuid](table.md#....typebasic.jsondefinitionsuuid)
 * **name** `required`
-  * Name of the table. Expected to be unique within a database.
+  * Name of a table. Expected to be unique within a database.
   * $ref: [\#/definitions/tableName](table.md#/definitions/tableName)
 * **description**
-  * Description of the table.
+  * Description of a table.
   * Type: `string`
 * **href**
   * Link to this table resource.
@@ -23,7 +23,7 @@ Type: `object`
 * **tableType**
   * $ref: [\#/definitions/tableType](table.md#/definitions/tableType)
 * **fullyQualifiedName**
-  * Fully qualified name of the table in the form `serviceName.databaseName.tableName`.
+  * Fully qualified name of a table in the form `serviceName.databaseName.tableName`.
   * Type: `string`
 * **columns** `required`
   * Columns in this table.
@@ -56,14 +56,14 @@ Type: `object`
   * Details of other tables this table is frequently joined with.
   * $ref: [\#/definitions/tableJoins](table.md#/definitions/tableJoins)
 * **sampleData**
-  * Sample data for the table.
+  * Sample data for a table.
   * $ref: [\#/definitions/tableData](table.md#/definitions/tableData)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **tableType**
 
-* This schema defines the type for a column in a table.
+* This schema defines the type used for describing different types of tables.
 * Type: `string`
 * The value is restricted to the following: 
   1. _"Regular"_
@@ -148,7 +148,7 @@ Type: `object`
 
 **tableName**
 
-* Local name \(not fully qualified name\) of the table.
+* Local name \(not fully qualified name\) of a table.
 * Type: `string`
 * The value must match this pattern: `^[^.]*$`
 * Length: between 1 and 64
@@ -188,7 +188,7 @@ Type: `object`
 
 **columnJoins**
 
-* This schema defines the type to capture how frequently a column are joined with columns in the other tables.
+* This schema defines the type to capture how frequently a column is joined with columns in the other tables.
 * Type: `object`
 * This schema does not accept additional properties.
 * **Properties**
@@ -207,7 +207,7 @@ Type: `object`
 
 **tableJoins**
 
-* This schema defines the type to capture how columns in this table are joined with columns in the other tables.
+* This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.
 * Type: `object`
 * This schema does not accept additional properties.
 * **Properties**
@@ -224,7 +224,7 @@ Type: `object`
 
 **tableData**
 
-* This schema defines the type to capture rows of sample data for the table.
+* This schema defines the type to capture rows of sample data for a table.
 * Type: `object`
 * This schema does not accept additional properties.
 * **Properties**

@@ -45,3 +45,21 @@ export const ordinalize = (num: number): string => {
 
   return num + ordinalSuffix;
 };
+
+export const getJSONFromString = (data: string): string | null => {
+  try {
+    // Format string if possible and return valid JSON
+    return JSON.parse(data);
+  } catch (e) {
+    // Invalid JSON, return null
+    return null;
+  }
+};
+
+export const isValidJSONString = (data?: string): boolean => {
+  if (data) {
+    return Boolean(getJSONFromString(data));
+  }
+
+  return false;
+};

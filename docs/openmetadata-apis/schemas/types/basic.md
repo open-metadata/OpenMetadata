@@ -4,7 +4,7 @@ This schema defines basic common types that are used by other schemas.
 
 **$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json)
 
-## Types defined in this schema
+## Types definitions in this schema
 
 **uuid**
 
@@ -51,12 +51,12 @@ This schema defines basic common types that are used by other schemas.
 
 **duration**
 
-* Duration in ISO 8601 format in UTC time. Example - 'P23DT23H'.
+* Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.
 * Type: `string`
 
 **date**
 
-* Date in ISO 8601 format in UTC time. Example - '2018-11-13'.
+* Date in ISO 8601 format in UTC. Example - '2018-11-13'.
 * Type: `string`
 * String format must be a "date"
 
