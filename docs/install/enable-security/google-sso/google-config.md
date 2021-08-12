@@ -28,3 +28,4 @@ authorizerConfiguration:
     - "ingestion-bot"
   prinicipalDomain: "open-metadata.org"
 ```
+

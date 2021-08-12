@@ -1,9 +1,8 @@
 ---
-description: >-
-  This document describes OpenMetadata Server Configuration
+description: This document describes OpenMetadata Server Configuration
 ---
 
-# OpenMetadata Server Configuration
+# Configuration
 
 ```text
 swagger:
@@ -69,7 +68,6 @@ health:
         successAttempts: 1
 ```
 
-
 ## Server Port
 
 ```text
@@ -83,9 +81,7 @@ server:
       port: 8586
 ```
 
-By default OpenMetadata server runs on port 8585. It uses Jetty Server.
-The above config can be changed to make it run on a different port. Once you have updated the port details in config restart the server.
-
+By default OpenMetadata server runs on port 8585. It uses Jetty Server. The above config can be changed to make it run on a different port. Once you have updated the port details in config restart the server.
 
 ## Database
 
@@ -100,10 +96,7 @@ database:
   url: jdbc:mysql://localhost/openmetadata_db?useSSL=false&serverTimezone=UTC
 ```
 
-The above section is database connection details to MySQL database.
-We recommend you to create a MySQL user with strong password and update this section 
-accordingly.
-
+The above section is database connection details to MySQL database. We recommend you to create a MySQL user with strong password and update this section accordingly.
 
 ## ElasticSearch
 
@@ -113,12 +106,10 @@ elasticsearch:
   port: 9200
 ```
 
-ElasticSearch is one of the pre-requisities to run OpenMetadata.
-Default configuration expects a single instance of ElasticSearch running on local machine.
-Please make sure you update it with your production elastic search.
-
+ElasticSearch is one of the pre-requisities to run OpenMetadata. Default configuration expects a single instance of ElasticSearch running on local machine. Please make sure you update it with your production elastic search.
 
 ## EventHandlers
+
 ```text
 eventHandlerConfiguration:
   eventHandlerClassNames:
@@ -126,11 +117,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
 ```
 
-EventHandler configuration is optional. It will update the AuditLog in MySQL DB
-and also ElasticSearch indexes whenever any entity is updated either through UI or 
-API interactions. 
-We recommend you to leave it there as it enhances the user experience.
-
+EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you to leave it there as it enhances the user experience.
 
 ## Healthcheck
 
@@ -146,16 +133,12 @@ health:
         checkInterval: 2500ms
         downtimeInterval: 10s
         failureAttempts: 2
-        successAttempts: 1 
+        successAttempts: 1
 ```
- 
- Healthcheck api provides a API endpoint to check the OpenMetadata server health.
- We recommend in production settign to use this api to monitor the health of your
- OpenMetadata instance. Please tune the above configuration according to your production
- needs.
- 
+
+Healthcheck api provides a API endpoint to check the OpenMetadata server health. We recommend in production settign to use this api to monitor the health of your OpenMetadata instance. Please tune the above configuration according to your production needs.
+
 ## Security
 
-Please follow our [Enable Security Guide](/install/enable-security.md) guide to configure
-security for your OpenMetadata installation.
- 
+Please follow our [Enable Security Guide](https://github.com/open-metadata/OpenMetadata/tree/63c66391cf27d4d77c4b5c21750d9c09bfa44049/install/enable-security.md) guide to configure security for your OpenMetadata installation.
+

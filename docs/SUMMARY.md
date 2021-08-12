@@ -51,7 +51,6 @@
     * [Configure OpenMetadata Server](install/enable-security/okta-sso/okta-config.md)
     * [Create Service Account](install/enable-security/okta-sso/create-ingestion-service-account.md)
     * [Configure Ingestion](install/enable-security/okta-sso/configure-security-ingestion.md)
-
 * [Metadata Ingestion](install/metadata-ingestion/README.md)
   * [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)
   * [Connectors](install/metadata-ingestion/connectors/README.md)

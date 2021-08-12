@@ -4,7 +4,9 @@ description: >-
   on your local machine.
 ---
 
-# Run Docker
+# Run OpenMetadata
+
+## Run Docker
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open platform for developing, shipping, and running applications that enables you to separate your applications from your infrastructure so you can deliver software quickly using OS-level virtualization to deliver software in packages called containers.
 
@@ -24,14 +26,13 @@ cd docker/metadata
 docker-compose up
 ```
 
-
-# Run Manually
+## Run Manually
 
 {% hint style="success" %}
 This is a quick start guide that will show you how to quickly start a standalone server.
 {% endhint %}
 
-## Build from source or download the distribution
+### Build from source or download the distribution
 
 **Prerequisites**
 
@@ -78,13 +79,11 @@ unzip openmetadata-1.0.0-SNAPSHOT.zip
 cd openmetadata-1.0.0-SNAPSHOT
 ```
 {% endtab %}
-
-
 {% endtabs %}
 
-## Install on your local machine
+### Install on your local machine
 
-### macOS
+#### macOS
 
 1. Setup Database
 
@@ -115,7 +114,7 @@ cd openmetadata-1.0.0-SNAPSHOT
 
    ```text
    cd openmetadata-0.3.0
-   ./boostrap/bootstrap-storage.sh migrate
+   ./bootstrap/bootstrap_storage.sh migrate
    ```
 
 3. Start the OpenMetadata Server

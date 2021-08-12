@@ -47,7 +47,7 @@ Different Connectors require different dependencies, please go through [Connecto
 
 Loads all the Json connectors inside the pipeline directory as cron jobs.
 
-![](../../.gitbook/assets/screenshot-from-2021-07-26-21-08-17%20%281%29%20%282%29%20%282%29%20%282%29%20%283%29%20%284%29%20%283%29.png)
+![](../../.gitbook/assets/screenshot-from-2021-07-26-21-08-17%20%281%29%20%282%29%20%282%29%20%282%29%20%283%29%20%284%29%20%284%29%20%283%29.png)
 
 ### Custom run a job
 

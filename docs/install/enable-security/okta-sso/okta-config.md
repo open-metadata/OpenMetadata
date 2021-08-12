@@ -29,4 +29,3 @@ authorizerConfiguration:
   prinicipalDomain: "open-metadata.org"
 ```
 
-
