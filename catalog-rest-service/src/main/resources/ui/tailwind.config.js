@@ -35,7 +35,7 @@ const bodyBG = '#FCFBFE';
 const bodyHoverBG = '#F9F8FD';
 // const bodyHoverBG = '#F5F3FC';
 const tagBG = '#EEEAF8';
-const primaryBG = '#7147E840';// 'rgba(113, 71, 232, 0.25)';
+const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
 
 // Borders and Separators
 const mainBorder = '#E2DCE4';
@@ -47,8 +47,7 @@ const mainSeparator = '#D9CEEE';
 const textBody = '#37352f';
 const textMuted = '#6B7280';
 const textDark = '#000000';
-const textMutedLite = '##6B728026';// 'rgba(107, 114, 128, 0.15)'
-
+const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
