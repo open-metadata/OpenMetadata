@@ -20,7 +20,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
    ```
 {% endhint %}
 
-### Install from PyPI or Source
+## Install from PyPI or Source
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -72,6 +72,10 @@ metadata ingest -c ./pipelines/mysql.json
 4. **table\_pattern** - It contains allow, deny options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
+Below is the configuration to publish MySQL data into openmetadata
+
+Add Optional ```pii-tags``` processor 
+and ```metadata-rest-tables``` sink along with ```metadata-server``` config
 
 {% code title="mysql.json" %}
 ```javascript

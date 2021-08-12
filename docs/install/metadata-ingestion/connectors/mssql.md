@@ -72,6 +72,10 @@ metadata ingest -c ./pipelines/mssql.json
 6. **database** - \_\*\*\_Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
+Below is the configuration to publish mssql data into openmetadata
+
+Add Optional ```pii-tags``` processor 
+and ```metadata-rest-tables``` sink along with ```metadata-server``` config
 
 {% code title="mssql.json" %}
 ```javascript
@@ -119,5 +123,3 @@ metadata ingest -c ./pipelines/mssql.json
 ```
 {% endcode %}
 
-Add Optional ```pii-tags``` processor 
-and ```metadata-rest-tables``` sink along with ```metadata-server``` config

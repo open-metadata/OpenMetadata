@@ -70,3 +70,47 @@ metadata ingest -c ./pipelines/postgres.json
 4. **table\_pattern** - It contains allow, deny options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
+### Publish to OpenMetadata
+Below is the configuration to publish postgres data into openmetadata
+
+Add Optional ```pii-tags``` processor 
+and ```metadata-rest-tables``` sink along with ```metadata-server``` config
+
+{% code title="postgres.json" %}
+```javascript
+{
+  "source": {
+    "type": "postgres",
+    "config": {
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
+      "host_port": "localhost:5432",
+      "database": "pagila",
+      "service_name": "local_postgres",
+      "service_type": "Postgres"
+    }
+  },
+  "processor": {
+    "type": "pii-tags",
+    "config": {}
+  },
+  "sink": {
+    "type": "metadata-rest-tables",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
+```
