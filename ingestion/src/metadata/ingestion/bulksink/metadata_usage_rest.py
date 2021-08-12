@@ -107,13 +107,16 @@ class MetadataUsageBulkSink(BulkSink):
             main_column_fqdn = self.__get_column_fqdn(column_join.table_column)
             for column in column_join.joined_with:
                 joined_column_fqdn = self.__get_column_fqdn(column)
+
                 if joined_column_fqdn in joined_with.keys():
                     column_joined_with = joined_with[joined_column_fqdn]
                     column_joined_with.joinCount += 1
                     joined_with[joined_column_fqdn] = column_joined_with
-                else:
+                elif joined_column_fqdn is not None:
                     joined_with[joined_column_fqdn] = ColumnJoinedWith(fullyQualifiedName=joined_column_fqdn,
                                                                        joinCount=1)
+                else:
+                    logger.info("Skipping join columns for {}".format(column))
             column_joins_dict[column_join.table_column.column] = joined_with
 
         for key, value in column_joins_dict.items():
@@ -122,6 +125,7 @@ class MetadataUsageBulkSink(BulkSink):
         return table_joins
 
     def __get_column_fqdn(self, table_column: TableColumn):
+        print(table_column.table)
         if table_column.table not in self.tables_dict:
             return None
         table_entity = self.tables_dict[table_column.table]
