@@ -2,7 +2,10 @@ FROM python:3.9.2
 
 EXPOSE 7777
 
-COPY . /openmetadata-ingestion
+COPY ./examples /openmetadata-ingestion/examples
+COPY ./pipelines /openmetadata-ingestion/pipelines
+COPY ./ingestion_scheduler /openmetadata-ingestion/ingestion_scheduler
+COPY ./ingestion_dependency.sh /openmetadata-ingestion/ingestion_dependency.sh
 
 WORKDIR /openmetadata-ingestion
 
