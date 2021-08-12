@@ -71,6 +71,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -102,6 +103,8 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static Database DATABASE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
+  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
+  public static final TagLabel TIER_2 = new TagLabel().withTagFQN("Tier.Tier2");
 
   public static List<Column> COLUMNS = Arrays.asList(
           new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
@@ -991,15 +994,18 @@ public class TableResourceTest extends CatalogApplicationTest {
     if (expectedList == null) {
       return;
     }
-    assertTrue(actualList.containsAll(expectedList));
-
-    // Add derived tags to the expected list
-    // Make sure both expected tags and derived exist
+    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
+    // So add to the expectedList, the derived tags before validating the tags
+    List<TagLabel> updatedExpectedList = new ArrayList<>();
+    updatedExpectedList.addAll(expectedList);
     for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected,
-              TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders()));
-      assertTrue(actualList.containsAll(derived));
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders()));
+      updatedExpectedList.addAll(derived);
     }
+    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+
+    assertTrue(actualList.containsAll(updatedExpectedList));
+    assertTrue(updatedExpectedList.containsAll(actualList));
   }
 
   public static Table createTable(CreateTable create, Map<String, String> authHeaders) throws HttpResponseException {
@@ -1030,7 +1036,7 @@ public class TableResourceTest extends CatalogApplicationTest {
       assertEquals(expectedDatabaseId, table.getDatabase().getId());
     }
 
-    // Validate table contraints
+    // Validate table constraints
     assertEquals(expectedTableConstraints, table.getTableConstraints());
     validateTags(expectedTags, table.getTags());
     TestUtils.validateEntityReference(table.getFollowers());
@@ -1142,6 +1148,7 @@ public class TableResourceTest extends CatalogApplicationTest {
                            Map<String, String> authHeaders) throws JsonProcessingException, HttpResponseException {
     String updateTableJson = JsonUtils.pojoToJson(updatedTable);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTableJson);
+    LOG.info("Applying patch ", patch);
     return TestUtils.patch(CatalogApplicationTest.getResource("tables/" + tableId),
             patch, Table.class, authHeaders);
   }

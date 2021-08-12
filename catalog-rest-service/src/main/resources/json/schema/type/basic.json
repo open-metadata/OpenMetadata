@@ -23,7 +23,7 @@
       "pattern": "^<#E/\\S+/\\S+>$"
     },
     "timestamp": {
-      "description": "Time stamp in unixTimeMillis",
+      "description": "Timestamp in unixTimeMillis",
       "type": "string",
       "format": "utc-millisec"
     },
@@ -47,11 +47,11 @@
       }
     },
     "duration": {
-      "description": "Duration in ISO 8601 format in UTC time. Example - 'P23DT23H'.",
+      "description": "Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.",
       "type": "string"
     },
     "date": {
-      "description": "Date in ISO 8601 format in UTC time. Example - '2018-11-13'.",
+      "description": "Date in ISO 8601 format in UTC. Example - '2018-11-13'.",
       "type": "string",
       "format": "date"
     },

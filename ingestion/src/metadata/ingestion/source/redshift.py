@@ -17,13 +17,13 @@ import logging
 from typing import Optional
 
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLAlchemySource, BasicSQLAlchemyConfig
+from metadata.ingestion.source.sql_source import SQLSource, SQLConnectionConfig
 from metadata.ingestion.api.source import SourceStatus
 
 logger = logging.getLogger(__name__)
 
 
-class RedshiftConfig(BasicSQLAlchemyConfig):
+class RedshiftConfig(SQLConnectionConfig):
     scheme = "postgresql+psycopg2"
     where_clause: Optional[str] = None
     duration: int = 1
@@ -34,8 +34,11 @@ class RedshiftConfig(BasicSQLAlchemyConfig):
             return f"{self.database}.{regular}"
         return regular
 
+    def get_connection_url(self):
+        return super().get_connection_url()
 
-class RedshiftSource(SQLAlchemySource):
+
+class RedshiftSource(SQLSource):
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)

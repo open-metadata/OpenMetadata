@@ -9,7 +9,7 @@
       "username": "sa",
       "password": "test!Password",
       "include_pattern": {
-        "include": ["catalog_test.*"]
+        "excludes": ["catalog_test.*"]
       }
     }
   },

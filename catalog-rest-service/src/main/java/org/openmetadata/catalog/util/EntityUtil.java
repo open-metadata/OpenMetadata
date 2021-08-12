@@ -218,19 +218,19 @@ public final class EntityUtil {
     String id = ref.getId().toString();
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(id, tableDAO.findById(id), Table.class);
-      return ref.withDescription(instance.getDescription()).withName(instance.getName());
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
       Database instance = EntityUtil.validate(id, databaseDAO.findById(id), Database.class);
-      return ref.withDescription(instance.getDescription()).withName(instance.getName());
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
       Metrics instance = EntityUtil.validate(id, metricsDAO.findById(id), Metrics.class);
-      return ref.withDescription(instance.getDescription()).withName(instance.getName());
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       Dashboard instance = EntityUtil.validate(id, dashboardDAO.findById(id), Dashboard.class);
-      return ref.withDescription(instance.getDescription()).withName(instance.getName());
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
       Report instance = EntityUtil.validate(id, reportDAO.findById(id), Report.class);
-      return ref.withDescription(instance.getDescription()).withName(instance.getName());
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }

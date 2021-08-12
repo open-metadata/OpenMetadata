@@ -63,6 +63,7 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 public class TeamResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TeamResourceTest.class);
@@ -497,19 +498,22 @@ public class TeamResourceTest extends CatalogApplicationTest {
   }
 
   /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
-  private void validateGetWithDifferentFields(Team team, boolean byName, Map<String, String> authHeaders)
+  private void validateGetWithDifferentFields(Team expectedTeam, boolean byName, Map<String, String> authHeaders)
           throws HttpResponseException {
     // .../teams?fields=profile
     String fields = "profile";
-    team = byName ? getTeamByName(team.getName(), fields, authHeaders) : getTeam(team.getId(), fields, authHeaders);
-    assertNotNull(team.getProfile());
-    assertNull(team.getUsers());
+    Team getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields,
+            authHeaders);
+    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(),
+            expectedTeam.getProfile(), null);
+    assertNull(getTeam.getOwns());
 
-    // .../teams?fields=profile,users
-    fields = "profile,users";
-    team = byName ? getTeamByName(team.getName(), fields, authHeaders) : getTeam(team.getId(), fields, authHeaders);
-    assertNotNull(team.getProfile());
-    assertNotNull(team.getUsers());
+    // .../teams?fields=users,owns
+    fields = "users,owns";
+    getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields, authHeaders);
+    assertNotNull(expectedTeam.getProfile());
+    validateEntityReference(expectedTeam.getUsers());
+    validateEntityReference(expectedTeam.getOwns());
   }
 
   private Team patchTeam(UUID teamId, String originalJson, Team updated, Map<String, String> authHeaders)

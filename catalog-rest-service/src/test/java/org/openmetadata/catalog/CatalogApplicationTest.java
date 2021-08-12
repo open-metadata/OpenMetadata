@@ -32,7 +32,7 @@ public abstract class CatalogApplicationTest {
   public static final DropwizardAppExtension<CatalogApplicationConfig> APP;
 
   static {
-    CONFIG_PATH = ResourceHelpers.resourceFilePath("catalog-secure-test.yaml");
+    CONFIG_PATH = ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml");
     APP = new DropwizardAppExtension<>(CatalogApplication.class, CONFIG_PATH);
   }
 

@@ -7,13 +7,7 @@
       "host_port": "localhost:5432",
       "database": "pagila",
       "service_name": "local_postgres",
-      "service_type": "Postgres",
-      "include_pattern": {
-        "filter": [
-          "pg_catalog.*[a-zA-Z0-9]*",
-          "information_schema.*[a-zA-Z0-9]*"
-        ]
-      }
+      "service_type": "Postgres"
     }
   },
   "processor": {
