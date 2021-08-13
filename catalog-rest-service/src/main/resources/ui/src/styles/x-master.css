@@ -289,7 +289,6 @@ a:focus {
   height: calc(100% - 61px);
   overflow-y: auto;
   padding: 15px 0 0;
-  background: #f5f8fa;
   box-shadow: 0 -5px 5px -5px #d1cfc7;
 }
 
@@ -584,13 +583,13 @@ a:focus {
   display: inline-block;
   font-weight: 600;
 }
-.toggle-switch {
+.cb-toggle-switch {
   position: relative;
   display: inline-block;
   width: 35px;
   height: 1.5em;
 }
-.toggle-switch .toggle-checkbox {
+.cb-toggle-switch .toggle-checkbox {
   opacity: 0;
   width: 0;
   height: 0;

@@ -1,8 +1,6 @@
-# Types
+# OpenMetadata Types
 
-JSON schema supports many native types - `null`, `boolean`, `object`, `array`, `number` and `string`. In addition, to develop clear and consistent vocabulary, domain-specific reusable types are defined ranging from simple types, such as `UUID`, `timestamp`, and `email` to more complex object types, such as `Tags`, `Ownership` and `Usage`.
-
-## List of Schema Types
+OpenMetadata supports many common types reused across different schemas. Defining common types and reusing them is foundational to building a consistent schema vocabulary. The types are organized as follows:
 
 {% page-ref page="basic.md" %}
 

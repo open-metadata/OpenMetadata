@@ -21,12 +21,14 @@ import React, { useEffect, useState } from 'react';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
 import Loader from '../../components/Loader/Loader';
+import MyDataHeader from '../../components/my-data/MyDataHeader';
 import SearchedData from '../../components/searched-data/SearchedData';
 import { ERROR404, ERROR500, PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
+import { getAllServices } from '../../utils/ServiceUtils';
 
 const MyDataPage: React.FC = (): React.ReactElement => {
   const showToast = useToastContext();
@@ -37,6 +39,8 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
+  const [countServices, setCountServices] = useState<number>(0);
+  const [countAssets, setCountAssets] = useState<number>(0);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
@@ -52,9 +56,11 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     )
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
+        const total = res.data.hits.total.value;
         if (hits.length > 0) {
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
+          setCountAssets(total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -93,7 +99,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               setFilter(Ownership.OWNER);
               setCurrentPage(1);
             }}>
-            Owned
+            My Data
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
@@ -117,6 +123,12 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     fetchTableData();
   }, [currentPage, filter]);
 
+  useEffect(() => {
+    getAllServices()
+      .then((res) => setCountServices(res.length))
+      .catch(() => setCountServices(0));
+  }, []);
+
   return (
     <>
       {isLoading ? (
@@ -134,6 +146,10 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               searchText="*"
               showResultCount={filter && data.length > 0 ? true : false}
               totalValue={totalNumberOfValue}>
+              <MyDataHeader
+                countAssets={countAssets}
+                countServices={countServices}
+              />
               {getTabs()}
             </SearchedData>
           )}

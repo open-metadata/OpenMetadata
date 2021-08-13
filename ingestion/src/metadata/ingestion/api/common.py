@@ -42,48 +42,18 @@ class ConfigModel(BaseModel):
 
 class DynamicTypedConfig(ConfigModel):
     type: str
-    # This config type is declared Optional[Any] here. The eventual parser for the
-    # specified type is responsible for further validation.
     config: Optional[Any]
 
 
-class MetaError(Exception):
-    """A base class for all meta exceptions"""
-
-
-class WorkflowExecutionError(MetaError):
+class WorkflowExecutionError(Exception):
     """An error occurred when executing the workflow"""
-
-
-class OperationalError(WorkflowExecutionError):
-    """An error occurred because of client-provided metadata"""
-
-    message: str
-    info: dict
-
-    def __init__(self, message: str, info: dict = None):
-        self.message = message
-        if info:
-            self.info = info
-        else:
-            self.info = {}
-
-
-class ConfigurationError(MetaError):
-    """A configuration error has happened"""
-
-
-class ConfigurationMechanism(ABC):
-    @abstractmethod
-    def load_config(self, config_fp: IO) -> dict:
-        pass
 
 
 class IncludeFilterPattern(ConfigModel):
     """A class to store allow deny regexes"""
 
-    include: List[str] = [".*"]
-    filter: List[str] = []
+    includes: List[str] = [".*"]
+    excludes: List[str] = []
     alphabet: str = "[A-Za-z0-9 _.-]"
 
     @property
@@ -96,11 +66,11 @@ class IncludeFilterPattern(ConfigModel):
 
     def included(self, string: str) -> bool:
         try:
-            for filter in self.filter:
-                if re.match(filter, string):
+            for exclude in self.excludes:
+                if re.match(exclude, string):
                     return False
 
-            for include in self.include:
+            for include in self.includes:
                 if re.match(include, string):
                     return True
             return False
@@ -108,17 +78,11 @@ class IncludeFilterPattern(ConfigModel):
             raise Exception("Regex Error: {}".format(err))
 
     def is_fully_specified_include_list(self) -> bool:
-        """
-        If the allow patterns are literals and not full regexes, then it is considered
-        fully specified. This is useful if you want to convert a 'list + filter'
-        pattern into a 'search for the ones that are allowed' pattern, which can be
-        much more efficient in some cases.
-        """
-        for include_pattern in self.include:
+        for include_pattern in self.includes:
             if not self.alphabet_pattern.match(include_pattern):
                 return False
         return True
 
     def get_allowed_list(self):
         assert self.is_fully_specified_include_list()
-        return [a for a in self.include if self.included(a)]
+        return [a for a in self.includes if self.included(a)]

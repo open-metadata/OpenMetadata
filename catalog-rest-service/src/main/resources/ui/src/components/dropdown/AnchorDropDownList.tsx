@@ -37,7 +37,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
           {dropDownList.map((item: DropDownListItem, index: number) => (
             <Link
               aria-disabled={item.disabled}
-              className="link-text tw-block tw-px-4 tw-py-2 hover:tw-bg-gray-200"
+              className="link-text tw-block tw-px-4 tw-py-2 hover:tw-bg-body-hover"
               id={`menu-item-${index}`}
               key={index}
               role="menuitem"

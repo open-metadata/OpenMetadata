@@ -6,7 +6,7 @@ description: This is a guide to configure Ingestion Connectors with security.
 
 ## Add Metadata Authentication for Connectors
 
-All Connectors have **metadata\_server** config. Pass the json file generated in [Create Service Account](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/security/google-sso/create-ingestion-service-account.md) as secret\_key
+All Connectors have **metadata\_server** config. Pass the JSON file generated in [Create Service Account](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/security/google-sso/create-ingestion-service-account.md) as secret\_key
 
 {% code title="Connector Config for MySQL Connector:" %}
 ```javascript

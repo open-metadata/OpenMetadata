@@ -16,24 +16,21 @@
 # This import verifies that the dependencies are available.
 import sqlalchemy_pytds  # noqa: F401
 
-from .sql_source import BasicSQLAlchemyConfig, SQLAlchemySource
+from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.auth_provider import MetadataServerConfig
 
 
-class SQLServerConfig(BasicSQLAlchemyConfig):
+class SQLServerConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
 
-    def get_identifier(self, schema: str, table: str) -> str:
-        regular = f"{schema}.{table}"
-        if self.database:
-            return f"{self.database}.{regular}"
-        return regular
+    def get_connection_url(self):
+        return super().get_connection_url()
 
 
-class SQLServerSource(SQLAlchemySource):
+class SQLServerSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx, "mssql")
+        super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

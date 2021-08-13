@@ -24,4 +24,4 @@ services:
     volumes:
       - ./setup:/setup
     ports:
-      - 51433:1433
+      - 1433:1433

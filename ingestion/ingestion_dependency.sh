@@ -17,5 +17,7 @@
 #
 
 set -euo pipefail
-pip install --upgrade pip setuptools
-pip install '.[all]'
+pip install --upgrade pip setuptools openmetadata-ingestion==0.2.1 apns
+pip install openmetadata-ingestion[mysql,sample-tables,elasticsearch]
+python -m spacy download en_core_web_sm
+pip install "simplescheduler@git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler"

@@ -15,7 +15,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -130,7 +130,7 @@
         {
           "name": "customer_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the customer. This is the primary key column for the customers table.",
+          "description": "The ID of the customer. This is the primary key column for this table.",
           "tags": null,
           "columnConstraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -138,7 +138,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -332,7 +332,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -366,7 +366,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -421,14 +421,14 @@
         {
           "name": "product_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the product. This column is a foreign key reference to the product_id column in products table.",
+          "description": "The ID of the product. This column is a foreign key reference to the product_id column in dim_product table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 3
         },
@@ -496,7 +496,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "Unique identifier for the store. This column is the primary key for the shops table.",
+          "description": "Unique identifier for the store. This column is the primary key for this table.",
           "tags": null,
           "columnConstraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -538,7 +538,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -578,7 +578,7 @@
         {
           "name": "line_item_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the line item. This column is the primary key for the line items table.",
+          "description": "ID of the line item. This column is the primary key for the this table.",
           "tags": null,
           "columnConstraint": "PRIMARY_KEY",
           "ordinalPosition": 1
@@ -592,14 +592,14 @@
         {
           "name": "order_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the order. This column is a foreign key reference to the orders_id column in the orders table.",
+          "description": "ID of the order. This column is a foreign key reference to the orders_id column in the fact_order table.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "product_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the products table.",
+          "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the dim_product table.",
           "tags": null,
           "ordinalPosition": 4
         },
@@ -612,7 +612,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the store. This column is a foreign key reference to the shop_id column in the Shops table.",
+          "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 6
         },
@@ -703,7 +703,7 @@
     },
     {
       "name": "fact_order",
-      "description": "The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the customers table, use the sales table instead for computing financial or other metrics.",
+      "description": "The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.",
       "columns": [
         {
           "name": "order_id",
@@ -716,7 +716,7 @@
         {
           "name": "api_client_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the API clients table.",
+          "description": "The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.",
           "tags": null,
           "ordinalPosition": 2
         },
@@ -729,7 +729,7 @@
         {
           "name": "customer_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the customer. This column is a foreign key reference to the customer_id column in the customers table.",
+          "description": "The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
           "tags": null,
           "ordinalPosition": 4
         },
@@ -748,14 +748,14 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "user_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the staff member who created the order. This column is a foreign key reference to the ID in the users table. This column applies to Shopify POS orders and to orders that were converted from draft orders.",
+          "description": "The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.",
           "tags": null,
           "ordinalPosition": 8
         },
@@ -831,77 +831,77 @@
         {
           "name": "billing_address_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the addresses table.",
+          "description": "ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the dim_address table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "api_client_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the API clients table table.",
+          "description": "ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the dim_api_client table.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "customer_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the customer. This column is a foreign key reference to the customer_id column in the customers table.",
+          "description": "ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "line_item_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the line item. This column is a foreign key reference to line_item_id column in the line items table. When the row describes a shipping charge, there is no line_item_id value.",
+          "description": "ID of the line item. This column is a foreign key reference to line_item_id column in the fact_line_item table. When the row describes a shipping charge, there is no line_item_id value.",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "location_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the locations table. When the order is not a POS order, then there is no location ID.",
+          "description": "ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the dim_location table. When the order is not a POS order, then there is no location ID.",
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "order_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the order. This column is a foreign key reference to order_id column in the orders table.",
+          "description": "ID of the order. This column is a foreign key reference to order_id column in the fact_order table.",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "product_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the products table. When the line item describes a shipping charge, then there is no product ID.",
+          "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim_product table. When the line item describes a shipping charge, then there is no product ID.",
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "product_variant_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the product variants table. When the row describes a shipping charge, then there is no product variant ID.",
+          "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim_product_variant table. When the row describes a shipping charge, then there is no product variant ID.",
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "shipping_address_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the addresses table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
+          "description": "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the dim_address table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of your store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "ID of your store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 11
         },
         {
           "name": "user_id",
           "columnDataType": "NUMERIC",
-          "description": "ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the users table. Not all sales have a staff member associated with them.",
+          "description": "ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the dim_staff table. Not all sales have a staff member associated with them.",
           "tags": null,
           "ordinalPosition": 12
         },
@@ -1033,7 +1033,7 @@
         {
           "name": "shop_id",
           "columnDataType": "NUMERIC",
-          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the shops table.",
+          "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },

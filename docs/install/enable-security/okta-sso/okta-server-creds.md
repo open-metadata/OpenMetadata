@@ -1,6 +1,6 @@
 # Create Server Credentials
 
-**This document is all about how to create an Okta app and configure it for oauth. It will generate information which is required to perform single sign on activity.**
+**This document is all about how to create an Okta app and configure it for oAuth. It will generate information which is required to perform single-sign-on activity.**
 
 ## Step 1: Create an Okta Account
 
@@ -51,7 +51,7 @@
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376803-b605fd80-d5a8-11eb-94ce-42f38dca99a1.png)
 
 * Click on your application.
-* You will find your **Client id**,**Client secret** and **Okta domain**.
+* You will find your **Client id**, **Client secret,** and **Okta domain**.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
 
@@ -61,7 +61,7 @@
 
 ## Step 5: Adding the details in openmetadata-security.yaml
 
-* Once the **Client Id**, **Client secret**, **issuer** and **audience** is generated.
+* Once the **Client Id**, **Client secret**, **issuer,** and **audience** are generated.
 
   Add those details in openmetadata-security.yaml file in the respective field.
 

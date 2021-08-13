@@ -69,7 +69,7 @@ const Searchbar = ({
       className="tw-group tw-mb-4 page-search-bar"
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
-      <div className="tw-flex tw-rounded-md tw-border tw-bg-gray-50 tw-h-8 tw-px-3">
+      <div className="tw-flex tw-rounded-md tw-border tw-border-main tw-bg-body-main tw-h-8 tw-px-3">
         {/* <div className="tw-flex-initial">
           <span className="input-group-text1 tw-pr-3 tw-py-1.5 tw-flex">
             <SVGIcons

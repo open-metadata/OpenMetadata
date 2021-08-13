@@ -109,7 +109,7 @@ const MarkdownWithPreview = forwardRef<editorRef, Props>(
             />
           )}
           {activeTab === 2 && (
-            <div className="editor-wrapper tw-flex tw-flex-col tw-flex-1 tw-overflow-y-auto tw-p-3 tw-pl-6 tw-min-h-32 tw-border tw-border-gray-300 tw-rounded tw-max-h-none">
+            <div className="editor-wrapper tw-flex tw-flex-col tw-flex-1 tw-overflow-y-auto tw-p-3 tw-pl-6 tw-min-h-32 tw-border tw-border-main tw-rounded tw-max-h-none">
               {getPreview()}
             </div>
           )}

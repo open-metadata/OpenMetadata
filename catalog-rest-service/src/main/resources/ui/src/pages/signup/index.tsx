@@ -141,9 +141,9 @@ const Signup = () => {
                   <input
                     required
                     autoComplete="off"
-                    className="tw-appearance-none tw-border tw-border-gray-300 
+                    className="tw-appearance-none tw-border tw-border-main  
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-                focus:tw-outline-none focus:tw-border-gray-500 tw-h-10"
+                focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                     id="displayName"
                     name="displayName"
                     placeholder="Your Full name"
@@ -162,8 +162,8 @@ const Signup = () => {
                     readOnly
                     required
                     autoComplete="off"
-                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-gray-300 tw-rounded tw-bg-gray-100
-                    tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none tw-h-10"
+                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                    tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                     id="name"
                     name="name"
                     placeholder="Username"
@@ -182,8 +182,8 @@ const Signup = () => {
                     readOnly
                     required
                     autoComplete="off"
-                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-gray-300 tw-rounded tw-bg-gray-100
-                    tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none tw-h-10"
+                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                    tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                     id="email"
                     name="email"
                     placeholder="Your email address"

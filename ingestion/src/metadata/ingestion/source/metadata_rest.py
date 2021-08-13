@@ -55,7 +55,7 @@ class MetadataTablesRestSource(Source):
 
     def next_record(self) -> Iterable[TableEntity]:
         for table in self.tables:
-            self.status.records_produced(table.name)
+            self.status.scanned(table.name)
             yield table
 
     def get_status(self) -> SourceStatus:

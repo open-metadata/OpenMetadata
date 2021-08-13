@@ -29,14 +29,14 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
     <div className="filter-group tw-mb-2">
       <input
         checked={isSelected}
-        className="mr-1"
+        className="tw-mr-1 custom-checkbox"
         // disabled={count > 0 ? false : true}
         type="checkbox"
         onChange={() => {
           onSelect(!isSelected, name, type);
         }}
       />
-      <div className="filters-title tw-w-40 tw-truncate">
+      <div className="filters-title tw-w-40 tw-truncate custom-checkbox-label">
         {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
       </div>
       <div

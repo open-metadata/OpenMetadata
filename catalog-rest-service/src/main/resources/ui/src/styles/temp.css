@@ -401,7 +401,7 @@
   height: calc(100vh - 56px);
   padding: 15px;
   background-color: #fff;
-  border-right: 1px solid #d1cfc7;
+  /* border-right: 1px solid #d1cfc7; */
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -412,6 +412,7 @@
   border-right: 3px solid rgba(249, 130, 108);
   font-weight: 500;
 }
+
 .search-wrapper + .page-container .side-panel {
   top: 102px;
   height: calc(100vh - 102px);
@@ -425,11 +426,6 @@
 .side-panel-list {
   border-top: 1px solid #e2dfd4;
   padding: 5px;
-}
-
-.side-panel .seperator,
-.horz-separator {
-  border-bottom: 1px solid #d5d6d9;
 }
 
 .side-panel .show-more span,
@@ -658,8 +654,7 @@
   color: #5e5c58;
 }
 /* My data details page realted CSS */
-.sl-box.description,
-.schema-description {
+.sl-box.description {
   min-height: 138px;
 }
 

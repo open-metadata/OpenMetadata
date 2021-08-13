@@ -98,7 +98,7 @@ const FeedsLeftPanel = ({ tables, teams, viewCap = 0 }) => {
               tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-0 focus:tw-outline-none"
           style={{ padding: '4px 0px' }}>
           <Dropdown.Item
-            className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-gray-200"
+            className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover"
             onClick={() => handleTeamsDropdownChange({ name: 'Test user' })}>
             Test user
           </Dropdown.Item>
@@ -106,13 +106,13 @@ const FeedsLeftPanel = ({ tables, teams, viewCap = 0 }) => {
             teamsData.map((teamDetails, index) => (
               <React.Fragment key={index}>
                 <Dropdown.Item
-                  className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-gray-200"
+                  className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover"
                   onClick={() => handleTeamsDropdownChange(teamDetails, true)}>
                   {teamDetails.name}
                 </Dropdown.Item>
               </React.Fragment>
             ))}
-          <Dropdown.Item className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-gray-200">
+          <Dropdown.Item className="tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover">
             Create new team
           </Dropdown.Item>
         </Dropdown.Menu>

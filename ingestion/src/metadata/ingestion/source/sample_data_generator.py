@@ -293,8 +293,7 @@ class SampleTableSource(Source):
         for table in self.tables['tables']:
             table_metadata = TableEntity(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
-            self.status.report_table_scanned(table_metadata.name.__root__)
-            self.status.records_produced(table_metadata.name.__root__)
+            self.status.scanned(table_metadata.name.__root__)
             yield table_and_db
 
     def close(self):

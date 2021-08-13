@@ -78,7 +78,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
                 return (
                   <div
-                    className="tw-flex tw-items-center hover:tw-bg-gray-200"
+                    className="tw-flex tw-items-center hover:tw-bg-body-hover"
                     key={fqdn}>
                     <img
                       alt={serviceType}
@@ -86,8 +86,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                       src={serviceTypeLogo(serviceType)}
                     />
                     <Link
-                      className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm 
-                    "
+                      className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm"
                       data-testid="data-name"
                       to={getDatasetDetailsPath(fqdn)}
                       onClick={() => setIsOpen(false)}>

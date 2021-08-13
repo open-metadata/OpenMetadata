@@ -64,7 +64,7 @@ export const EditSchemaColumnModal: FunctionComponent<Props> = ({
         <div className="tw-modal-body">
           <p className="tw-mb-2 tw-font-medium tw-text-gray-700">Description</p>
           <textarea
-            className="tw-p-5 tw-bg-white tw-border tw-border-gray-200 tw-rounded tw-shadow-sm tw-h-32 focus:tw-outline-none"
+            className="tw-p-5 tw-bg-white tw-border tw-border-main tw-rounded tw-shadow-sm tw-h-32 focus:tw-outline-none"
             data-testid="column-description"
             name="column-description"
             placeholder="Type message..."

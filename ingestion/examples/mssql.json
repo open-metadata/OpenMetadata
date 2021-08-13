@@ -1,28 +1,27 @@
 {
   "source": {
-    "type": "postgres",
+    "type": "mssql",
     "config": {
-      "username": "openmetadata_user",
-      "password": "openmetadata_password",
-      "host_port": "localhost:5432",
-      "database": "pagila",
-      "service_name": "local_postgres",
-      "service_type": "Postgres",
+      "host_port": "localhost:1433",
+      "service_name": "local_mssql",
+      "service_type": "MSSQL",
+      "database":"catalog_test",
+      "username": "sa",
+      "password": "test!Password",
       "include_pattern": {
-        "filter": [
-          "pg_catalog.*[a-zA-Z0-9]*",
-          "information_schema.*[a-zA-Z0-9]*"
-        ]
+        "excludes": ["catalog_test.*"]
       }
     }
   },
   "processor": {
     "type": "pii-tags",
-    "config": {}
+    "config": {
+    }
   },
   "sink": {
     "type": "metadata-rest-tables",
-    "config": {}
+    "config": {
+    }
   },
   "metadata_server": {
     "type": "metadata-server",

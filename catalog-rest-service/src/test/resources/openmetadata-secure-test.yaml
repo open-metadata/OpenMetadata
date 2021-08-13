@@ -93,8 +93,8 @@ logging:
   appenders:
     - type: console
     - type: file
-      currentLogFilename: './logs/catalog.log'
-      archivedLogFilenamePattern: './logs/catalog-%d-%i.log.gz'
+      currentLogFilename: './logs/openmetadata.log'
+      archivedLogFilenamePattern: './logs/openmetadata-%d-%i.log.gz'
       archive: true
       archivedFileCount: 7
       maxFileSize: '1MiB'
@@ -106,7 +106,7 @@ database:
   user: test
   password:
   # the JDBC URL; the database is called washvalet
-  url: jdbc:mysql://localhost:3307/catalog_test_db?useSSL=false&serverTimezone=UTC
+  url: jdbc:mysql://localhost:3307/openmetadata_test_db?useSSL=false&serverTimezone=UTC
 
 elasticsearch:
   host: localhost
@@ -138,3 +138,8 @@ authenticationConfiguration:
   authority: "https://accounts.google.com"
   clientId: "261867039324-neb92r2147i6upchb78tv29idk079bps.apps.googleusercontent.com"
   callbackUrl: "http://localhost:8585/callback"
+
+
+eventHandlerConfiguration:
+  eventHandlerClassNames:
+    - "org.openmetadata.catalog.events.AuditEventHandler"

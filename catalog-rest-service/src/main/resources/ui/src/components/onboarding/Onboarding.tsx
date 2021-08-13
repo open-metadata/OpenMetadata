@@ -18,84 +18,37 @@
 import React from 'react';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
-const Onboarding: React.FC = () => {
-  const clipPath = {
-    clipPath: 'polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%)',
-  };
+const data = [
+  'Look at the popular data assets in your organization.',
+  'Data works well when it is owned. Take a look at the data assets that you own and claim ownership.',
+  'Follow the datasets that you frequently use to stay informed about it.',
+];
 
+const Onboarding: React.FC = () => {
   return (
     <div className="tw-flex tw-items-center tw-justify-around tw-mt-28">
-      <div className="tw-p-4">
-        <h4>3 Steps to get started with OpenMetadata</h4>
-        <div className="tw-mt-5">
-          <div className="tw-flex tw-gap-4">
-            <div>
-              <span
-                className="tw-mt-1 tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-1 tw-text-base tw-bg-green-600 tw-text-white"
-                style={clipPath}>
-                1
-              </span>
+      <div className="tw-p-4" style={{ maxWidth: '700px' }}>
+        <div className="tw-mb-6">
+          <h4>Welcome to OpenMetadata.</h4>
+          <p className="tw-text-lg tw-font-normal">
+            A central place to discover and collaborate on all your data.
+          </p>
+        </div>
+        <div className="tw-text-base">
+          {data.map((d, i) => (
+            <div className="tw-flex tw-items-center tw-gap-4 tw-mb-5" key={i}>
+              <div className="tw-flex tw-items-center">
+                <span
+                  className="tw-w-8 tw-h-8 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-2 
+                  tw-bg-primary-lite tw-text-primary tw-rounded-full">
+                  {i + 1}
+                </span>
+              </div>
+              <div>
+                <p>{d}</p>
+              </div>
             </div>
-            <div>
-              <p className="tw-text-lg tw-font-medium">
-                Lorem ipsum dolor sit amet.
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-            </div>
-          </div>
-
-          <div className="tw-flex tw-gap-4 mt-4">
-            <div>
-              <span
-                className="tw-mt-1 tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-1 tw-text-base tw-bg-green-600 tw-text-white"
-                style={clipPath}>
-                2
-              </span>
-            </div>
-            <div>
-              <p className="tw-text-lg tw-font-medium">
-                Lorem ipsum dolor sit amet.
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-            </div>
-          </div>
-
-          <div className="tw-flex tw-gap-4 mt-4">
-            <div>
-              <span
-                className="tw-mt-1 tw-w-6 tw-h-6 tw-flex tw-items-center tw-justify-center tw-font-medium tw-p-1 tw-text-base tw-bg-green-600 tw-text-white"
-                style={clipPath}>
-                3
-              </span>
-            </div>
-            <div>
-              <p className="tw-text-lg tw-font-medium">
-                Lorem ipsum dolor sit amet.
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-              <p>
-                Lorem ipsum dolor sit amet consectetur, adipisicing elit.
-                Distinctio, illum!
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 

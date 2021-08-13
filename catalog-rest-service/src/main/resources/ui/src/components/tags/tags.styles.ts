@@ -16,9 +16,9 @@
 */
 
 export const tagStyles = {
-  base: `tw-relative tw-inline-flex tw-text-xs tw-border tw-border-gray-300 tw-font-medium 
+  base: `tw-relative tw-inline-flex tw-text-xs tw-font-medium 
     tw-mr-2 tw-my-0.5 tw-cursor-pointer tw-rounded tw-whitespace-nowrap`,
-  contained: 'tw-bg-gray-200',
+  contained: 'tw-bg-tag',
   outlined: 'tw-bg-transparent',
 
   text: {

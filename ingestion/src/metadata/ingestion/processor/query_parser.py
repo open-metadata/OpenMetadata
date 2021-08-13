@@ -52,7 +52,7 @@ class QueryParserProcessor(Processor):
         try:
             start_date = datetime.datetime.strptime(record.analysis_date, '%Y-%m-%d %H:%M:%S').date()
             parser = Parser(record.sql)
-            columns_dict = {} if parser.columns_dict == None else parser.columns_dict
+            columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(tables=parser.tables,
                                                 tables_aliases=parser.tables_aliases,
                                                 columns=columns_dict,
@@ -60,8 +60,8 @@ class QueryParserProcessor(Processor):
                                                 sql=record.sql,
                                                 date=start_date.strftime('%Y-%m-%d'))
         except Exception as err:
-            logger.error(record.sql)
-            logger.error(err)
+            logger.debug(record.sql)
+            logger.debug(err)
             query_parser_data = None
             pass
 

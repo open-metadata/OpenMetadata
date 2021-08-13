@@ -43,7 +43,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         {extraInfo.map(({ key, value }, i) =>
           !isNil(value) ? (
             <span key={i}>
-              <span className="tw-text-gray-500">{key} :</span>{' '}
+              <span className="tw-text-grey-muted">{key} :</span>{' '}
               <span className="tw-pl-1 ">{value}</span>
               {i !== extraInfo.length - 1 && (
                 <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
@@ -57,7 +57,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
       {Boolean(tags?.length) && (
         <div className="tw-mt-1">
           <span>
-            <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-gray-500" />
+            <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-grey-muted" />
           </span>
           {tags?.map((tag, index) => (
             <Tag
