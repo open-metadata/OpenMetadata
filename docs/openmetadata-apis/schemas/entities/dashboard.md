@@ -1,37 +1,35 @@
 # Dashboard
 
-This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.
+This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KIPs. They are updated in real-time and allow interactive data exploration.
 
-**$id:** [**https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json**](https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json)
+<b id="httpsopen-metadata.orgschemaentitydatadashboard.json">&#36;id: https://open-metadata.org/schema/entity/data/dashboard.json</b>
 
 Type: `object`
 
 ## Properties
-
-* **id** `required`
-  * Unique identifier that identifies a dashboard instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](dashboard.md#....typebasic.jsondefinitionsuuid)
-* **name** `required`
-  * Name that identifies this dashboard.
-  * Type: `string`
-  * Length: between 1 and 64
-* **fullyQualifiedName**
-  * A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
-  * Type: `string`
-  * Length: between 1 and 64
-* **description**
-  * Description of the dashboard, what it is, and how to use it.
-  * Type: `string`
-* **href**
-  * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](dashboard.md#....typebasic.jsondefinitionshref)
-* **owner**
-  * Owner of this dashboard.
-  * $ref: [../../type/entityReference.json](dashboard.md#....typeentityreference.json)
-* **service** `required`
-  * Link to service where this dashboard is hosted in.
-  * $ref: [../../type/entityReference.json](dashboard.md#....typeentityreference.json)
-* **usageSummary**
-  * Latest usage information for this database.
-  * $ref: [../../type/usageDetails.json](dashboard.md#....typeusagedetails.json)
-
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/id">id</b> `required`
+	 - Unique identifier that identifies a dashboard instance.
+	 - &#36;ref: [../../type/basic.json#/definitions/uuid](#....typebasic.jsondefinitionsuuid)
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/name">name</b> `required`
+	 - Name that identifies this dashboard.
+	 - Type: `string`
+	 - Length: between 1 and 64
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/fullyQualifiedName">fullyQualifiedName</b>
+	 - A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
+	 - Type: `string`
+	 - Length: between 1 and 64
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/description">description</b>
+	 - Description of the dashboard, what it is, and how to use it.
+	 - Type: `string`
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/href">href</b>
+	 - Link to the resource corresponding to this entity.
+	 - &#36;ref: [../../type/basic.json#/definitions/href](#....typebasic.jsondefinitionshref)
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/owner">owner</b>
+	 - Owner of this dashboard.
+	 - &#36;ref: [../../type/entityReference.json](#....typeentityreference.json)
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/service">service</b> `required`
+	 - Link to service where this dashboard is hosted in.
+	 - &#36;ref: [../../type/entityReference.json](#....typeentityreference.json)
+ - <b id="#https://open-metadata.org/schema/entity/data/dashboard.json/properties/usageSummary">usageSummary</b>
+	 - Latest usage information for this database.
+	 - &#36;ref: [../../type/usageDetails.json](#....typeusagedetails.json)
