@@ -11,11 +11,10 @@
 </div>
 
 - [What is OpenMetadata?](#what-is-openmetadata )
-- [Install & Run](#install-and-run)
-- [Features](#features)
-- [Building OpenMetadata](#building-openmetadata)
-- [Running OpenMetadata via Docker](#running-openmetadata-via-docker)
-- [Documentation](#documentation)
+- [Try our Sandbox](#try-our-sandbox)
+- [Install & Run](#install-and-run-openmetadata)
+- [Documentation and support](#documentation-and-support)
+- [Contributors](#contributors)
 - [License](#license)
 
 # What is OpenMetadata?
