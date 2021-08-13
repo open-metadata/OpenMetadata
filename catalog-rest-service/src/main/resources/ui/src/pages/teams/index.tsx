@@ -20,6 +20,7 @@ import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { Team, User, UserTeam } from 'Models';
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   createTeam,
@@ -119,19 +120,69 @@ const TeamsPage = () => {
   };
 
   const getUserCards = () => {
-    return currentTeam?.users.map((user, index) => {
-      const User = { description: user.description, name: user.name };
+    if ((currentTeam?.users.length as number) <= 0) {
+      return (
+        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+          <p>there are not any users added yet.</p>
+          <p>would like to start adding some ?</p>
+          <Button
+            className="tw-h-8 tw-rounded tw-mb-2"
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={() => setIsAddingUsers(true)}>
+            Add new user
+          </Button>
+        </div>
+      );
+    }
 
-      return <UserCard isActionVisible isIconVisible item={User} key={index} />;
-    });
+    return (
+      <>
+        <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
+          {currentTeam?.users.map((user, index) => {
+            const User = { description: user.description, name: user.name };
+
+            return (
+              <UserCard isActionVisible isIconVisible item={User} key={index} />
+            );
+          })}
+        </div>
+      </>
+    );
   };
 
   const getDatasetCards = () => {
-    return currentTeam?.owns.map((dataset, index) => {
-      const Dataset = { description: dataset.name, name: dataset.type };
+    if ((currentTeam?.owns.length as number) <= 0) {
+      return (
+        <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
+          <p>Your team does not have any dataset</p>
+          <p>would like to start adding some ?</p>
+          <Link to="/explore">
+            <Button
+              className="tw-h-8 tw-rounded tw-mb-2 tw-text-white"
+              size="small"
+              theme="primary"
+              variant="contained">
+              Explore
+            </Button>
+          </Link>
+        </div>
+      );
+    }
 
-      return <UserCard isDataset item={Dataset} key={index} />;
-    });
+    return (
+      <>
+        <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
+          {' '}
+          {currentTeam?.owns.map((dataset, index) => {
+            const Dataset = { description: dataset.name, name: dataset.type };
+
+            return <UserCard isDataset item={Dataset} key={index} />;
+          })}
+        </div>
+      </>
+    );
   };
   const fetchLeftPanel = () => {
     return (
@@ -308,12 +359,9 @@ const TeamsPage = () => {
               </div>
               {getTabs()}
 
-              <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
-                {currentTab === 1 && getUserCards()}
-              </div>
-              <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
-                {currentTab === 2 && getDatasetCards()}
-              </div>
+              {currentTab === 1 && getUserCards()}
+
+              {currentTab === 2 && getDatasetCards()}
 
               {isAddingTeam && (
                 <FormModal
