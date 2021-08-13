@@ -24,11 +24,15 @@ import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
 import DropDownList from '../dropdown/DropDownList';
+import Loader from '../Loader/Loader';
 
 type Props = {
   currentTier?: string;
   currentUser?: string;
-  onSave: (owner: TableDetail['owner'], tier: TableDetail['tier']) => void;
+  onSave: (
+    owner: TableDetail['owner'],
+    tier: TableDetail['tier']
+  ) => Promise<void>;
 };
 
 const ManageTab: FunctionComponent<Props> = ({
@@ -37,6 +41,10 @@ const ManageTab: FunctionComponent<Props> = ({
   onSave,
 }: Props) => {
   const { data } = cardData;
+  const [loading, setLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
+    'initial'
+  );
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
   const [listOwners] = useState(() => {
@@ -81,6 +89,8 @@ const ManageTab: FunctionComponent<Props> = ({
   };
 
   const handleSave = () => {
+    setLoading(true);
+    setStatus('waiting');
     // Save API call goes here...
     const newOwner: TableDetail['owner'] =
       owner !== currentUser
@@ -90,7 +100,10 @@ const ManageTab: FunctionComponent<Props> = ({
           }
         : undefined;
     const newTier = activeTier !== currentTier ? activeTier : undefined;
-    onSave(newOwner, newTier);
+    onSave(newOwner, newTier).catch(() => {
+      setStatus('initial');
+      setLoading(false);
+    });
   };
 
   const handleCancel = () => {
@@ -105,6 +118,18 @@ const ManageTab: FunctionComponent<Props> = ({
   useEffect(() => {
     setOwner(currentUser);
   }, [currentUser]);
+
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    if (status === 'waiting') {
+      setStatus('success');
+      setTimeout(() => {
+        setStatus('initial');
+      }, 3000);
+    }
+  }, [currentTier, currentUser]);
 
   return (
     <div className="tw-max-w-3xl tw-mx-auto">
@@ -154,13 +179,34 @@ const ManageTab: FunctionComponent<Props> = ({
           onClick={handleCancel}>
           Discard
         </Button>
-        <Button
-          size="regular"
-          theme="primary"
-          variant="contained"
-          onClick={handleSave}>
-          Save
-        </Button>
+        {loading ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : status === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <i aria-hidden="true" className="fa fa-check" />
+          </Button>
+        ) : (
+          <Button
+            className="tw-w-16 tw-h-10"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleSave}>
+            Save
+          </Button>
+        )}
       </div>
     </div>
   );

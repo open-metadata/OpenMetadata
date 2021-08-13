@@ -223,31 +223,38 @@ const MyDataDetailsPage = () => {
   const onSettingsUpdate = (
     newOwner?: TableDetail['owner'],
     newTier?: TableDetail['tier']
-  ) => {
-    if (newOwner || newTier) {
-      const tierTag: TableDetail['tags'] = newTier
-        ? [
-            ...getTagsWithoutTier(tableDetails.tags),
-            { tagFQN: newTier, labelType: 'Manual', state: 'Confirmed' },
-          ]
-        : tableDetails.tags;
-      const updatedTableDetails = {
-        ...tableDetails,
-        owner: newOwner
-          ? {
-              ...tableDetails.owner,
-              ...newOwner,
-            }
-          : tableDetails.owner,
-        // tier: newTier || tableDetails.tier,
-        tags: tierTag,
-      };
-      saveUpdatedTableData(updatedTableDetails).then((res) => {
-        setTableDetails(res.data);
-        setOwner(res.data.owner);
-        setTier(getTierFromTableTags(res.data.tags));
-      });
-    }
+  ): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+      if (newOwner || newTier) {
+        const tierTag: TableDetail['tags'] = newTier
+          ? [
+              ...getTagsWithoutTier(tableDetails.tags),
+              { tagFQN: newTier, labelType: 'Manual', state: 'Confirmed' },
+            ]
+          : tableDetails.tags;
+        const updatedTableDetails = {
+          ...tableDetails,
+          owner: newOwner
+            ? {
+                ...tableDetails.owner,
+                ...newOwner,
+              }
+            : tableDetails.owner,
+          // tier: newTier || tableDetails.tier,
+          tags: tierTag,
+        };
+        saveUpdatedTableData(updatedTableDetails)
+          .then((res) => {
+            setTableDetails(res.data);
+            setOwner(res.data.owner);
+            setTier(getTierFromTableTags(res.data.tags));
+            resolve();
+          })
+          .catch(() => reject());
+      } else {
+        reject();
+      }
+    });
   };
 
   const onSuggest = (updatedHTML: string) => {
