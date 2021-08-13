@@ -23,4 +23,5 @@ export enum ServiceType {
   POSTGRES = 'Postgres',
   ORACLE = 'Oracle',
   SNOWFLAKE = 'Snowflake',
+  MSSQL = 'MSSQL',
 }

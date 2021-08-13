@@ -37,8 +37,11 @@ export const serviceTypeLogo = (type: string) => {
     case ServiceType.SNOWFLAKE:
       return SNOWFLAKE;
 
-    default:
+    case ServiceType.MSSQL:
       return MYSQL;
+
+    default:
+      return null;
   }
 };
 
