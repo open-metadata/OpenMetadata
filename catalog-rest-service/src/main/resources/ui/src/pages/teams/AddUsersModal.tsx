@@ -69,7 +69,7 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
   return (
     <dialog className="tw-modal ">
       <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-max-h-90vh tw-max-w-lg">
+      <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
         </div>
@@ -80,7 +80,7 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
             typingInterval={1500}
             onSearch={handleSearchAction}
           />
-          <div className="tw-grid tw-grid-cols-2 tw-gap-4">
+          <div className="tw-grid tw-grid-cols-3 tw-gap-4">
             {getUserCards()}
           </div>
         </div>

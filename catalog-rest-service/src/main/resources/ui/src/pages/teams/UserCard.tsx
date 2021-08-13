@@ -26,7 +26,7 @@ const UserCard = ({
 }: Props) => {
   return (
     <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
-      <div className={`tw-flex ${isCheckBoxes ? '' : 'tw-gap-1'}`}>
+      <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible ? <Avatar name={item.description} /> : null}
 
         <div className="tw-flex tw-flex-col tw-pl-2">
