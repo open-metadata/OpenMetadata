@@ -1,4 +1,5 @@
 import React, { FunctionComponent } from 'react';
+import IconGoogle from '../assets/img/google-icon.png';
 import IconSuccess from '../assets/svg/check.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconError from '../assets/svg/error.svg';
@@ -54,6 +55,7 @@ type Props = {
 export const Icons = {
   LOGO: 'logo',
   LOGO_SMALL: 'logo-small',
+  GOOGLE_ICON: 'google-icon',
   EDIT: 'icon-edit',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
@@ -146,6 +148,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.GOOGLE_ICON:
+      IconComponent = IconGoogle;
 
       break;
     case Icons.MENU:

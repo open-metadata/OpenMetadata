@@ -96,6 +96,12 @@ module.exports = {
         h6: '14px',
         body: '14px',
       },
+      height: {
+        100: '25rem',
+      },
+      width: {
+        120: '30rem',
+      },
       maxHeight: {
         32: '8rem',
         '90vh': '90vh',
