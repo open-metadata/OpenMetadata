@@ -1,5 +1,5 @@
 {
-  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/services/databaseService.json",
+  "$id": "https://open-metadata.org/schema/entity/services/databaseService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Database Service",
   "description": "This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used.",
