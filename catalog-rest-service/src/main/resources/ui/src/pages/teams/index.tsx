@@ -195,7 +195,6 @@ const TeamsPage = () => {
 
             return (
               <UserCard
-                isActionVisible
                 isIconVisible
                 item={User}
                 key={index}
