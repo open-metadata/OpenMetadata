@@ -50,11 +50,9 @@ metadata ingest -c ./pipelines/sample_users.json
 ### Index Sample Data into ElasticSearch
 
 Start Elastic Search Docker:
+
 {% hint style="warning" %}
- Below command to run elastic search docker stores the indexed data in memory.
- If you stop the container it will lose any data on restart.
- Please re-run the metadata_to_es workflow again to index the data upon starting
- the container.
+Below command to run elastic search docker stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata\_to\_es workflow again to index the data upon starting the container.
 {% endhint %}
 
 ```bash

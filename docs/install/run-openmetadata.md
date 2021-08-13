@@ -14,7 +14,6 @@ description: >-
 **Prerequisites**
 
 * Docker &gt;= 20.10.x
-
 {% endhint %}
 
 ```bash
@@ -35,7 +34,6 @@ To access the OpenMetadata
 Open [http://localhost:8585](http://localhost:8585) in your browser
 
 Scheduler UI available at [http://localhost:7777](http://localhost:7777)
-
 
 ## Run Manually
 
@@ -97,7 +95,6 @@ cd openmetadata-1.0.0-SNAPSHOT
 #### macOS
 
 1. Setup Database
-
    * Install MySQL
 
      ```text
@@ -120,13 +117,12 @@ cd openmetadata-1.0.0-SNAPSHOT
      GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
      commit;
      ```
-
 2. Run bootstrap scripts to initiate the database and tables
 
-    ```text
+   ```text
       cd openmetadata-0.3.0
       ./bootstrap/bootstrap_storage.sh migrate
-    ```
+   ```
 
 3. Start the OpenMetadata Server
 
@@ -134,14 +130,10 @@ cd openmetadata-1.0.0-SNAPSHOT
       cd openmetadata-0.3.0 
       ./bin/openmetadata.sh start
    ```
-   
+
 ### Ingest Sample Data
 
-Previous steps starts the OpenMetadataServer. To start using using it 
-we need to run ElasticSearch and ingest sample metadata. Please follow the below
-guide 
+Previous steps starts the OpenMetadataServer. To start using using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide
 
-[Ingest Sample Data](./metadata-ingestion/ingest-sample-data.md)
-
-
+[Ingest Sample Data](metadata-ingestion/ingest-sample-data.md)
 

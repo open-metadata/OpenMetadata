@@ -76,7 +76,7 @@ Below is the configuration to publish postgres data into openmetadata
 Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="postgres.json" %}
-```
+```text
 
 ```
 {% endcode %}
