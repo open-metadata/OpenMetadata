@@ -19,7 +19,20 @@
 - [License](#license)
 
 # What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/) is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.   
+[OpenMetadata](https://open-metadata.org/) is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.
+![image](https://user-images.githubusercontent.com/1417689/129423079-d21cbf3f-786f-4d4a-b6c3-b66feca234b8.png)
+
+OpenMetadata includes the following:
+
+Metadata schemas - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
+
+Metadata store - stores metadata graph that connects data assets, user and tool generated metadata.
+
+Metadata APIs - for producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
+
+Ingestion framework - a pluggable framework for integrating tools and ingesting metadata to the metadata store. Ingestion framework already supports well know data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive, and databases - MySQL, Postgres, Oracle, and MSSQL.
+
+OpenMetadata User Interface - one single place for users to discover, and collaborate on all data.
 
 ## Our Mission
 
