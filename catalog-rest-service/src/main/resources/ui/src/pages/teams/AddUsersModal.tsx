@@ -1,6 +1,7 @@
 import { UserTeam } from 'Models';
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
+import Searchbar from '../../components/common/searchbar/Searchbar';
 import UserCard from './UserCard';
 type Props = {
   header: string;
@@ -11,6 +12,7 @@ type Props = {
 
 const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
   const [selectedUsers, setSelectedusers] = useState<Array<string>>([]);
+  const [searchText, setSearchText] = useState('');
 
   const selectionHandler = (id: string) => {
     setSelectedusers((prevState) => {
@@ -26,24 +28,31 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
     });
   };
   const getUserCards = () => {
-    return list.map((user, index) => {
-      const User = {
-        description: user.description,
-        name: user.name,
-        id: user.id,
-      };
+    return list
+      .filter((user) => {
+        return (
+          user.description.includes(searchText) ||
+          user.name.includes(searchText)
+        );
+      })
+      .map((user, index) => {
+        const User = {
+          description: user.description,
+          name: user.name,
+          id: user.id,
+        };
 
-      return (
-        <UserCard
-          isActionVisible
-          isCheckBoxes
-          isIconVisible
-          item={User}
-          key={index}
-          onSelect={selectionHandler}
-        />
-      );
-    });
+        return (
+          <UserCard
+            isActionVisible
+            isCheckBoxes
+            isIconVisible
+            item={User}
+            key={index}
+            onSelect={selectionHandler}
+          />
+        );
+      });
   };
 
   const handleSave = () => {
@@ -53,14 +62,24 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
     onSave(users);
   };
 
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+  };
+
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal ">
       <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-max-w-lg">
+      <div className="tw-modal-container tw-max-h-90vh tw-max-w-lg">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
         </div>
         <div className="tw-modal-body">
+          <Searchbar
+            placeholder="Search for user..."
+            searchValue={searchText}
+            typingInterval={1500}
+            onSearch={handleSearchAction}
+          />
           <div className="tw-grid tw-grid-cols-2 tw-gap-4">
             {getUserCards()}
           </div>

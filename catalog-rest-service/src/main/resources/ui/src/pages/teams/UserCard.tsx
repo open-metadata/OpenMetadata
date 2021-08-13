@@ -12,6 +12,7 @@ type Props = {
   isDataset?: boolean;
   isCheckBoxes?: boolean;
   onSelect?: (value: string) => void;
+  onRemove?: (value: string) => void;
 };
 
 const UserCard = ({
@@ -21,6 +22,7 @@ const UserCard = ({
   isDataset = false,
   isCheckBoxes = false,
   onSelect,
+  onRemove,
 }: Props) => {
   return (
     <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
@@ -42,7 +44,7 @@ const UserCard = ({
         </div>
       </div>
       {isActionVisible && (
-        <>
+        <div className="tw-flex-none">
           {isCheckBoxes ? (
             <input
               className="tw-px-2 custom-checkbox"
@@ -52,7 +54,7 @@ const UserCard = ({
               }}
             />
           ) : (
-            <span>
+            <span onClick={() => onRemove?.(item.id as string)}>
               <SVGIcons
                 alt="delete"
                 className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
@@ -61,7 +63,7 @@ const UserCard = ({
               />
             </span>
           )}
-        </>
+        </div>
       )}
     </div>
   );

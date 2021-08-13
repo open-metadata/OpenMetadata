@@ -85,6 +85,52 @@ const TeamsPage = () => {
     }
   };
 
+  const createNewTeam = (data: Team) => {
+    createTeam(data)
+      .then((res: AxiosResponse) => {
+        if (res.data) {
+          fetchTeams();
+          setIsAddingTeam(false);
+        } else {
+          setIsAddingTeam(false);
+        }
+      })
+      .catch(() => {
+        setIsAddingTeam(false);
+      });
+  };
+
+  const createUsers = (data: Array<UserTeam>) => {
+    const updatedTeam = {
+      ...currentTeam,
+      users: [...(currentTeam?.users as Array<UserTeam>), ...data],
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
+      if (res.data) {
+        fetchCurrentTeam(res.data.name, true);
+      }
+    });
+    setIsAddingUsers(false);
+  };
+
+  const deleteUser = (id: string) => {
+    const users = [...(currentTeam?.users as Array<UserTeam>)];
+    const newUsers = users.filter((user) => {
+      return user.id !== id;
+    });
+    const updatedTeam = {
+      ...currentTeam,
+      users: newUsers,
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
+      if (res.data) {
+        fetchCurrentTeam(res.data.name, true);
+      }
+    });
+  };
+
   const getCurrentTeamClass = (name: string) => {
     if (currentTeam?.name === name) {
       return 'activeCategory';
@@ -141,10 +187,20 @@ const TeamsPage = () => {
       <>
         <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
           {currentTeam?.users.map((user, index) => {
-            const User = { description: user.description, name: user.name };
+            const User = {
+              description: user.description,
+              name: user.name,
+              id: user.id,
+            };
 
             return (
-              <UserCard isActionVisible isIconVisible item={User} key={index} />
+              <UserCard
+                isActionVisible
+                isIconVisible
+                item={User}
+                key={index}
+                onRemove={deleteUser}
+              />
             );
           })}
         </div>
@@ -239,34 +295,6 @@ const TeamsPage = () => {
   const onCancel = (): void => {
     setIsEditable(false);
   };
-  const createNewTeam = (data: Team) => {
-    createTeam(data)
-      .then((res: AxiosResponse) => {
-        if (res.data) {
-          fetchTeams();
-          setIsAddingTeam(false);
-        } else {
-          setIsAddingTeam(false);
-        }
-      })
-      .catch(() => {
-        setIsAddingTeam(false);
-      });
-  };
-
-  const createUsers = (data: Array<UserTeam>) => {
-    const updatedTeam = {
-      ...currentTeam,
-      users: [...(currentTeam?.users as Array<UserTeam>), ...data],
-    };
-    const jsonPatch = compare(currentTeam as Team, updatedTeam);
-    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
-      if (res.data) {
-        fetchCurrentTeam(res.data.name, true);
-      }
-    });
-    setIsAddingUsers(false);
-  };
 
   const getUniqueUserList = () => {
     const uniqueList = userList
@@ -296,7 +324,7 @@ const TeamsPage = () => {
 
   useEffect(() => {
     setUserList(AppState.users);
-  }, [AppState.newUser]);
+  }, [AppState.users]);
 
   return (
     <>
