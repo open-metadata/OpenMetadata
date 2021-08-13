@@ -26,7 +26,7 @@ const data = [
 
 const Onboarding: React.FC = () => {
   return (
-    <div className="tw-flex tw-items-center tw-justify-around tw-mt-28">
+    <div className="tw-flex tw-items-center tw-justify-around tw-mt-20">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
         <div className="tw-mb-6">
           <h4>Welcome to OpenMetadata.</h4>
