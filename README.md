@@ -24,17 +24,15 @@
 
 OpenMetadata includes the following:
 
-Metadata schemas - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
+- **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
 
-Metadata store - stores metadata graph that connects data assets, user and tool generated metadata.
+- **Metadata store** - stores metadata graph that connects data assets, user and tool generated metadata.
 
-Metadata APIs - for producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
+- **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
 
-Ingestion framework - a pluggable framework for integrating tools and ingesting metadata to the metadata store. Ingestion framework already supports well know data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive, and databases - MySQL, Postgres, Oracle, and MSSQL.
+- **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. Ingestion framework already supports well know data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive, and databases - MySQL, Postgres, Oracle, and MSSQL.
 
-OpenMetadata User Interface - one single place for users to discover, and collaborate on all data.
-
-## Our Mission
+- **OpenMetadata User Interface** - one single place for users to discover, and collaborate on all data.
 
 ## Run OpenMetadata
 Get up and running in few mins
@@ -46,11 +44,13 @@ docker-compose up -d
 ```
 Then visit [http://localhost:8585](http://localhost:8585)
 
+For more details on running OpenMetadata on your local machine or in production, see our [Install Doc](https://docs.open-metadata.org/install/run-openmetadata)
+
 
 
 ## Try Metadata
 
-Visit our demo at [http://demo.open-metadata.org](http://demo.open-metadata.org)
+Visit our demo at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
 
 
 ## Features
