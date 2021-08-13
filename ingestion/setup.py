@@ -38,6 +38,7 @@ def get_long_description():
 
 base_requirements = {
     "commonregex",
+    "idna<3,>=2.5",
     "click<7.2.0,>=7.1.1",
     "expandvars>=0.6.5"
     "dataclasses>=0.8"
