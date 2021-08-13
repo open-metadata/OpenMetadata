@@ -93,7 +93,7 @@ and ```metadata-rest-tables``` sink along with ```metadata-server``` config
     }
   },
   "processor": {
-    "type": "pii-tags",
+    "type": "pii",
     "config": {
       "api_endpoint": "http://localhost:8585/api"
     }

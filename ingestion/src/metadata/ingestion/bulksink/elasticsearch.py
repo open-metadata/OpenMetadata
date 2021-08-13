@@ -30,7 +30,7 @@ class ElasticSearchConfig(ConfigModel):
     batch_size: Optional[int] = 10000
 
 
-class ElasticSearchBulkSink(BulkSink):
+class ElasticsearchBulkSink(BulkSink):
     """
     Elasticsearch Publisher uses Bulk API to load data from JSON file.
     A new index is created and data is uploaded into it. After the upload

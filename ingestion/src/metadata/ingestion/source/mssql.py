@@ -20,7 +20,7 @@ from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.auth_provider import MetadataServerConfig
 
 
-class SQLServerConfig(SQLConnectionConfig):
+class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
 
@@ -28,12 +28,12 @@ class SQLServerConfig(SQLConnectionConfig):
         return super().get_connection_url()
 
 
-class SQLServerSource(SQLSource):
+class MssqlSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
-        config = SQLServerConfig.parse_obj(config_dict)
+        config = MssqlConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)

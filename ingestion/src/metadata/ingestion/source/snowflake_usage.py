@@ -28,7 +28,7 @@ class SnowflakeUsageSource(Source):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
         select query_id as query,Query_text as sql,query_type as label,
-        database_name as database,start_time as starttime,end_time as endtime
+        database_name as database,start_time as starttime,end_time as endtime,schema_name
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
         end_time_range_end=>to_timestamp_ltz('{end_date}')));
@@ -83,7 +83,7 @@ class SnowflakeUsageSource(Source):
         for row in self._get_raw_extract_iter():
             tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
                             str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
-            self.report.scanned(tq)
+            self.report.scanned(f"{row['database']}.{row['schema_name']}")
             yield tq
 
     def get_report(self):

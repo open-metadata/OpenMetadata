@@ -11,16 +11,14 @@
     }
   },
   "processor": {
-    "type": "pii-tags",
-    "config": {
-    }
+    "type": "pii",
+    "config": {}
   },
   "sink": {
     "type": "metadata-rest-tables",
-    "config": {
-    }
+    "config": {}
   },
-   "metadata_server": {
+  "metadata_server": {
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",

@@ -95,7 +95,7 @@ and ```metadata-rest-tables``` sink along with ```metadata-server``` config
     }
   },
   "processor": {
-    "type": "pii-tags",
+    "type": "pii",
     "config": {
     }
   },

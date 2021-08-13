@@ -32,7 +32,7 @@ class MetadataUsageSinkConfig(ConfigModel):
     filename: str
 
 
-class MetadataUsageRestBulkSink(BulkSink):
+class MetadataUsageBulkSink(BulkSink):
     config: MetadataUsageSinkConfig
 
     def __init__(self, ctx: WorkflowContext, config: MetadataUsageSinkConfig, metadata_config: MetadataServerConfig):

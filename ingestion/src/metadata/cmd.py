@@ -71,8 +71,8 @@ def ingest(config: str) -> None:
         sys.exit(1)
 
     workflow.execute()
-    ret = workflow.print_status()
     workflow.stop()
+    ret = workflow.print_status()
     sys.exit(ret)
 
 

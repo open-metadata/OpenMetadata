@@ -1,10 +1,10 @@
 {
   "source": {
-    "type": "metadata-rest-tables",
+    "type": "metadata_es",
     "config": {}
   },
   "stage": {
-    "type": "file-stage",
+    "type": "file",
     "config": {
       "filename": "/tmp/tables.txt"
     }

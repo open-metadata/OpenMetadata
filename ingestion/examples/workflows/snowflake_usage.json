@@ -19,7 +19,7 @@
     }
   },
   "stage": {
-    "type": "table-usage-stage",
+    "type": "table-usage",
     "config": {
       "filename": "/tmp/snowflake_usage"
     }
