@@ -123,6 +123,7 @@ setup(
             "hive = metadata.ingestion.source.hive:HiveSource",
             "sample-tables = metadata.ingestion.source.sample_data_generator:SampleTableSource",
             "sample-users = metadata.ingestion.source.sample_data_generator:SampleUserSource",
+            "sample-usage = metadata.ingestion.source.sample_data_generator:SampleUsageSource",
             "metadata-rest-tables = metadata.ingestion.source.metadata_rest:MetadataTablesRestSource",
             "redshift-usage = metadata.ingestion.source.redshift_usage:RedshiftUsageSource",
             "snowflake-usage = metadata.ingestion.source.snowflake_usage:SnowflakeUsageSource",

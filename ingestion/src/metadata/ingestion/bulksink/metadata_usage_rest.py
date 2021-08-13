@@ -125,7 +125,6 @@ class MetadataUsageBulkSink(BulkSink):
         return table_joins
 
     def __get_column_fqdn(self, table_column: TableColumn):
-        print(table_column.table)
         if table_column.table not in self.tables_dict:
             return None
         table_entity = self.tables_dict[table_column.table]

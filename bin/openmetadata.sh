@@ -35,7 +35,7 @@ function catalogStart {
    catalogStatus -q
    if [[ $? -eq 0 ]]; then
        rm -f ${PID_FILE}
-       echo "Starting Catalog"
+       echo "Starting OpenMetadata"
        APP_CLASS="org.openmetadata.catalog.CatalogApplication"
        cd ${CATALOG_HOME}
        nohup ${JAVA} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
@@ -43,17 +43,17 @@ function catalogStart {
        echo $! > ${PID_FILE}
        echo $(catalogStatus)
    else
-       echo "Catalog already running with PID: ${PID}"
+       echo "OpenMetadata already running with PID: ${PID}"
    fi
 }
 
 function catalogStop {
    catalogStatus -q
    if [[ $? -eq 1 ]]; then
-       echo "Stopping Catalog [${PID}] "
+       echo "Stopping OpenMetadata [${PID}] "
        kill -s KILL ${PID} 1>>"${OUT_FILE}" 2>>"${ERR_FILE}"
    else
-       echo "Catalog not running"
+       echo "OpenMetadata not running"
    fi
 }
 
@@ -68,32 +68,32 @@ function catalogStatus {
 
    getPID
    if [[ $? -eq 1 ]] || [[ ${PID} -eq 0 ]]; then
-     [[ "${verbose}" -eq 1 ]] && echo "Catalog not running."
+     [[ "${verbose}" -eq 1 ]] && echo "OpenMetadata not running."
      return 0
    fi
 
    ps -p ${PID} > /dev/null
    if [[ $? -eq 0 ]]; then
-     [[ "${verbose}" -eq 1 ]] && echo "Catalog running with PID=${PID}."
+     [[ "${verbose}" -eq 1 ]] && echo "OpenMetadata running with PID=${PID}."
      return 1
    else
-     [[ "${verbose}" -eq 1 ]] && echo "Catalog not running."
+     [[ "${verbose}" -eq 1 ]] && echo "OpenMetadata not running."
      return 0
    fi
 }
 
-# Removes the PID file if Catalog is not running
+# Removes the PID file if OpenMetadata is not running
 function catalogClean {
    catalogStatus -q
    if [[ $? -eq 0 ]]; then
      rm -f ${PID_FILE} ${OUT_FILE} ${ERR_FILE}
      echo "Removed the ${PID_FILE}, ${OUT_FILE} and ${ERR_FILE} files."
    else
-     echo "Can't clean files. Catalog running with PID=${PID}."
+     echo "Can't clean files. OpenMetadata running with PID=${PID}."
    fi
 }
 
-# Returns 0 if the Catalog is running and sets the $PID variable.
+# Returns 0 if the OpenMetadata is running and sets the $PID variable.
 function getPID {
    if [ ! -d $PID_DIR ]; then
       printf "Can't find pid dir.\n"
