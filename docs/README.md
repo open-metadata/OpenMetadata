@@ -6,7 +6,9 @@ Poorly organized metadata is preventing organizations from realizing the full po
 
 ## **OpenMetadata is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.** 
 
-![](.gitbook/assets/openmetadata-overview.png)
+  
+
+![](.gitbook/assets/openmetadata-overview%20%281%29.png)
 
 OpenMetadata includes the following:
 
