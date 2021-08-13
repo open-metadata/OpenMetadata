@@ -35,6 +35,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 // import { EditSchemaColumnModal } from '../Modals/EditSchemaColumnModal/EditSchemaColumnModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -202,6 +203,7 @@ const SchemaTable: FunctionComponent<Props> = ({
       setEditColumn(undefined);
     }
   };
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(columns);
@@ -292,8 +294,9 @@ const SchemaTable: FunctionComponent<Props> = ({
                         <span className="tw-text-gray-400 tw-mr-1">
                           Frequently joined columns:
                         </span>
-                        {getFrequentlyJoinedWithColumns(column.name).map(
-                          (columnJoin, index) => (
+                        {getFrequentlyJoinedWithColumns(column.name)
+                          .slice(0, 3)
+                          .map((columnJoin, index) => (
                             <Fragment key={index}>
                               {index > 0 && <span className="tw-mr-1">,</span>}
                               <Link
@@ -314,7 +317,42 @@ const SchemaTable: FunctionComponent<Props> = ({
                                 )}
                               </Link>
                             </Fragment>
-                          )
+                          ))}
+                        {getFrequentlyJoinedWithColumns(column.name).length >
+                          3 && (
+                          <PopOver
+                            html={
+                              <div className="tw-text-left">
+                                {getFrequentlyJoinedWithColumns(column.name)
+                                  ?.slice(3)
+                                  .map((columnJoin, index) => (
+                                    <Fragment key={index}>
+                                      <a
+                                        className="link-text tw-block tw-py-1"
+                                        href={getDatasetDetailsPath(
+                                          getTableFQNFromColumnFQN(
+                                            columnJoin.fullyQualifiedName
+                                          ),
+                                          getPartialNameFromFQN(
+                                            columnJoin.fullyQualifiedName,
+                                            ['column']
+                                          )
+                                        )}
+                                        onClick={handleClick}>
+                                        {getPartialNameFromFQN(
+                                          columnJoin.fullyQualifiedName,
+                                          ['database', 'table', 'column']
+                                        )}
+                                      </a>
+                                    </Fragment>
+                                  ))}
+                              </div>
+                            }
+                            position="bottom"
+                            theme="light"
+                            trigger="click">
+                            <span className="show-more tw-ml-1">...</span>
+                          </PopOver>
                         )}
                       </div>
                     )}
