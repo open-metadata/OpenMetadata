@@ -15,10 +15,46 @@
   * limitations under the License.
 */
 
-import React from 'react';
+import React, { FunctionComponent } from 'react';
 import './Loader.css';
-const Loader: Function = (): JSX.Element => {
-  return <div className="loader" />;
+
+type Props = {
+  size?: 'default' | 'small';
+  type?: 'default' | 'success' | 'error' | 'white';
+};
+
+const Loader: FunctionComponent<Props> = ({
+  size = 'default',
+  type = 'default',
+}: Props): JSX.Element => {
+  let classes = 'loader';
+  switch (size) {
+    case 'small':
+      classes += ' loader-sm';
+
+      break;
+    default:
+      break;
+  }
+
+  switch (type) {
+    case 'success':
+      classes += ' loader-success';
+
+      break;
+    case 'error':
+      classes += ' loader-error';
+
+      break;
+    case 'white':
+      classes += ' loader-white';
+
+      break;
+    default:
+      break;
+  }
+
+  return <div className={classes} />;
 };
 
 export default Loader;

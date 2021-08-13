@@ -17,6 +17,8 @@ import csv
 import json
 import uuid
 import os
+from datetime import datetime
+
 import pandas as pd
 import random
 import string
@@ -35,6 +37,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from dataclasses import dataclass, field
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import DatabaseMetadata
+from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST
@@ -254,7 +257,6 @@ class SampleUserMetadataGenerator:
 def get_service_or_create(service_json, metadata_config) -> DatabaseServiceEntity:
     client = REST(metadata_config)
     service = client.get_database_service(service_json['name'])
-    print(service)
     if service is not None:
         return service
     else:
@@ -285,7 +287,6 @@ class SampleTableSource(Source):
         pass
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-
         db = DatabaseEntity(id=uuid.uuid4(),
                             name=self.database['name'],
                             description=self.database['description'],
@@ -295,6 +296,43 @@ class SampleTableSource(Source):
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned(table_metadata.name.__root__)
             yield table_and_db
+
+    def close(self):
+        pass
+
+    def get_status(self):
+        return self.status
+
+
+class SampleUsageSource(Source):
+
+    def __init__(self, config: SampleTableSourceConfig, metadata_config: MetadataServerConfig, ctx):
+        super().__init__(ctx)
+        self.status = SampleTableSourceStatus()
+        self.config = config
+        self.metadata_config = metadata_config
+        self.client = REST(metadata_config)
+        self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
+        self.query_log_csv = config.sample_schema_folder + "/query_log"
+        with open(self.query_log_csv, 'r') as fin:
+            self.query_logs = [dict(i) for i in csv.DictReader(fin)]
+        self.service = get_service_or_create(self.service_json, metadata_config)
+
+    @classmethod
+    def create(cls, config_dict, metadata_config_dict, ctx):
+        config = SampleTableSourceConfig.parse_obj(config_dict)
+        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        return cls(config, metadata_config, ctx)
+
+    def prepare(self):
+        pass
+
+    def next_record(self) -> Iterable[TableQuery]:
+        for row in self.query_logs:
+            tq = TableQuery(row['query'], '', 100, 0, 0, '',
+                            '', datetime.today().strftime('%Y-%m-%d %H:%M:%S'), 100, 'shopify',
+                            False, row['query'])
+            yield tq
 
     def close(self):
         pass

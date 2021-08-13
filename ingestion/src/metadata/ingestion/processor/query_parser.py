@@ -61,7 +61,7 @@ class QueryParserProcessor(Processor):
                                                 date=start_date.strftime('%Y-%m-%d'))
         except Exception as err:
             logger.debug(record.sql)
-            logger.debug(err)
+            logger.error(err)
             query_parser_data = None
             pass
 
