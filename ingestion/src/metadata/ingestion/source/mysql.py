@@ -24,7 +24,7 @@ class MySQLConfig(SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
-class MySQLSource(SQLSource):
+class MysqlSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
 

@@ -160,19 +160,19 @@ class ColumnNameScanner(Scanner):
         return list(types)
 
 
-class PIIProcessorConfig(ConfigModel):
+class PiiProcessorConfig(ConfigModel):
     filter: Optional[str] = None
     api_endpoint: Optional[str] = None
     auth_provider_type: Optional[str] = None
 
 
-class PIIProcessor(Processor):
-    config: PIIProcessorConfig
+class PiiProcessor(Processor):
+    config: PiiProcessorConfig
     metadata_config: MetadataServerConfig
     status: ProcessorStatus
     client: REST
 
-    def __init__(self, ctx: WorkflowContext, config: PIIProcessorConfig, metadata_config: MetadataServerConfig):
+    def __init__(self, ctx: WorkflowContext, config: PiiProcessorConfig, metadata_config: MetadataServerConfig):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -184,7 +184,7 @@ class PIIProcessor(Processor):
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
-        config = PIIProcessorConfig.parse_obj(config_dict)
+        config = PiiProcessorConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
