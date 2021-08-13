@@ -19,7 +19,7 @@
 - [License](#license)
 
 # What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/) is a ...
+[OpenMetadata](https://open-metadata.org/) is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.   
 
 ## Our Mission
 
