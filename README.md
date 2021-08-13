@@ -34,7 +34,11 @@ OpenMetadata includes the following:
 
 - **OpenMetadata User Interface** - one single place for users to discover, and collaborate on all data.
 
-## Run OpenMetadata
+## Try our Sandbox
+
+Visit our demo at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
+
+## Install and run OpenMetadata
 Get up and running in few mins
 
 ```sh
@@ -44,18 +48,7 @@ docker-compose up -d
 ```
 Then visit [http://localhost:8585](http://localhost:8585)
 
-For more details on running OpenMetadata on your local machine or in production, see our [Install Doc](https://docs.open-metadata.org/install/run-openmetadata)
-
-
-
-## Try Metadata
-
-Visit our demo at [http://sandbox.open-metadata.org](http://sandbox.open-metadata.org)
-
-
-## Features
-
-
+For more details on running OpenMetadata on your local machine or in production, see our [Install Doc](https://docs.open-metadata.org/install/run-openmetadata).
 
 ## Documentation and Support
 
