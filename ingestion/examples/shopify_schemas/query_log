@@ -1,0 +1,54 @@
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
+join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer", "shopify"
+"select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer", "shopify"
+"select dim_location.name as location_name, dim_shop.name as shop_name from dim_location left join dim_location.shop_id=dim_shop.shop_id", "shopify"
+"select dim_location.name as location_name, dim_shop.name as shop_name from dim_location left join dim_location.shop_id=dim_shop.shop_id", "shopify"
+"select dim_location.name as location_name, dim_shop.name as shop_name from dim_location left join dim_location.shop_id=dim_shop.shop_id", "shopify"
+"select dim_location.name as location_name, dim_shop.name as shop_name from dim_location left join dim_location.shop_id=dim_shop.shop_id", "shopify"
+"select dim_location.name as location_name, dim_shop.name as shop_name from dim_location left join dim_location.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product.title, dim_product.vendor, dim_product.shop_id from dim_product left join dim_product.shop_id=dim_shop.shop_id", "shopify"
+"select dim_product_variant.product_id, dim_product_variant.title, dim_product_variant.barcode, dim_product.vendor from dim_product left join dim_product_variant on dim_product_variant.product_id=dim_product.product_id","shopify"
+"select dim_product_variant.product_id, dim_shop.shop_id, dim_shop.name from dim_shop join dim_product_variant on dim_shop.shop_id = dim_product_variant.shop_id", "shopify"
+
+
