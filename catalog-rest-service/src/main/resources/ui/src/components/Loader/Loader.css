@@ -20,10 +20,30 @@
   height: 50px;
   border-radius: 50%;
   border: 5px solid rgba(0, 0, 0, 0.1);
-  border-left-color: rgba(37, 99, 235, 1);
+  border-left-color: #7147e8;
   background: transparent;
   animation: rotate 1s linear infinite;
   margin: 6rem auto;
+}
+
+.loader.loader-sm {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+  margin: auto;
+}
+
+.loader.loader-success {
+  border-left-color: #51c41a;
+}
+
+.loader.loader-error {
+  border-left-color: #ff4c3b;
+}
+
+.loader.loader-white {
+  border-color: #ffffff;
+  border-right-color: transparent;
 }
 
 @keyframes rotate {
