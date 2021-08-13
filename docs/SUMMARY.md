@@ -6,7 +6,8 @@
 ## OpenMetadata APIs
 
 * [Schemas](openmetadata-apis/schemas/README.md)
-  * [Overview](openmetadata-apis/schemas/overview.md)
+  * [Schema Language](openmetadata-apis/schemas/schema-language.md)
+  * [Schema Concepts](openmetadata-apis/schemas/overview.md)
   * [OpenMetadata Types](openmetadata-apis/schemas/types/README.md)
     * [Basic](openmetadata-apis/schemas/types/basic.md)
     * [Audit Log](openmetadata-apis/schemas/types/audit-log.md)

@@ -1,4 +1,4 @@
-# Overview
+# Schema Concepts
 
 ## Types
 
