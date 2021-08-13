@@ -296,6 +296,10 @@ a:focus {
   height: calc(100% - 104px);
 }
 
+.page-container.full-page {
+  height: 100%;
+}
+
 /* Widget Box */
 .sl-box {
   display: -webkit-box;

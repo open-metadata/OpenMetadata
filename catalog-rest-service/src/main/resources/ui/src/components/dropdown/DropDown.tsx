@@ -25,6 +25,7 @@ import CheckBoxDropDownList from './CheckBoxDropDownList';
 import { DropDownListItem, DropDownProp, DropDownType } from './types';
 
 const DropDown: React.FC<DropDownProp> = ({
+  className = '',
   label,
   type,
   icon: Icon,
@@ -72,7 +73,7 @@ const DropDown: React.FC<DropDownProp> = ({
               type === DropDownType.CHECKBOX
                 ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
-            }`}
+            } ${className}`}
             id="menu-button"
             type="button"
             onClick={() => setIsOpen((isOpen) => !isOpen)}>
@@ -141,6 +142,7 @@ const DropDown: React.FC<DropDownProp> = ({
   );
 };
 DropDown.propTypes = {
+  className: PropTypes.string,
   label: PropTypes.string,
   type: PropTypes.string.isRequired,
   icon: PropTypes.elementType,

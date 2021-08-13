@@ -161,7 +161,11 @@
   }
 
   .tw-signin-button {
-    @apply tw-rounded-md tw-text-white tw-px-4 tw-py-2 tw-mt-5 tw-border tw-text-base tw-font-medium;
+    @apply tw-rounded-md tw-bg-white tw-w-60 tw-h-9 tw-px-4 tw-mt-2 tw-border tw-font-medium;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  }
+  .tw-signin-button:hover {
+    box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
   }
 
   .tw-card {
@@ -273,5 +277,15 @@
   body #description ul,
   body .content-container ul {
     @apply tw-list-disc;
+  }
+
+  .signin-box {
+    @apply tw-m-auto tw-h-100 tw-w-120;
+    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  .signup-box {
+    @apply tw-m-auto tw-w-120;
+    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
   }
 }

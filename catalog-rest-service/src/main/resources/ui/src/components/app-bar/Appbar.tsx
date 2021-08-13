@@ -47,7 +47,7 @@ import Suggestions from './Suggestions';
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn } = useAuth();
+  const { isAuthenticatedRoute, isSignedIn } = useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
@@ -169,11 +169,7 @@ const Appbar: React.FC = (): JSX.Element => {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="tw-flex tw-justify-center tw-items-center tw-my-5">
-          <SVGIcons alt="OpenMetadata Logo" icon={Icons.LOGO} />
-        </div>
-      )}
+      ) : null}
     </>
   );
 };

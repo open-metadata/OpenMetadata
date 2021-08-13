@@ -22,9 +22,11 @@ import { useHistory } from 'react-router-dom';
 import appState from '../../AppState';
 import { createUser, getTeams } from '../../axiosAPIs/userAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import PageContainer from '../../components/containers/PageContainer';
 import DropDown from '../../components/dropdown/DropDown';
 import { imageTypes, ROUTES } from '../../constants/constants';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 type Team = {
   id: string;
   displayName: string;
@@ -124,103 +126,114 @@ const Signup = () => {
   return (
     <>
       {!loading && (
-        <div className="tw-w-full tw-flex tw-justify-around tw-items-stretch">
-          <div className="tw-flex tw-w-full xl:tw-w-2/5">
-            <div className="tw-w-full tw-p-8">
-              <form action="." method="POST" onSubmit={onSubmitHandler}>
-                <h1 className="tw-text-2xl tw-font-bold">
-                  Create your account
-                </h1>
-                <hr className="tw-my-1" />
-                <div className="tw-mb-4 tw-mt-6">
-                  <label
-                    className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                    htmlFor="displayName">
-                    Full name
-                  </label>
-                  <input
-                    required
-                    autoComplete="off"
-                    className="tw-appearance-none tw-border tw-border-main  
+        <PageContainer>
+          <div className="tw-w-screen tw-h-screen tw-flex tw-justify-center">
+            <div className="tw-flex tw-flex-col tw-items-center signup-box">
+              <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
+                <SVGIcons
+                  alt="OpenMetadata Logo"
+                  icon={Icons.LOGO_SMALL}
+                  width="50"
+                />
+              </div>
+              <div className="tw-mb-7">
+                <h4 className="tw-font-semibold">
+                  Join <span className="tw-text-primary">OpenMetadata</span>
+                </h4>
+              </div>
+              <div className="tw-px-8 tw-w-full">
+                <form action="." method="POST" onSubmit={onSubmitHandler}>
+                  <div className="tw-mb-4">
+                    <label
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      htmlFor="displayName">
+                      Full name
+                    </label>
+                    <input
+                      required
+                      autoComplete="off"
+                      className="tw-appearance-none tw-border tw-border-main  
                 tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                    id="displayName"
-                    name="displayName"
-                    placeholder="Your Full name"
-                    type="text"
-                    value={details.displayName}
-                    onChange={onChangeHadler}
-                  />
-                </div>
-                <div className="tw-mb-4 tw-mt-6">
-                  <label
-                    className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                    htmlFor="name">
-                    Username
-                  </label>
-                  <input
-                    readOnly
-                    required
-                    autoComplete="off"
-                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                      id="displayName"
+                      name="displayName"
+                      placeholder="Your Full name"
+                      type="text"
+                      value={details.displayName}
+                      onChange={onChangeHadler}
+                    />
+                  </div>
+                  <div className="tw-mb-4">
+                    <label
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      htmlFor="name">
+                      Username
+                    </label>
+                    <input
+                      readOnly
+                      required
+                      autoComplete="off"
+                      className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                    id="name"
-                    name="name"
-                    placeholder="Username"
-                    type="text"
-                    value={details.name}
-                    onChange={onChangeHadler}
-                  />
-                </div>
-                <div className="tw-mb-4 tw-mt-6">
-                  <label
-                    className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                    htmlFor="email">
-                    Email
-                  </label>
-                  <input
-                    readOnly
-                    required
-                    autoComplete="off"
-                    className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
+                      id="name"
+                      name="name"
+                      placeholder="Username"
+                      type="text"
+                      value={details.name}
+                      onChange={onChangeHadler}
+                    />
+                  </div>
+                  <div className="tw-mb-4">
+                    <label
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      htmlFor="email">
+                      Email
+                    </label>
+                    <input
+                      readOnly
+                      required
+                      autoComplete="off"
+                      className="tw-cursor-not-allowed tw-appearance-none tw-border tw-border-main tw-rounded tw-bg-gray-100
                     tw-w-full tw-py-2 tw-px-3 tw-text-grey-body tw-leading-tight focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
-                    id="email"
-                    name="email"
-                    placeholder="Your email address"
-                    type="email"
-                    value={details.email}
-                    onChange={onChangeHadler}
-                  />
-                </div>
-                <div className="tw-mb-4 tw-mt-6">
-                  <label
-                    className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
-                    htmlFor="email">
-                    Select teams
-                  </label>
-                  <DropDown
-                    dropDownList={getTeamsData(teams)}
-                    label="Select ..."
-                    selectedItems={selectedTeams as Array<string>}
-                    type="checkbox"
-                    onSelect={(_e, value) => selectedTeamsHandler(value)}
-                  />
-                </div>
-                <div className="tw-flex tw-mt-8 tw-justify-end">
-                  <Button
-                    className="tw-text-white 
+                      id="email"
+                      name="email"
+                      placeholder="Your email address"
+                      type="email"
+                      value={details.email}
+                      onChange={onChangeHadler}
+                    />
+                  </div>
+                  <div className="tw-mb-4">
+                    <label
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      htmlFor="email">
+                      Select teams
+                    </label>
+                    <DropDown
+                      className="tw-bg-white"
+                      dropDownList={getTeamsData(teams)}
+                      label="Select..."
+                      selectedItems={selectedTeams as Array<string>}
+                      type="checkbox"
+                      onSelect={(_e, value) => selectedTeamsHandler(value)}
+                    />
+                  </div>
+                  <div className="tw-flex tw-my-7 tw-justify-end">
+                    <Button
+                      className="tw-text-white 
                        tw-text-sm tw-py-2 tw-px-4 tw-font-semibold tw-rounded tw-h-10 tw-justify-self-end"
-                    size="regular"
-                    theme="primary"
-                    type="submit"
-                    variant="contained">
-                    Create
-                  </Button>
-                </div>
-              </form>
+                      size="regular"
+                      theme="primary"
+                      type="submit"
+                      variant="contained">
+                      Create
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
+        </PageContainer>
       )}
       {loading && (
         <p className="tw-text-center tw-text-grey-body tw-h3 tw-flex tw-justify-center tw-items-center">
