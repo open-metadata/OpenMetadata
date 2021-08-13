@@ -15,10 +15,6 @@ description: >-
 
 * Docker &gt;= 20.10.x
 
-**Ports to access once the docker is up:**
-
-* OpenMetadata UI: 8585
-* Scheduler UI: 7777
 {% endhint %}
 
 ```bash
@@ -26,6 +22,20 @@ git clone https://github.com/open-metadata/OpenMetadata
 cd OpenMetadata/docker/metadata
 docker-compose up
 ```
+
+Above command brings up all the necessary services
+
+1. MySQL
+2. ElasticSearch
+3. OpenMetadata Sever
+4. Ingestion with SimpleScheduler
+
+To access the OpenMetadata
+
+Open [http://localhost:8585](http://localhost:8585) in your browser
+
+Scheduler UI available at [http://localhost:7777](http://localhost:7777)
+
 
 ## Run Manually
 
@@ -90,9 +100,9 @@ cd openmetadata-1.0.0-SNAPSHOT
 
    * Install MySQL
 
-   ```text
-   brew install mysql
-   ```
+     ```text
+      brew install mysql
+     ```
 
    * Configure MySQL
 
@@ -113,10 +123,10 @@ cd openmetadata-1.0.0-SNAPSHOT
 
 2. Run bootstrap scripts to initiate the database and tables
 
-   ```text
-   cd openmetadata-0.3.0
-   ./bootstrap/bootstrap_storage.sh migrate
-   ```
+    ```text
+      cd openmetadata-0.3.0
+      ./bootstrap/bootstrap_storage.sh migrate
+    ```
 
 3. Start the OpenMetadata Server
 
@@ -124,4 +134,14 @@ cd openmetadata-1.0.0-SNAPSHOT
       cd openmetadata-0.3.0 
       ./bin/openmetadata.sh start
    ```
+   
+### Ingest Sample Data
+
+Previous steps starts the OpenMetadataServer. To start using using it 
+we need to run ElasticSearch and ingest sample metadata. Please follow the below
+guide 
+
+[Ingest Sample Data](./metadata-ingestion/ingest-sample-data.md)
+
+
 
