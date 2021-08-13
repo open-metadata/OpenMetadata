@@ -151,11 +151,13 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               searchText="*"
               showResultCount={filter && data.length > 0 ? true : false}
               totalValue={totalNumberOfValue}>
-              <MyDataHeader
-                countAssets={countAssets}
-                countServices={countServices}
-              />
-              {getTabs()}
+              <>
+                <MyDataHeader
+                  countAssets={countAssets}
+                  countServices={countServices}
+                />
+                {getTabs()}
+              </>
             </SearchedData>
           )}
         </>

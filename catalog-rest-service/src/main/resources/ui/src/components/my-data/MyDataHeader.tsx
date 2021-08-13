@@ -24,11 +24,6 @@ const LANDING_STATES = [
       'Create a service to bring in metadata. Click Settings -> Services to explore available services.',
     route: ROUTES.SERVICES,
   },
-  {
-    title: 'Knowledgebase',
-    description:
-      'Donec tempus eu dolor non vehicula. Etiam malesuada, sapien ac euismod condimentum.',
-  },
 ];
 
 const MyDataHeader: FunctionComponent<Props> = ({
@@ -115,6 +110,26 @@ const MyDataHeader: FunctionComponent<Props> = ({
             <p>{getFormattedDescription(d.description)}</p>
           </div>
         ))}
+        <div className="tw-card tw-p-3 tw-w-72">
+          <p className="tw-font-medium tw-mb-1">Knowledgebase</p>
+          <p>
+            Check our{' '}
+            <a
+              className="link-text"
+              href="https://docs.open-metadata.org/"
+              rel="noopener noreferrer"
+              target="_blank">
+              docs
+            </a>{' '}
+            for documentation and try out the{' '}
+            <span
+              className="link-text"
+              onClick={() => handleRouting(ROUTES.SWAGGER)}>
+              APIs
+            </span>{' '}
+            here.
+          </p>
+        </div>
       </div>
     </section>
   );
