@@ -18,7 +18,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { Team, User } from 'Models';
+import { Team, User, UserTeam } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import {
@@ -36,6 +36,7 @@ import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ERROR404 } from '../../constants/constants';
 import SVGIcons from '../../utils/SvgUtils';
+import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
 
@@ -202,6 +203,20 @@ const TeamsPage = () => {
       });
   };
 
+  const createUsers = (data: Array<UserTeam>) => {
+    const updatedTeam = {
+      ...currentTeam,
+      users: [...(currentTeam?.users as Array<UserTeam>), ...data],
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
+      if (res.data) {
+        fetchCurrentTeam(res.data.name, true);
+      }
+    });
+    setIsAddingUsers(false);
+  };
+
   const getUniqueUserList = () => {
     const uniqueList = userList
       .filter((user) => {
@@ -314,17 +329,11 @@ const TeamsPage = () => {
                 />
               )}
               {isAddingUsers && (
-                <FormModal
-                  form={Form}
-                  header={`Adding new users to ${currentTeam?.displayName}`}
-                  initialData={{
-                    name: currentTeam?.name as string,
-                    description: currentTeam?.description as string,
-                    displayName: currentTeam?.displayName,
-                    users: getUniqueUserList(),
-                  }}
+                <AddUsersModal
+                  header={`Adding new users to ${currentTeam?.name}`}
+                  list={getUniqueUserList()}
                   onCancel={() => setIsAddingUsers(false)}
-                  onSave={() => setIsAddingUsers(false)}
+                  onSave={(data) => createUsers(data)}
                 />
               )}
             </div>

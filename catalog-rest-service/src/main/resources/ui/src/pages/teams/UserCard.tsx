@@ -6,10 +6,12 @@ import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 type Props = {
-  item: { description: string; name: string };
+  item: { description: string; name: string; id?: string };
   isActionVisible?: boolean;
   isIconVisible?: boolean;
   isDataset?: boolean;
+  isCheckBoxes?: boolean;
+  onSelect?: (value: string) => void;
 };
 
 const UserCard = ({
@@ -17,10 +19,12 @@ const UserCard = ({
   isActionVisible = false,
   isIconVisible = false,
   isDataset = false,
+  isCheckBoxes = false,
+  onSelect,
 }: Props) => {
   return (
     <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
-      <div className="tw-flex tw-gap-1">
+      <div className={`tw-flex ${isCheckBoxes ? '' : 'tw-gap-1'}`}>
         {isIconVisible ? <Avatar name={item.description} /> : null}
 
         <div className="tw-flex tw-flex-col tw-pl-2">
@@ -38,14 +42,26 @@ const UserCard = ({
         </div>
       </div>
       {isActionVisible && (
-        <span>
-          <SVGIcons
-            alt="delete"
-            className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-            icon="icon-delete"
-            title="delete"
-          />
-        </span>
+        <>
+          {isCheckBoxes ? (
+            <input
+              className="tw-px-2 custom-checkbox"
+              type="checkbox"
+              onChange={() => {
+                onSelect?.(item.id as string);
+              }}
+            />
+          ) : (
+            <span>
+              <SVGIcons
+                alt="delete"
+                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
+                icon="icon-delete"
+                title="remove"
+              />
+            </span>
+          )}
+        </>
       )}
     </div>
   );
