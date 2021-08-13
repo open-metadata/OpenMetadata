@@ -257,7 +257,6 @@ class SampleUserMetadataGenerator:
 def get_service_or_create(service_json, metadata_config) -> DatabaseServiceEntity:
     client = REST(metadata_config)
     service = client.get_database_service(service_json['name'])
-    print(service)
     if service is not None:
         return service
     else:

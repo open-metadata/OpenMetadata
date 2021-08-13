@@ -1,26 +1,26 @@
 query, database
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
@@ -58,7 +58,7 @@ join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
 dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
@@ -190,27 +190,27 @@ dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
@@ -248,7 +248,7 @@ join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
 dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
@@ -380,27 +380,27 @@ dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
@@ -438,7 +438,7 @@ join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
 dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
@@ -570,27 +570,27 @@ dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
@@ -628,7 +628,7 @@ join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
 dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
@@ -760,27 +760,27 @@ dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select fact_sale.gross_sale, dim_staff.first_name, dim_staff.last_name from fact_sale join dim_staff on fact_sale.user_id = dim_staff.user_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
@@ -818,7 +818,7 @@ join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_customer.customer_id, dim_customer.total_order_count, dim_customer.total_order_value from dim_customer left
 join dim_shop on dim_customer.shop_id=dim_shop.shop_id", "shopify"
 "select dim_address.address_id, dim_address.shop_id, dim_address.first_name,dim_address.last_name, dim_shop.name
-from dim_address left join dim_shop on dim_address.shop_id = dim_shop.id", "shopify"
+from dim_address left join dim_shop on dim_address.shop_id = dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
 dim_staff.shop_id=dim_shop.shop_id", "shopify"
 "select dim_staff.user_id,dim_staff.first_name, dim_staff.last_name, dim_shop.shop_id from dim_staff join dim_shop on
