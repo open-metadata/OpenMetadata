@@ -38,6 +38,7 @@ def get_long_description():
 
 base_requirements = {
     "commonregex",
+    "idna<3,>=2.5",
     "click<7.2.0,>=7.1.1",
     "expandvars>=0.6.5"
     "dataclasses>=0.8"
@@ -54,9 +55,9 @@ base_requirements = {
     "python-jose==3.3.0",
     "okta==1.7.0",
     "pandas~=1.3.1",
-    "sqlalchemy>=1.3.24"
-    "sql-metadata~=2.0.0"
-    "spacy==3.0.5"
+    "sqlalchemy>=1.3.24",
+    "sql-metadata~=2.0.0",
+    "spacy==3.0.5",
     "requests~=2.25.1",
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web"
 }
@@ -89,7 +90,7 @@ plugins: Dict[str, Set[str]] = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.2.1",
+    version="0.2.2",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
