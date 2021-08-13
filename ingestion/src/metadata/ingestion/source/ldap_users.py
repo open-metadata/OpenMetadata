@@ -32,7 +32,7 @@ class LDAPUserConfig(ConfigModel):
     password: str
 
 
-class LDAPUserSource(Source):
+class LdapUsersSource(Source):
     config: LDAPUserConfig
     status: SourceStatus
 

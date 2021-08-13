@@ -31,7 +31,7 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
         return f"{self.scheme}://"
 
 
-class BigQuerySource(SQLSource):
+class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
 

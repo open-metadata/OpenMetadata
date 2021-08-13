@@ -33,7 +33,7 @@ class MetadataTablesSinkConfig(ConfigModel):
     api_endpoint: str = None
 
 
-class MetadataTablesRestSink(Sink):
+class MetadataRestTablesSink(Sink):
     config: MetadataTablesSinkConfig
     status: SinkStatus
 

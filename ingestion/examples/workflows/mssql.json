@@ -14,7 +14,7 @@
     }
   },
   "processor": {
-    "type": "pii-tags",
+    "type": "pii",
     "config": {
     }
   },

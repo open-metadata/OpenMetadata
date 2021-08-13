@@ -30,7 +30,7 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     api_endpoint: Optional[str] = None
 
 
-class MetadataTablesRestSource(Source):
+class MetadataEsSource(Source):
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 

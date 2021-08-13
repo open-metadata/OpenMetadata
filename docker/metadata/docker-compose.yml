@@ -41,10 +41,8 @@ services:
       - 9200:9200
       - 9300:9300
 
-  catalog:
-    build:
-      context: ../../.
-      dockerfile: docker/metadata/Dockerfile
+  openmetadata-server:
+    image: openmetadata/server:latest
     expose:
       - 8585
       - 9200
@@ -62,9 +60,7 @@ services:
       - "localhost:172.16.239.11"
 
   ingestion:
-    build:
-      context: ../../ingestion/.
-      dockerfile: Dockerfile
+    image: openmetadata/ingestion:latest
     expose:
       - 7777
     ports:
@@ -75,20 +71,6 @@ services:
       - "localhost:172.16.239.10"
       - "localhost:172.16.239.11"
       - "localhost:172.16.239.12"
-      - "localhost:172.16.239.13"
-
-  postgres:
-    image: postgres
-    restart: always
-    environment:
-      POSTGRES_DB: pagila
-      POSTGRES_USER: openmetadata_user
-      POSTGRES_PASSWORD: openmetadata_password
-    ports:
-      - 5433:5432
-    networks:
-      app_net:
-        ipv4_address: 172.16.239.13
 
 networks:
   app_net:

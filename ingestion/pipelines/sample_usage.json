@@ -15,7 +15,7 @@
     }
   },
   "stage": {
-    "type": "table-usage-stage",
+    "type": "table-usage",
     "config": {
       "filename": "/tmp/sample_usage"
     }

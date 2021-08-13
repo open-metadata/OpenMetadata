@@ -30,7 +30,7 @@ class MetadataUsersSinkConfig(ConfigModel):
     api_end_point: str = None
 
 
-class MetadataUsersRestSink(Sink):
+class MetadataRestUsersSink(Sink):
     config: MetadataUsersSinkConfig
     metadata_config: MetadataServerConfig
     status: SinkStatus

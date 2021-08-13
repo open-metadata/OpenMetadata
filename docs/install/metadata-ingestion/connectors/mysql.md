@@ -94,7 +94,7 @@ Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `me
     }
   },
   "processor": {
-    "type": "pii-tags",
+    "type": "pii",
     "config": {
       "api_endpoint": "http://localhost:8585/api"
     }
