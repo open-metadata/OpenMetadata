@@ -180,10 +180,11 @@ declare module 'Models' {
     isBot: boolean;
     isAdmin: boolean;
     id: string;
-    name?: string;
+    name: string;
     profile: UserProfile;
     teams: Array<UserTeam>;
     timezone: string;
+    href: string;
   };
 
   export type FormatedTableData = {

@@ -23,14 +23,14 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { MarkdownWithPreview } from '../../components/common/editor/MarkdownWithPreview';
+import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
 
 type FormProp = {
   saveData: (value: {}) => void;
   initialData: Team;
 };
-type MarkdownRef = {
-  fetchUpdatedHTML: () => string;
+type EditorContentRef = {
+  getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
   ({ saveData, initialData }: FormProp, ref): JSX.Element => {
@@ -43,7 +43,9 @@ const Form: React.FC<FormProp> = forwardRef(
       owns: initialData.owns || [],
       users: initialData.users || [],
     });
-    const markdownRef = useRef<MarkdownRef>();
+
+    const markdownRef = useRef<EditorContentRef>();
+
     const onChangeHadler = (
       e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
     ) => {
@@ -57,7 +59,7 @@ const Form: React.FC<FormProp> = forwardRef(
     };
     useImperativeHandle(ref, () => ({
       fetchMarkDownData() {
-        return markdownRef.current?.fetchUpdatedHTML();
+        return markdownRef.current?.getEditorContent();
       },
     }));
 
@@ -76,9 +78,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 required
                 autoComplete="off"
-                className="tw-text-sm tw-appearance-none tw-border tw-border-gray-300 
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-                focus:tw-outline-none focus:tw-border-gray-500 tw-h-10"
+                className="tw-form-inputs tw-px-3 tw-py-1"
                 name="name"
                 placeholder="Name"
                 type="text"
@@ -93,9 +93,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 required
                 autoComplete="off"
-                className="tw-text-sm tw-appearance-none tw-border tw-border-gray-300 
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
-                focus:tw-outline-none focus:tw-border-gray-500 tw-h-10"
+                className="tw-form-inputs tw-px-3 tw-py-1"
                 name="displayName"
                 placeholder="Display name"
                 type="text"
@@ -107,11 +105,7 @@ const Form: React.FC<FormProp> = forwardRef(
               <label className="tw-form-label required-field">
                 Description
               </label>
-              <MarkdownWithPreview
-                editorRef={(Ref: MarkdownRef) => (markdownRef.current = Ref)}
-                placeholder="Description"
-                value={data.description}
-              />
+              <MarkdownWithPreview ref={markdownRef} value={data.description} />
             </div>
           </div>
         </div>

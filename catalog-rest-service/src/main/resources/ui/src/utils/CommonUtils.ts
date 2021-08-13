@@ -49,7 +49,7 @@ export const getPartialNameFromFQN = (
     }
   }
 
-  return arrPartialName.join('.');
+  return arrPartialName.join('/');
 };
 
 export const getCurrentUserId = (): string => {
