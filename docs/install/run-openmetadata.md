@@ -21,8 +21,9 @@ description: >-
 * Scheduler UI: 7777
 {% endhint %}
 
-```text
-cd docker/metadata
+```bash
+git clone https://github.com/open-metadata/OpenMetadata
+cd OpenMetadata/docker/metadata
 docker-compose up
 ```
 
