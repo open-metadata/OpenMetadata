@@ -1,6 +1,9 @@
+import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
+import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 type Props = {
@@ -13,11 +16,13 @@ const LANDING_STATES = [
     title: 'Explore Assets',
     description:
       'OpenMetadata has {countAssets} Assets. Click Explore on top menu to search, claim or follow your Data Assets',
+    route: ROUTES.EXPLORE,
   },
   {
     title: 'Register Services',
     description:
       'Create a service to bring in metadata. Click Settings -> Services to explore available services.',
+    route: ROUTES.SERVICES,
   },
   {
     title: 'Knowledgebase',
@@ -30,6 +35,7 @@ const MyDataHeader: FunctionComponent<Props> = ({
   countAssets,
   countServices,
 }: Props) => {
+  const history = useHistory();
   const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState({
     asstes: {
@@ -54,23 +60,29 @@ const MyDataHeader: FunctionComponent<Props> = ({
     return description.replaceAll('{countAssets}', countAssets.toString());
   };
 
+  const handleRouting = (url = '') => {
+    if (url) {
+      history.push(url);
+    }
+  };
+
   useEffect(() => {
     setdataSummary({
       asstes: {
         icon: Icons.ASSETS,
-        data: `${countAssets} of Assets`,
+        data: `${countAssets} Assets`,
       },
       service: {
         icon: Icons.SERVICE,
-        data: `${countServices} of Services`,
+        data: `${countServices} Services`,
       },
       user: {
         icon: Icons.USERS,
-        data: `${users.length} of Users`,
+        data: `${users.length} Users`,
       },
       terms: {
         icon: Icons.TERMS,
-        data: `${userTeams.length} of Teams`,
+        data: `${userTeams.length} Teams`,
       },
     });
   }, [userTeams, users, countAssets, countServices]);
@@ -92,7 +104,13 @@ const MyDataHeader: FunctionComponent<Props> = ({
       </div>
       <div className="tw-flex tw-gap-10">
         {LANDING_STATES.map((d, i) => (
-          <div className="tw-card tw-p-3 tw-w-72" key={i}>
+          <div
+            className={classNames(
+              'tw-card tw-p-3 tw-w-72',
+              d.route ? 'tw-cursor-pointer' : null
+            )}
+            key={i}
+            onClick={() => handleRouting(d.route)}>
             <p className="tw-font-medium tw-mb-1">{d.title}</p>
             <p>{getFormattedDescription(d.description)}</p>
           </div>

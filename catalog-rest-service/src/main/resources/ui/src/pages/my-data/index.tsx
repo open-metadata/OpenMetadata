@@ -17,7 +17,7 @@
 
 import { AxiosError } from 'axios';
 import { FormatedTableData, SearchResponse } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
 import Loader from '../../components/Loader/Loader';
@@ -42,6 +42,8 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [countServices, setCountServices] = useState<number>(0);
   const [countAssets, setCountAssets] = useState<number>(0);
 
+  const isMounted = useRef<boolean>(false);
+
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
@@ -60,7 +62,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         if (hits.length > 0) {
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
-          setCountAssets(total);
+          if (isMounted.current) {
+            setCountAssets(total);
+          }
           setIsLoading(false);
         } else {
           setData([]);
@@ -124,6 +128,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   }, [currentPage, filter]);
 
   useEffect(() => {
+    isMounted.current = true;
     getAllServices()
       .then((res) => setCountServices(res.length))
       .catch(() => setCountServices(0));
