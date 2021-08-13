@@ -48,7 +48,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     return tab === currentTab ? 'active' : '';
   };
 
-  const fetchTableData = () => {
+  const fetchTableData = (setAssetCount = false) => {
     setIsLoading(true);
     searchData(
       '',
@@ -62,7 +62,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         if (hits.length > 0) {
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
-          if (isMounted.current) {
+          if (setAssetCount) {
             setCountAssets(total);
           }
           setIsLoading(false);
@@ -124,7 +124,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
-    fetchTableData();
+    fetchTableData(!isMounted.current);
   }, [currentPage, filter]);
 
   useEffect(() => {
