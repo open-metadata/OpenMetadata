@@ -5,14 +5,12 @@ description: This guide will help install Athena connector and run manually
 # Athena
 
 {% hint style="info" %}
-
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
 {% endhint %}
 
-
-### Install from PyPI or Source
+## Install from PyPI or Source
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -20,6 +18,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[athena]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
@@ -31,5 +30,4 @@ pip install '.[athena]'
 ```
 {% endtab %}
 {% endtabs %}
-
 

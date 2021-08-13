@@ -22,6 +22,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[bigquery]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata

@@ -22,6 +22,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[snowflake-usage]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
@@ -33,7 +34,6 @@ pip install '.[snowflake-usage]'
 ```
 {% endtab %}
 {% endtabs %}
-
 
 ## Run Manually
 

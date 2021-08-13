@@ -22,6 +22,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[postgres]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
@@ -33,8 +34,6 @@ pip install '.[postgres]'
 ```
 {% endtab %}
 {% endtabs %}
-
-
 
 ### Run Manually
 
@@ -71,12 +70,17 @@ metadata ingest -c ./pipelines/postgres.json
 5. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
+
 Below is the configuration to publish postgres data into openmetadata
 
-Add Optional ```pii-tags``` processor 
-and ```metadata-rest-tables``` sink along with ```metadata-server``` config
+Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="postgres.json" %}
+```
+
+```
+{% endcode %}
+
 ```javascript
 {
   "source": {
@@ -114,3 +118,4 @@ and ```metadata-rest-tables``` sink along with ```metadata-server``` config
   }
 }
 ```
+

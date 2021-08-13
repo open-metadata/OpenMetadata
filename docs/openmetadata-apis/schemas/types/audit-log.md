@@ -2,34 +2,36 @@
 
 This schema defines Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.
 
-<b id="httpsopen-metadata.orgschematypeauditlog.json">&#36;id: https://open-metadata.org/schema/type/auditLog.json</b>
+**$id:** [**https://open-metadata.org/schema/type/auditLog.json**](https://open-metadata.org/schema/type/auditLog.json)
 
 Type: `object`
 
 ## Properties
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/method">method</b> `required`
-	 - HTTP Method used in a call.
-	 - Type: `string`
-	 - The value is restricted to the following: 
-		 1. _"POST"_
-		 2. _"PUT"_
-		 3. _"PATCH"_
-		 4. _"DELETE"_
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/responseCode">responseCode</b> `required`
-	 - HTTP response code for the api requested.
-	 - Type: `integer`
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/path">path</b> `required`
-	 - Requested API Path.
-	 - Type: `string`
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/userName">userName</b> `required`
-	 - Name of the user who requested for the API.
-	 - Type: `string`
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/dateTime">dateTime</b>
-	 - Date which the api call is made.
-	 - &#36;ref: [basic.json#/definitions/dateTime](#basic.jsondefinitionsdatetime)
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/entityId">entityId</b> `required`
-	 - Entity Id that was modified by the operation.
-	 - &#36;ref: [basic.json#/definitions/uuid](#basic.jsondefinitionsuuid)
- - <b id="#https://open-metadata.org/schema/type/auditLog.json/properties/entityType">entityType</b> `required`
-	 - Entity Type that modified by the operation.
-	 - Type: `string`
+
+* **method** `required`
+  * HTTP Method used in a call.
+  * Type: `string`
+  * The value is restricted to the following: 
+    1. _"POST"_
+    2. _"PUT"_
+    3. _"PATCH"_
+    4. _"DELETE"_
+* **responseCode** `required`
+  * HTTP response code for the api requested.
+  * Type: `integer`
+* **path** `required`
+  * Requested API Path.
+  * Type: `string`
+* **userName** `required`
+  * Name of the user who requested for the API.
+  * Type: `string`
+* **dateTime**
+  * Date which the api call is made.
+  * $ref: [basic.json\#/definitions/dateTime](audit-log.md#basic.jsondefinitionsdatetime)
+* **entityId** `required`
+  * Entity Id that was modified by the operation.
+  * $ref: [basic.json\#/definitions/uuid](audit-log.md#basic.jsondefinitionsuuid)
+* **entityType** `required`
+  * Entity Type that modified by the operation.
+  * Type: `string`
+

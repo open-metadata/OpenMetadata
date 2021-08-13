@@ -15,7 +15,8 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 2. Create and activate python env
 
    ```bash
-      ```
+
+   ```
 {% endhint %}
 
 ### Install from PyPI or Source
@@ -26,6 +27,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[sample-tables, elasticsearch]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata

@@ -2,51 +2,48 @@
 
 This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.
 
-<b id="httpsopen-metadata.orgschemaentitytagstagcategory.json">&#36;id: https://open-metadata.org/schema/entity/tags/tagCategory.json</b>
+**$id:** [**https://open-metadata.org/schema/entity/tags/tagCategory.json**](https://open-metadata.org/schema/entity/tags/tagCategory.json)
 
 Type: `object`
 
-This schema <u>does not</u> accept additional properties.
+This schema does not accept additional properties.
 
 ## Properties
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/name">name</b> `required`
-	 - &#36;ref: [#/definitions/tagName](#/definitions/tagName)
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/description">description</b> `required`
-	 - Description of the tag category.
-	 - Type: `string`
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/categoryType">categoryType</b> `required`
-	 - &#36;ref: [#/definitions/tagCategoryType](#/definitions/tagCategoryType)
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/href">href</b>
-	 - Link to the resource corresponding to the tag category.
-	 - &#36;ref: [../../type/basic.json#/definitions/href](#....typebasic.jsondefinitionshref)
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/usageCount">usageCount</b>
-	 - Count of how many times the tags from this tag category are used.
-	 - Type: `integer`
- - <b id="#https://open-metadata.org/schema/entity/tags/tagCategory.json/properties/children">children</b>
-	 - Tags under this category.
-	 - Type: `array`
-		 - **Items**
-		 - &#36;ref: [#/definitions/tag](#/definitions/tag)
 
+* **name** `required`
+  * $ref: [\#/definitions/tagName](tag-category.md#/definitions/tagName)
+* **description** `required`
+  * Description of the tag category.
+  * Type: `string`
+* **categoryType** `required`
+  * $ref: [\#/definitions/tagCategoryType](tag-category.md#/definitions/tagCategoryType)
+* **href**
+  * Link to the resource corresponding to the tag category.
+  * $ref: [../../type/basic.json\#/definitions/href](tag-category.md#....typebasic.jsondefinitionshref)
+* **usageCount**
+  * Count of how many times the tags from this tag category are used.
+  * Type: `integer`
+* **children**
+  * Tags under this category.
+  * Type: `array`
+    * **Items**
+    * $ref: [\#/definitions/tag](tag-category.md#/definitions/tag)
 
 ## Types definitions in this schema
+
 **tagName**
 
- - Name of the tag.
- - Type: `string`
- - Length: between 2 and 25
-
+* Name of the tag.
+* Type: `string`
+* Length: between 2 and 25
 
 **tagCategoryType**
 
- - Type of tag category.
- - Type: `string`
- - The value is restricted to the following: 
-	 1. _"Descriptive"_
-	 2. _"Classification"_
-
+* Type of tag category.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Descriptive"_
+  2. _"Classification"_
 
 **tag**
-
-
 

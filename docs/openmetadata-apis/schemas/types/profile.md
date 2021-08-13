@@ -2,41 +2,41 @@
 
 This schema defines the type for profile of a user, team, or an organization.
 
-<b id="httpsopen-metadata.orgschematypeprofile.json">&#36;id: https://open-metadata.org/schema/type/profile.json</b>
+**$id:** [**https://open-metadata.org/schema/type/profile.json**](https://open-metadata.org/schema/type/profile.json)
 
 Type: `object`
 
 ## Properties
- - <b id="#https://open-metadata.org/schema/type/profile.json/properties/images">images</b>
-	 - &#36;ref: [#/definitions/imageList](#/definitions/imageList)
 
+* **images**
+  * $ref: [\#/definitions/imageList](profile.md#/definitions/imageList)
 
 ## Types definitions in this schema
+
 **imageList**
 
- - Links to a list of images of varying resolutions/sizes.
- - Type: `object`
- - **Properties**
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image">image</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image24">image24</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image32">image32</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image48">image48</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image72">image72</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image192">image192</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-	 - <b id="#https://open-metadata.org/schema/type/profile.json/definitions/imageList/properties/image512">image512</b>
-		 - Type: `string`
-		 - String format must be a "uri"
-
+* Links to a list of images of varying resolutions/sizes.
+* Type: `object`
+* **Properties**
+  * **image**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image24**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image32**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image48**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image72**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image192**
+    * Type: `string`
+    * String format must be a "uri"
+  * **image512**
+    * Type: `string`
+    * String format must be a "uri"
 

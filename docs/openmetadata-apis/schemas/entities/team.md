@@ -2,43 +2,43 @@
 
 This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.
 
-<b id="httpsopen-metadata.orgschemaentityteamsteam.json">&#36;id: https://open-metadata.org/schema/entity/teams/team.json</b>
+**$id:** [**https://open-metadata.org/schema/entity/teams/team.json**](https://open-metadata.org/schema/entity/teams/team.json)
 
 Type: `object`
 
 ## Properties
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/id">id</b> `required`
-	 - &#36;ref: [../../type/basic.json#/definitions/uuid](#....typebasic.jsondefinitionsuuid)
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/name">name</b> `required`
-	 - &#36;ref: [#/definitions/teamName](#/definitions/teamName)
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/displayName">displayName</b>
-	 - Name used for display purposes. Example 'Data Science team'.
-	 - Type: `string`
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/description">description</b>
-	 - Description of the team.
-	 - Type: `string`
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/href">href</b> `required`
-	 - Link to the resource corresponding to this entity.
-	 - &#36;ref: [../../type/basic.json#/definitions/href](#....typebasic.jsondefinitionshref)
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/profile">profile</b>
-	 - Team profile information.
-	 - &#36;ref: [../../type/profile.json](#....typeprofile.json)
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/deleted">deleted</b>
-	 - When true the team has been deleted.
-	 - Type: `boolean`
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/users">users</b>
-	 - Users that are part of the team.
-	 - &#36;ref: [../../type/entityReference.json#/definitions/entityReferenceList](#....typeentityreference.jsondefinitionsentityreferencelist)
- - <b id="#https://open-metadata.org/schema/entity/teams/team.json/properties/owns">owns</b>
-	 - List of entities owned by the team.
-	 - &#36;ref: [../../type/entityReference.json#/definitions/entityReferenceList](#....typeentityreference.jsondefinitionsentityreferencelist)
 
+* **id** `required`
+  * $ref: [../../type/basic.json\#/definitions/uuid](team.md#....typebasic.jsondefinitionsuuid)
+* **name** `required`
+  * $ref: [\#/definitions/teamName](team.md#/definitions/teamName)
+* **displayName**
+  * Name used for display purposes. Example 'Data Science team'.
+  * Type: `string`
+* **description**
+  * Description of the team.
+  * Type: `string`
+* **href** `required`
+  * Link to the resource corresponding to this entity.
+  * $ref: [../../type/basic.json\#/definitions/href](team.md#....typebasic.jsondefinitionshref)
+* **profile**
+  * Team profile information.
+  * $ref: [../../type/profile.json](team.md#....typeprofile.json)
+* **deleted**
+  * When true the team has been deleted.
+  * Type: `boolean`
+* **users**
+  * Users that are part of the team.
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](team.md#....typeentityreference.jsondefinitionsentityreferencelist)
+* **owns**
+  * List of entities owned by the team.
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](team.md#....typeentityreference.jsondefinitionsentityreferencelist)
 
 ## Types definitions in this schema
+
 **teamName**
 
- - A unique name of the team typically the team ID from an identity provider. Example - group Id from ldap.
- - Type: `string`
- - Length: between 1 and 64
-
+* A unique name of the team typically the team ID from an identity provider. Example - group Id from ldap.
+* Type: `string`
+* Length: between 1 and 64
 

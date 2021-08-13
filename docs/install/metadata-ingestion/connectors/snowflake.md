@@ -12,7 +12,6 @@ description: This guide will help install Snowflake connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-
 {% endhint %}
 
 ## Install from PyPI or Source
@@ -23,6 +22,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[snowflake]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
@@ -34,7 +34,6 @@ pip install '.[snowflake]'
 ```
 {% endtab %}
 {% endtabs %}
-
 
 ## Run Manually
 

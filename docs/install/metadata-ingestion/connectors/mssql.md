@@ -14,7 +14,6 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-
 ### Install from PyPI or Source
 
 {% tabs %}
@@ -23,6 +22,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[mssql]'
 ```
 {% endtab %}
+
 {% tab title="Build from source " %}
 ```bash
 # checkout OpenMetadata
@@ -72,10 +72,10 @@ metadata ingest -c ./pipelines/mssql.json
 6. **database** - \_\*\*\_Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
+
 Below is the configuration to publish mssql data into openmetadata
 
-Add Optional ```pii-tags``` processor 
-and ```metadata-rest-tables``` sink along with ```metadata-server``` config
+Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="mssql.json" %}
 ```javascript
