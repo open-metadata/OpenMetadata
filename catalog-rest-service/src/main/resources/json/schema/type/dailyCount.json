@@ -15,5 +15,6 @@
       "$ref": "basic.json#/definitions/date"
     }
   },
-  "required": ["count", "date"]
+  "required": ["count", "date"],
+  "additionalProperties": false
 }
