@@ -1,0 +1,43 @@
+{
+  "source": {
+    "type": "sample-usage",
+    "config": {
+      "database": "warehouse",
+      "service_name": "gcp_bigquery",
+      "service_type": "BigQuery",
+      "sample_schema_folder": "./examples/shopify_schemas/"
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage-stage",
+    "config": {
+      "filename": "/tmp/sample_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/sample_usage"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}

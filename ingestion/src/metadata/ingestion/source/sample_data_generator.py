@@ -17,6 +17,8 @@ import csv
 import json
 import uuid
 import os
+from datetime import datetime
+
 import pandas as pd
 import random
 import string
@@ -286,7 +288,6 @@ class SampleTableSource(Source):
         pass
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-
         db = DatabaseEntity(id=uuid.uuid4(),
                             name=self.database['name'],
                             description=self.database['description'],
@@ -302,6 +303,7 @@ class SampleTableSource(Source):
 
     def get_status(self):
         return self.status
+
 
 class SampleUsageSource(Source):
 
@@ -327,7 +329,11 @@ class SampleUsageSource(Source):
         pass
 
     def next_record(self) -> Iterable[TableQuery]:
-        
+        for row in self.query_logs:
+            tq = TableQuery(row['query'], '', 100, 0, 0, '',
+                            '', datetime.today().strftime('%Y-%m-%d %H:%M:%S'), 100, 'shopify',
+                            False, row['query'])
+            yield tq
 
     def close(self):
         pass
