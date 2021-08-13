@@ -405,6 +405,13 @@
   overflow-y: auto;
   overflow-x: hidden;
 }
+.side-panel .activeCategory {
+  margin-right: -15px;
+  margin-left: -15px;
+  padding: 0px 15px;
+  border-right: 3px solid rgba(249, 130, 108);
+  font-weight: 500;
+}
 
 .search-wrapper + .page-container .side-panel {
   top: 102px;

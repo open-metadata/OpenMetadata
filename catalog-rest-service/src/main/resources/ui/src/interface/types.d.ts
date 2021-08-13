@@ -168,8 +168,8 @@ declare module 'Models' {
   };
 
   export type UserTeam = {
-    description?: string;
-    href?: string;
+    description: string;
+    href: string;
     id: string;
     name: string;
     type: string;
@@ -178,11 +178,13 @@ declare module 'Models' {
   export type User = {
     displayName: string;
     isBot: boolean;
+    isAdmin: boolean;
     id: string;
-    name?: string;
+    name: string;
     profile: UserProfile;
     teams: Array<UserTeam>;
     timezone: string;
+    href: string;
   };
 
   export type FormatedTableData = {
@@ -281,7 +283,15 @@ declare module 'Models' {
       aggregations: Record<string, Sterm>;
     };
   };
-
+  export type Team = {
+    id: string;
+    name: string;
+    displayName: string;
+    description: string;
+    href: string;
+    users: Array<UserTeam>;
+    owns: Array<UserTeam>;
+  };
   export type ServiceCollection = {
     name: string;
     value: string;

@@ -161,7 +161,7 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3">
+        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Tag Categories</h6>
           <Button
             className="tw-h-7 tw-px-2"

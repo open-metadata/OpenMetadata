@@ -131,7 +131,9 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
             onEditorStateChange={onEditorStateChange}
           />
         </div>
-        <p className="tw-pt-2">Using headings in markdown is not allowed</p>
+        <p className="tw-pt-2 tw-float-right tw-text-grey-muted">
+          Using headings in markdown is not allowed
+        </p>
       </>
     );
   }
