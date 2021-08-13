@@ -66,9 +66,9 @@ type ErrorMsg = {
   selectService: boolean;
   name: boolean;
   url: boolean;
-  port: boolean;
-  userName: boolean;
-  password: boolean;
+  // port: boolean;
+  // userName: boolean;
+  // password: boolean;
   driverClass: boolean;
 };
 
@@ -100,12 +100,16 @@ const generateName = (data: Array<ServiceDataObj>) => {
 const seprateUrl = (url?: string) => {
   if (url) {
     const urlString = url?.split('://')[1] || url;
-    const [idpwd, urlport] = urlString.split('@');
-    const [userName, password] = idpwd.split(':');
-    const [path, portwarehouse] = urlport.split(':');
-    const [port, database] = portwarehouse.split('/');
+    // const [idpwd, urlport] = urlString.split('@');
+    // const [userName, password] = idpwd.split(':');
+    // const [path, portwarehouse] = urlport.split(':');
+    // const [port, database] = portwarehouse.split('/');
 
-    return { userName, password, path, port, database };
+    const database = urlString?.split('/')[1];
+    const connectionUrl = url.replace(`/${database}`, '');
+    // return { userName, password, path, port, database };
+
+    return { connectionUrl, database };
   }
 
   return {};
@@ -146,18 +150,26 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   serviceList,
 }: Props) => {
   const [editData] = useState({ edit: !!data, id: data?.id });
-  const [serviceType] = useState(['MySQL', 'Redshift', 'BigQuery']);
+  const [serviceType] = useState([
+    'BigQuery',
+    'MySQL',
+    'Redshift',
+    'Snowflake',
+    'Postgres',
+    'MSSQL',
+    'Hive',
+  ]);
   const [parseUrl] = useState(seprateUrl(data?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
   const [selectService, setSelectService] = useState(data?.serviceType || '');
   const [name, setName] = useState(data?.name || '');
-  const [userName, setUserName] = useState(parseUrl?.userName || '');
-  const [password, setPassword] = useState(parseUrl?.password || '');
+  // const [userName, setUserName] = useState(parseUrl?.userName || '');
+  // const [password, setPassword] = useState(parseUrl?.password || '');
   const [description, setDescription] = useState(data?.description || '');
   // const [tags, setTags] = useState('');
-  const [url, setUrl] = useState(parseUrl?.path || '');
-  const [port, setPort] = useState(parseUrl?.port || '');
+  const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
+  // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
   const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
   const [frequency, setFrequency] = useState(
@@ -167,9 +179,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     selectService: false,
     name: false,
     url: false,
-    port: false,
-    userName: false,
-    password: false,
+    // port: false,
+    // userName: false,
+    // password: false,
     driverClass: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
@@ -209,20 +221,20 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
         break;
 
-      case 'port':
-        setPort(value);
+      // case 'port':
+      //   setPort(value);
 
-        break;
+      //   break;
 
-      case 'userName':
-        setUserName(value);
+      // case 'userName':
+      //   setUserName(value);
 
-        break;
+      //   break;
 
-      case 'password':
-        setPassword(value);
+      // case 'password':
+      //   setPassword(value);
 
-        break;
+      //   break;
 
       case 'driverClass':
         setDriverClass(value);
@@ -237,17 +249,16 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const onSaveHelper = (value: ErrorMsg) => {
-    const { selectService, name, url, port, userName, password, driverClass } =
-      value;
+    const { selectService, name, url, driverClass } = value;
 
     return (
       !sameNameError &&
       !selectService &&
       !name &&
       !url &&
-      !port &&
-      !userName &&
-      !password &&
+      // !port &&
+      // !userName &&
+      // !password &&
       !driverClass
     );
   };
@@ -257,9 +268,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       selectService: !selectService,
       name: !name,
       url: !url,
-      port: !port,
-      userName: !userName,
-      password: !password,
+      // port: !port,
+      // userName: !userName,
+      // password: !password,
       driverClass: !driverClass,
     };
     setShowErrorMsg(setMsg);
@@ -275,9 +286,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             }
           : undefined,
         jdbc: {
-          connectionUrl: `${userName}:${password}@${url}:${port}${
-            database && '/' + database
-          }`,
+          connectionUrl: `${url}${database && '/' + database}`,
           driverClass: driverClass,
         },
         name: name,
@@ -323,7 +332,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   onChange={handleValidation}>
                   <option value="">Select Service</option>
                   {serviceType.map((service, index) => (
-                    <option key={index} value={service.toUpperCase()}>
+                    <option key={index} value={service}>
                       {service}
                     </option>
                   ))}
@@ -366,7 +375,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {sameNameError && errorMsg('Service name already exist.')}
             </div>
             <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
-              <div className="tw-col-span-2">
+              <div className="tw-col-span-3">
                 <label className="tw-block tw-form-label" htmlFor="url">
                   {requiredField('Connection Url:')}
                 </label>
@@ -380,7 +389,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 />
                 {showErrorMsg.url && errorMsg('Connection url is required')}
               </div>
-              <div>
+
+              {/* didn't removed below code as it will be need in future relase */}
+
+              {/* <div>
                 <label className="tw-block tw-form-label" htmlFor="port">
                   {requiredField('Connection Port:')}
                 </label>
@@ -393,9 +405,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   onChange={handleValidation}
                 />
                 {showErrorMsg.port && errorMsg('Port is required')}
-              </div>
+              </div> */}
             </div>
-            <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
+            {/* <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
               <div>
                 <label className="tw-block tw-form-label" htmlFor="userName">
                   {requiredField('Username:')}
@@ -424,7 +436,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 />
                 {showErrorMsg.password && errorMsg('Password is required')}
               </div>
-            </div>
+            </div> */}
             <div className="tw-mt-4">
               <label className="tw-block tw-form-label" htmlFor="database">
                 Database:
@@ -512,7 +524,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center ">
                   <label
-                    className="tw-form-label tw-text-xs flex-auto tw-mr-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs flex-auto tw-mr-2"
                     htmlFor="frequency">
                     Day:
                   </label>
@@ -527,7 +539,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center">
                   <label
-                    className="tw-form-label tw-text-xs tw-mx-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs tw-mx-2"
                     htmlFor="frequency">
                     Hour:
                   </label>
@@ -542,7 +554,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center">
                   <label
-                    className="tw-form-label tw-text-xs tw-mx-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs tw-mx-2"
                     htmlFor="frequency">
                     Minute:
                   </label>

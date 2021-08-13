@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { isNull } from 'lodash';
 import { ServiceCollection, ServiceData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -153,6 +154,15 @@ const ServicesPage = () => {
     });
   };
 
+  const getServiceLogo = (serviceType: string): JSX.Element | null => {
+    const logo = serviceTypeLogo(serviceType);
+    if (!isNull(logo)) {
+      return <img alt="" className="tw-h-10 tw-w-10" src={logo} />;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
     //   fetch all service collection
     setIsLoading(true);
@@ -229,11 +239,14 @@ const ServicesPage = () => {
                         </button>
                       </div>
                       <div className="tw-flex tw-justify-end">
-                        <img
-                          alt=""
-                          className="tw-h-10 tw-w-10"
-                          src={serviceTypeLogo(service.serviceType)}
-                        />
+                        {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
+                          <img
+                            alt=""
+                            className="tw-h-10 tw-w-10"
+                            src={serviceTypeLogo(service.serviceType)}
+                          />
+                        )} */}
+                        {getServiceLogo(service.serviceType)}
                       </div>
                     </div>
                   </div>
