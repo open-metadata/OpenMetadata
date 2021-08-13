@@ -8,11 +8,11 @@ description: >-
 
 ## Basics
 
-1. Avoid cryptic abbreviations. Single letter variable names are fine in very short methods with few variables, otherwise make them informative.
+1. Avoid cryptic abbreviations. Single letter variable names are fine in very short methods with few variables, otherwise, make them informative.
 2. Clear code is preferable to comments. When possible make your naming so good you don't need comments. When that isn't possible comments should be thought of as mandatory, write them to be read.
 3. Logging, configuration, and public APIs are our "UI". Make them pretty, consistent, and usable.
 4. The maximum line length is 120.
-5. Don't leave TODOs in the code or FIXMEs if you can help it. Don't leave println statements in the code. TODOs should be filed as github tasks.
+5. Don't leave TODOs in the code or FIXMEs if you can help it. Don't leave println statements in the code. TODOs should be filed as GitHub tasks.
 6. User documentation should be considered a part of any user-facing feature, just like unit tests. Example REST APIs should've accompanying documentation.
 7. Tests should never rely on timing in order to pass.  
 8. Every unit test should leave no side effects, i.e., any test dependencies should be set during setup and clean during tear down.

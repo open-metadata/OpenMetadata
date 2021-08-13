@@ -22,7 +22,7 @@ cd OpenMetadata/docker/metadata
 docker-compose up
 ```
 
-Above command brings up all the necessary services
+The above command brings up all the necessary services
 
 1. MySQL
 2. ElasticSearch
@@ -133,7 +133,7 @@ cd openmetadata-1.0.0-SNAPSHOT
 
 ### Ingest Sample Data
 
-Previous steps starts the OpenMetadataServer. To start using using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide
+Previous steps start OpenMetadata server. To start using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide
 
 [Ingest Sample Data](metadata-ingestion/ingest-sample-data.md)
 
