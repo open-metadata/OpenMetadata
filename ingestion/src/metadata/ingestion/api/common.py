@@ -78,8 +78,8 @@ class IncludeFilterPattern(ConfigModel):
             raise Exception("Regex Error: {}".format(err))
 
     def is_fully_specified_include_list(self) -> bool:
-        for include_pattern in self.includes:
-            if not self.alphabet_pattern.match(include_pattern):
+        for filter_pattern in self.includes:
+            if not self.alphabet_pattern.match(filter_pattern):
                 return False
         return True
 

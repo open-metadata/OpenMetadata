@@ -66,7 +66,7 @@ class SQLConnectionConfig(ConfigModel):
     service_name: str
     service_type: str
     options: dict = {}
-    include_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
+    filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @abstractmethod
     def get_connection_url(self):
@@ -174,7 +174,7 @@ class SQLSource(Source):
         engine = create_engine(url, **sql_config.options)
         inspector = inspect(engine)
         for schema in inspector.get_schema_names():
-            if not sql_config.include_pattern.included(schema):
+            if not sql_config.filter_pattern.included(schema):
                 self.status.filtered(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
@@ -196,7 +196,7 @@ class SQLSource(Source):
 
                     dataset_name = f"{schema}.{table}"
                     self.status.scanned('{}.{}'.format(self.config.get_service_name(), dataset_name))
-                    if not sql_config.include_pattern.included(dataset_name):
+                    if not sql_config.filter_pattern.included(dataset_name):
                         self.status.filtered('{}.{}'.format(self.config.get_service_name(), dataset_name),
                                              "Table pattern not allowed")
                         continue

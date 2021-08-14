@@ -38,8 +38,7 @@ class LdapRestUsersSink(Sink):
         self.config = config
         self.metadata_config = metadata_config
         self.status = SinkStatus()
-        self.api_users = self.metadata_config.api_endpoint + "/v1/users"
-        self.headers = {'Content-type': 'application/json'}
+        self.api_users = "/users"
         self.rest = REST(metadata_config)
 
     @classmethod
