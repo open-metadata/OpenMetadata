@@ -15,6 +15,7 @@
 
 import json
 import logging
+from datetime import datetime
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import ColumnJoins, TableJoins
@@ -46,6 +47,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.tables_dict = {}
         self.table_join_dict = {}
         self.__map_tables()
+        self.today = datetime.today().strftime('%Y-%m-%d')
 
     def __map_tables(self):
         tables = self.client.list_tables('columns')
@@ -90,6 +92,11 @@ class MetadataUsageBulkSink(BulkSink):
             else:
                 logger.warning("Table does not exist, skipping usage publish {}, {}".format(table_usage.table,
                                                                                             table_usage.database))
+        try:
+            self.client.compute_percentile('table', self.today)
+            self.client.compute_percentile('database', self.today)
+        except APIError:
+            logger.error("Failed to publish compute.percentile")
 
     def __get_table_joins(self, table_usage):
         table_joins: TableJoins = TableJoins(columnJoins=[], startDate=table_usage.date)
