@@ -9,10 +9,10 @@
           "text": "Used in critical metrics and dashboards to drive business and product decisions"
         },
         {
-          "text": "Used in critical compliance reporting to regulators, govt entities and third party"
+          "text": "Used in critical compliance reporting to regulators, govt entities, and third party"
         },
         {
-          "text": "Used in brand or revenue impacting online user facing experiences (search results, advertisement, promotions, experimentation)"
+          "text": "Used in brand or revenue impacting online user-facing experiences (search results, advertisement, promotions, experimentation)"
         },
         {
           "text": "Other high impact use, such as ML models, fraud detection, and brand affecting use cases"
@@ -31,13 +31,13 @@
           "text": "Used in important business metrics, product metrics, and dashboards to drive internal decisions"
         },
         {
-          "text": "Used in important compliance reporting to major regulators, govt entities and third party"
+          "text": "Used in important compliance reporting to major regulators, govt entities, and third party"
         },
         {
-          "text": "Used for less critical online user facing experiences (user activitity, user behavior)"
+          "text": "Used for less critical online user-facing experiences (user activity, user behavior)"
         },
         {
-          "text": "Source used to derive other critical Tier-1 datasets"
+          "text": "Source used to derive other critical Tier-2 datasets"
         }
       ]
     },
@@ -53,14 +53,14 @@
           "text": "Used to track operational metrics of internal systems"
         },
         {
-          "text": "Source used to derive other critical Tier-1 datasets"
+          "text": "Source used to derive other critical Tier-3 datasets"
         }
       ]
     },
     {
       "title": "Tier 4",
       "id": "Tier.Tier4",
-      "description": "Team level dataset that are typically non-business and general internal system",
+      "description": "Team level datasets that are typically non-business and general internal system",
       "contents": [
         {
           "text": "Used in product metrics, and dashboards to drive team decisions"
@@ -69,7 +69,7 @@
           "text": "Used to track operational metrics of internal systems owned by the team"
         },
         {
-          "text": "Source used to derive other critical Tier-1 datasets"
+          "text": "Source used to derive other critical Tier-4 datasets"
         }
       ]
     },

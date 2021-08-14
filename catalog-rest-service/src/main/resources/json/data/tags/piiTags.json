@@ -1,7 +1,7 @@
 {
   "name": "PII",
   "categoryType": "Classification",
-  "description": "Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.",
+  "description": "Personally Identifiable Information information that, when used alone or with other relevant data, can identify an individual.\n\n\n\n**_Note to Legal_**\n\n_This tag category is provided as a starting point. Please review and update the tags based on your company policy. Also, add a reference to your PII policy document in this description._",
   "children": [
     {
       "name": "None",

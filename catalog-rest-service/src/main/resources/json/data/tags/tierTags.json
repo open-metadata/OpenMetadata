@@ -1,27 +1,27 @@
 {
   "name": "Tier",
   "categoryType": "Descriptive",
-  "description": "Tags related to tiering of the data. Tiers capture the business importance of data.",
+  "description": "Tags related to tiering of the data. Tiers capture the business importance of data. When a data asset is tagged with `Tier` tag, all the upstream data assets used for producing it will also be labeled with the same tag. This will help upstream data asset owners to understand the critical purposes their data is being used.",
   "children": [
     {
       "name": "Tier1",
-      "description": "todo"
+      "description": "**Critical Source of Truth business data assets of an organization**\n\n- Used in critical metrics and dashboards to drive business and product decisions\n\n- Used in critical compliance reporting to regulators, govt entities, and third party\n\n- Used in brand or revenue impacting online user-facing experiences (search results, advertisement, promotions, and experimentation)\n\n- Other high impact use, such as ML models and fraud detection\n\n- Source used to derive other critical Tier-1 datasets"
     },
     {
       "name": "Tier2",
-      "description": "todo"
+      "description": "**Important business datasets for your company (not as critical as Tier 1)**\n\n- Used in important business metrics, product metrics, and dashboards to drive internal decisions\n\n- Used in important compliance reporting to major regulators, govt entities, and third party\n\n- Used for less critical online user-facing experiences (user activity, user behavior)\n\n- Source used to derive other critical Tier-2 datasets"
     },
     {
       "name": "Tier3",
-      "description": "todo"
+      "description": "**Department/group level datasets that are typically non-business and general internal system**\n\n- Used in product metrics, and dashboards to drive product decisions\n\n- Used to track operational metrics of internal systems\n\n- Source used to derive other critical Tier-3 datasets"
     },
     {
       "name": "Tier4",
-      "description": "todo"
+      "description": "**Team level datasets that are typically non-business and general internal system**\n\n- Used in product metrics, and dashboards to drive team decisions\n\n- Used to track operational metrics of internal systems owned by the team\n\n- Source used to derive other critical Tier-4 datasets"
     },
     {
       "name": "Tier5",
-      "description": "todo"
+      "description": "**Private/Unused data assets - No impact beyond individual users**\n\n- Data assets without any ownership with no usage in the last 60 days\n\n- Data assets owned by individuals without team ownership\n\n"
     }
   ]
 }
