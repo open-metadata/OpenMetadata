@@ -95,8 +95,8 @@ class PostgresSource(Source):
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
         self.service = get_service_or_create(config, metadata_config)
-        self.filter_pattern = IncludeFilterPattern
         self.pattern = config
+        self.filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
