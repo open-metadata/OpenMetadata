@@ -42,7 +42,6 @@ class MetadataRestUsersSink(Sink):
         self.api_team_post = "/teams"
         self.api_team_get = "/teams"
         self.api_users = "/users"
-        self.headers = {'Content-type': 'application/json'}
         self.org_entities = {}
         self.role_entities = {}
         self.team_entities = {}

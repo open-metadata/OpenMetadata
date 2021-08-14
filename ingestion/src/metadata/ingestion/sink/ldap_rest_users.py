@@ -55,7 +55,7 @@ class LdapRestUsersSink(Sink):
         metadata_user = MetadataUser(name=record.github_username[0],
                                      display_name=record.name[0],
                                      email=record.email[0])
-        self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
+        self.rest.post(self.api_users, data=metadata_user.to_json())
         self.status.records_written(record.name[0])
 
     def get_status(self):
