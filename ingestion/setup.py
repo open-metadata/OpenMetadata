@@ -36,6 +36,11 @@ def get_long_description():
     return description
 
 
+scheduler_requirements = {
+    "apns@git+git://github.com/djacobs/PyAPNs.git#egg=apns",
+    "simplescheduler@git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler"
+}
+
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
@@ -82,6 +87,7 @@ plugins: Dict[str, Set[str]] = {
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redshift": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "scheduler": scheduler_requirements,
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-tables": {"faker~=8.1.1", }
@@ -102,8 +108,7 @@ setup(
     package_dir={"": "src"},
     zip_safe=False,
     dependency_links=[
-        "apns@git+git://github.com/djacobs/PyAPNs.git#egg=apns",
-        "simplescheduler@git+https://github.com/StreamlineData/sdscheduler.git#egg=simplescheduler"
+
     ],
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
