@@ -53,7 +53,7 @@ class SampleUserMetadataGenerator:
         schema['full_name'] = lambda: None
         schema['github_username'] = lambda: None
         schema['team_name'] = lambda: random.choice(
-            ['Data_Infra', 'Infra', 'Payments', 'Legal', 'Dev_Platform', 'Trust', 'Marketplace'])
+            ['Data Platform', 'Cloud Infra', 'Payments', 'Legal', 'Customer Support', 'Finance', 'Marketplace'])
         schema['employee_type'] = lambda: None
         schema['manager_email'] = lambda: fake.email()
         schema['slack_id'] = lambda: None

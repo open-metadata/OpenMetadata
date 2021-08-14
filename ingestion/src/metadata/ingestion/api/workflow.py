@@ -54,7 +54,9 @@ class Workflow:
     ctx: WorkflowContext
     source: Source
     processor: Processor
+    stage: Stage
     sink: Sink
+    bulk_sink: BulkSink
     report = {}
 
     def __init__(self, config: WorkflowConfig):
@@ -112,7 +114,7 @@ class Workflow:
             return MyClass
 
     @classmethod
-    def create(cls, config_dict: dict) -> "Pipeline":
+    def create(cls, config_dict: dict) -> "Workflow":
         config = WorkflowConfig.parse_obj(config_dict)
         return cls(config)
 

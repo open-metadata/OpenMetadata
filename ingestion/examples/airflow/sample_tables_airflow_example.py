@@ -1,12 +1,18 @@
-# Airflow
+#  Licensed to the Apache Software Foundation (ASF) under one or more
+#  contributor license agreements. See the NOTICE file distributed with
+#  this work for additional information regarding copyright ownership.
+#  The ASF licenses this file to You under the Apache License, Version 2.0
+#  (the "License"); you may not use this file except in compliance with
+#  the License. You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 
-We highly recommend using Airflow or similar schedulers to run Metadata Connectors.
-Below is the sample code example you can refer to integrate with Airflow
-
-
-## Airflow Example for Hive
-
-```py
 from datetime import timedelta
 from airflow import DAG
 
@@ -42,27 +48,10 @@ with DAG(
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     schedule_interval=timedelta(days=1),
-    start_date=days_ago(30),
+    start_date=days_ago(1),
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(
         task_id="ingest_using_recipe",
         python_callable=metadata_ingestion_workflow(),
     )
-```
-
-we are using a python method like below
-
-```py
-def metadata_ingestion_workflow():
-    config = load_config_file("examples/workflows/hive.json")
-    workflow = Workflow.create(config)
-    workflow.run()
-    workflow.raise_from_status()
-    workflow.print_status()
-    workflow.stop()
-```
-
-Create a Worfklow instance and pass a hive configuration which will read metadata from Hive
-and ingest into OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Metadata Connectors](
-

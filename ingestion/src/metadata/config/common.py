@@ -12,11 +12,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
-import re
+import pathlib
 from abc import ABC, abstractmethod
-from typing import IO, Any, List, Optional
+from typing import IO, Any, Optional
 from pydantic import BaseModel
+from expandvars import expandvars
+import io
+import json
 
 
 class ConfigModel(BaseModel):
@@ -26,34 +28,14 @@ class ConfigModel(BaseModel):
 
 class DynamicTypedConfig(ConfigModel):
     type: str
-    # This config type is declared Optional[Any] here. The eventual parser for the
-    # specified type is responsible for further validation.
     config: Optional[Any]
 
 
-class MetaError(Exception):
-    """A base class for all meta exceptions"""
-
-
-class WorkflowExecutionError(MetaError):
+class WorkflowExecutionError(Exception):
     """An error occurred when executing the workflow"""
 
 
-class OperationalError(WorkflowExecutionError):
-    """An error occurred because of client-provided metadata"""
-
-    message: str
-    info: dict
-
-    def __init__(self, message: str, info: dict = None):
-        self.message = message
-        if info:
-            self.info = info
-        else:
-            self.info = {}
-
-
-class ConfigurationError(MetaError):
+class ConfigurationError(Exception):
     """A configuration error has happened"""
 
 
@@ -63,23 +45,23 @@ class ConfigurationMechanism(ABC):
         pass
 
 
-class AllowDenyPattern(ConfigModel):
-    """ A class to store allow deny regexes"""
+def load_config_file(config_file: pathlib.Path) -> dict:
+    if not config_file.is_file():
+        raise ConfigurationError(f"Cannot open config file {config_file}")
 
-    allow: List[str] = [".*"]
-    deny: List[str] = []
+    if config_file.suffix not in [".json"]:
+        raise ConfigurationError(
+            "Only json are supported. Cannot process file type {}".format(
+                config_file.suffix
+            )
+        )
 
-    @classmethod
-    def allow_all(cls):
-        return AllowDenyPattern()
+    with config_file.open() as raw_config_file:
+        raw_config = raw_config_file.read()
 
-    def allowed(self, string: str) -> bool:
-        for deny_pattern in self.deny:
-            if re.match(deny_pattern, string):
-                return False
+    expanded_config_file = expandvars(raw_config, nounset=True)
+    config_fp = io.StringIO(expanded_config_file)
+    config = json.load(config_fp)
 
-        for allow_pattern in self.allow:
-            if re.match(allow_pattern, string):
-                return True
+    return config
 
-        return False
