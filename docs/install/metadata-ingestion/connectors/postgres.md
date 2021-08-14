@@ -4,8 +4,6 @@ description: This guide will help install Postgres connector and run manually
 
 # Postgres
 
-## Postgres
-
 {% hint style="info" %}
 **Prerequisites**
 
@@ -20,6 +18,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[postgres]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 
@@ -55,8 +54,8 @@ metadata ingest -c ./pipelines/postgres.json
       "database": "pagila",
       "service_name": "local_postgres",
       "service_type": "POSTGRES",
-      "include_pattern": {
-        "deny": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
+      "filter_pattern": {
+        "excludes": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
     }
   },
  ...
@@ -66,21 +65,16 @@ metadata ingest -c ./pipelines/postgres.json
 1. **username** - pass the Postgres username.
 2. **password** - password for the Postgres username.
 3. **service\_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **table\_pattern** - It contains allow, deny options to choose which pattern of datasets you want to ingest into OpenMetadata.
+4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
 
-Below is the configuration to publish postgres data into openmetadata
+Below is the configuration to publish Postgres data into openmetadata
 
-Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="postgres.json" %}
-```text
-
-```
-{% endcode %}
-
 ```javascript
 {
   "source": {
@@ -118,4 +112,5 @@ Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `me
   }
 }
 ```
+{% endcode %}
 

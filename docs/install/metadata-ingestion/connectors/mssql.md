@@ -4,8 +4,6 @@ description: This guide will help install MsSQL connector and run manually
 
 # MSSQL
 
-## MSSQL
-
 {% hint style="info" %}
 **Prerequisites**
 
@@ -20,6 +18,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[mssql]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 
@@ -41,7 +40,7 @@ pip install '.[mssql]'
 metadata ingest -c ./pipelines/mssql.json
 ```
 
-## Configuration
+### Configuration
 
 {% code title="mssql.json" %}
 ```javascript
@@ -55,8 +54,8 @@ metadata ingest -c ./pipelines/mssql.json
       "database":"catalog_test",
       "username": "sa",
       "password": "test!Password",
-      "include_pattern": {
-        "allow": ["catalog_test.*"]
+      "filter_pattern": {
+        "includes": ["catalog_test.*"]
       }
     }
   },
@@ -68,14 +67,14 @@ metadata ingest -c ./pipelines/mssql.json
 2. **password** - password for the mssql username.
 3. **service\_name** - Service Name for this mssql cluster. If you added mssql cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **host\_port** - Hostname and Port number where the service is being initialised.
-5. **table\_pattern** - It contains allow, deny options to choose which pattern of datasets you want to ingest into OpenMetadata.
-6. **database** - \_\*\*\_Database name from where data is to be fetched from.
+5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+6. **database** - Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
 
 Below is the configuration to publish mssql data into openmetadata
 
-Add Optional `pii-tags` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="mssql.json" %}
 ```javascript

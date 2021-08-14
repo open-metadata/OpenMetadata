@@ -4,8 +4,6 @@ description: This guide will help install BigQuery connector and run manually
 
 # BigQuery
 
-## BigQuery
-
 {% hint style="info" %}
 **Prerequisites**
 
@@ -20,6 +18,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[bigquery]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 
@@ -38,9 +37,99 @@ pip install '.[bigquery]'
 ## Run Manually
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="$PWD/pipelines/creds/bigquery-cred.json"
+export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
 metadata ingest -c ./pipelines/bigquery.json
 ```
 
-## Configuration
+### Configuration
+
+{% code title="bigquery-creds.json \(boilerplate\)" %}
+```javascript
+{
+  "type": "service_account",
+  "project_id": "project_id",
+  "private_key_id": "private_key_id",
+  "private_key": "",
+  "client_email": "gcpuser@project_id.iam.gserviceaccount.com",
+  "client_id": "",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": ""
+}
+
+```
+{% endcode %}
+
+{% code title="bigquery.json" %}
+```javascript
+{
+  "source": {
+    "type": "bigquery",
+    "config": {
+      "project_id": "project-id",
+      "username": "username",
+      "host_port": "https://bigquery.googleapis.com",
+      "service_name": "gcp_bigquery",
+      "service_type": "BigQuery"
+    }
+  },
+```
+{% endcode %}
+
+1. **username** - pass the Bigquery username.
+2. **password** - password for the Bigquery username.
+3. **service\_name** - Service Name for this Bigquery cluster. If you added the Bigquery cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
+5. **database -** Database name from where data is to be fetched.
+
+### Publish to OpenMetadata
+
+Below is the configuration to publish Bigquery data into openmetadata
+
+Add Optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+
+{% code title="bigquery.json" %}
+```javascript
+{
+  "source": {
+    "type": "bigquery",
+    "config": {
+      "project_id": "project-id",
+      "username": "username",
+      "host_port": "https://bigquery.googleapis.com",
+      "service_name": "gcp_bigquery",
+      "service_type": "BigQuery"
+    }
+  },
+  "processor": {
+    "type": "pii",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest-tables",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
+
+```
+{% endcode %}
 

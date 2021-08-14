@@ -1,12 +1,10 @@
 # Airflow
 
-We highly recommend using Airflow or similar schedulers to run Metadata Connectors.
-Below is the sample code example you can refer to integrate with Airflow
-
+We highly recommend using Airflow or similar schedulers to run Metadata Connectors. Below is the sample code example you can refer to integrate with Airflow
 
 ## Airflow Example for Hive
 
-```py
+```python
 from datetime import timedelta
 from airflow import DAG
 
@@ -53,7 +51,7 @@ with DAG(
 
 we are using a python method like below
 
-```py
+```python
 def metadata_ingestion_workflow():
     config = load_config_file("examples/workflows/hive.json")
     workflow = Workflow.create(config)
@@ -63,6 +61,5 @@ def metadata_ingestion_workflow():
     workflow.stop()
 ```
 
-Create a Worfklow instance and pass a hive configuration which will read metadata from Hive
-and ingest into OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Metadata Connectors](
+Create a Worfklow instance and pass a hive configuration which will read metadata from Hive and ingest into OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to \[Metadata Connectors\]\(
 
