@@ -6,7 +6,7 @@
       "password": "openmetadata_password",
       "service_name": "local_mysql",
       "service_type": "MySQL",
-      "include_pattern": {
+      "filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*"]
       }
     }

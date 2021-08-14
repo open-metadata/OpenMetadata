@@ -95,8 +95,8 @@ class PostgresSource(Source):
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
         self.service = get_service_or_create(config, metadata_config)
-        self.include_pattern = IncludeFilterPattern
         self.pattern = config
+        self.filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -144,7 +144,7 @@ class PostgresSource(Source):
                     col_type = 'BOOLEAN'
                 else:
                     col_type = None
-                if not self.pattern.include_pattern.included(f'{last_row[1]}.{last_row[2]}'):
+                if not self.pattern.filter_pattern.included(f'{last_row[1]}.{last_row[2]}'):
                     self.status.filtered(f'{last_row[1]}.{last_row[2]}', "pattern not allowed", last_row[2])
                     continue
                 if col_type is not None:

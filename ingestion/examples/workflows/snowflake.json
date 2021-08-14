@@ -9,7 +9,7 @@
       "account": "account_name",
       "service_name": "snowflake",
       "service_type": "Snowflake",
-      "include_pattern": {
+      "filter_pattern": {
         "includes": [
           "(\\w)*tpcds_sf100tcl",
           "(\\w)*tpcds_sf100tcl",

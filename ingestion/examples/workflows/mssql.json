@@ -8,7 +8,7 @@
       "database":"catalog_test",
       "username": "sa",
       "password": "test!Password",
-      "include_pattern": {
+      "filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
     }

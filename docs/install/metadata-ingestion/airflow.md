@@ -61,5 +61,6 @@ def metadata_ingestion_workflow():
     workflow.stop()
 ```
 
-Create a Worfklow instance and pass a hive configuration which will read metadata from Hive and ingest into OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to \[Metadata Connectors\]\(
+Create a Workflow instance and pass a hive configuration which will read metadata from Hive
+and ingest into OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Metadata Connectors](
 
