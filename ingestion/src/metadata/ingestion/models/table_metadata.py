@@ -179,8 +179,11 @@ class TableESDocument(BaseModel):
     column_names: List[str]
     column_descriptions: List[str]
     monthly_stats: int
+    monthly_percentile_rank: int
     weekly_stats: int
+    weekly_percentile_rank: int
     daily_stats: int
+    daily_percentile_rank: int
     tags: List[str]
     fqdn: str
     tier: Optional[str] = None
