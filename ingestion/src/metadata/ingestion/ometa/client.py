@@ -310,6 +310,10 @@ class REST(object):
         resp = self.get('/tags/{}'.format(category))
         return [Tag(**d) for d in resp['children']]
 
+    def compute_percentile(self, entity_type:str, date:str):
+        resp = self.post('/usage/compute.percentile/{}/{}'.format(entity_type, date))
+        logger.debug("published compute percentile {}".format(resp))
+
     def __enter__(self):
         return self
 
