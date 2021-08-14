@@ -5,17 +5,20 @@ description: This guide will help install Oracle connector and run manually
 # Oracle
 
 {% hint style="info" %}
+**Prerequisites**
+
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
 {% endhint %}
 
-## Install from PyPI or Source
+### Install from PyPI or Source
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[oracle]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 

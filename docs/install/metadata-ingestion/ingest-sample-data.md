@@ -12,11 +12,6 @@ description: This guide will help you to ingest sample data
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. Create and activate python env
-
-   ```bash
-
-   ```
 {% endhint %}
 
 ### Install from PyPI or Source
@@ -25,6 +20,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[sample-tables, elasticsearch]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 
@@ -40,10 +36,11 @@ pip install '.[sample-tables, elasticsearch]'
 {% endtab %}
 {% endtabs %}
 
-### Ingest sample tables and users
+### Ingest sample tables, usage and users
 
 ```bash
 metadata ingest -c ./pipelines/sample_tables.json
+metadata ingest -c ./pipelines/sample_usage.json
 metadata ingest -c ./pipelines/sample_users.json
 ```
 
