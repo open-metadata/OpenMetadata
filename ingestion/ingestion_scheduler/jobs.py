@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 import json
-from metadata.ingestion.workflow.workflow import Workflow
+from metadata.ingestion.api.workflow import Workflow
 from simplescheduler.corescheduler import job
 
 

@@ -21,8 +21,8 @@ import sys
 import click
 from pydantic import ValidationError
 
-from metadata.config.config_loader import load_config_file
-from metadata.ingestion.workflow.workflow import Workflow
+from metadata.config.common import load_config_file
+from metadata.ingestion.api.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +34,11 @@ BASE_LOGGING_FORMAT = (
 )
 logging.basicConfig(format=BASE_LOGGING_FORMAT)
 
+
 @click.group()
 def check() -> None:
     pass
+
 
 @click.group()
 @click.option("--debug/--no-debug", default=False)
