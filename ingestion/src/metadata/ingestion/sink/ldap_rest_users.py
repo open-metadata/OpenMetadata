@@ -55,12 +55,8 @@ class LdapRestUsersSink(Sink):
         metadata_user = MetadataUser(name=record.github_username[0],
                                      display_name=record.name[0],
                                      email=record.email[0])
-        r = self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
-        if r.status_code == 200 or r.status_code == 201:
-            self.status.records_written(record.name[0])
-        else:
-            logging.error(r.status_code)
-            logging.error(r.text)
+        self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
+        self.status.records_written(record.name[0])
 
     def get_status(self):
         return self.status

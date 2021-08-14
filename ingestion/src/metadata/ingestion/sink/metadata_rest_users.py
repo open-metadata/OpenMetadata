@@ -39,9 +39,9 @@ class MetadataRestUsersSink(Sink):
         self.config = config
         self.metadata_config = metadata_config
         self.status = SinkStatus()
-        self.api_team_post = self.metadata_config.api_endpoint + "/v1/teams"
-        self.api_team_get = self.metadata_config.api_endpoint + "/v1/teams"
-        self.api_users = self.metadata_config.api_endpoint + "/v1/users"
+        self.api_team_post = "/teams"
+        self.api_team_get = "/teams"
+        self.api_users = "/users"
         self.headers = {'Content-type': 'application/json'}
         self.org_entities = {}
         self.role_entities = {}
@@ -61,21 +61,18 @@ class MetadataRestUsersSink(Sink):
     def _bootstrap_entities(self):
         # Fetch teams per org
 
-        r = self.rest.get(self.api_team_get, headers=self.headers)
-        if r.status_code == 200:
-            team_response = r.json()
-            for team in team_response['data']:
-                self.team_entities[team['name']] = team['id']
+        team_response = self.rest.get(self.api_team_get)
+        for team in team_response['data']:
+            self.team_entities[team['name']] = team['id']
 
     def _create_team(self, record: MetadataUser) -> None:
         team_name = record.team_name
         metadata_team = MetadataTeam(team_name, 'Team Name')
         r = self.rest.post(self.api_team_post,
-                           data=metadata_team.to_json(),
-                           headers=self.headers)
-        if r.status_code == 200 or r.status_code == 201:
-            instance_id = r.json()['id']
-            self.team_entities[team_name] = instance_id
+                           data=metadata_team.to_json()
+                           )
+        instance_id = r['id']
+        self.team_entities[team_name] = instance_id
 
     def _create_user(self, record: MetadataUser) -> None:
         if record.team_name not in self.team_entities:
@@ -86,13 +83,9 @@ class MetadataRestUsersSink(Sink):
                                      display_name=record.name,
                                      email=record.email,
                                      teams=teams)
-        r = self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
-        if r.status_code == 200 or r.status_code == 201:
-            self.status.records_written(record.github_username)
-            logger.info("Sink: {}".format(record.github_username))
-        else:
-            logging.error(r.status_code)
-            logging.error(r.text)
+        self.rest.post(self.api_users, data=metadata_user.to_json())
+        self.status.records_written(record.github_username)
+        logger.info("Sink: {}".format(record.github_username))
 
     def get_status(self) -> SinkStatus:
         return self.status
