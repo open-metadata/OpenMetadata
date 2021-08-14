@@ -234,9 +234,9 @@ class SQLSource(Source):
 
                     db = DatabaseEntity(id=uuid.uuid4(),
                                         name=schema,
-                                        description=description if description is not None else ' ',
                                         service=EntityReference(id=self.service.id, type=self.config.service_type))
                     table = TableEntity(name=table,
+                                        description=description if description is not None else ' ',
                                         columns=table_columns)
 
                     table_and_db = OMetaDatabaseAndTable(table=table, database=db)
