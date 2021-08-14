@@ -15,13 +15,12 @@
 
 import logging
 
-import requests
-
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.client import REST
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,7 @@ class MetadataRestUsersSink(Sink):
         self.org_entities = {}
         self.role_entities = {}
         self.team_entities = {}
+        self.rest = REST(metadata_config)
         self._bootstrap_entities()
 
     @classmethod
@@ -60,7 +60,8 @@ class MetadataRestUsersSink(Sink):
 
     def _bootstrap_entities(self):
         # Fetch teams per org
-        r = requests.get(self.api_team_get, headers=self.headers)
+
+        r = self.rest.get(self.api_team_get, headers=self.headers)
         if r.status_code == 200:
             team_response = r.json()
             for team in team_response['data']:
@@ -69,9 +70,9 @@ class MetadataRestUsersSink(Sink):
     def _create_team(self, record: MetadataUser) -> None:
         team_name = record.team_name
         metadata_team = MetadataTeam(team_name, 'Team Name')
-        r = requests.post(self.api_team_post,
-                          data=metadata_team.to_json(),
-                          headers=self.headers)
+        r = self.rest.post(self.api_team_post,
+                           data=metadata_team.to_json(),
+                           headers=self.headers)
         if r.status_code == 200 or r.status_code == 201:
             instance_id = r.json()['id']
             self.team_entities[team_name] = instance_id
@@ -85,7 +86,7 @@ class MetadataRestUsersSink(Sink):
                                      display_name=record.name,
                                      email=record.email,
                                      teams=teams)
-        r = requests.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
+        r = self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
         if r.status_code == 200 or r.status_code == 201:
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))

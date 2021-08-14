@@ -14,13 +14,13 @@
 #  limitations under the License.
 
 import logging
-import requests
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataUser
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.client import REST
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class LdapRestUsersSink(Sink):
         self.status = SinkStatus()
         self.api_users = self.metadata_config.api_endpoint + "/v1/users"
         self.headers = {'Content-type': 'application/json'}
+        self.rest = REST(metadata_config)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -54,7 +55,7 @@ class LdapRestUsersSink(Sink):
         metadata_user = MetadataUser(name=record.github_username[0],
                                      display_name=record.name[0],
                                      email=record.email[0])
-        r = requests.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
+        r = self.rest.post(self.api_users, data=metadata_user.to_json(), headers=self.headers)
         if r.status_code == 200 or r.status_code == 201:
             self.status.records_written(record.name[0])
         else:
