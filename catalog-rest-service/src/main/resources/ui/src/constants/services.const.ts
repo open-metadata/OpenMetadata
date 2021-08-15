@@ -17,6 +17,7 @@
 
 import noService from '../assets/img/no-service.png';
 import hive from '../assets/img/service-icon-hive.png';
+import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
 import query from '../assets/img/service-icon-query.png';
@@ -26,6 +27,7 @@ import mysql from '../assets/img/service-icon-sql.png';
 import plus from '../assets/svg/plus.svg';
 
 export const MYSQL = mysql;
+export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const HIVE = hive;

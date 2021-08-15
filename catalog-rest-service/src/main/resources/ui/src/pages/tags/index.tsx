@@ -27,6 +27,7 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
@@ -163,14 +164,18 @@ const TagsPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Tag Categories</h6>
-          <Button
-            className="tw-h-7 tw-px-2"
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={() => setIsAddingCategory((prevState) => !prevState)}>
-            <i aria-hidden="true" className="fa fa-plus" />
-          </Button>
+          <NonAdminAction
+            position="bottom"
+            title="Only Admin is allowed for the action">
+            <Button
+              className="tw-h-7 tw-px-2"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => setIsAddingCategory((prevState) => !prevState)}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </NonAdminAction>
         </div>
         {categories &&
           categories.map((category: TagsCategory) => (
@@ -210,14 +215,18 @@ const TagsPage = () => {
                   <div className="tw-heading tw-text-link tw-text-base">
                     {currentCategory.name}
                   </div>
-                  <Button
-                    className="tw-h-8 tw-rounded tw-mb-2"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={() => setIsAddingTag((prevState) => !prevState)}>
-                    Add new tag
-                  </Button>
+                  <NonAdminAction
+                    position="bottom"
+                    title="Only Admin is allowed for the action">
+                    <Button
+                      className="tw-h-8 tw-rounded tw-mb-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => setIsAddingTag((prevState) => !prevState)}>
+                      Add new tag
+                    </Button>
+                  </NonAdminAction>
                 </div>
               )}
               <div className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
@@ -226,11 +235,15 @@ const TagsPage = () => {
                     Description
                   </span>
                   <div className="tw-flex-initial">
-                    <button
-                      className="focus:tw-outline-none"
-                      onClick={() => setIsEditCategory(true)}>
-                      <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
-                    </button>
+                    <NonAdminAction
+                      position="bottom"
+                      title="Only Admin is allowed for the action">
+                      <button
+                        className="focus:tw-outline-none"
+                        onClick={() => setIsEditCategory(true)}>
+                        <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
+                      </button>
+                    </NonAdminAction>
                   </div>
                 </div>
                 <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">

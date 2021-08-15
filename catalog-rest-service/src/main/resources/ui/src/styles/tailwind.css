@@ -98,7 +98,7 @@
     @apply tw-border-b tw-border-separator;
   }
   .tw-gh-tabs {
-    @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-block tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
+    @apply tw-text-grey-muted tw-font-normal tw-pt-4 tw-pb-2 tw-px-6 tw-border-b-2 tw-border-transparent hover:tw-border-main focus:tw-outline-none;
   }
   .tw-gh-tabs.active {
     @apply tw-text-grey-body tw-border-b-2 tw-border-orange-400;
@@ -179,7 +179,7 @@
   }
 
   .tw-form-inputs {
-    @apply tw-w-full tw-text-grey-body tw-rounded tw-border tw-border-main 
+    @apply tw-w-full tw-text-grey-body tw-rounded tw-border tw-border-main
     focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover;
   }
 
@@ -254,7 +254,7 @@
   }
 
   .toggle-switch {
-    @apply tw-w-9 tw-border-2 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full 
+    @apply tw-w-9 tw-border-2 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full
     tw-mx-2 tw-px-0.5 tw-transition tw-duration-500 tw-ease-in-out
     tw-bg-grey-muted-lite tw-border-grey-muted;
   }
@@ -262,7 +262,7 @@
     @apply tw-bg-primary-lite tw-border-primary;
   }
   .toggle-switch .switch {
-    @apply tw-w-3 tw-h-3 tw-rounded-full tw-shadow-md tw-transform tw-transition tw-duration-500 
+    @apply tw-w-3 tw-h-3 tw-rounded-full tw-shadow-md tw-transform tw-transition tw-duration-500
     tw-ease-in-out tw-bg-grey-muted;
   }
   .toggle-switch.open .switch {
@@ -287,5 +287,9 @@
   .signup-box {
     @apply tw-m-auto tw-w-120;
     box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+  }
+
+  .disable-cta * {
+    @apply tw-cursor-not-allowed !important;
   }
 }
