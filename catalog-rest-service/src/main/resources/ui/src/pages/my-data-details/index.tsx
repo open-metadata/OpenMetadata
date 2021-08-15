@@ -19,9 +19,11 @@ import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEqual, isNil } from 'lodash';
+import { observer } from 'mobx-react';
 import { ColumnTags, TableColumn, TableDetail, TableJoinsData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
@@ -31,6 +33,7 @@ import {
   patchTableDetails,
   removeFollower,
 } from '../../axiosAPIs/tableAPI';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
@@ -175,6 +178,14 @@ const MyDataDetailsPage = () => {
       }
     });
   }, [tableFQN]);
+
+  const hasEditAccess = () => {
+    if (owner?.type === 'user') {
+      return owner.id === getCurrentUserId();
+    } else {
+      return AppState.userTeams.some((team) => team.id === owner?.id);
+    }
+  };
 
   const onCancel = () => {
     setIsEdit(false);
@@ -436,13 +447,17 @@ const MyDataDetailsPage = () => {
                 <SVGIcons alt="schema" icon="icon-schema" title="schema" />{' '}
                 {'Schema '}
               </button>
-              <button
-                className={getTabClasses(6, activeTab)}
-                data-testid="tab"
-                onClick={() => setActiveTab(6)}>
-                <SVGIcons alt="manage" icon="icon-manage" title="manage" />{' '}
-                {'Manage '}
-              </button>
+              <NonAdminAction
+                isOwner={hasEditAccess()}
+                title="Only Owner and Admin is allowed for the action">
+                <button
+                  className={getTabClasses(6, activeTab)}
+                  data-testid="tab"
+                  onClick={() => setActiveTab(6)}>
+                  <SVGIcons alt="manage" icon="icon-manage" title="manage" />{' '}
+                  {'Manage '}
+                </button>
+              </NonAdminAction>
             </nav>
           </div>
           <div className="tw-bg-white tw--mx-4 tw-p-4">
@@ -455,11 +470,19 @@ const MyDataDetailsPage = () => {
                         Description
                       </span>
                       <div className="tw-flex-initial">
-                        <button
-                          className="focus:tw-outline-none"
-                          onClick={onDescriptionEdit}>
-                          <SVGIcons alt="edit" icon="icon-edit" title="edit" />
-                        </button>
+                        <NonAdminAction
+                          isOwner={hasEditAccess()}
+                          title="Only Owner and Admin is allowed for the action">
+                          <button
+                            className="focus:tw-outline-none"
+                            onClick={onDescriptionEdit}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="edit"
+                            />
+                          </button>
+                        </NonAdminAction>
                       </div>
                     </div>
                     <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
@@ -521,4 +544,4 @@ const MyDataDetailsPage = () => {
   );
 };
 
-export default MyDataDetailsPage;
+export default observer(MyDataDetailsPage);

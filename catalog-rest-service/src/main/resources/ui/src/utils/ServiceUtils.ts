@@ -5,6 +5,7 @@ import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceM
 import {
   BIGQUERY,
   HIVE,
+  MSSQL,
   MYSQL,
   ORACLE,
   POSTGRES,
@@ -38,7 +39,7 @@ export const serviceTypeLogo = (type: string) => {
       return SNOWFLAKE;
 
     case ServiceType.MSSQL:
-      return MYSQL;
+      return MSSQL;
 
     default:
       return null;

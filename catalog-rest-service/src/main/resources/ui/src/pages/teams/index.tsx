@@ -30,6 +30,7 @@ import {
 } from '../../axiosAPIs/teamsAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
@@ -170,14 +171,18 @@ const TeamsPage = () => {
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>there are not any users added yet.</p>
           <p>would like to start adding some ?</p>
-          <Button
-            className="tw-h-8 tw-rounded tw-mb-2"
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={() => setIsAddingUsers(true)}>
-            Add new user
-          </Button>
+          <NonAdminAction
+            position="bottom"
+            title="Only Admin is allowed for the action">
+            <Button
+              className="tw-h-8 tw-rounded tw-mb-2"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => setIsAddingUsers(true)}>
+              Add new user
+            </Button>
+          </NonAdminAction>
         </div>
       );
     }
@@ -243,14 +248,18 @@ const TeamsPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Teams</h6>
-          <Button
-            className="tw-h-7 tw-px-2"
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={() => setIsAddingTeam(true)}>
-            <i aria-hidden="true" className="fa fa-plus" />
-          </Button>
+          <NonAdminAction
+            position="bottom"
+            title="Only Admin is allowed for the action">
+            <Button
+              className="tw-h-7 tw-px-2"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => setIsAddingTeam(true)}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </NonAdminAction>
         </div>
         {teams &&
           teams.map((team: Team) => (
@@ -338,14 +347,18 @@ const TeamsPage = () => {
                 <div className="tw-heading tw-text-link tw-text-base">
                   {currentTeam?.displayName}
                 </div>
-                <Button
-                  className="tw-h-8 tw-rounded tw-mb-2"
-                  size="small"
-                  theme="primary"
-                  variant="contained"
-                  onClick={() => setIsAddingUsers(true)}>
-                  Add new user
-                </Button>
+                <NonAdminAction
+                  position="bottom"
+                  title="Only Admin is allowed for the action">
+                  <Button
+                    className="tw-h-8 tw-rounded tw-mb-2"
+                    size="small"
+                    theme="primary"
+                    variant="contained"
+                    onClick={() => setIsAddingUsers(true)}>
+                    Add new user
+                  </Button>
+                </NonAdminAction>
               </div>
               <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
@@ -353,11 +366,15 @@ const TeamsPage = () => {
                     Description
                   </span>
                   <div className="tw-flex-initial">
-                    <button
-                      className="focus:tw-outline-none"
-                      onClick={onDescriptionEdit}>
-                      <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
-                    </button>
+                    <NonAdminAction
+                      position="bottom"
+                      title="Only Admin is allowed for the action">
+                      <button
+                        className="focus:tw-outline-none"
+                        onClick={onDescriptionEdit}>
+                        <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
+                      </button>
+                    </NonAdminAction>
                   </div>
                 </div>
                 <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
