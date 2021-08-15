@@ -6,6 +6,8 @@ description: This guide will help you to ingest sample data
 
 ## Sample Data
 
+We have created some sample data to take OpenMetadata for a spin without integrating with real data sources. The goal of sample data is to give a taste of what OpenMetadata can do with your real data.
+
 {% hint style="info" %}
 **Prerequisites**
 
