@@ -79,7 +79,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                             tableType={table.tableType}
                             tags={table.tags}
                             tier={table.tier?.split('.')[1]}
-                            usage={table.weeklyStats}
+                            usage={table.weeklyPercentileRank}
                           />
                         </div>
                       ))}

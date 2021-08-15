@@ -169,6 +169,7 @@ declare module 'Models' {
 
   export type UserTeam = {
     description: string;
+    displayName?: string;
     href: string;
     id: string;
     name: string;
@@ -197,7 +198,9 @@ declare module 'Models' {
     tags: string[];
     tableEntity: TableEntity;
     dailyStats: number;
+    dailyPercentileRank: number;
     weeklyStats: number;
+    weeklyPercentileRank: number;
     service?: string;
     serviceType?: string;
     tier: string;

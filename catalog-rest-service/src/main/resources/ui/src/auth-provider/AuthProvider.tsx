@@ -121,6 +121,7 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
       .then((res: AxiosResponse) => {
         if (res.data) {
           appState.userDetails = res.data;
+          fetchAllUsers();
           handledVerifiedUser();
         } else {
           cookieStorage.removeItem(oidcTokenKey);

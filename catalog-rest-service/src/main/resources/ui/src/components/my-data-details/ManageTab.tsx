@@ -55,7 +55,7 @@ const ManageTab: FunctionComponent<Props> = ({
       : undefined;
     const teams = (appState.userDetails.teams || appState.userTeams).map(
       (team) => ({
-        name: team.name,
+        name: team?.displayName || team.name,
         value: team.id,
         group: 'Teams',
       })
