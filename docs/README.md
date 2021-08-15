@@ -16,7 +16,9 @@ OpenMetadata includes the following:
 * **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. Ingestion framework already supports well know data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive, and databases - MySQL, Postgres, Oracle, and MSSQL.
 * **OpenMetadata User Interface** - one single place for users to discover, and collaborate on all data.
 
+## License
 
+OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
 
 
