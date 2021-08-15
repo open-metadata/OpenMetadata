@@ -8,13 +8,13 @@ Here is what to expect when are on Sandbox...
 
 ### Login using your Google credentials
 
-![](.gitbook/assets/image%20%282%29.png)
+![](.gitbook/assets/welcome.png)
 
 ### Add yourself as a user in the Sandbox
 
 Pick a few teams to be part of 😊.
 
-![](.gitbook/assets/image.png)
+![](.gitbook/assets/create-user.png)
 
 ### Try out few things
 
