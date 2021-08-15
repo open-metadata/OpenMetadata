@@ -17,7 +17,10 @@ All Connectors have **metadata\_server** config. Pass the public/private keypair
     "config": {
       "api_endpoint": "http://localhost:8585/api",
     "auth_provider_type": "okta",
-    "secret_key": "{public/private keypair}"
+    "client_id": "{client_id}",
+    "org_url": "{okta_domain}",
+    "email": "{email}",
+    "private_key": "{public/private keypair}"
     }
   },
 ...
