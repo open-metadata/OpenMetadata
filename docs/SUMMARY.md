@@ -74,6 +74,7 @@
 
 * [Community](open-source-community/community.md)
 * [Developer](open-source-community/developer/README.md)
+  * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
