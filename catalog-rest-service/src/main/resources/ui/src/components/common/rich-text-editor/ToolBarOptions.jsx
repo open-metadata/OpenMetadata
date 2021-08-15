@@ -84,6 +84,7 @@ export class Bold extends Component {
     return (
       <div className="rdw-option-wrapper tw-font-bold" onClick={this.makeBold}>
         <PopOver
+          arrow={false}
           position="bottom"
           size="small"
           title="Add bold text"
@@ -263,7 +264,7 @@ export class ULLIST extends Component {
           size="small"
           title="Add unordered list"
           trigger="mouseenter">
-          <i className="fas fa-list-ul" />
+          <i className="fas fa-list-ul " />
         </PopOver>
       </div>
     );
