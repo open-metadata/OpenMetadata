@@ -12,13 +12,13 @@ Here is what to expect when are on Sandbox...
 
 ### Add yourself as a user in the Sandbox
 
-Pick a few teams to be part of 😊
+Pick a few teams to be part of 😊.
 
 ![](.gitbook/assets/image.png)
 
 ### Try out few things
 
-Don't limit yourself to just the callouts. Try other things too. Provide us feedback.
+Don't limit yourself to just the callouts. Try other things too. We would love to get your feedback.
 
 ![](.gitbook/assets/openmetadata-sandbox.png)
 
