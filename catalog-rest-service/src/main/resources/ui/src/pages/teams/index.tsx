@@ -36,7 +36,6 @@ import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ERROR404 } from '../../constants/constants';
-import { useAuth } from '../../hooks/authHooks';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
@@ -52,7 +51,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-  const { isAdminUser, isAuthDisabled } = useAuth();
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns'])
@@ -245,16 +243,14 @@ const TeamsPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Teams</h6>
-          {(isAdminUser || isAuthDisabled) && (
-            <Button
-              className="tw-h-7 tw-px-2"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => setIsAddingTeam(true)}>
-              <i aria-hidden="true" className="fa fa-plus" />
-            </Button>
-          )}
+          <Button
+            className="tw-h-7 tw-px-2"
+            size="small"
+            theme="primary"
+            variant="contained"
+            onClick={() => setIsAddingTeam(true)}>
+            <i aria-hidden="true" className="fa fa-plus" />
+          </Button>
         </div>
         {teams &&
           teams.map((team: Team) => (
@@ -342,16 +338,14 @@ const TeamsPage = () => {
                 <div className="tw-heading tw-text-link tw-text-base">
                   {currentTeam?.displayName}
                 </div>
-                {(isAdminUser || isAuthDisabled) && (
-                  <Button
-                    className="tw-h-8 tw-rounded tw-mb-2"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={() => setIsAddingUsers(true)}>
-                    Add new user
-                  </Button>
-                )}
+                <Button
+                  className="tw-h-8 tw-rounded tw-mb-2"
+                  size="small"
+                  theme="primary"
+                  variant="contained"
+                  onClick={() => setIsAddingUsers(true)}>
+                  Add new user
+                </Button>
               </div>
               <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
