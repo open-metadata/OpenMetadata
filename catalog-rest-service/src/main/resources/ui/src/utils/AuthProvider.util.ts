@@ -11,11 +11,12 @@ export const getOidcExpiry = () => {
 
 export const getUserManagerConfig = (
   authClient: Record<string, string> = {}
-): Record<string, string | WebStorageStateStore> => {
+): Record<string, string | boolean | WebStorageStateStore> => {
   const { authority, clientId, callbackUrl } = authClient;
 
   return {
     authority,
+    automaticSilentRenew: true,
     // eslint-disable-next-line @typescript-eslint/camelcase
     client_id: clientId,
     // eslint-disable-next-line @typescript-eslint/camelcase

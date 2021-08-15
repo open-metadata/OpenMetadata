@@ -110,11 +110,17 @@
   .tw-modal {
     @apply tw-z-9999 tw-flex tw-fixed tw-inset-0 tw-bg-transparent tw-justify-center tw-h-screen tw-w-screen tw-items-center tw-antialiased;
   }
+  .tw-modal-confetti {
+    background-size: cover;
+    background-position-y: -75px;
+    background-repeat: no-repeat;
+    background-position-x: center;
+  }
   .tw-modal-backdrop {
     @apply tw-opacity-60 tw-bg-body-hover tw-absolute tw-inset-0;
   }
   .tw-modal-container {
-    @apply tw-flex tw-flex-col tw-absolute tw-py-5 tw-bg-white tw-w-11/12 tw-max-w-screen-lg tw-max-h-screen tw-mx-auto tw-rounded-lg tw-border tw-border-main tw-shadow-xl;
+    @apply tw-flex tw-flex-col tw-absolute tw-py-5 tw-bg-white tw-w-11/12 tw-max-w-screen-lg tw-max-h-screen tw-mx-auto tw-rounded-lg tw-border tw-border-main tw-shadow-modal;
   }
   .tw-modal-header {
     @apply tw-flex tw-flex-row tw-justify-between tw-px-6 tw-pb-5 tw-bg-transparent tw-border-b tw-border-separator;
@@ -280,13 +286,11 @@
   }
 
   .signin-box {
-    @apply tw-m-auto tw-h-100 tw-w-120;
-    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+    @apply tw-m-auto tw-h-100 tw-w-120 tw-bg-white tw-shadow-modal;
   }
 
   .signup-box {
-    @apply tw-m-auto tw-w-120 tw-bg-white;
-    box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
+    @apply tw-m-auto tw-w-120 tw-bg-white tw-shadow-modal;
   }
 
   .disable-cta * {

@@ -22,6 +22,8 @@ const primary = '#7147E8';
 const primaryHover = '#5523E0';
 const primaryActive = '#450DE2';
 const primaryHoverLite = '#DBD1F9';
+const secondary = '#B02AAC';
+const secondaryBG = '#B02AAC40';
 
 // state colors
 const success = '#51C41A';
@@ -66,6 +68,9 @@ module.exports = {
         focus: primary,
         search: '#D5D6D9',
       },
+      boxShadow: {
+        modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
+      },
       colors: {
         'grey-body': textBody,
         'grey-muted': textMuted,
@@ -76,6 +81,8 @@ module.exports = {
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
         'primary-hover-lite': primaryHoverLite,
+        secondary: secondary,
+        'secondary-lite': secondaryBG,
         'body-main': bodyBG,
         'body-hover': bodyHoverBG,
         tag: tagBG,
