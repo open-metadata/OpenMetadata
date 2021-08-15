@@ -10,7 +10,7 @@ Here is what to expect when you are on Sandbox...
 
 ### Add yourself as a user in the Sandbox
 
-Pick a few teams to be part of 😊.
+Pick a few teams to be part of because data is a team game.
 
 ![](.gitbook/assets/create-user.png)
 
