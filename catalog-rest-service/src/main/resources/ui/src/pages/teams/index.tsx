@@ -363,7 +363,7 @@ const TeamsPage = () => {
                 </div>
                 <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                   <div data-testid="description" id="description">
-                    {currentTeam?.description.trim() ? (
+                    {currentTeam?.description ? (
                       <RichTextEditorPreviewer
                         markdown={currentTeam.description}
                       />

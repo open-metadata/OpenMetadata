@@ -236,7 +236,7 @@ const TagsPage = () => {
                 <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                   {currentCategory && (
                     <div data-testid="description" id="description">
-                      {currentCategory.description.trim() ? (
+                      {currentCategory.description ? (
                         <RichTextEditorPreviewer
                           markdown={currentCategory.description}
                         />
