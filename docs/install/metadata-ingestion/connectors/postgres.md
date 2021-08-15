@@ -53,7 +53,7 @@ metadata ingest -c ./pipelines/postgres.json
       "host_port": "localhost:5432",
       "database": "pagila",
       "service_name": "local_postgres",
-      "service_type": "POSTGRES",
+      "service_type": "Postgres",
       "filter_pattern": {
         "excludes": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
     }
