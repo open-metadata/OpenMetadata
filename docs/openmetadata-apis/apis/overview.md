@@ -4,8 +4,6 @@ description: This page provides the overview of API design
 
 # Overview
 
-OpenMetadata API is the best way to get metadata in and out of the metadata platform. This section describes the best practices adopted for the API design.
-
 ## URI
 
 Following REST API conventions are followed for Resource URIs:

@@ -2,7 +2,7 @@
 
 
 
-OpenMetadata  has the following high level core entities and relationships:
+OpenMetadata  has the following high-level core entities and relationships:
 
 ![](../../../.gitbook/assets/openmetadata-entities-relationship.png)
 
