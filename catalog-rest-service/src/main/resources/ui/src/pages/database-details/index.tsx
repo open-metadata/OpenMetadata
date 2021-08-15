@@ -244,7 +244,7 @@ const DatabaseDetails: FunctionComponent = () => {
                   </div>
                   <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                     <div data-testid="description" id="description" />
-                    {description.trim() ? (
+                    {description ? (
                       <RichTextEditorPreviewer markdown={description} />
                     ) : (
                       <span className="tw-no-description">
