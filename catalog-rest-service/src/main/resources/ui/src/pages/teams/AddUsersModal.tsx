@@ -31,7 +31,7 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
     return list
       .filter((user) => {
         return (
-          user.description.includes(searchText) ||
+          user.description?.includes(searchText) ||
           user.name.includes(searchText)
         );
       })

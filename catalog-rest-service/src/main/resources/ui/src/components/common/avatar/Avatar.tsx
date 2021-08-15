@@ -22,10 +22,10 @@ const Avatar = ({ name }: { name: string }) => {
         height: '36px',
         width: '36px',
         borderRadius: '50%',
-        background: getBgColorByCode(name.charCodeAt(0)),
+        background: getBgColorByCode(name?.charCodeAt(0)),
         color: 'black',
       }}>
-      <p>{name[0]}</p>
+      <p>{name?.[0]}</p>
     </div>
   );
 };

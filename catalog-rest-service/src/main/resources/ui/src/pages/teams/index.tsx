@@ -51,7 +51,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns'])
