@@ -1,4 +1,4 @@
-# Basic
+# Basic Types
 
 This schema defines basic common types that are used by other schemas.
 
