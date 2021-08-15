@@ -20,6 +20,7 @@ export const formatDataResponse = (hits) => {
     newData.serviceType = hit._source.service_type;
     newData.tableEntity = hit._source.table_entity;
     newData.tier = hit._source.tier;
+    newData.owner = hit._source.owner;
 
     return newData;
   });

@@ -16,7 +16,7 @@
 */
 
 import { makeAutoObservable } from 'mobx';
-import { ClientAuth, NewUser, User } from 'Models';
+import { ClientAuth, NewUser, User, UserTeam } from 'Models';
 
 class AppState {
   users: Array<User> = [];
@@ -29,7 +29,7 @@ class AppState {
     signingIn: false,
   };
   userDetails: User = {} as User;
-  userTeams = [];
+  userTeams: Array<UserTeam> = [];
 
   inPageSearchText = '';
 
