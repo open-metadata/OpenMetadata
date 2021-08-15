@@ -39,6 +39,14 @@ const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
           h4: 'p',
           h5: 'p',
           h6: 'p',
+          ul: ({ node, children, ...props }) => {
+            const { ordered: _ordered, ...rest } = props;
+            return (
+              <ul style={{ marginLeft: '14px' }} {...rest}>
+                {children}
+              </ul>
+            );
+          },
         }}
         remarkPlugins={[gfm]}
       />

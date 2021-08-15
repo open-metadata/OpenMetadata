@@ -687,3 +687,13 @@ strong {
 body .rdw-editor-main pre {
   background: none;
 }
+
+body .public-DraftStyleDefault-ul li::marker {
+  content: '- ';
+}
+.list-option img {
+  width: 16px;
+}
+body .list-option.rdw-option-active {
+  box-shadow: none;
+}
