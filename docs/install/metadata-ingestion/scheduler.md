@@ -63,18 +63,3 @@ Loads all the Json connectors inside the pipeline directory as cron jobs.
 
 ![Status of the executions](../../.gitbook/assets/screenshot-from-2021-07-26-23-57-46.png)
 
-## Scheduler API
-
-* /api/v1/jobs
-  * Fetch data related to all the jobs. 
-* /api/v1/jobs/{job\_id}
-  * Fetch data related to specific job.
-* /api/v1/executions
-  * Fetch results of all executions.
-* /api/v1/executions/{execution\_id}
-  * Fetch results of particular execution of the job.
-* /api/v1/status
-  * Fetch results of the current running ingestion job.
-* /api/v1/status/{job\_id}
-  * Fetch recent execution results of the job id.
-
