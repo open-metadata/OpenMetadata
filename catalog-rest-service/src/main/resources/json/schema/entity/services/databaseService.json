@@ -15,7 +15,9 @@
         "Snowflake",
         "Postgres",
         "MSSQL",
-        "Hive"
+        "Hive",
+        "Oracle",
+        "Athena"
       ],
       "javaEnums": [
         {
@@ -35,6 +37,12 @@
         },
         {
           "name": "MSSQL"
+        },
+        {
+          "name": "Oracle"
+        },
+        {
+          "name": "Athena"
         },
         {
           "name": "Hive"
