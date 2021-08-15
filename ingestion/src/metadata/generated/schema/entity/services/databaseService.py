@@ -32,6 +32,8 @@ class DatabaseServiceType(Enum):
     Postgres = 'Postgres'
     MSSQL = 'MSSQL'
     Hive = 'Hive'
+    Athena = 'Athena'
+    Oracle = 'Oracle'
 
 
 class DatabaseServiceEntity(BaseModel):
