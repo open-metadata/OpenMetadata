@@ -195,6 +195,7 @@ public class UsageResource {
   @Path("/compute.percentile/{entity}/{date}")
   @Operation(summary = "Compute percentiles", tags = "usage",
           description = "Compute percentile ranking for an entity based on last 30 days of usage.",
+          hidden = true,
           responses = {
                   @ApiResponse(responseCode = "201", description = "Percentiles computed"),
                   @ApiResponse(responseCode = "400", description = "Bad request")
