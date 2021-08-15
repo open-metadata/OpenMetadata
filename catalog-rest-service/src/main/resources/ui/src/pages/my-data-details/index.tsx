@@ -448,8 +448,8 @@ const MyDataDetailsPage = () => {
                 {'Schema '}
               </button>
               <NonAdminAction
-                isOwner={hasEditAccess()}
-                title="Only Owner and Admin is allowed for the action">
+                isOwner={!owner || hasEditAccess()}
+                title="You need ownership to perform this action">
                 <button
                   className={getTabClasses(6, activeTab)}
                   data-testid="tab"
@@ -471,8 +471,15 @@ const MyDataDetailsPage = () => {
                       </span>
                       <div className="tw-flex-initial">
                         <NonAdminAction
-                          isOwner={hasEditAccess()}
-                          title="Only Owner and Admin is allowed for the action">
+                          html={
+                            <>
+                              <p>You need ownership to perform this action</p>
+                              {!owner ? (
+                                <p>Claim ownership in Manage </p>
+                              ) : null}
+                            </>
+                          }
+                          isOwner={hasEditAccess()}>
                           <button
                             className="focus:tw-outline-none"
                             onClick={onDescriptionEdit}>
@@ -534,6 +541,7 @@ const MyDataDetailsPage = () => {
               <ManageTab
                 currentTier={tier}
                 currentUser={owner?.id}
+                hasEditAccess={hasEditAccess()}
                 onSave={onSettingsUpdate}
               />
             )}
