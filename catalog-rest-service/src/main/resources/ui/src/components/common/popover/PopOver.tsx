@@ -22,7 +22,7 @@ import 'react-tippy/dist/tippy.css';
 import { PopOverProp, Position, Size, Theme, Trigger } from './PopOverTypes';
 
 const PopOver: React.FC<PopOverProp> = ({
-  arrow,
+  arrow = true,
   children,
   className = '',
   html,
