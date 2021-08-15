@@ -60,6 +60,7 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import {
+  getOwnerFromId,
   getTagsWithoutTier,
   getTierFromTableTags,
   getUsagePercentile,
@@ -125,7 +126,7 @@ const MyDataDetailsPage = () => {
       setTableDetails(res.data);
       setTableId(id);
       setTier(getTierFromTableTags(tags));
-      setOwner(owner);
+      setOwner(getOwnerFromId(owner?.id));
       // need to check if already following or not with logedIn user id
       setIsFollowing(
         !!followers.filter(({ id }: { id: string }) => id === USERId).length

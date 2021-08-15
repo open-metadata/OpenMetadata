@@ -20,6 +20,7 @@ import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import cardData from '../../jsons/tiersData.json';
+import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
@@ -53,13 +54,11 @@ const ManageTab: FunctionComponent<Props> = ({
       : appState.users.length
       ? appState.users[0]
       : undefined;
-    const teams = (appState.userDetails.teams || appState.userTeams).map(
-      (team) => ({
-        name: team.name,
-        value: team.id,
-        group: 'Teams',
-      })
-    );
+    const teams = getUserTeams().map((team) => ({
+      name: team?.displayName || team.name,
+      value: team.id,
+      group: 'Teams',
+    }));
 
     return user
       ? [{ name: user.displayName, value: user.id }, ...teams]

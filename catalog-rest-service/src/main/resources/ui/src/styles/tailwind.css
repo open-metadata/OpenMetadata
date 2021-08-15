@@ -285,7 +285,7 @@
   }
 
   .signup-box {
-    @apply tw-m-auto tw-w-120;
+    @apply tw-m-auto tw-w-120 tw-bg-white;
     box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2);
   }
 

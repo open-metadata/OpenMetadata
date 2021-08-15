@@ -20,6 +20,10 @@ import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { pluralize } from '../../utils/CommonUtils';
+import {
+  getOwnerFromId,
+  getTierFromSearchTableTags,
+} from '../../utils/TableUtils';
 import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import PageContainer from '../containers/PageContainer';
@@ -74,12 +78,17 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                             description={table.description}
                             fullyQualifiedName={table.fullyQualifiedName}
                             name={table.name}
-                            owner={table.tableEntity.owner?.name}
+                            owner={getOwnerFromId(table.owner)?.name}
                             serviceType={table.serviceType || '--'}
                             tableType={table.tableType}
                             tags={table.tags}
-                            tier={table.tier?.split('.')[1]}
-                            usage={table.weeklyStats}
+                            tier={
+                              (
+                                table.tier ||
+                                getTierFromSearchTableTags(table.tags)
+                              )?.split('.')[1]
+                            }
+                            usage={table.weeklyPercentileRank}
                           />
                         </div>
                       ))}

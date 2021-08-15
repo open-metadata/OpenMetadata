@@ -13,10 +13,14 @@ export const formatDataResponse = (hits) => {
     newData.tableType = hit._source.table_type;
     newData.tags = hit._source.tags;
     newData.dailyStats = hit._source.daily_stats;
+    newData.dailyPercentileRank = hit._source.daily_percentile_rank;
+    newData.weeklyStats = hit._source.weekly_stats;
+    newData.weeklyPercentileRank = hit._source.weekly_percentile_rank;
     newData.service = hit._source.service;
     newData.serviceType = hit._source.service_type;
     newData.tableEntity = hit._source.table_entity;
     newData.tier = hit._source.tier;
+    newData.owner = hit._source.owner;
 
     return newData;
   });

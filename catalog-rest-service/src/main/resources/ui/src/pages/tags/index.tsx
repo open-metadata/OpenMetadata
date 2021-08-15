@@ -320,14 +320,20 @@ const TagsPage = () => {
                                 </button>
                               </div>
                               <div className="tw-mt-1">
-                                <span className="tw-text-gray-400 tw-mr-1">
+                                <span className="tw-text-grey-muted tw-mr-1">
                                   Usage:
                                 </span>
-                                <Link
-                                  className="link-text tw-align-middle"
-                                  to={`/explore?tags=${tag.fullyQualifiedName}`}>
-                                  {tag.usageCount}
-                                </Link>
+                                {tag.usageCount ? (
+                                  <Link
+                                    className="link-text tw-align-middle"
+                                    to={`/explore?tags=${tag.fullyQualifiedName}`}>
+                                    {tag.usageCount}
+                                  </Link>
+                                ) : (
+                                  <span className="tw-no-description">
+                                    Not used
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td

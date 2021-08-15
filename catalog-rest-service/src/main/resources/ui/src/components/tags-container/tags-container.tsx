@@ -159,7 +159,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       className={classNames(
         editable
           ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-primary tw-cursor-text'
-          : null
+          : 'tw-cursor-pointer'
       )}
       onClick={(event) => {
         if (editable) {
