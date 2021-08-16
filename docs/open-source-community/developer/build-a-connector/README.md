@@ -19,7 +19,7 @@ It consists of [Source](./source.md) ,[Processor](./processor.md), [Sink](./sink
 
 Workflow execution happens in serial fashion.
 
-1. It runs **source** component and retrieves and record it may emit
+1. It runs **source** component first. Source component retrieves a record from external sources and emits the record downstream. 
 2. if **processor** component is configured it sends the record to processor first
 3. There can be multiple processors attached to the workflow it passes them in the order they are configurd
 4. Once the **processors** finished , it sends the modified to record to Sink. All of these happens per record
