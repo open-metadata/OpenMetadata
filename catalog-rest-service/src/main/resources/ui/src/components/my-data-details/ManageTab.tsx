@@ -24,6 +24,7 @@ import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
 
@@ -34,12 +35,14 @@ type Props = {
     owner: TableDetail['owner'],
     tier: TableDetail['tier']
   ) => Promise<void>;
+  hasEditAccess: boolean;
 };
 
 const ManageTab: FunctionComponent<Props> = ({
   currentTier = '',
   currentUser = '',
   onSave,
+  hasEditAccess,
 }: Props) => {
   const { data } = cardData;
   const [loading, setLoading] = useState<boolean>(false);
@@ -162,12 +165,22 @@ const ManageTab: FunctionComponent<Props> = ({
       </div>
       <div className="tw-flex tw-flex-col">
         {data.map((card, i) => (
-          <CardListItem
-            card={card}
-            isActive={activeTier === card.id}
+          <NonAdminAction
+            html={
+              <>
+                <p>You need ownership to perform this action</p>
+                <p>Claim ownership from above </p>
+              </>
+            }
+            isOwner={hasEditAccess || Boolean(owner)}
             key={i}
-            onSelect={handleCardSelection}
-          />
+            position="left">
+            <CardListItem
+              card={card}
+              isActive={activeTier === card.id}
+              onSelect={handleCardSelection}
+            />
+          </NonAdminAction>
         ))}
       </div>
       <div className="tw-mt-6 tw-text-right">

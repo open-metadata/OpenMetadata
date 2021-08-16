@@ -4,9 +4,10 @@ import PopOver from '../popover/PopOver';
 
 type Props = {
   children: React.ReactNode;
-  title: string;
+  title?: string;
   position?: 'top' | 'right' | 'bottom' | 'left';
   isOwner?: boolean;
+  html?: React.ReactElement;
 };
 
 const NonAdminAction = ({
@@ -14,6 +15,7 @@ const NonAdminAction = ({
   position = 'top',
   title,
   isOwner = false,
+  html,
 }: Props) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
 
@@ -29,7 +31,11 @@ const NonAdminAction = ({
       {isAdminUser || isOwner || isAuthDisabled ? (
         <span>{children}</span>
       ) : (
-        <PopOver position={position} title={title} trigger="mouseenter">
+        <PopOver
+          html={html}
+          position={position}
+          title={title}
+          trigger="mouseenter">
           <span className="disable-cta">
             <span
               onClickCapture={handleCapturedEvent}
