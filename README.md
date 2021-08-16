@@ -18,13 +18,13 @@
 - [License](#license)
 
 # What is OpenMetadata?
-[OpenMetadata](https://open-metadata.org/) is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.
+[OpenMetadata](https://open-metadata.org/) is an Open Standard for Metadata. A Single place to Discover, Collaborate, and Get your data right.
 <img src="https://user-images.githubusercontent.com/1417689/129423079-d21cbf3f-786f-4d4a-b6c3-b66feca234b8.png"  width="800">
 
 OpenMetadata includes the following:
 - **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
 
-- **Metadata store** - stores metadata graph that connects data assets, user and tool generated metadata.
+- **Metadata store** - stores metadata graph that connects data assets, user, and tool generated metadata.
 
 - **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
 
@@ -54,7 +54,7 @@ Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a co
 
 Join [our Slack Community](https://join.slack.com/t/openmetadata/shared_invite/) if you get stuck, want to chat, or are thinking of a new feature.
 
-Or email us at [dev@open-metadata.org](mailto:dev@open-metadata.org) 
+Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
 
 We're here to help - and make OpenMetadata even better!
 
