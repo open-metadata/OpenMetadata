@@ -37,7 +37,7 @@ pip install '.[mssql]'
 ## Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/mssql.json
+metadata ingest -c ./examples/workflows/mssql.json
 ```
 
 ### Configuration

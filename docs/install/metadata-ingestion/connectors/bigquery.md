@@ -38,7 +38,7 @@ pip install '.[bigquery]'
 
 ```bash
 export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
-metadata ingest -c ./pipelines/bigquery.json
+metadata ingest -c ./examples/workflows/bigquery.json
 ```
 
 ### Configuration

@@ -36,7 +36,7 @@ pip install '.[snowflake-usage]'
 ## Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/snowflake_usage.json
+metadata ingest -c ./examples/workflows/snowflake_usage.json
 ```
 
 ### Configuration

@@ -37,7 +37,7 @@ pip install '.[postgres]'
 ### Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/postgres.json
+metadata ingest -c ./examples/workflows/postgres.json
 ```
 
 ### Configuration

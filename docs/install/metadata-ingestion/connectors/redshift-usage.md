@@ -36,7 +36,7 @@ pip install '.[redshift-usage]'
 ## Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/redshift_usage.json
+metadata ingest -c ./examples/workflows/redshift_usage.json
 ```
 
 ### Configuration
