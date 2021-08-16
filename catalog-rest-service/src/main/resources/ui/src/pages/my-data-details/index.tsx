@@ -450,7 +450,7 @@ const MyDataDetailsPage = () => {
               </button>
               <NonAdminAction
                 isOwner={!owner || hasEditAccess()}
-                title="You need to be owner perform this action">
+                title="You need to be owner to perform this action">
                 <button
                   className={getTabClasses(6, activeTab)}
                   data-testid="tab"
@@ -474,7 +474,7 @@ const MyDataDetailsPage = () => {
                         <NonAdminAction
                           html={
                             <>
-                              <p>You need to be owner perform this action</p>
+                              <p>You need to be owner to perform this action</p>
                               {!owner ? (
                                 <p>Claim ownership in Manage </p>
                               ) : null}
