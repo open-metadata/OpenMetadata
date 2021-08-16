@@ -42,7 +42,7 @@ const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
           ul: ({ node, children, ...props }) => {
             const { ordered: _ordered, ...rest } = props;
             return (
-              <ul style={{ marginLeft: '14px' }} {...rest}>
+              <ul style={{ marginLeft: '16px' }} {...rest}>
                 {children}
               </ul>
             );
