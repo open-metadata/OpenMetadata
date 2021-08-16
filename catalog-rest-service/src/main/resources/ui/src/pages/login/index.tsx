@@ -40,7 +40,7 @@ const SigninPage = () => {
     <PageContainer>
       <div className="tw-w-screen tw-h-screen tw-flex tw-justify-center">
         <div className="tw-flex tw-flex-col tw-items-center signin-box">
-          <div className="tw-flex tw-justify-center tw-items-center tw-my-7">
+          <div className="tw-flex tw-justify-center tw-items-center tw-mb-7 tw-mt-20">
             <SVGIcons
               alt="OpenMetadata Logo"
               icon={Icons.LOGO_SMALL}
@@ -56,7 +56,7 @@ const SigninPage = () => {
             <h6 className="tw-mb-px">Centralized Metadata Store, Discover,</h6>
             <h6 className="tw-mb-px">Collaborate and get your Data Right</h6>
           </div>
-          <div className="tw-mt-16" onClick={handleSignIn}>
+          <div className="tw-mt-4" onClick={handleSignIn}>
             {appState.authProvider.provider === AuthTypes.GOOGLE && (
               <button className="tw-signin-button">
                 <SVGIcons
