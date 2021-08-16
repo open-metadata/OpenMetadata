@@ -34,7 +34,7 @@ dist/target/open-metadata-<version>.tar.gz
 
 1. Add a new Run/Debug configuration like the below screenshot.
 
-   ![Intellj Run Configuration](https://github.com/open-metadata/OpenMetadata/blob/main/docs/install/images/ingestion-bot-service-account.png)
+![Intellj Run Configuration](../../.gitbook/assets/image.png)
 
 ## Coding Style
 
