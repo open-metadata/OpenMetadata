@@ -116,7 +116,7 @@ database:
 
 
 elasticsearch:
-  host: localhost
+  host: elasticsearch
   port: 9200
 
 eventHandlerConfiguration:
