@@ -54,7 +54,7 @@ This schema does not accept additional properties.
 
 **userName**
 
-* A unique name of the user typically the user ID from an identity provider. Example - uid from ldap.
+* A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
 * Type: `string`
 * Length: between 1 and 64
 

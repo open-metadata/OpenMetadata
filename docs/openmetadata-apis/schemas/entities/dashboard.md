@@ -1,6 +1,6 @@
 # Dashboard
 
-This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KIPs. They are updated in real-time and allow interactive data exploration.
+This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.
 
 **$id:** [**https://open-metadata.org/schema/entity/data/dashboard.json**](https://open-metadata.org/schema/entity/data/dashboard.json)
 

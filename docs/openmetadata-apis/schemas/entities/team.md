@@ -38,7 +38,7 @@ Type: `object`
 
 **teamName**
 
-* A unique name of the team typically the team ID from an identity provider. Example - group Id from ldap.
+* A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.
 * Type: `string`
 * Length: between 1 and 64
 

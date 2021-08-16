@@ -1,6 +1,6 @@
 # Database Service
 
-This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used.
+This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift, Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server instance are also used for database service.
 
 **$id:** [**https://open-metadata.org/schema/entity/services/databaseService.json**](https://open-metadata.org/schema/entity/services/databaseService.json)
 

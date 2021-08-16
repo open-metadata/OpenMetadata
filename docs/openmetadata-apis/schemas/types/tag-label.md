@@ -12,7 +12,7 @@ Type: `object`
   * Type: `string`
   * Length:  ≤ 45
 * **labelType**
-  * Label type describe how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using associated tag relationship \(see TagCategory.json for more details\). 'Propagated\` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.
+  * Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship \(see TagCategory.json for more details\). 'Propagated\` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.
   * Type: `string`
   * The value is restricted to the following: 
     1. _"Manual"_

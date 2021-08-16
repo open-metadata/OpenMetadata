@@ -1,6 +1,6 @@
 # Report
 
-This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and in visual form.
+This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and visual form.
 
 **$id:** [**https://open-metadata.org/schema/entity/data/report.json**](https://open-metadata.org/schema/entity/data/report.json)
 
@@ -12,7 +12,7 @@ Type: `object`
   * Unique identifier that identifies this report.
   * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
-  * Name that identifies the this report instance uniquely.
+  * Name that identifies this report instance uniquely.
   * Type: `string`
   * Length: between 1 and 64
 * **fullyQualifiedName**

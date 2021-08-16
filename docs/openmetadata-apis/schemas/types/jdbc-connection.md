@@ -41,7 +41,6 @@ Type: `object`
 * **Properties**
   * **driverClass** `required`
     * $ref: [\#/definitions/driverClass](jdbc-connection.md#types-definitions-in-this-schema)
-    * Default: _"com.amazon.redshift.jdbc42.Driver"_
   * **connectionUrl** `required`
     * $ref: [\#/definitions/connectionUrl](jdbc-connection.md#types-definitions-in-this-schema)
 
