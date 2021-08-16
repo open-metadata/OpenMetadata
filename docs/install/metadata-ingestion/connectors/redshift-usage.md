@@ -68,9 +68,9 @@ metadata ingest -c ./examples/workflows/redshift_usage.json
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish Redshift Usage data into openmetadata
+Below is the configuration to publish Redshift Usage data into the OpenMetadata service.
 
-Add optional `query-parser` processor, `table-usage` stage and `metadata-usage` bulk\_sink along with `metadata-server` config
+Add optionally`query-parser` processor, `table-usage` stage and `metadata-usage` bulk\_sink along with `metadata-server` config
 
 {% code title="redshift\_usage.json" %}
 ```javascript

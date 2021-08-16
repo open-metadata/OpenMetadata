@@ -67,9 +67,9 @@ metadata ingest -c ./pipelines/mysql.json
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish MySQL data into openmetadata
+Below is the configuration to publish MySQL data into the OpenMetadata service.
 
-Add optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="mysql.json" %}
 ```javascript

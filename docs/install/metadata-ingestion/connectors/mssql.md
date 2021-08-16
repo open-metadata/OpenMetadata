@@ -64,17 +64,17 @@ metadata ingest -c ./examples/workflows/mssql.json
 {% endcode %}
 
 1. **username** - pass the mssql username.
-2. **password** - password for the mssql username.
-3. **service\_name** - Service Name for this mssql cluster. If you added mssql cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **host\_port** - Hostname and Port number where the service is being initialised.
+2. **password** - the password for the mssql username.
+3. **service\_name** - Service Name for this mssql cluster. If you added the mssql cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **host\_port** - Hostname and Port number where the service is being initialized.
 5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 6. **database** - Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish mssql data into openmetadata
+Below is the configuration to publish mssql data into the OpenMetadata service.
 
-Add Optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="mssql.json" %}
 ```javascript

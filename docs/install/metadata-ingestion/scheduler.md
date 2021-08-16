@@ -9,7 +9,7 @@ description: >-
 {% hint style="info" %}
 **Prerequisites**
 
-OpenMetadata is built using Java, DropWizard, Jetty and MySQL.
+OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
 2. Create an env
@@ -18,7 +18,7 @@ OpenMetadata is built using Java, DropWizard, Jetty and MySQL.
    python3 -m venv env
    ```
 
-3. Activating the enviroment
+3. Activating the environment
 
    ```bash
    source env/bin/activate
@@ -51,7 +51,7 @@ Loads all the Json connectors inside the pipeline directory as cron jobs.
 
 ### Custom run a job
 
-* Click on **Custom Run** button under Action column of the jobs.
+* Click on the **Custom Run** button under the **Action** column of the jobs.
 * Click on **Run.**
 * The Job will start running the ingestion.
 
@@ -59,7 +59,7 @@ Loads all the Json connectors inside the pipeline directory as cron jobs.
 
 **Status of an executed job**
 
-* Click on **Executions** tab under Navigation Bar.
+* Click on the **Executions** tab under Navigation Bar.
 
 ![Status of the executions](../../.gitbook/assets/screenshot-from-2021-07-26-23-57-46.png)
 

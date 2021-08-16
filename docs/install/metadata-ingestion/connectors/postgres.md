@@ -63,16 +63,16 @@ metadata ingest -c ./examples/workflows/postgres.json
 {% endcode %}
 
 1. **username** - pass the Postgres username.
-2. **password** - password for the Postgres username.
+2. **password** - the password for the Postgres username.
 3. **service\_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
 
-Below is the configuration to publish Postgres data into openmetadata
+Below is the configuration to publish Postgres data into the OpenMetadata service.
 
-Add Optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="postgres.json" %}
 ```javascript

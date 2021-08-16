@@ -38,7 +38,7 @@ pip install '.[sample-tables, elasticsearch]'
 {% endtab %}
 {% endtabs %}
 
-### Ingest sample tables, usage and users
+### Ingest sample tables, usage, and users
 
 ```bash
 metadata ingest -c ./pipelines/sample_tables.json

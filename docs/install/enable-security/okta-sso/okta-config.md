@@ -2,9 +2,7 @@
 
 ## Update conf/openmetadata-security.yaml
 
-* Once the **Client Id**, **Client secret**, **issuer** and **audience** is generated.
-
-  Add those details in `openmetadata-security.yaml` file in the respective field.
+* Once the **Client Id**, **Client secret**, **issuer,** and the **audience** are generated, add those details in `openmetadata-security.yaml` file in the respective field.
 
 ```text
 authenticationConfiguration:

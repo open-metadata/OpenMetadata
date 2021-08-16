@@ -14,7 +14,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935630-254cc611-f959-4c5e-b33d-73c1a09cc384.png)
 
-* Click on **Manage service accounts** availabe on the centre right side.
+* Click on **Manage service accounts** available on the center-right side.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935633-cfcc4c3f-3a68-4886-a291-fd98521bc3ad.png)
 
@@ -25,7 +25,7 @@ description: This is a guide to create ingestion bot service account.
 * Provide the required service account details. 
 
 {% hint style="warning" %}
-Makesure the Service Account Id as **ingestion-bot** and click on **CREATE AND CONTINUE** . If you chose a different Service Account Id, add to the default bots list in [Configure OpenMetadata Server](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/install/google-catalog-config.md)
+Make sure the Service Account Id is **ingestion-bot** and click on **CREATE AND CONTINUE**. If you chose a different Service Account Id, add it to the default bots list in [Configure OpenMetadata Server](https://github.com/StreamlineData/catalog/tree/3d53fa7c645ea55f846b06d0210ac63f8c38463f/docs/install/install/google-catalog-config.md)
 {% endhint %}
 
 ![](../../../.gitbook/assets/ingestion-bot-service-account.png)
@@ -38,7 +38,7 @@ Makesure the Service Account Id as **ingestion-bot** and click on **CREATE AND C
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935647-8042d108-d00a-4ced-9a01-f4c380278982.png)
 
-* Now you should see you service account listed.
+* Now you should see your service account listed.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935649-05d6ec56-d6c1-45ac-8b57-b331c959c087.png)
 
@@ -52,23 +52,23 @@ Makesure the Service Account Id as **ingestion-bot** and click on **CREATE AND C
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935652-7f4d684a-f97e-4915-8994-af8d442004a4.png)
 
-* Click on it and enable google workspace domain wide delegation and then click on **SAVE**
+* Click on it and enable google workspace domain-wide delegation and then click on **SAVE**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935654-73181d92-8e9d-43ec-accf-cba3edbe0166.png)
 
-## How to generate Private-Key/Service-Account Json file
+## How to generate Private-Key/Service-Account JSON file
 
-* Once done with above steps, click on **KEYS** available new to **DETAILS**
+* Once done with the above steps, click on **KEYS** available new to **DETAILS**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935657-df55ad24-303f-4c65-931b-39ebf65acf09.png)
 
-* Click on **ADD KEY** and then C**reate new key**
+* Click on **ADD KEY** and then **Create new key**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935661-ce32b714-a67a-42fa-b989-395a29678e84.png)
 
-* Select the format. **Json format** is recommended. Then click on **CREATE**
+* Select the format. The **JSON format** is recommended. Then click on **CREATE**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/125935663-d047f025-ae85-4cc7-9900-632586cc31be.png)
 
-* **The private-key/service-account json file will be downloaded**
+* **The private-key/service-account JSON file will be downloaded**
 

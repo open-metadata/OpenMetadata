@@ -60,9 +60,9 @@ pip install '.[oracle]'
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish Oracle data into openmetadata
+Below is the configuration to publish Oracle data into the OpenMetadata service.
 
-Add optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="oracle.json" %}
 ```javascript

@@ -67,9 +67,9 @@ metadata ingest -c ./examples/workflows/redshift.json
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish Redshift data into openmetadata
+Below is the configuration to publish Redshift data into the OpenMeatadata service.
 
-Add optional `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="redshift.json" %}
 ```javascript

@@ -1,12 +1,12 @@
 # Create Server Credentials
 
-**This document is all about how to create an Okta app and configure it for oAuth. It will generate information which is required to perform single-sign-on activity.**
+**This document is all about how to create an Okta app and configure it for oAuth. It will generate information that is required to perform the single-sign-on activity.**
 
 ## Step 1: Create an Okta Account
 
 * Go to [Create Okta Account](https://developer.okta.com/signup/).
 * Provide the required input and click on **Sign Up**.
-* Else you can **continue with Google or Gitthub**.
+* Else you can **continue with Google or GitHub**.
 
 ## Step 2: Create the OIDC app integration.
 
@@ -45,7 +45,7 @@
 ## Step 4: Where to find the credentials
 
 * Once the app is configured, now the **Client Id** and **Client secret** can be used.
-* You can also go to **Appication -&gt; Application** like in step 2.
+* You can also go to **Application -&gt; Application** like in step 2.
 * You should be able to see your application in the list.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376803-b605fd80-d5a8-11eb-94ce-42f38dca99a1.png)
@@ -55,7 +55,7 @@
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
 
-* To get you **issuer** and **audience** click on **Sign On** available on top of the form.
+* To get your **issuer** and **audience** click on **Sign On** available on top of the form.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376802-b56d6700-d5a8-11eb-89b3-a59b3192fce6.png)
 
@@ -63,7 +63,7 @@
 
 * Once the **Client Id**, **Client secret**, **issuer,** and **audience** are generated.
 
-  Add those details in openmetadata-security.yaml file in the respective field.
+  Add those details in the openmetadata-security.yaml file in the respective field.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123380400-054e2d00-d5ad-11eb-9937-2813f69cb268.png)
 
