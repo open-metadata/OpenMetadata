@@ -690,3 +690,9 @@ a:focus {
   border-radius: 20px;
   z-index: 2;
 }
+
+/* popover css start */
+.tippy-popper {
+  pointer-events: auto !important;
+}
+/* popover css end */
