@@ -1,7 +1,9 @@
 import React, { FunctionComponent } from 'react';
 import IconGoogle from '../assets/img/google-icon.png';
+import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
+import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
@@ -100,6 +102,8 @@ export const Icons = {
   SERVICE: 'service',
   USERS: 'users',
   TERMS: 'terms',
+  DOC: 'doc',
+  API: 'api',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -296,6 +300,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TERMS:
       IconComponent = IconTerns;
+
+      break;
+    case Icons.DOC:
+      IconComponent = IconDoc;
+
+      break;
+    case Icons.API:
+      IconComponent = IconAPI;
 
       break;
 

@@ -139,7 +139,12 @@ const Appbar: React.FC = (): JSX.Element => {
               to={{
                 pathname: 'https://docs.open-metadata.org/',
               }}>
-              {/* <i className="fas fa-file-alt tw-pr-2" /> */}
+              <SVGIcons
+                alt="Doc icon"
+                className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+                icon="doc"
+                width="12"
+              />
               <span>Docs</span>
             </NavLink>
             <NavLink
@@ -149,7 +154,12 @@ const Appbar: React.FC = (): JSX.Element => {
               to={{
                 pathname: '/docs',
               }}>
-              {/* <i className="fas fa-sitemap tw-pr-2" /> */}
+              <SVGIcons
+                alt="API icon"
+                className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+                icon="api"
+                width="12"
+              />
               <span>API</span>
             </NavLink>
             <div data-testid="dropdown-profile">
