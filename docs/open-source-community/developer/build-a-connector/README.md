@@ -22,7 +22,8 @@ Workflow execution happens in serial fashion.
 1. It runs **source** component first. Source component retrieves a record from external sources and emits the record downstream. 
 2. if **processor** component is configured it sends the record to processor first
 3. There can be multiple processors attached to the workflow it passes them in the order they are configurd
-4. Once the **processors** finished , it sends the modified to record to Sink. All of these happens per record
+4. Once the **processors** finished , it sends the modified to record to Sink. 
+5. The above steps repeats per record emitted from source component
 
 In the cases where we need to aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**
 
