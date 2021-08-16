@@ -38,19 +38,10 @@ import {
 import appState from '../AppState';
 import axiosClient from '../axiosAPIs';
 import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
-import {
-  getLoggedInUser,
-  getTeams,
-  getUserByName,
-  getUsers,
-} from '../axiosAPIs/userAPI';
+import { getLoggedInUser, getUserByName } from '../axiosAPIs/userAPI';
+import Loader from '../components/Loader/Loader';
 import { FirstTimeUserModal } from '../components/Modals/FirstTimeUserModal/FirstTimeUserModal';
-import {
-  API_RES_MAX_SIZE,
-  oidcTokenKey,
-  ROUTES,
-  TIMEOUT,
-} from '../constants/constants';
+import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { useAuth } from '../hooks/authHooks';
 import useToastContext from '../hooks/useToastContext';
@@ -61,6 +52,7 @@ import {
   getOidcExpiry,
   getUserManagerConfig,
 } from '../utils/AuthProvider.util';
+import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthProviderProps, OidcUser } from './AuthProvider.interface';
 
 const cookieStorage = new CookieStorage();
@@ -109,25 +101,6 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
 
   const handledVerifiedUser = () => {
     history.push(ROUTES.HOME);
-  };
-
-  // Moving this code here from App.tsx
-  const getAllUsersList = (): void => {
-    getUsers('', API_RES_MAX_SIZE).then((res) => {
-      appState.users = res.data.data;
-    });
-  };
-
-  const getAllTeams = (): void => {
-    getTeams().then((res) => {
-      appState.userTeams = res.data.data;
-    });
-  };
-
-  const fetchAllUsers = () => {
-    getAllUsersList();
-    getAllTeams();
-    setInterval(getAllUsersList, TIMEOUT.USER_LIST);
   };
 
   const fetchUserByEmail = (user: OidcUser) => {
@@ -280,15 +253,18 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
             <Route
               path={ROUTES.CALLBACK}
               render={() => (
-                <Callback
-                  userManager={userManager}
-                  onSuccess={(user) => {
-                    cookieStorage.setItem(oidcTokenKey, user.id_token, {
-                      expires: getOidcExpiry(),
-                    });
-                    fetchUserByEmail(user as OidcUser);
-                  }}
-                />
+                <>
+                  <Callback
+                    userManager={userManager}
+                    onSuccess={(user) => {
+                      cookieStorage.setItem(oidcTokenKey, user.id_token, {
+                        expires: getOidcExpiry(),
+                      });
+                      fetchUserByEmail(user as OidcUser);
+                    }}
+                  />
+                  <Loader />
+                </>
               )}
             />
             {isSignedOut ? <Redirect to={ROUTES.SIGNIN} /> : null}

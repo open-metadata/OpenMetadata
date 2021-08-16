@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { FunctionComponent, useState } from 'react';
 import BGConfetti from '../../../assets/img/confetti-bg.jpeg';
+import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 
 type Props = {
@@ -9,9 +10,9 @@ type Props = {
 };
 
 const description = [
-  'OpenMetadata is a Centralized Metadata Store.',
-  'Discover all your data assets in a single place, collaborate with your co-workers.',
-  'Understand your data assets and contribute to make it richer.',
+  'A single place to Discover, Collaborate, and Get your data right',
+  'Based on Open metadata standards',
+  'Understand your data and collaborate with your team',
 ];
 
 export const FirstTimeUserModal: FunctionComponent<Props> = ({
@@ -40,11 +41,27 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
       <div className="tw-modal-backdrop tw-opacity-80" />
       <div
         className="tw-modal-container tw-modal-confetti tw-max-w-xl tw-max-h-90vh"
-        style={{ backgroundImage: `url(${BGConfetti})` }}>
+        style={{ backgroundImage: active === 0 ? `url(${BGConfetti})` : '' }}>
         <div className="tw-modal-header tw-border-0 tw-justify-center tw-pt-8 tw-pb-0">
-          <p className="tw-modal-title tw-text-h4 tw-font-semibold tw-text-primary-active tw-mt-32">
-            Welcome to OpenMetadata
-          </p>
+          <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mt-14">
+            {active === 0 ? (
+              // TODO: Replace it with Party popper icon
+              <SVGIcons
+                alt="OpenMetadata Logo"
+                icon={Icons.LOGO_SMALL}
+                width="50"
+              />
+            ) : (
+              <SVGIcons
+                alt="OpenMetadata Logo"
+                icon={Icons.LOGO_SMALL}
+                width="50"
+              />
+            )}
+            <p className="tw-modal-title tw-text-h4 tw-font-semibold tw-text-primary-active tw-mt-3">
+              Welcome to OpenMetadata
+            </p>
+          </div>
         </div>
         <div className="tw-modal-body tw-relative tw-h-40 tw-justify-start tw-items-center">
           {description.map((d, i) => (

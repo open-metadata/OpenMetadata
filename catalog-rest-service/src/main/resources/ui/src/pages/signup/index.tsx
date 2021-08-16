@@ -27,6 +27,7 @@ import DropDown from '../../components/dropdown/DropDown';
 import { imageTypes, ROUTES } from '../../constants/constants';
 import { getNameFromEmail } from '../../utils/AuthProvider.util';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { fetchAllUsers } from '../../utils/UsedDataUtils';
 type Team = {
   id: string;
   displayName: string;
@@ -78,6 +79,7 @@ const Signup = () => {
       if (res.data) {
         setLoading(false);
         appState.userDetails = res.data;
+        fetchAllUsers();
         history.push(ROUTES.HOME);
       } else {
         setLoading(false);
