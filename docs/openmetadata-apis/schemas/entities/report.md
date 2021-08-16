@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies this report.
-  * $ref: [../../type/basic.json\#/definitions/uuid](report.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
   * Name that identifies the this report instance uniquely.
   * Type: `string`
@@ -24,14 +24,14 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the resource corresponding to this report.
-  * $ref: [../../type/basic.json\#/definitions/href](report.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **owner**
   * Owner of this pipeline.
-  * $ref: [../../type/entityReference.json](report.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **service** `required`
   * Link to service where this report is hosted in.
-  * $ref: [../../type/entityReference.json](report.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **usageSummary**
   * Latest usage information for this database.
-  * $ref: [../../type/usageDetails.json](report.md#....typeusagedetails.json)
+  * $ref: [../../type/usageDetails.json](../types/usage-details.md)
 

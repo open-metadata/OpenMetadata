@@ -10,22 +10,22 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies an entity instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](thread.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](thread.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **threadTs**
   * Timestamp of the when the first post created the thread.
 * **about** `required`
   * Data asset about which this thread is created for with format &lt;\#E/{enties}/{entityName}/{field}/{fieldValue}.
-  * $ref: [../../type/basic.json\#/definitions/entityLink](thread.md#....typebasic.jsondefinitionsentitylink)
+  * $ref: [../../type/basic.json\#/definitions/entityLink](../types/basic.md#types-definitions-in-this-schema)
 * **addressedTo**
   * User or team this thread is addressed to in format &lt;\#E/{enties}/{entityName}/{field}/{fieldValue}.
-  * $ref: [../../type/basic.json\#/definitions/entityLink](thread.md#....typebasic.jsondefinitionsentitylink)
+  * $ref: [../../type/basic.json\#/definitions/entityLink](../types/basic.md#types-definitions-in-this-schema)
 * **posts** `required`
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/post](thread.md#/definitions/post)
+    * $ref: [\#/definitions/post](thread.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 
@@ -43,5 +43,5 @@ Type: `object`
     * String format must be a "date-time"
   * **from** `required`
     * ID of User \(regular user or a bot\) posting the message.
-    * $ref: [../../type/basic.json\#/definitions/uuid](thread.md#....typebasic.jsondefinitionsuuid)
+    * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 

@@ -27,10 +27,10 @@ Type: `object`
   * Type: `string`
 * **dateTime**
   * Date which the api call is made.
-  * $ref: [basic.json\#/definitions/dateTime](audit-log.md#basic.jsondefinitionsdatetime)
+  * $ref: [basic.json\#/definitions/dateTime](basic.md#types-definitions-in-this-schema)
 * **entityId** `required`
   * Entity Id that was modified by the operation.
-  * $ref: [basic.json\#/definitions/uuid](audit-log.md#basic.jsondefinitionsuuid)
+  * $ref: [basic.json\#/definitions/uuid](basic.md#types-definitions-in-this-schema)
 * **entityType** `required`
   * Entity Type that modified by the operation.
   * Type: `string`

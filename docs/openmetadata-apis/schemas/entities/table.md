@@ -10,16 +10,16 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier of this table instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](table.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
   * Name of a table. Expected to be unique within a database.
-  * $ref: [\#/definitions/tableName](table.md#/definitions/tableName)
+  * $ref: [\#/definitions/tableName](table.md#types-definitions-in-this-schema)
 * **description**
   * Description of a table.
   * Type: `string`
 * **href**
   * Link to this table resource.
-  * $ref: [../../type/basic.json\#/definitions/href](table.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **tableType**
   * $ref: [\#/definitions/tableType](table.md#/definitions/tableType)
 * **fullyQualifiedName**
@@ -29,35 +29,35 @@ Type: `object`
   * Columns in this table.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/column](table.md#/definitions/column)
+    * $ref: [\#/definitions/column](table.md#types-definitions-in-this-schema)
 * **tableConstraints**
   * Table constraints.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/tableConstraint](table.md#/definitions/tableConstraint)
+    * $ref: [\#/definitions/tableConstraint](table.md#types-definitions-in-this-schema)
 * **usageSummary**
   * Latest usage information for this table.
-  * $ref: [../../type/usageDetails.json](table.md#....typeusagedetails.json)
+  * $ref: [../../type/usageDetails.json](../types/usage-details.md)
 * **owner**
   * Owner of this table.
-  * $ref: [../../type/entityReference.json](table.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **followers**
   * Followers of this table.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](table.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 * **database**
   * Reference to Database that contains this table.
-  * $ref: [../../type/entityReference.json](table.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **tags**
   * Tags for this table.
   * Type: `array`
     * **Items**
-    * $ref: [../../type/tagLabel.json](table.md#....typetaglabel.json)
+    * $ref: [../../type/tagLabel.json](../types/tag-label.md)
 * **joins**
   * Details of other tables this table is frequently joined with.
-  * $ref: [\#/definitions/tableJoins](table.md#/definitions/tableJoins)
+  * $ref: [\#/definitions/tableJoins](table.md#types-definitions-in-this-schema)
 * **sampleData**
   * Sample data for a table.
-  * $ref: [\#/definitions/tableData](table.md#/definitions/tableData)
+  * $ref: [\#/definitions/tableData](table.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

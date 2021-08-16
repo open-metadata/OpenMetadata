@@ -15,5 +15,5 @@ This schema does not accept additional properties.
   * Type: `integer`
   * Range:  ≥ 0
 * **date** `required`
-  * $ref: [basic.json\#/definitions/date](daily-count.md#basic.jsondefinitionsdate)
+  * $ref: [basic.json\#/definitions/date](basic.md#types-definitions-in-this-schema)
 

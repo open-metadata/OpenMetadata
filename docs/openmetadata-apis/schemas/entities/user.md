@@ -12,7 +12,7 @@ This schema does not accept additional properties.
 
 * **id** `required`
   * Unique identifier that identifies a user entity instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](user.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
   * $ref: [\#/definitions/userName](user.md#/definitions/userName)
 * **displayName**
@@ -20,10 +20,10 @@ This schema does not accept additional properties.
   * Type: `string`
 * **email** `required`
   * Email address of the user.
-  * $ref: [../../type/basic.json\#/definitions/email](user.md#....typebasic.jsondefinitionsemail)
+  * $ref: [../../type/basic.json\#/definitions/email](../types/basic.md#types-definitions-in-this-schema)
 * **href** `required`
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](user.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **timezone**
   * Timezone of the user.
   * Type: `string`
@@ -39,16 +39,16 @@ This schema does not accept additional properties.
   * Type: `boolean`
 * **profile**
   * Profile of the user.
-  * $ref: [../../type/profile.json](user.md#....typeprofile.json)
+  * $ref: [../../type/profile.json](../types/profile.md)
 * **teams**
   * Teams that the user belongs to.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](user.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 * **owns**
   * List of entities owned by the user.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](user.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 * **follows**
   * List of entities followed by the user.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](user.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

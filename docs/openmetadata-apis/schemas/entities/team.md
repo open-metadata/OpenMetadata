@@ -9,7 +9,7 @@ Type: `object`
 ## Properties
 
 * **id** `required`
-  * $ref: [../../type/basic.json\#/definitions/uuid](team.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
   * $ref: [\#/definitions/teamName](team.md#/definitions/teamName)
 * **displayName**
@@ -20,19 +20,19 @@ Type: `object`
   * Type: `string`
 * **href** `required`
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](team.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **profile**
   * Team profile information.
-  * $ref: [../../type/profile.json](team.md#....typeprofile.json)
+  * $ref: [../../type/profile.json](../types/profile.md)
 * **deleted**
   * When true the team has been deleted.
   * Type: `boolean`
 * **users**
   * Users that are part of the team.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](team.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 * **owns**
   * List of entities owned by the team.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](team.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

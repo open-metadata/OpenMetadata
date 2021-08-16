@@ -10,10 +10,10 @@ Type: `object`
 
 * **entity** `required`
   * Entity for which usage is returned.
-  * $ref: [entityReference.json](entity-usage.md#entityreference.json)
+  * $ref: [entityReference.json](entity-reference.md)
 * **usage** `required`
   * List usage details per day.
   * Type: `array`
     * **Items**
-    * $ref: [usageDetails.json](entity-usage.md#usagedetails.json)
+    * $ref: [usageDetails.json](usage-details.md)
 

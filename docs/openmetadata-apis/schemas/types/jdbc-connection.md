@@ -10,10 +10,10 @@ Type: `object`
 
 * **driverClass** `required`
   * JDBC driver class
-  * $ref: [\#/definitions/driverClass](jdbc-connection.md#/definitions/driverClass)
+  * $ref: [\#/definitions/driverClass](jdbc-connection.md#types-definitions-in-this-schema)
 * **connectionUrl** `required`
   * JDBC connection URL
-  * $ref: [\#/definitions/connectionUrl](jdbc-connection.md#/definitions/connectionUrl)
+  * $ref: [\#/definitions/connectionUrl](jdbc-connection.md#types-definitions-in-this-schema)
 * **userName** `required`
   * Login user name.
   * Type: `string`
@@ -40,8 +40,8 @@ Type: `object`
 * Type: `object`
 * **Properties**
   * **driverClass** `required`
-    * $ref: [\#/definitions/driverClass](jdbc-connection.md#/definitions/driverClass)
+    * $ref: [\#/definitions/driverClass](jdbc-connection.md#types-definitions-in-this-schema)
     * Default: _"com.amazon.redshift.jdbc42.Driver"_
   * **connectionUrl** `required`
-    * $ref: [\#/definitions/connectionUrl](jdbc-connection.md#/definitions/connectionUrl)
+    * $ref: [\#/definitions/connectionUrl](jdbc-connection.md#types-definitions-in-this-schema)
 

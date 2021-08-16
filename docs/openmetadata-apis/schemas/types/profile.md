@@ -9,7 +9,7 @@ Type: `object`
 ## Properties
 
 * **images**
-  * $ref: [\#/definitions/imageList](profile.md#/definitions/imageList)
+  * $ref: [\#/definitions/imageList](profile.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

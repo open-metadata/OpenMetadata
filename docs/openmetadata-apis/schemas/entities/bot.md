@@ -10,7 +10,7 @@ Type: `object`
 
 * **id**
   * Unique identifier of a bot instance.
-  * $ref: [../type/basic.json\#/definitions/uuid](bot.md#..typebasic.jsondefinitionsuuid)
+  * $ref: [../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name**
   * Name of the bot.
   * Type: `string`
@@ -23,5 +23,5 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the resource corresponding to this bot.
-  * $ref: [../type/basic.json\#/definitions/href](bot.md#..typebasic.jsondefinitionshref)
+  * $ref: [../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 

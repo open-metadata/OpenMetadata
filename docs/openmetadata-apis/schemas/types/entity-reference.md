@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies an entity instance.
-  * $ref: [basic.json\#/definitions/uuid](entity-reference.md#basic.jsondefinitionsuuid)
+  * $ref: [basic.json\#/definitions/uuid](basic.md#types-definitions-in-this-schema)
 * **type** `required`
   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...
   * Type: `string`
@@ -22,7 +22,7 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the entity resource.
-  * $ref: [basic.json\#/definitions/href](entity-reference.md#basic.jsondefinitionshref)
+  * $ref: [basic.json\#/definitions/href](basic.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 
@@ -30,5 +30,5 @@ Type: `object`
 
 * Type: `array`
   * **Items**
-  * $ref: [entityReference.json](entity-reference.md#entityreference.json)
+  * $ref: [entityReference.json](entity-reference.md)
 

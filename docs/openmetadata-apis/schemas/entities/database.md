@@ -10,10 +10,10 @@ Type: `object`
 
 * **id**
   * Unique identifier that identifies this database instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](database.md#....typebasic.jsondefinitionsuuid)
+  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#types-definitions-in-this-schema)
 * **name** `required`
   * Name that identifies the database.
-  * $ref: [\#/definitions/databaseName](database.md#/definitions/databaseName)
+  * $ref: [\#/definitions/databaseName](database.md#types-definitions-in-this-schema)
 * **fullyQualifiedName**
   * Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
   * Type: `string`
@@ -22,19 +22,19 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](database.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **owner**
   * Owner of this database.
-  * $ref: [../../type/entityReference.json](database.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **service** `required`
   * Link to the database cluster/service where this database is hosted in.
-  * $ref: [../../type/entityReference.json](database.md#....typeentityreference.json)
+  * $ref: [../../type/entityReference.json](../types/entity-reference.md)
 * **usageSummary**
   * Latest usage information for this database.
-  * $ref: [../../type/usageDetails.json](database.md#....typeusagedetails.json)
+  * $ref: [../../type/usageDetails.json](../types/usage-details.md)
 * **tables**
   * References to tables in the database.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](database.md#....typeentityreference.jsondefinitionsentityreferencelist)
+  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entity-reference.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

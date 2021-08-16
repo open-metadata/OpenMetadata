@@ -29,5 +29,5 @@ Type: `object`
   * Default: _"Confirmed"_
 * **href**
   * Link to the tag resource.
-  * $ref: [basic.json\#/definitions/href](tag-label.md#basic.jsondefinitionshref)
+  * $ref: [basic.json\#/definitions/href](basic.md#types-definitions-in-this-schema)
 

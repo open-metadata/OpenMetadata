@@ -10,8 +10,10 @@ Type: `object`
 
 * **startDate**
   * Start date and time of the schedule.
-  * $ref: [basic.json\#/definitions/dateTime](schedule.md#basic.jsondefinitionsdatetime)
+  * $ref: [basic.json\#/definitions/dateTime](basic.md#types-definitions-in-this-schema)
 * **repeatFrequency**
   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'
-  * $ref: [basic.json\#/definitions/duration](schedule.md#basic.jsondefinitionsduration)
+  * $ref: [basic.json\#/definitions/duration](basic.md#types-definitions-in-this-schema)
+
+
 

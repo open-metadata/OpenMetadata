@@ -10,16 +10,16 @@ Type: `object`
 
 * **dailyStats** `required`
   * Daily usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usage-details.md#/definitions/usageStats)
+  * $ref: [\#/definitions/usageStats](usage-details.md#types-definitions-in-this-schema)
 * **weeklyStats**
   * Weekly \(last 7 days\) rolling usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usage-details.md#/definitions/usageStats)
+  * $ref: [\#/definitions/usageStats](usage-details.md#types-definitions-in-this-schema)
 * **monthlyStats**
   * Monthly \(last 30 days\) rolling usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usage-details.md#/definitions/usageStats)
+  * $ref: [\#/definitions/usageStats](usage-details.md#types-definitions-in-this-schema)
 * **date** `required`
   * Date in UTC.
-  * $ref: [basic.json\#/definitions/date](usage-details.md#basic.jsondefinitionsdate)
+  * $ref: [basic.json\#/definitions/date](basic.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 

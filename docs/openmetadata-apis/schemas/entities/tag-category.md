@@ -11,15 +11,15 @@ This schema does not accept additional properties.
 ## Properties
 
 * **name** `required`
-  * $ref: [\#/definitions/tagName](tag-category.md#/definitions/tagName)
+  * $ref: [\#/definitions/tagName](tag-category.md#types-definitions-in-this-schema)
 * **description** `required`
   * Description of the tag category.
   * Type: `string`
 * **categoryType** `required`
-  * $ref: [\#/definitions/tagCategoryType](tag-category.md#/definitions/tagCategoryType)
+  * $ref: [\#/definitions/tagCategoryType](tag-category.md#types-definitions-in-this-schema)
 * **href**
   * Link to the resource corresponding to the tag category.
-  * $ref: [../../type/basic.json\#/definitions/href](tag-category.md#....typebasic.jsondefinitionshref)
+  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#types-definitions-in-this-schema)
 * **usageCount**
   * Count of how many times the tags from this tag category are used.
   * Type: `integer`
@@ -27,7 +27,7 @@ This schema does not accept additional properties.
   * Tags under this category.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/tag](tag-category.md#/definitions/tag)
+    * $ref: [\#/definitions/tag](tag-category.md#types-definitions-in-this-schema)
 
 ## Types definitions in this schema
 
