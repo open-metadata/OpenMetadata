@@ -143,8 +143,6 @@ const MyDataPage: React.FC = (): React.ReactElement => {
       .catch(() => setCountServices(0));
   }, []);
 
-  // getFilters();
-
   return (
     <>
       {isLoading ? (
