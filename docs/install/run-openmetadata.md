@@ -23,6 +23,15 @@ cd OpenMetadata/docker/metadata
 docker-compose up
 ```
 
+### Next Steps
+
+1. Docker for OpenMetadata will depend on Mysql Container to be up, It may take few seconds to run.
+2. Once OpenMetadata UI is accessible, Go to Scheduler UI -[ http://localhost:7777](http://localhost:7777), to invoke the pipelines to ingest data. 
+
+![Scheduler UI \(http://localhost:7777\)](../.gitbook/assets/localhost_7777_.png)
+
+![Invoking a Pipeline for Ingestion](../.gitbook/assets/localhost_7777_-1-.png)
+
 The above command brings up all the necessary services
 
 1. MySQL
