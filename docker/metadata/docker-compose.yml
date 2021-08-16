@@ -13,7 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-version: "3.3"
+version: "3.9"
 services:
   db:
     image: mysql:latest
@@ -42,9 +42,7 @@ services:
 
   openmetadata-server:
     restart: always
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: openmetadata/server:latest
     expose:
       - 8585
       - 9200
