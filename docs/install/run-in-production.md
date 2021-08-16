@@ -6,7 +6,7 @@ description: >-
 
 # Run in Production
 
-Please refer to the previous section [Run Openmetadata](https://github.com/open-metadata/OpenMetadata/tree/63c66391cf27d4d77c4b5c21750d9c09bfa44049/docs/install/install/run-openmetadata.md) for configuring OpenMetadata.
+Please refer to the previous section [Run Openmetadata](https://github.com/open-metadata/OpenMetadata/blob/63c66391cf27d4d77c4b5c21750d9c09bfa44049/docs/install/run-openmetadata.md) for configuring OpenMetadata.
 
 {% hint style="info" %}
 **Prerequisites**

@@ -84,8 +84,8 @@ mvn install package -DskipTests
 
 # navigate to directory containing the setup scripts
 cd dist/target/
-unzip openmetadata-1.0.0-SNAPSHOT.zip
-cd openmetadata-1.0.0-SNAPSHOT
+tar -zxvf openmetadata-0.3.0-SNAPSHOT.tar.gz
+cd openmetadata-0.3.0-SNAPSHOT
 ```
 {% endtab %}
 {% endtabs %}
