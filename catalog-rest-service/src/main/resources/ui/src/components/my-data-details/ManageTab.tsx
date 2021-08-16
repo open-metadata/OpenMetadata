@@ -168,7 +168,7 @@ const ManageTab: FunctionComponent<Props> = ({
           <NonAdminAction
             html={
               <>
-                <p>You need ownership to perform this action</p>
+                <p>You need to be owner to perform this action</p>
                 <p>Claim ownership from above </p>
               </>
             }

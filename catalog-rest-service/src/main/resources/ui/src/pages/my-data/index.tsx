@@ -16,8 +16,10 @@
 */
 
 import { AxiosError } from 'axios';
+import { observer } from 'mobx-react';
 import { FormatedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
+import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Error from '../../components/common/error/Error';
 import Loader from '../../components/Loader/Loader';
@@ -41,21 +43,28 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [filter, setFilter] = useState<string>('');
   const [countServices, setCountServices] = useState<number>(0);
   const [countAssets, setCountAssets] = useState<number>(0);
-
   const isMounted = useRef<boolean>(false);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
 
+  const getFilters = (): string => {
+    if (filter === 'owner') {
+      const ownerIds = [
+        ...AppState.userDetails.teams.map((team) => `${filter}:${team.id}`),
+        `${filter}:${getCurrentUserId()}`,
+      ];
+
+      return `(${ownerIds.join(' OR ')})`;
+    }
+
+    return `${filter}:${getCurrentUserId()}`;
+  };
+
   const fetchTableData = (setAssetCount = false) => {
     setIsLoading(true);
-    searchData(
-      '',
-      currentPage,
-      PAGE_SIZE,
-      filter ? `${filter}:${getCurrentUserId()}` : ''
-    )
+    searchData('', currentPage, PAGE_SIZE, filter ? getFilters() : '')
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
         const total = res.data.hits.total.value;
@@ -166,4 +175,4 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   );
 };
 
-export default MyDataPage;
+export default observer(MyDataPage);

@@ -23,7 +23,6 @@ import { observer } from 'mobx-react';
 import { ColumnTags, TableColumn, TableDetail, TableJoinsData } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
@@ -56,6 +55,7 @@ import {
   getCurrentUserId,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
+  getUserTeams,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -184,7 +184,7 @@ const MyDataDetailsPage = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
     } else {
-      return AppState.userTeams.some((team) => team.id === owner?.id);
+      return getUserTeams().some((team) => team.id === owner?.id);
     }
   };
 
@@ -450,7 +450,7 @@ const MyDataDetailsPage = () => {
               </button>
               <NonAdminAction
                 isOwner={!owner || hasEditAccess()}
-                title="You need ownership to perform this action">
+                title="You need to be owner to perform this action">
                 <button
                   className={getTabClasses(6, activeTab)}
                   data-testid="tab"
@@ -474,7 +474,7 @@ const MyDataDetailsPage = () => {
                         <NonAdminAction
                           html={
                             <>
-                              <p>You need ownership to perform this action</p>
+                              <p>You need to be owner to perform this action</p>
                               {!owner ? (
                                 <p>Claim ownership in Manage </p>
                               ) : null}
