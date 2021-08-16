@@ -3,12 +3,10 @@ description: >-
   This design doc will walk through developing a connector for OpenMetadata
 ---
 
-# Ingestion
+
+# Ingestion API
 
 Ingestion is a simple python framework to ingest the metadata from various sources.
-
-
-##API
 
 Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/api)
 
@@ -17,7 +15,7 @@ Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadat
 
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
-It Consists of [Source](./source.md) , Optional [Processor](./processor.md), [Sink](./sink.md) .  It also provides support for [Stage](./stage.md) , [BulkSink](./bulksink.md)
+It consists of [Source](./source.md) ,[Processor](./processor.md), [Sink](./sink.md) .  It also provides support for [Stage](./stage.md) , [BulkSink](./bulksink.md)
 
 Workflow execution happens in serial fashion.
 

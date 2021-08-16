@@ -77,6 +77,11 @@
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
+	 * [Source](open-source-community/developer/build-a-connector/source.md)
+ 	 * [Processor](open-source-community/developer/build-a-connector/processor.md)
+	 * [Sink](open-source-community/developer/build-a-connector/sink.md)
+	 * [Stage](open-source-community/developer/build-a-connector/stage.md)
+	 * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
   * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
 
