@@ -63,7 +63,6 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   };
 
   const fetchTableData = (setAssetCount = false) => {
-    getFilters();
     setIsLoading(true);
     searchData('', currentPage, PAGE_SIZE, filter ? getFilters() : '')
       .then((res: SearchResponse) => {
