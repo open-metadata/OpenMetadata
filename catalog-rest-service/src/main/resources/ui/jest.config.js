@@ -17,7 +17,7 @@
 
 module.exports = {
   // Project name
-  displayName: '@collate/openmetadata',
+  displayName: '@openmetadata',
 
   // Working directory
   roots: ['<rootDir>/src'],

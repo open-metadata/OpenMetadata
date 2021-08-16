@@ -43,14 +43,10 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
         className="tw-modal-container tw-modal-confetti tw-max-w-xl tw-max-h-90vh"
         style={{ backgroundImage: active === 0 ? `url(${BGConfetti})` : '' }}>
         <div className="tw-modal-header tw-border-0 tw-justify-center tw-pt-8 tw-pb-0">
-          <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mt-14">
+          <div className="tw-flex tw-flex-col tw-justify-center tw-items-center tw-mt-12">
             {active === 0 ? (
               // TODO: Replace it with Party popper icon
-              <SVGIcons
-                alt="OpenMetadata Logo"
-                icon={Icons.LOGO_SMALL}
-                width="50"
-              />
+              <SVGIcons alt="Welcome" icon={Icons.WELCOME_POPPER} width="60" />
             ) : (
               <SVGIcons
                 alt="OpenMetadata Logo"
@@ -58,7 +54,7 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
                 width="50"
               />
             )}
-            <p className="tw-modal-title tw-text-h4 tw-font-semibold tw-text-primary-active tw-mt-3">
+            <p className="tw-modal-title tw-text-h4 tw-font-semibold tw-text-primary-active tw-mt-5">
               Welcome to OpenMetadata
             </p>
           </div>

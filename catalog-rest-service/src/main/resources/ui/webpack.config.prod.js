@@ -158,7 +158,7 @@ module.exports = {
     }),
     // Build progress bar
     new WebpackBar({
-      name: '@collate/openmetadata [prod]',
+      name: '@openmetadata [prod]',
       color: '#15C39B',
     }),
     new MiniCssExtractPlugin({
