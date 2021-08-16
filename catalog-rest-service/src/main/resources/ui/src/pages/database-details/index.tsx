@@ -49,7 +49,7 @@ import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getUsagePercentile } from '../../utils/TableUtils';
+import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -308,7 +308,9 @@ const DatabaseDetails: FunctionComponent = () => {
                           )}
                         </td>
                         <td className="tableBody-cell">
-                          <p>{table?.owner?.name || '--'}</p>
+                          <p>
+                            {getOwnerFromId(table?.owner?.id)?.name || '--'}
+                          </p>
                         </td>
                         <td className="tableBody-cell">
                           <p>

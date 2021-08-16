@@ -3,7 +3,6 @@ import React from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import { ConstraintTypes } from '../enums/table.enum';
-import { getUserTeams } from './CommonUtils';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -90,7 +89,7 @@ export const getOwnerFromId = (
         type: 'user',
       };
     } else {
-      const team = getUserTeams().find((item) => item.id === id);
+      const team = AppState.userTeams.find((item) => item.id === id);
       if (team) {
         retVal = {
           name: team.displayName || team.name,
