@@ -32,7 +32,7 @@ dist/target/open-metadata-<version>.tar.gz
 
 ## Run instance through IntelliJ IDEA
 
-1. Add new Run/Debug configuration like the below screenshot.
+1. Add a new Run/Debug configuration like the below screenshot.
 
    ![Intellj Run Configuration](https://github.com/open-metadata/OpenMetadata/blob/main/docs/install/images/ingestion-bot-service-account.png)
 
