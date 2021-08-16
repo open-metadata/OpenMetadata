@@ -76,6 +76,7 @@
 * [Developer](open-source-community/developer/README.md)
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
+  * [Build a Connector](open-source-community/developer/build-a-connector)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
   * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
 
