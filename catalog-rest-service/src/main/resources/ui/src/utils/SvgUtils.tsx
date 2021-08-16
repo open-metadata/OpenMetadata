@@ -1,5 +1,6 @@
 import React, { FunctionComponent } from 'react';
 import IconGoogle from '../assets/img/google-icon.png';
+import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -57,6 +58,7 @@ type Props = {
 export const Icons = {
   LOGO: 'logo',
   LOGO_SMALL: 'logo-small',
+  WELCOME_POPPER: 'welcome-popper',
   GOOGLE_ICON: 'google-icon',
   EDIT: 'icon-edit',
   EXPLORE: 'icon-explore',
@@ -152,6 +154,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.WELCOME_POPPER:
+      IconComponent = IconWelcomePopper;
 
       break;
     case Icons.GOOGLE_ICON:

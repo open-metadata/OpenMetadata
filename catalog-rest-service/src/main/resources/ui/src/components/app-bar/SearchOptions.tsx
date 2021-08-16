@@ -66,7 +66,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
               <Link
                 className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
                     hover:tw-bg-body-hover"
-                data-testid="InCollate"
+                data-testid="InOpenMetadata"
                 to={getExplorePathWithSearch(searchText)}
                 onClick={() => setIsOpen(false)}>
                 {searchText}
