@@ -16,14 +16,8 @@
 # limitations under the License.
 #
 
-cd /
-
-while ! curl -o - 172.16.239.10:3306; do sleep 1; done
-
-tar zxvf openmetadata-1.0.0-SNAPSHOT.tar.gz
-cp /openmetadata.yaml /openmetadata-1.0.0-SNAPSHOT/conf/
-
-cd /openmetadata-1.0.0-SNAPSHOT
+while ! curl -o - localhost:3306; do sleep 5; done
+mv /openmetadata.yaml /openmetadata-0.3.0-SNAPSHOT/conf/openmetadata.yaml
+cd /openmetadata-0.3.0-SNAPSHOT
 ./bootstrap/bootstrap_storage.sh migrate
-
 ./bin/openmetadata-server-start.sh conf/openmetadata.yaml

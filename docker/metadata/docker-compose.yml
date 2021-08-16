@@ -16,7 +16,6 @@
 version: "3.9"
 services:
   db:
-    platform: linux/x86_64
     image: mysql:latest
     restart: always
     environment:
@@ -33,7 +32,9 @@ services:
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     environment:
-      discovery.type: single-node
+      - discovery.type=single-node
+    depends_on:
+      - openmetadata-server
     networks:
       app_net:
         ipv4_address: 172.16.239.11
@@ -42,22 +43,23 @@ services:
       - 9300:9300
 
   openmetadata-server:
+    restart: always
     image: openmetadata/server:latest
     expose:
       - 8585
       - 9200
       - 9300
+      - 3306
     ports:
       - 8585:8585
     depends_on:
       - db
-      - elasticsearch
     networks:
       app_net:
         ipv4_address: 172.16.239.12
     extra_hosts:
       - "localhost:172.16.239.10"
-      - "localhost:172.16.239.11"
+      - "elasticsearch:172.16.239.11"
 
   ingestion:
     image: openmetadata/ingestion:latest
