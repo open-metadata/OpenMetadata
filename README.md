@@ -41,7 +41,7 @@ Get up and running in few mins
 
 ```sh
 git clone https://github.com/open-metadata/OpenMetadata
-cd openmetadata/docker
+cd OpenMetadata/docker/metadata
 docker-compose up -d
 ```
 Then visit [http://localhost:8585](http://localhost:8585)
