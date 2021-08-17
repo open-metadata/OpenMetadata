@@ -10,7 +10,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import NotFoundError
 from typing import List, Optional
 
-from metadata.generated.schema.entity.data.table import TableEntity
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.bulksink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING
 
 from metadata.config.common import ConfigModel
@@ -78,7 +78,7 @@ class ElasticsearchBulkSink(BulkSink):
             return []
 
     def write_records(self) -> None:
-        table_entities = [TableEntity(**json.loads(l)) for l in self.file_handler.readlines()]
+        table_entities = [Table(**json.loads(l)) for l in self.file_handler.readlines()]
         docs = []
         for table in table_entities:
             fqdn = table.fullyQualifiedName

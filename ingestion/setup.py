@@ -79,6 +79,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
     "hive": {"pyhive~=0.6.3", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
+    "presto": {"pyhive~=0.6.3"},
     "ldap-users": {"ldap3==2.9.1"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "mssql-odbc": {"pyodbc"},

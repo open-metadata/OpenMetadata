@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import TableEntity
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.models.json_serializable import JsonSerializable, NODE_KEY, NODE_LABEL
 
 DESCRIPTION_NODE_LABEL_VAL = 'Description'
@@ -190,4 +190,4 @@ class TableESDocument(BaseModel):
     schema_description: Optional[str] = None
     owner: str
     followers: List[str]
-    table_entity: TableEntity
+    table_entity: Table

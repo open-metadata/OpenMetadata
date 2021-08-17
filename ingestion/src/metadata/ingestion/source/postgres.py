@@ -15,7 +15,7 @@
 
 # This import verifies that the dependencies are available.
 import uuid
-from metadata.generated.schema.entity.data.database import DatabaseEntity
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern
@@ -23,7 +23,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 import pymysql  # noqa: F401
 
-from metadata.generated.schema.entity.data.table import TableEntity, Column
+from metadata.generated.schema.entity.data.table import Table, Column
 from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from .sql_source import SQLConnectionConfig
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -150,16 +150,17 @@ class PostgresSource(Source):
                 if col_type is not None:
                     columns.append(Column(name=row['col_name'], description=row['col_description'],
                                           columnDataType=col_type, ordinalPosition=int(row['col_sort_order'])))
-            table_metadata = TableEntity(name=last_row['name'],
-                                         description=last_row['description'],
-                                         columns=columns)
+            print(last_row)
+            table_metadata = Table(id=uuid.uuid4(), name=last_row['name'],
+                                   description=last_row['description'],
+                                   columns=columns)
 
             self.status.scanned(table_metadata.name.__root__)
 
-            dm = DatabaseEntity(id=uuid.uuid4(),
-                                name=row['schema'],
-                                description=row['description'] if row['description'] is not None else ' ',
-                                service=EntityReference(id=self.service.id, type=self.SERVICE_TYPE))
+            dm = Database(id=uuid.uuid4(),
+                          name=row['schema'],
+                          description=row['description'] if row['description'] is not None else ' ',
+                          service=EntityReference(id=self.service.id, type=self.SERVICE_TYPE))
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=dm)
             yield table_and_db
 

@@ -16,7 +16,7 @@
 from datetime import datetime, timedelta
 
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.client import REST
 
 
@@ -35,7 +35,7 @@ def snake_to_camel(s):
     return ''.join(a)
 
 
-def get_service_or_create(config, metadata_config) -> DatabaseServiceEntity:
+def get_service_or_create(config, metadata_config) -> DatabaseService:
     client = REST(metadata_config)
     service = client.get_database_service(config.service_name)
     if service is not None:

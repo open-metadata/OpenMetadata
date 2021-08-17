@@ -18,7 +18,7 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import TableEntity
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.ometa.client import MetadataServerConfig
@@ -51,7 +51,7 @@ class FileStage(Stage):
 
     def stage_record(
         self,
-        record: TableEntity
+        record: Table
     ) -> None:
         json_record = json.loads(record.json())
         self.file.write(json.dumps(json_record))

@@ -1,6 +1,7 @@
 {
   "tables": [
     {
+      "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
       "name": "dim_address",
       "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
       "columns": [
@@ -98,6 +99,7 @@
       "joins": null
     },
     {
+      "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
       "name": "dim_api_client",
       "description": "This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.",
       "columns": [
@@ -124,6 +126,7 @@
       "joins": null
     },
     {
+      "id": "c4be7688-7810-45cc-b17c-3409243d71ee",
       "name": "dim_customer",
       "description": "The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.",
       "columns": [
@@ -319,6 +322,7 @@
       "joins": null
     },
     {
+      "id": "6022df14-dfcb-42ba-971a-72c2612f1c21",
       "name": "dim_location",
       "description": "The dimension table contains metrics about your Shopify POS. This table contains one row per Shopify POS location. You can use this table to generate a list of the Shopify POS locations or you can join the table with the sales table to measure sales performance.",
       "columns": [
@@ -352,6 +356,7 @@
       "joins": null
     },
     {
+      "id": "2a88779a-8c46-43d0-a364-d0461ba2e070",
       "name": "dim_product",
       "description": "This dimension table contains information about each of the products in your store. This table contains one row per product. This table reflects the current state of products in your Shopify admin.",
       "columns": [
@@ -407,6 +412,7 @@
       "joins": null
     },
     {
+      "id": "217bd67d-b3ef-4215-ab2e-2a9da923a345",
       "name": "dim_product_variant",
       "description": "This dimension table contains current information about each of the product variants in your store. This table contains one row per product variant.",
       "columns": [
@@ -490,6 +496,7 @@
       "joins": null
     },
     {
+      "id": "023d5944-e20e-41e0-8608-ea0ab0133e13",
       "name": "dim_shop",
       "description": "This dimension table contains online shop information. This table contains one shop per row.",
       "columns": [
@@ -524,6 +531,7 @@
       "joins": null
     },
     {
+      "id": "e3f80a50-8318-4385-b041-ec6126d262d0",
       "name": "dim_staff",
       "description": "This dimension table contains information about the staff accounts in the store. It contains one row per staff account. Use this table to generate a list of your staff accounts, or join it with the sales, API clients and locations tables to analyze staff performance at Shopify POS locations.",
       "columns": [
@@ -572,6 +580,7 @@
       "joins": null
     },
     {
+      "id": "790d46e4-753f-4366-b3c3-0cd372aaa12e",
       "name": "fact_line_item",
       "description": "The fact table contains information about the line items in orders. Each row in the table is a line item in an order. It contains product and product variant details as they were at the time of the order. This table does not include information about returns. Join this table with the TODO fact_sales table to get the details of the product on the day it was sold. This data will match what appears on the order in your Shopify admin as well as the in the Sales reports.",
       "columns": [
@@ -702,6 +711,7 @@
       "joins": null
     },
     {
+      "id": "790d46e4-753f-4366-b3c3-0cd372aaa12e",
       "name": "fact_order",
       "description": "The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.",
       "columns": [
@@ -817,6 +827,7 @@
       "joins": null
     },
     {
+      "id": "790d46e4-753f-4366-b3c3-0cd372aaa12e",
       "name": "fact_sale",
       "description": "The fact table captures the value of products sold or returned, as well as the values of other charges such as taxes and shipping costs. The sales table contains one row per order line item, one row per returned line item, and one row per shipping charge. Use this table when you need financial metrics.",
       "columns": [
@@ -1019,6 +1030,7 @@
       "joins": null
     },
     {
+      "id": "790d46e4-753f-4366-b3c3-0cd372aaa12e",
       "name": "fact_session",
       "description": "This fact table contains information about the visitors to your online store. This table has one row per session, where one session can contain many page views. If you use Urchin Traffic Module (UTM) parameters in marketing campaigns, then you can use this table to track how many customers they direct to your store.",
       "columns": [
