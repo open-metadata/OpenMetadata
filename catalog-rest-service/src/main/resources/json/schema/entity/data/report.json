@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/report.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Report",
-  "description": "This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and in visual form.",
+  "description": "This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and visual form.",
   "type": "object",
 
   "properties" : {
@@ -11,7 +11,7 @@
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies the this report instance uniquely.",
+      "description": "Name that identifies this report instance uniquely.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64

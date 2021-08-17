@@ -22,8 +22,7 @@
       "description": "Type for capturing JDBC connector information",
       "properties": {
         "driverClass": {
-          "$ref" : "#/definitions/driverClass",
-          "default": "com.amazon.redshift.jdbc42.Driver"
+          "$ref" : "#/definitions/driverClass"
         },
         "connectionUrl": {
           "$ref" : "#/definitions/connectionUrl"
