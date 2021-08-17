@@ -14,5 +14,3 @@ We use [JSON schema](https://json-schema.org/) as the Schema Definition Language
 2. [JSON schema 2 POJO](https://www.jsonschema2pojo.org/) tool used for Java code generation from JSON schema
 3. [Data model code generator](https://github.com/koxudaxi/datamodel-code-generator) for generating python code from JSON schema
 
-## 
-
