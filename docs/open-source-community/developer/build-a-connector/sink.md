@@ -1,11 +1,10 @@
-#Sink 
+# Sink
 
-Sink will get the event emitted by the source, one at a time. It can use this record to make external service calls to store or index etc.. For OpenMetadata
-we have [MetadataRestTablesSink](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/sink/metadata_rest_tables.py)
+Sink will get the event emitted by the source, one at a time. It can use this record to make external service calls to store or index etc.. For OpenMetadata we have [MetadataRestTablesSink](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/sink/metadata_rest_tables.py)
 
 ## API
 
-```py
+```python
 @dataclass  # type: ignore[misc]
 class Sink(Closeable, metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
@@ -33,19 +32,17 @@ class Sink(Closeable, metaclass=ABCMeta):
 
 **create** method is called during the workflow instantiation and creates a instance of the sink
 
-**write_record** this method is called for each record coming down in workflow chain and can be used to store the record in external services etc..
+**write\_record** this method is called for each record coming down in workflow chain and can be used to store the record in external services etc..
 
-**get_status** to report the status of the sink ex: how many records, failures or warnings etc..
+**get\_status** to report the status of the sink ex: how many records, failures or warnings etc..
 
 **close** gets called before the workflow stops. Can be used to cleanup any connections or other resources.
-
 
 ## Example
 
 Example implmentation
 
-```py
-
+```python
 class MetadataRestTablesSink(Sink):
     config: MetadataTablesSinkConfig
     status: SinkStatus
@@ -92,3 +89,4 @@ class MetadataRestTablesSink(Sink):
     def close(self):
         pass
 ```
+

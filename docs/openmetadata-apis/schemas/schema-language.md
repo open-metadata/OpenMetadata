@@ -1,4 +1,4 @@
-# Schema Language
+# JSON Schema
 
 We use [JSON schema](https://json-schema.org/) as the Schema Definition Language as it offers several advantages:
 

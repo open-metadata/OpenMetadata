@@ -1,11 +1,10 @@
-#BulkSink 
+# BulkSink
 
-**BulkSink** is an optional component in workflow. It can be used to bulk update the records
-generated in a workflow. It needs to be used in conjuction with Stage 
+**BulkSink** is an optional component in workflow. It can be used to bulk update the records generated in a workflow. It needs to be used in conjuction with Stage
 
 ## API
 
-```py
+```python
 @dataclass  # type: ignore[misc]
 class BulkSink(Closeable, metaclass=ABCMeta):
     ctx: WorkflowContext
@@ -30,13 +29,11 @@ class BulkSink(Closeable, metaclass=ABCMeta):
 
 **create** method is called during the workflow instantiation and creates a instance of the bulksink
 
-**write_records** this method is called only once in Workflow. Its developer responsibility to make bulk actions inside this method. Such as read the entire file or store to generate
-the API calls to external services
+**write\_records** this method is called only once in Workflow. Its developer responsibility to make bulk actions inside this method. Such as read the entire file or store to generate the API calls to external services
 
-**get_status** to report the status of the bulk_sink ex: how many records, failures or warnings etc..
+**get\_status** to report the status of the bulk\_sink ex: how many records, failures or warnings etc..
 
 **close** gets called before the workflow stops. Can be used to cleanup any connections or other resources.
-
 
 ## Example
 

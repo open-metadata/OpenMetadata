@@ -1,10 +1,10 @@
 # Introduction
 
-Data is an important asset of an organization and metadata is the key to unlock the value from that asset. It provides crucial context to turn data into information and powers not just the current limited use cases of data discovery, and governance, but also emerging use cases related to data quality, observability, and most importantly people collaboration. 
+Metadata enables you to unlock the value of data assets in the common use cases of data discovery and governance, but also in emerging use cases related to data quality, observability, and people collaboration. However, poorly organized and managed metadata leads to redundant efforts within organizations and other inefficiencies that are expensive in time and dollars.
 
 Poorly organized metadata is preventing organizations from realizing the full potential of data. Metadata is incorrect, inconsistent, stale, often missing, and fragmented in silos across various disconnected tools in proprietary formats obscuring a holistic picture of data.
 
-### **OpenMetadata is an Open standard for metadata with a centralized metadata store that unifies all the data assets and metadata end-to-end to power data discovery, user collaboration,  and tool interoperability.**   
+### **OpenMetadata is an open standard with a centralized metadata store that unifies all your data assets end-to-end to enable data discovery, user collaboration, and tool interoperability.** 
 
 ![](.gitbook/assets/openmetadata-overview%20%281%29.png)
 

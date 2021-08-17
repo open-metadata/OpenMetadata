@@ -1,12 +1,12 @@
 # Table of contents
 
 * [Introduction](README.md)
-* [Take it for a spin](take-it-for-a-spin.md)
+* [Try OpenMetadata](take-it-for-a-spin.md)
 
 ## OpenMetadata APIs
 
 * [Schemas](openmetadata-apis/schemas/README.md)
-  * [Schema Language](openmetadata-apis/schemas/schema-language.md)
+  * [JSON Schema](openmetadata-apis/schemas/schema-language.md)
   * [Schema Concepts](openmetadata-apis/schemas/overview.md)
   * [OpenMetadata Types](openmetadata-apis/schemas/types/README.md)
     * [Basic Types](openmetadata-apis/schemas/types/basic.md)
@@ -77,11 +77,11 @@
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
-	 * [Source](open-source-community/developer/build-a-connector/source.md)
-	 * [Processor](open-source-community/developer/build-a-connector/processor.md)
-	 * [Sink](open-source-community/developer/build-a-connector/sink.md)
-	 * [Stage](open-source-community/developer/build-a-connector/stage.md)
-	 * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
+    * [Source](open-source-community/developer/build-a-connector/source.md)
+    * [Processor](open-source-community/developer/build-a-connector/processor.md)
+    * [Sink](open-source-community/developer/build-a-connector/sink.md)
+    * [Stage](open-source-community/developer/build-a-connector/stage.md)
+    * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
   * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
 

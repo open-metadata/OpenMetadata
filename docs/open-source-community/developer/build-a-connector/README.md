@@ -1,21 +1,18 @@
 ---
-description: >-
-  This design doc will walk through developing a connector for OpenMetadata
+description: This design doc will walk through developing a connector for OpenMetadata
 ---
 
-
-# Ingestion API
+# Build a Connector
 
 Ingestion is a simple python framework to ingest the metadata from various sources.
 
 Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/ingestion/api)
 
-
 ## Workflow
 
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
-It consists of [Source](./source.md) ,[Processor](./processor.md), [Sink](./sink.md) .  It also provides support for [Stage](./stage.md) , [BulkSink](./bulksink.md)
+It consists of [Source](source.md) ,[Processor](processor.md), [Sink](sink.md) . It also provides support for [Stage](stage.md) , [BulkSink](bulksink.md)
 
 Workflow execution happens in serial fashion.
 
@@ -27,8 +24,6 @@ Workflow execution happens in serial fashion.
 
 In the cases where we need to aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**
 
-
-
 {% page-ref page="source.md" %}
 
 {% page-ref page="processor.md" %}
@@ -38,8 +33,4 @@ In the cases where we need to aggregation over the records, we can use **stage**
 {% page-ref page="stage.md" %}
 
 {% page-ref page="bulksink.md" %}
-
-
-
-
 

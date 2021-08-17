@@ -1,10 +1,10 @@
-#Source
+# Source
 
 Source is the connector to external systems and outputs a record for downstream to process and push to OpenMetadata.
 
-##Source API
+## Source API
 
-```py
+```python
 @dataclass  # type: ignore[misc]
 class Source(Closeable, metaclass=ABCMeta):
     ctx: WorkflowContext
@@ -31,16 +31,15 @@ class Source(Closeable, metaclass=ABCMeta):
 
 **prepare** will be called through Python's init method. This will be a place where you could make connections to external sources or initiate the client library
 
-**next_record** is where the client can connect to external resource and emit the data downstream
+**next\_record** is where the client can connect to external resource and emit the data downstream
 
-**get_status** is for [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings
-
+**get\_status** is for [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings
 
 ## Example
 
 A simple example of this implementation is
 
-```py
+```python
 class SampleTablesSource(Source):
 
     def __init__(self, config: SampleTableSourceConfig, metadata_config: MetadataServerConfig, ctx):

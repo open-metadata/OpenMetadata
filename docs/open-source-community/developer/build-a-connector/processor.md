@@ -1,13 +1,10 @@
-#Processor 
+# Processor
 
-**Processor** is an optional component in workflow. It can be used to modify the record
-coming from sources. Processor receives a record from source and can modify and re-emit the
-event back to workflow.
-
+**Processor** is an optional component in workflow. It can be used to modify the record coming from sources. Processor receives a record from source and can modify and re-emit the event back to workflow.
 
 ## API
 
-```py
+```python
 @dataclass
 class Processor(Closeable, metaclass=ABCMeta):
     ctx: WorkflowContext
@@ -34,17 +31,15 @@ class Processor(Closeable, metaclass=ABCMeta):
 
 **process** this method is called for each record coming down in workflow chain and can be used to modify or enrich the record
 
-**get_status** to report the status of the processor ex: how many records, failures or warnings etc..
+**get\_status** to report the status of the processor ex: how many records, failures or warnings etc..
 
 **close** gets called before the workflow stops. Can be used to cleanup any connections or other resources.
-
 
 ## Example
 
 Example implmentation
 
-```py
-
+```python
 class PiiProcessor(Processor):
     config: PiiProcessorConfig
     metadata_config: MetadataServerConfig
@@ -100,3 +95,4 @@ class PiiProcessor(Processor):
     def get_status(self) -> ProcessorStatus:
         return self.status
 ```
+
