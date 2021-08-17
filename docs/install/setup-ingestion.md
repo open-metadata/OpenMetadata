@@ -74,7 +74,7 @@ metadata ingest -c ./pipelines/redshift.json
 
 ```text
  source env/bin/activate
- export GOOGLE_APPLICATION_CREDENTIALS="$PWD/pipelines/creds/bigquery-cred.json"
+ export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
  metadata ingest -c ./pipelines/bigquery.json
 ```
 
