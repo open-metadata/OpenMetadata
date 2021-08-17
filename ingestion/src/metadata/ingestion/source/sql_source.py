@@ -26,9 +26,9 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 from metadata.generated.schema.type.entityReference import EntityReference
 
-from metadata.generated.schema.entity.data.database import DatabaseEntity
+from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import TableEntity, Column, ColumnConstraint
+from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint
 from sqlalchemy import create_engine
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.inspection import inspect
@@ -232,12 +232,13 @@ class SQLSource(Source):
                                                     ordinalPosition=row_order))
                         row_order = row_order + 1
 
-                    db = DatabaseEntity(id=uuid.uuid4(),
-                                        name=schema,
-                                        service=EntityReference(id=self.service.id, type=self.config.service_type))
-                    table = TableEntity(name=table,
-                                        description=description if description is not None else ' ',
-                                        columns=table_columns)
+                    db = Database(
+                                  name=schema,
+                                  service=EntityReference(id=self.service.id, type=self.config.service_type))
+                    table = Table(id=uuid.uuid4(),
+                                  name=table,
+                                  description=description if description is not None else ' ',
+                                  columns=table_columns)
 
                     table_and_db = OMetaDatabaseAndTable(table=table, database=db)
                     yield table_and_db

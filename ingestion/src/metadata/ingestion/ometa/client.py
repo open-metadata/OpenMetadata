@@ -25,19 +25,19 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEnti
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoinsList
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
     GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.generated.schema.entity.data.table import TableEntity, TableJoins
-from metadata.generated.schema.entity.data.database import DatabaseEntity
+from metadata.generated.schema.entity.data.table import Table, TableJoins
+from metadata.generated.schema.entity.data.database import Database
 
 logger = logging.getLogger(__name__)
-DatabaseServiceEntities = List[DatabaseServiceEntity]
-DatabaseEntities = List[DatabaseEntity]
-TableEntities = List[TableEntity]
+DatabaseServiceEntities = List[DatabaseService]
+DatabaseEntities = List[Database]
+TableEntities = List[Table]
 Tags = List[Tag]
 
 
@@ -197,15 +197,15 @@ class REST(object):
     def delete(self, path, data=None):
         return self._request('DELETE', path, data)
 
-    def get_database_service(self, service_name: str) -> DatabaseServiceEntity:
+    def get_database_service(self, service_name: str) -> DatabaseService:
         """Get the Database service"""
         resp = self.get('/services/databaseServices?name={}'.format(service_name))
-        return DatabaseServiceEntity(**resp['data'][0]) if len(resp['data']) > 0 else None
+        return DatabaseService(**resp['data'][0]) if len(resp['data']) > 0 else None
 
-    def get_database_service_by_id(self, service_id: str) -> DatabaseServiceEntity:
+    def get_database_service_by_id(self, service_id: str) -> DatabaseService:
         """Get the Database Service by ID"""
         resp = self.get('/services/databaseServices/{}'.format(service_id))
-        return DatabaseServiceEntity(**resp)
+        return DatabaseService(**resp)
 
     def list_database_services(self) -> DatabaseServiceEntities:
         """Get a list of mysql services"""
@@ -213,24 +213,24 @@ class REST(object):
         if self._use_raw_data:
             return resp
         else:
-            return [DatabaseServiceEntity(**p) for p in resp['data']]
+            return [DatabaseService(**p) for p in resp['data']]
 
     def create_database_service(self,
-                                database_service: CreateDatabaseServiceEntityRequest) -> DatabaseServiceEntity:
+                                database_service: CreateDatabaseServiceEntityRequest) -> DatabaseService:
         """Create a new Database Service"""
         resp = self.post('/services/databaseServices', data=database_service.json())
-        return DatabaseServiceEntity(**resp)
+        return DatabaseService(**resp)
 
     def delete_database_service(self, service_id: str) -> None:
         """Delete a Database service"""
         self.delete('/services/databaseServices/{}'.format(service_id))
 
-    def get_database_by_name(self, database_name: str, fields: [] = ['service']) -> DatabaseEntity:
+    def get_database_by_name(self, database_name: str, fields: [] = ['service']) -> Database:
         """Get the Database"""
         params = {}
         params['fields'] = ",".join(fields)
         resp = self.get('/databases/name/{}'.format(database_name), data=params)
-        return DatabaseEntity(**resp)
+        return Database(**resp)
 
     def list_databases(self, fields: [] = ['service']) -> DatabaseEntities:
         """ List all databases"""
@@ -241,20 +241,20 @@ class REST(object):
         if self._use_raw_data:
             return resp
         else:
-            return [DatabaseEntity(**d) for d in resp['data']]
+            return [Database(**d) for d in resp['data']]
 
     def get_database_by_id(self, database_id: str,
-                           fields: [] = ['owner,service,tables,usageSummary']) -> DatabaseEntity:
+                           fields: [] = ['owner,service,tables,usageSummary']) -> Database:
         """ Get Database By ID """
         params = {}
         params['fields'] = ",".join(fields)
         resp = self.get('/databases/{}'.format(database_id), data=params)
-        return DatabaseEntity(**resp)
+        return Database(**resp)
 
-    def create_database(self, create_database_request: CreateDatabaseEntityRequest) -> DatabaseEntity:
+    def create_database(self, create_database_request: CreateDatabaseEntityRequest) -> Database:
         """ Create a Database """
         resp = self.put('/databases', data=create_database_request.json())
-        return DatabaseEntity(**resp)
+        return Database(**resp)
 
     def delete_database(self, database_id: str):
         """ Delete Database using ID """
@@ -267,38 +267,37 @@ class REST(object):
             resp = self.get('/tables')
         else:
             resp = self.get('/tables?fields={}&offset={}&limit={}'.format(fields,offset, limit))
-
         if self._use_raw_data:
             return resp
         else:
-            return [TableEntity(**t) for t in resp['data']]
+            return [Table(**t) for t in resp['data']]
 
-    def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> TableEntity:
+    def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> Table:
         """Get Table By ID"""
         params = {}
         params['fields'] = ",".join(fields)
         resp = self.get('/tables/{}'.format(table_id), data=params)
-        return TableEntity(**resp)
+        return Table(**resp)
 
-    def create_or_update_table(self, create_table_request: CreateTableEntityRequest) -> TableEntity:
+    def create_or_update_table(self, create_table_request: CreateTableEntityRequest) -> Table:
         """Create or Update a Table """
         resp = self.put('/tables', data=create_table_request.json())
         resp.pop("database", None)
-        return TableEntity(**resp)
+        return Table(**resp)
 
-    def get_table_by_name(self, table_name: str, fields: [] = ['columns']) -> TableEntity:
+    def get_table_by_name(self, table_name: str, fields: [] = ['columns']) -> Table:
         """Get Table By Name"""
         params = {}
         params['fields'] = ",".join(fields)
         resp = self.get('/tables/name/{}'.format(table_name), data=params)
-        return TableEntity(**resp)
+        return Table(**resp)
 
-    def publish_usage_for_a_table(self, table: TableEntity, table_usage_request: TableUsageRequest) -> None:
+    def publish_usage_for_a_table(self, table: Table, table_usage_request: TableUsageRequest) -> None:
         """publish usage details for a table"""
         resp = self.post('/usage/table/{}'.format(table.id.__root__), data=table_usage_request.json())
         logger.debug("published table usage {}".format(resp))
 
-    def publish_frequently_joined_with(self, table: TableEntity, table_join_request: TableJoins) -> None:
+    def publish_frequently_joined_with(self, table: Table, table_join_request: TableJoins) -> None:
         """publish frequently joined with for a table"""
         logger.debug(table_join_request.json())
         logger.info("table join request {}".format(table_join_request.json()))

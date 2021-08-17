@@ -22,15 +22,15 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Iterable, List, Dict, Any, Union
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import TableEntity
-from metadata.generated.schema.entity.data.database import DatabaseEntity
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceEntity
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
@@ -39,7 +39,7 @@ COL_DESCRIPTION = 'Description'
 TableKey = namedtuple('TableKey', ['schema', 'table_name'])
 
 
-def get_service_or_create(service_json, metadata_config) -> DatabaseServiceEntity:
+def get_service_or_create(service_json, metadata_config) -> DatabaseService:
     client = REST(metadata_config)
     service = client.get_database_service(service_json['name'])
     if service is not None:
@@ -192,12 +192,12 @@ class SampleTablesSource(Source):
         pass
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = DatabaseEntity(id=uuid.uuid4(),
-                            name=self.database['name'],
-                            description=self.database['description'],
-                            service=EntityReference(id=self.service.id, type=self.config.service_type))
+        db = Database(id=uuid.uuid4(),
+                      name=self.database['name'],
+                      description=self.database['description'],
+                      service=EntityReference(id=self.service.id, type=self.config.service_type))
         for table in self.tables['tables']:
-            table_metadata = TableEntity(**table)
+            table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned(table_metadata.name.__root__)
             yield table_and_db

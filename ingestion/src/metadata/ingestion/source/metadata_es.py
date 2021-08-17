@@ -17,7 +17,7 @@ import logging
 from typing import Iterable, Optional
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import TableEntity
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
@@ -53,7 +53,7 @@ class MetadataEsSource(Source):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
-    def next_record(self) -> Iterable[TableEntity]:
+    def next_record(self) -> Iterable[Table]:
         for table in self.tables:
             self.status.scanned(table.name)
             yield table
