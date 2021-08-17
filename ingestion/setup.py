@@ -38,7 +38,7 @@ def get_long_description():
 
 scheduler_requirements = {
     "apns@git+git://github.com/djacobs/PyAPNs.git#egg=apns",
-    "simplescheduler@git+https://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
+    "simplescheduler@git+git://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
 }
 
 base_requirements = {
