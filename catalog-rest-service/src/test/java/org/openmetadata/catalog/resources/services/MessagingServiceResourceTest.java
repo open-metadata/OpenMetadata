@@ -21,13 +21,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
-import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.api.services.UpdateDatabaseService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.api.services.CreateMessagingService;
+import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
+import org.openmetadata.catalog.api.services.UpdateMessagingService;
+import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
@@ -48,28 +47,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class DatabaseServiceResourceTest extends CatalogApplicationTest {
+public class MessagingServiceResourceTest extends CatalogApplicationTest {
   @Test
-  public void post_databaseServiceWithLongName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabaseService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
+  public void post_serviceWithLongName_400_badRequest(TestInfo test) {
+    // Create messaging with mandatory name field empty
+    CreateMessagingService create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createService(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
-  public void post_databaseServiceWithoutName_400_badRequest(TestInfo test) {
-    // Create database with mandatory name field empty
-    CreateDatabaseService create = create(test).withName("");
+  public void post_serviceWithoutName_400_badRequest(TestInfo test) {
+    // Create messaging with mandatory name field empty
+    CreateMessagingService create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createService(create, adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
-  public void post_databaseServiceAlreadyExists_409(TestInfo test) throws HttpResponseException {
-    CreateDatabaseService create = create(test);
+  public void post_serviceAlreadyExists_409(TestInfo test) throws HttpResponseException {
+    CreateMessagingService create = create(test);
     createService(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createService(create, adminAuthHeaders()));
@@ -77,8 +76,8 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validDatabaseService_as_admin_200_ok(TestInfo test) throws HttpResponseException {
-    // Create database service with different optional fields
+  public void post_validService_as_admin_200_ok(TestInfo test) throws HttpResponseException {
+    // Create messaging service with different optional fields
     Map<String, String> authHeaders = adminAuthHeaders();
     createAndCheckService(create(test, 1).withDescription(null), authHeaders);
     createAndCheckService(create(test, 2).withDescription("description"), authHeaders);
@@ -86,8 +85,8 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validDatabaseService_as_non_admin_401(TestInfo test)  {
-    // Create database service with different optional fields
+  public void post_validService_as_non_admin_401(TestInfo test)  {
+    // Create messaging service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -97,18 +96,9 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_invalidDatabaseServiceNoJdbc_4xx(TestInfo test) {
-    // No jdbc connection set
-    CreateDatabaseService create = create(test).withJdbc(null);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "jdbc must not be null");
-  }
-
-  @Test
   public void post_invalidIngestionSchedule_4xx(TestInfo test) {
     // No jdbc connection set
-    CreateDatabaseService create = create(test);
+    CreateMessagingService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
 
     // Invalid format
@@ -153,7 +143,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   @Test
   public void post_ingestionScheduleIsTooShort_4xx(TestInfo test) {
     // No jdbc connection set
-    CreateDatabaseService create = create(test);
+    CreateMessagingService create = create(test);
     Schedule schedule = create.getIngestionSchedule();
     create.withIngestionSchedule(schedule.withRepeatFrequency("PT1M"));  // Repeat every 0 seconds
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -169,23 +159,23 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_updateNonExistentService_404() {
-    // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
+    // Update messaging description and ingestion service that are null
+    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> updateDatabaseService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("DatabaseService",
+            -> updateMessagingService(TestUtils.NON_EXISTENT_ENTITY.toString(), update, OK, adminAuthHeaders()));
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("MessagingService",
             TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
-  public void put_updateDatabaseService_as_admin_2xx(TestInfo test) throws HttpResponseException {
-    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
+  public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException {
+    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             adminAuthHeaders());
     String id = dbService.getId().toString();
     String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
 
-    // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
+    // Update messaging description and ingestion service that are null
+    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
     updateAndCheckService(id, update, OK, adminAuthHeaders());
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(startDate).withRepeatFrequency("P1D");
@@ -200,13 +190,13 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   @Test
   public void put_update_as_non_admin_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
+    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             authHeaders);
     String id = dbService.getId().toString();
     RestUtil.DATE_TIME_FORMAT.format(new Date());
 
-    // Update database description and ingestion service that are null
-    UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
+    // Update messaging description and ingestion service that are null
+    UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             updateAndCheckService(id, update, OK, authHeaders("test@open-metadata.org")));
@@ -215,54 +205,48 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_nonExistentDatabaseService_404_notFound() {
+  public void get_nonExistentService_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE,
             TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
-  public void get_nonExistentDatabaseServiceByName_404_notFound() {
+  public void get_nonExistentServiceByName_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> getServiceByName("invalidName", null, adminAuthHeaders()));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE,
             "invalidName"));
   }
 
-  public static DatabaseService createAndCheckService(CreateDatabaseService create,
+  public static MessagingService createAndCheckService(CreateMessagingService create,
                                                       Map<String, String> authHeaders) throws HttpResponseException {
-    DatabaseService service = createService(create, authHeaders);
-    validateService(service, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+    MessagingService service = createService(create, authHeaders);
+    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule());
 
     // GET the newly created service and validate
-    DatabaseService getService = getService(service.getId(), authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+    MessagingService getService = getService(service.getId(), authHeaders);
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
 
     // GET the newly created service by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
     return service;
   }
 
-  public static DatabaseService createService(CreateDatabaseService create,
+  public static MessagingService createService(CreateMessagingService create,
                                               Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("services/databaseServices"),
-                          create, DatabaseService.class, authHeaders);
+    return TestUtils.post(CatalogApplicationTest.getResource("services/messagingServices"),
+                          create, MessagingService.class, authHeaders);
   }
 
-  private static void validateService(DatabaseService service, String expectedName, String expectedDescription,
-                                      JdbcInfo expectedJdbc, Schedule expectedIngestion) {
+  private static void validateService(MessagingService service, String expectedName, String expectedDescription,
+                                      Schedule expectedIngestion) {
     assertNotNull(service.getId());
     assertNotNull(service.getHref());
     assertEquals(expectedName, service.getName());
     assertEquals(expectedDescription, service.getDescription());
-
-    // Validate jdbc
-    assertEquals(expectedJdbc, service.getJdbc());
 
     if (expectedIngestion != null) {
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
@@ -270,22 +254,22 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     }
   }
 
-  public static DatabaseService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  public static MessagingService getService(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     return getService(id, null, authHeaders);
   }
 
-  public static DatabaseService getService(UUID id, String fields, Map<String, String> authHeaders)
+  public static MessagingService getService(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/databaseServices/" + id);
+    WebTarget target = CatalogApplicationTest.getResource("services/messagingServices/" + id);
     target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DatabaseService.class, authHeaders);
+    return TestUtils.get(target, MessagingService.class, authHeaders);
   }
 
-  public static DatabaseService getServiceByName(String name, String fields, Map<String, String> authHeaders)
+  public static MessagingService getServiceByName(String name, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("services/databaseServices/name/" + name);
+    WebTarget target = CatalogApplicationTest.getResource("services/messagingServices/name/" + name);
     target = fields != null ? target.queryParam("fields", fields) : target;
-    return TestUtils.get(target, DatabaseService.class, authHeaders);
+    return TestUtils.get(target, MessagingService.class, authHeaders);
   }
 
   public static String getName(TestInfo test) {
@@ -297,77 +281,72 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
+  public void delete_ExistentMessagingService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createService(create(test), authHeaders);
-    deleteService(databaseService.getId(), databaseService.getName(), authHeaders);
+    MessagingService messagingService = createService(create(test), authHeaders);
+    deleteService(messagingService.getId(), messagingService.getName(), authHeaders);
   }
 
   @Test
   public void delete_as_user_401(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
-    DatabaseService databaseService = createService(create(test), authHeaders);
+    MessagingService messagingService = createService(create(test), authHeaders);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteService(databaseService.getId(), databaseService.getName(),
+            deleteService(messagingService.getId(), messagingService.getName(),
                     authHeaders("test@open-metadata.org")));
     TestUtils.assertResponse(exception, FORBIDDEN,
             "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
-  public void delete_notExistentDatabaseService() {
+  public void delete_notExistentMessagingService() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
+            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   private void deleteService(UUID id, String name, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(CatalogApplicationTest.getResource("services/databaseServices/" + id), authHeaders);
+    TestUtils.delete(CatalogApplicationTest.getResource("services/messagingServices/" + id), authHeaders);
 
     // Ensure deleted service does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getService(id, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, id));
+    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, id));
 
     // Ensure deleted service does not exist when getting by name
     exception = assertThrows(HttpResponseException.class, () -> getServiceByName(name, null, authHeaders));
     TestUtils.assertResponse(exception, NOT_FOUND,
-            CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE, name));
+            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, name));
   }
 
-  public static CreateDatabaseService create(TestInfo test) {
+  public static CreateMessagingService create(TestInfo test) {
     String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
-    return new CreateDatabaseService().withName(getName(test)).withServiceType(DatabaseServiceType.Snowflake)
-            .withJdbc(TestUtils.JDBC_INFO)
+    return new CreateMessagingService().withName(getName(test)).withServiceType(MessagingServiceType.Kafka)
             .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
   }
 
-  private static CreateDatabaseService create(TestInfo test, int index) {
-    return new CreateDatabaseService().withName(getName(test, index)).withServiceType(DatabaseServiceType.Snowflake)
-            .withJdbc(TestUtils.JDBC_INFO);
+  private static CreateMessagingService create(TestInfo test, int index) {
+    return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar);
   }
 
-  public static void updateAndCheckService(String id, UpdateDatabaseService update, Status status,
+  public static void updateAndCheckService(String id, UpdateMessagingService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
-    DatabaseService service = updateDatabaseService(id, update, status, authHeaders);
-    validateService(service, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+    MessagingService service = updateMessagingService(id, update, status, authHeaders);
+    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule());
 
-    // GET the newly updated database and validate
-    DatabaseService getService = getService(service.getId(), authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+    // GET the newly updated messaging and validate
+    MessagingService getService = getService(service.getId(), authHeaders);
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
 
-    // GET the newly updated database by name and validate
+    // GET the newly updated messaging by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
   }
 
-  public static DatabaseService updateDatabaseService(String id, UpdateDatabaseService updated,
+  public static MessagingService updateMessagingService(String id, UpdateMessagingService updated,
                                                       Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("services/databaseServices/" + id), updated,
-            DatabaseService.class, status, authHeaders);
+    return TestUtils.put(CatalogApplicationTest.getResource("services/messagingServices/" + id), updated,
+            MessagingService.class, status, authHeaders);
   }
 }

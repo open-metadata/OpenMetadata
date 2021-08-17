@@ -21,6 +21,7 @@ public final class Entity {
 
   // Services
   public static final String DATABASE_SERVICE = "databaseService";
+  public static final String MESSAGING_SERVICE = "messagingService";
 
   // Data assets
   public static final String TABLE = "table";
