@@ -53,7 +53,7 @@ metadata ingest -c ./examples/workflows/presto.json
 
 1. **username** - this is optional configuration, If you are using username/password with presto. Please use these fields to configur them
 2. **password** - password for the username
-3. **host_prot** - host and port of the Presto cluster
+3. **host_port** - host and port of the Presto cluster
 3. **service\_name** - Service Name for this Presto cluster. If you added Presto cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
