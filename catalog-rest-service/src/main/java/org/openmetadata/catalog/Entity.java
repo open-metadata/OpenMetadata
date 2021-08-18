@@ -29,6 +29,7 @@ public final class Entity {
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
   public static final String REPORT = "report";
+  public static final String TOPIC = "topic";
 
   // Team/user
   public static final String USER = "user";

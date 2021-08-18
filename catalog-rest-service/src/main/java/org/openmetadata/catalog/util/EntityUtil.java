@@ -22,7 +22,9 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -42,6 +44,7 @@ import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.EntityReference;
@@ -119,6 +122,9 @@ public final class EntityUtil {
       case Entity.DATABASE_SERVICE:
         DatabaseServiceResource.addHref(uriInfo, ref);
         break;
+      case Entity.MESSAGING_SERVICE:
+        MessagingServiceResource.addHref(uriInfo, ref);
+        break;
       default:
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
     }
@@ -141,8 +147,7 @@ public final class EntityUtil {
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
-    EntityReference ref =  ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
-    return ref;
+    return  ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   /**
@@ -289,12 +294,17 @@ public final class EntityUtil {
       return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
-            String.format("Failed to find entity class {}", clazz.toString())));
+            String.format("Failed to find entity class %s", clazz.toString())));
   }
 
   public static EntityReference getEntityReference(DatabaseService service) {
     return new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.DATABASE_SERVICE);
+  }
+
+  public static EntityReference getEntityReference(MessagingService service) {
+    return new EntityReference().withName(service.getName()).withId(service.getId())
+            .withType(Entity.MESSAGING_SERVICE);
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
@@ -332,6 +342,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Topic topic) {
+    return new EntityReference().withDescription(topic.getDescription()).withId(topic.getId())
+            .withName(topic.getFullyQualifiedName()).withType(Entity.TOPIC);
   }
 
   public static EntityReference getEntityReference(Database database) {

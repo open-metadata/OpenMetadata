@@ -1,0 +1,80 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/topic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Topic",
+  "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service",
+  "type": "object",
+  "definitions": {
+    "topicName": {
+      "description": "Name that identifies a topic.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this topic instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the topic.",
+      "$ref": "#/definitions/topicName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the topic instance.",
+      "type": "string"
+    },
+    "partitions" : {
+      "description" : "Number of partitions into which the topic is divided.",
+      "type" : "integer"
+    },
+    "cleanupPolicy": {
+      "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
+      "type": "array",
+      "items": {
+        "enum": [
+          "delete",
+          "compact"
+        ]
+      }
+    },
+    "retentionTime": {
+      "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
+      "type" : "number"
+    },
+    "maximumMessageSize" : {
+      "description": "Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.",
+      "type" : "int"
+    },
+    "minimumInSyncReplicas" : {
+      "description": "Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration."
+    },
+    "retentionSize": {
+      "description": "Maximum size of a partion in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
+      "type" : "number",
+      "default" : "-1"
+    },
+    "owner": {
+      "description": "Owner of this topic.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service": {
+      "description": "Link to the messaging cluster/service where this topic is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": [
+    "name",
+    "service"
+  ]
+}
