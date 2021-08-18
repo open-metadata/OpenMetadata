@@ -32,9 +32,37 @@ dist/target/open-metadata-<version>.tar.gz
 
 ## Run instance through IntelliJ IDEA
 
-1. Add a new Run/Debug configuration like the below screenshot.
+Add a new Run/Debug configuration like the below screenshot.
 
 ![Intellj Run Configuration](../../.gitbook/assets/image.png)
+
+## Add missing dependency
+
+Right-click on catalog-rest-service
+
+![](../../.gitbook/assets/image-1-.png)
+
+Click on "Open Module Settings"
+
+![](../../.gitbook/assets/image-2-.png)
+
+Go to "Dependencies"
+
+![](../../.gitbook/assets/image-3-.png)
+
+Click “+” at the bottom of the dialog box and click "Add"
+
+![](../../.gitbook/assets/image-4-.png)
+
+Click on Library
+
+![](../../.gitbook/assets/image-5-.png)
+
+In that list look for "jersey-client:2.25.1"
+
+![](../../.gitbook/assets/image-6-.png)
+
+Select it and click "OK". Now run/debug the application.
 
 ## Coding Style
 
