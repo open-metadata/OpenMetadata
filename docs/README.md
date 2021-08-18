@@ -9,11 +9,11 @@ Metadata enables you to unlock the value of data assets in the common use cases 
 
 OpenMetadata includes the following:
 
-* **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, Relationships between entities. This is the foundation of the Open Metadata Standard.
-* **Metadata store** - stores metadata graph that connects data assets, user and tool generated metadata.
-* **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and Integration of tools, systems, and services.
-* **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. Ingestion framework already supports well know data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive, and databases - MySQL, Postgres, Oracle, and MSSQL.
-* **OpenMetadata User Interface** - one single place for users to discover, and collaborate on all data.
+* **Metadata schemas** - defines core abstractions and vocabulary for metadata with schemas for Types, Entities, and Relationships between entities. This is the foundation of the Open Metadata Standard.
+* **Metadata store** - stores a metadata graph that connects data assets and user and tool generated metadata.
+* **Metadata APIs** - for producing and consuming metadata built on schemas for User Interfaces and for Integrating tools, systems, and services.
+* **Ingestion framework** - a pluggable framework for integrating tools and ingesting metadata to the metadata store. The ingestion framework already supports well-known data warehouses - Google BigQuery, Snowflake, Amazon Redshift, and Apache Hive and databases - MySQL, Postgres, Oracle, and MSSQL.
+* **OpenMetadata User Interface** - a central place for users to discover and collaborate on all data.
 
 ## License
 

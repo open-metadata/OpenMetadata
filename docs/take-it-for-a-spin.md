@@ -4,7 +4,7 @@ We want our users to get the experience of OpenMetadata with the least effort ðŸ
 
 ### To set up your sandbox account:
 
-#### 1. Login using your Google credentials
+#### 1. Log in using your Google credentials
 
 ![](.gitbook/assets/welcome.png)
 
