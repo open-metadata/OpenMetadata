@@ -33,7 +33,7 @@ Make changes. Follow the [Coding Style](./coding-style.md) Guide on best practic
 
 ```bash
 git add .
-git commit -m "ISSUE-200: Meaningful commit message
+git commit -m "ISSUE-200: Meaningful commit message"
 git push origin HEAD:refs/heads/issue-200
 ```
 
