@@ -34,7 +34,7 @@ dist/target/open-metadata-<version>.tar.gz
 
 Add a new Run/Debug configuration like the below screenshot.
 
-![Intellj Run Configuration](../../.gitbook/assets/image.png)
+![Intellij Run Configuration](../../.gitbook/assets/image%20%281%29.png)
 
 ## Add missing dependency
 
