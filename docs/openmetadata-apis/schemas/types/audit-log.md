@@ -9,7 +9,7 @@ Type: `object`
 ## Properties
 
 * **method** `required`
-  * HTTP Method used in a call.
+  * HTTP Method used in a call
   * Type: `string`
   * The value is restricted to the following: 
     1. _"POST"_
@@ -17,21 +17,21 @@ Type: `object`
     3. _"PATCH"_
     4. _"DELETE"_
 * **responseCode** `required`
-  * HTTP response code for the api requested.
+  * HTTP response code for the api requested
   * Type: `integer`
 * **path** `required`
-  * Requested API Path.
+  * Requested API path
   * Type: `string`
 * **userName** `required`
-  * Name of the user who made the API request.
+  * Name of the user who made the API request
   * Type: `string`
 * **dateTime**
-  * Date when the API call is made.
+  * Date when the API call is made
   * $ref: [basic.json\#/definitions/dateTime](basic.md#types-definitions-in-this-schema)
 * **entityId** `required`
-  * Entity Id that was modified by the operation.
+  * Identifier of Entity that was modified by the operation
   * $ref: [basic.json\#/definitions/uuid](basic.md#types-definitions-in-this-schema)
 * **entityType** `required`
-  * Entity Type that is modified by the operation.
+  * Type of Entity that is modified by the operation
   * Type: `string`
 
