@@ -1,6 +1,6 @@
 # Daily Count
 
-This schema defines the type for reporting the daily count of some measurement. Example - number of times a table was used in queries per day.
+This schema defines the type for reporting the daily count of some measurement. For example, you might use this schema for the number of times a table is queried each day.
 
 **$id:** [**https://open-metadata.org/schema/type/dailyCount.json**](https://open-metadata.org/schema/type/dailyCount.json)
 
@@ -11,7 +11,7 @@ This schema does not accept additional properties.
 ## Properties
 
 * **count** `required`
-  * Daily count of a measurement on the given date.
+  * Daily count of a measurement on the given date
   * Type: `integer`
   * Range:  ≥ 0
 * **date** `required`
