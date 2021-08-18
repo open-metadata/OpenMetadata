@@ -51,7 +51,7 @@ metadata ingest -c ./examples/workflows/presto.json
 ```
 {% endcode %}
 
-1. **username** - this is optional configuration, If you are using username/password with presto. Please use these fields to configur them
+1. **username** - this is optional configuration, If you are using username/password with presto. Please use these fields to configure them
 2. **password** - password for the username
 3. **host_port** - host and port of the Presto cluster
 3. **service\_name** - Service Name for this Presto cluster. If you added Presto cluster through OpenMetadata UI, make sure the service name matches the same.
