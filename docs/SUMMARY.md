@@ -75,6 +75,7 @@
 
 * [Community](open-source-community/community.md)
 * [Developer](open-source-community/developer/README.md)
+  * [How to Contribute](open-source-community/developer/how-to-contribute.md)
   * [Coding Style](open-source-community/developer/coding-style.md)
   * [Build the code & run tests](open-source-community/developer/build-code-run-tests.md)
   * [Build a Connector](open-source-community/developer/build-a-connector/README.md)
