@@ -1,20 +1,21 @@
 # How to Contribute
 
 Welcome to [OpenMetadata](https://open-metadata.org). Our goal is to build an Open standard for Metadata.
-We truly believe this can only be achieved through building a great community.
+We genuinely believe this mission can only be achieved through building a great community.
 
 We ❤️ all contributions, big and small!
 
 ## Github issues
 
-Look for issues under [github/issues tab](https://github.com/open-metadata/OpenMetadata/issues) . If you have a feature request or found a bug please file an issue first.
+Look for issues under [github/issues tab](https://github.com/open-metadata/OpenMetadata/issues) . If you have a feature request or found a bug please file an issue. This will help
+us track and will help community overall as well.
 
 ![./images/new-issue.png](./images/new-issue.png)
 
 
 ## Fork Github project
 
-OpenMetadata github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) .
+OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) .
 
 ![./images/fork-github.png](./images/fork-github.png)
 
@@ -39,11 +40,11 @@ git push origin HEAD:refs/heads/issue-200
 
 ## Open a PR
 
-1. Go to https://github.com/open-metadata/OpenMetadata/pulls
+1. Go to [https://github.com/open-metadata/OpenMetadata/pulls](https://github.com/open-metadata/OpenMetadata/pulls)
 
 2. It should show an option to open a pull request. 
-
-3. If not click on "New Pull request"
+![./images/pull-request-1.png](./images/pull-request-1.png)
+3. If not, click on "New Pull request"
 ![./images/pull-request.png](./images/pull-request.png)
 4. Select your fork repository and branch
 ![./images/pull-request-2.png](./images/pull-request-2.png)
