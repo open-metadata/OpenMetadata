@@ -31,7 +31,7 @@ from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoi
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
     GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider
 from metadata.ingestion.ometa.credentials import URL, get_api_version
-from metadata.generated.schema.entity.data.table import Table, TableJoins
+from metadata.generated.schema.entity.data.table import Table, TableJoins, TableData
 from metadata.generated.schema.entity.data.database import Database
 
 logger = logging.getLogger(__name__)
@@ -39,8 +39,6 @@ DatabaseServiceEntities = List[DatabaseService]
 DatabaseEntities = List[Database]
 TableEntities = List[Table]
 Tags = List[Tag]
-
-
 
 
 class RetryException(Exception):
@@ -266,11 +264,15 @@ class REST(object):
         if fields is None:
             resp = self.get('/tables')
         else:
-            resp = self.get('/tables?fields={}&offset={}&limit={}'.format(fields,offset, limit))
+            resp = self.get('/tables?fields={}&offset={}&limit={}'.format(fields, offset, limit))
         if self._use_raw_data:
             return resp
         else:
             return [Table(**t) for t in resp['data']]
+
+    def ingest_sample_data(self, id, sample_data):
+        resp = self.put('/tables/{}/sampleData'.format(id.__root__),data=sample_data.json())
+        return TableData(**resp['sampleData'])
 
     def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> Table:
         """Get Table By ID"""
@@ -309,7 +311,7 @@ class REST(object):
         resp = self.get('/tags/{}'.format(category))
         return [Tag(**d) for d in resp['children']]
 
-    def compute_percentile(self, entity_type:str, date:str):
+    def compute_percentile(self, entity_type: str, date: str):
         resp = self.post('/usage/compute.percentile/{}/{}'.format(entity_type, date))
         logger.debug("published compute percentile {}".format(resp))
 

@@ -64,7 +64,7 @@ class Workflow:
         self.ctx = WorkflowContext(workflow_id=self.config.run_id)
         source_type = self.config.source.type
         source_class = self.get('metadata.ingestion.source.{}.{}Source'.format(
-            source_type.replace('-', '_'), ''.join([i.title() for i in source_type.replace('-', '_').split('_')])))
+            self.replaceRegistry(source_type, True), self.replaceRegistry(source_type, False)))
         metadata_config = self.config.metadata_server.dict().get("config", {})
         self.source: Source = source_class.create(
             self.config.source.dict().get("config", {}), metadata_config, self.ctx
@@ -76,7 +76,7 @@ class Workflow:
         if self.config.processor:
             processor_type = self.config.processor.type
             processor_class = self.get('metadata.ingestion.processor.{}.{}Processor'.format(
-                processor_type.replace('-', '_'), ''.join([i.title() for i in processor_type.replace('-', '_').split('_')])))
+                self.replaceRegistry(processor_type, True), self.replaceRegistry(processor_type, False)))
             processor_config = self.config.processor.dict().get("config", {})
             self.processor: Processor = processor_class.create(processor_config, metadata_config, self.ctx)
             logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")
@@ -84,7 +84,7 @@ class Workflow:
         if self.config.stage:
             stage_type = self.config.stage.type
             stage_class = self.get('metadata.ingestion.stage.{}.{}Stage'.format(
-                stage_type.replace('-', '_'), ''.join([i.title() for i in stage_type.replace('-', '_').split('_')])))
+                self.replaceRegistry(stage_type, True), self.replaceRegistry(stage_type, False)))
             stage_config = self.config.stage.dict().get("config", {})
             self.stage: Stage = stage_class.create(stage_config, metadata_config, self.ctx)
             logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
@@ -92,7 +92,7 @@ class Workflow:
         if self.config.sink:
             sink_type = self.config.sink.type
             sink_class = self.get('metadata.ingestion.sink.{}.{}Sink'.format(
-                sink_type.replace('-', '_'), ''.join([i.title() for i in sink_type.replace('-', '_').split('_')])))
+                self.replaceRegistry(sink_type, True), self.replaceRegistry(sink_type, False)))
             sink_config = self.config.sink.dict().get("config", {})
             self.sink: Sink = sink_class.create(sink_config, metadata_config, self.ctx)
             logger.debug(f"Sink type:{self.config.sink.type},{sink_class} configured")
@@ -100,10 +100,16 @@ class Workflow:
         if self.config.bulk_sink:
             bulk_sink_type = self.config.bulk_sink.type
             bulk_sink_class = self.get('metadata.ingestion.bulksink.{}.{}BulkSink'.format(
-                bulk_sink_type.replace('-', '_'), ''.join([i.title() for i in bulk_sink_type.replace('-', '_').split('_')])))
+                self.replaceRegistry(bulk_sink_type, True), self.replaceRegistry(bulk_sink_type, False)))
             bulk_sink_config = self.config.bulk_sink.dict().get("config", {})
             self.bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, metadata_config, self.ctx)
             logger.info(f"BulkSink type:{self.config.bulk_sink.type},{bulk_sink_class} configured")
+
+    def replaceRegistry(self, type: str, isFile: bool):
+        if isFile:
+            return type.replace('-', '_')
+        else:
+            return ''.join([i.title() for i in type.replace('-', '_').split('_')])
 
     def get(self, key: str) -> Type[T]:
         if key.find(".") >= 0:
@@ -113,7 +119,7 @@ class Workflow:
             MyClass = getattr(importlib.import_module(module_name), class_name)
             return MyClass
 
-    @classmethod
+    @ classmethod
     def create(cls, config_dict: dict) -> "Workflow":
         config = WorkflowConfig.parse_obj(config_dict)
         return cls(config)
