@@ -4,13 +4,13 @@ import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
   BIGQUERY,
-  GENERIC,
   HIVE,
   MSSQL,
   MYSQL,
   ORACLE,
   POSTGRES,
   REDSHIFT,
+  SERVICE_DEFAULT,
   SNOWFLAKE,
 } from '../constants/services.const';
 import { ServiceType } from '../enums/service.enum';
@@ -43,7 +43,7 @@ export const serviceTypeLogo = (type: string) => {
       return MSSQL;
 
     default:
-      return GENERIC;
+      return SERVICE_DEFAULT;
   }
 };
 
