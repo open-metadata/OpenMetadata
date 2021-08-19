@@ -69,6 +69,7 @@ class SQLConnectionConfig(ConfigModel):
     options: dict = {}
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
+    generate_sample_data: Optional[bool] = True
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @abstractmethod
@@ -157,6 +158,9 @@ class SQLSource(Source):
         self.metadata_config = metadata_config
         self.service = get_service_or_create(config, metadata_config)
         self.status = SQLSourceStatus()
+        self.sql_config = self.config
+        self.engine = create_engine(self.sql_config.get_connection_url(), **self.sql_config.options)
+        self.connection = None
 
     def prepare(self):
         pass
@@ -165,35 +169,51 @@ class SQLSource(Source):
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
 
+    def _get_connection(self) -> Any:
+        """
+        Create a SQLAlchemy connection to Database
+        """
+        if self.connection is None:
+            self.connection = self.engine.connect()
+
+    def fetch_sample_data(self, table: str):
+        print("in fetch_sample_data")
+        try:
+            query = f"select * from {table} limit 50"
+            print(query)
+            results = self.connection.execute(query)
+            for v in results:
+                for column, value in v.items():
+                    print('{0}: {1}'.format(column, value))
+        except:
+            logger.error("Failed to generate sample data for {}", table)
+
+
     def standardize_schema_table_names(
             self, schema: str, table: str
     ) -> Tuple[str, str]:
         return schema, table
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-        sql_config = self.config
-        url = sql_config.get_connection_url()
-        logger.debug(f"sql_connection_url={url}")
-        engine = create_engine(url, **sql_config.options)
-        inspector = inspect(engine)
+
+        inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
-            if not sql_config.filter_pattern.included(schema):
+            if not self.sql_config.filter_pattern.included(schema):
                 self.status.filtered(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
             if self.config.include_tables:
-                yield from self.fetch_tables(inspector, schema, sql_config)
+                yield from self.fetch_tables(inspector, schema)
             if self.config.include_views:
-                yield from self.fetch_views(inspector, schema, sql_config)
+                yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(self,
                      inspector: Inspector,
-                     schema: str,
-                     sql_config: SQLConnectionConfig) -> Iterable[OMetaDatabaseAndTable]:
+                     schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for table in inspector.get_table_names(schema):
             try:
                 schema, table = self.standardize_schema_table_names(schema, table)
-                if not sql_config.filter_pattern.included(table):
+                if not self.sql_config.filter_pattern.included(table):
                     self.status.filtered('{}.{}'.format(self.config.get_service_name(), table),
                                          "Table pattern not allowed")
                     continue
@@ -202,6 +222,9 @@ class SQLSource(Source):
                 description = self._get_table_description(schema, table, inspector)
 
                 table_columns = self._get_columns(schema, table, inspector)
+                if self.sql_config.generate_sample_data:
+                    self._get_connection()
+                    self.fetch_sample_data(table)
                 table = Table(id=uuid.uuid4(),
                               name=table,
                               tableType='Regular',
@@ -218,15 +241,13 @@ class SQLSource(Source):
 
     def fetch_views(self,
                     inspector: Inspector,
-                    schema: str,
-                    sql_config: SQLConnectionConfig) -> Iterable[OMetaDatabaseAndTable]:
+                    schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for view in inspector.get_view_names(schema):
             try:
-                if not sql_config.filter_pattern.included(view):
+                if not self.sql_config.filter_pattern.included(view):
                     self.status.filtered('{}.{}'.format(self.config.get_service_name(), view),
                                          "Table pattern not allowed")
                     continue
-
                 try:
                     view_definition = inspector.get_view_definition(view, schema)
                     view_definition = "" if view_definition is None else str(view_definition)
@@ -235,6 +256,10 @@ class SQLSource(Source):
 
                 description = self._get_table_description(schema, view, inspector)
                 table_columns = self._get_columns(schema, view, inspector)
+                if self.sql_config.generate_sample_data:
+                    self._get_connection()
+                    self.fetch_sample_data(view)
+
                 table = Table(id=uuid.uuid4(),
                               name=view,
                               tableType='View',
