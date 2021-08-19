@@ -105,15 +105,15 @@ public class SearchResource {
                          @Parameter(description = "Sort the search results by field, available fields to " +
                                  "sort weekly_stats" +
                                  " , daily_stats, monthly_stats, last_updated_timestamp defaults to weekly_stats")
-                                 @DefaultValue("weekly_stats") @QueryParam("sort_field") String sortFieldParam,
+                                  @QueryParam("sort_field") String sortFieldParam,
                          @Parameter(description = "Sort order asc for ascending or desc for descending, " +
-                                 "defaults to asc")
-                           @DefaultValue("asc") @QueryParam("sort_order") String sortOrderParam) throws IOException {
+                                 "defaults to desc")
+                           @DefaultValue("desc") @QueryParam("sort_order") String sortOrderParam) throws IOException {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     SearchRequest searchRequest = new SearchRequest(index);
-    SortOrder sortOrder = SortOrder.ASC;
-    if (sortOrderParam.equals("desc")) {
-      sortOrder = SortOrder.DESC;
+    SortOrder sortOrder = SortOrder.DESC;
+    if (sortOrderParam.equals("asc")) {
+      sortOrder = SortOrder.ASC;
     }
 
     HighlightBuilder.Field highlightTableName =
@@ -139,8 +139,10 @@ public class SearchResource {
             .highlighter(hb)
             .from(from).size(size);
 
+    if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
+      searchSourceBuilder.sort(sortFieldParam, sortOrder);
+    }
     LOG.info(searchSourceBuilder.toString());
-
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
