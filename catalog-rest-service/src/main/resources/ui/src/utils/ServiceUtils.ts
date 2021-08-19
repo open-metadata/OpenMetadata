@@ -10,6 +10,7 @@ import {
   ORACLE,
   POSTGRES,
   REDSHIFT,
+  SERVICE_DEFAULT,
   SNOWFLAKE,
 } from '../constants/services.const';
 import { ServiceType } from '../enums/service.enum';
@@ -42,7 +43,7 @@ export const serviceTypeLogo = (type: string) => {
       return MSSQL;
 
     default:
-      return null;
+      return SERVICE_DEFAULT;
   }
 };
 

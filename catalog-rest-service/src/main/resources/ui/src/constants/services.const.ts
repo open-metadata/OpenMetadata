@@ -16,6 +16,7 @@
 */
 
 import noService from '../assets/img/no-service.png';
+import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
@@ -34,6 +35,7 @@ export const HIVE = hive;
 export const POSTGRES = postgres;
 export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
+export const SERVICE_DEFAULT = serviceDefault;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
