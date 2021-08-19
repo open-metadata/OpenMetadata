@@ -115,7 +115,8 @@ public class TableResource {
     }
   }
 
-  static final String FIELDS = "columns,tableConstraints,usageSummary,owner,database,tags,followers,joins,sampleData";
+  static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
+          "database,tags,followers,joins,sampleData,viewDefinition";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -236,7 +237,7 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
     table = addHref(uriInfo, dao.create(validateNewTable(table), create.getOwner(), create.getDatabase()));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -256,7 +257,7 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getOwner(), create.getDatabase());
     table = addHref(uriInfo, response.getEntity());
@@ -384,6 +385,7 @@ public class TableResource {
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
+    DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     return table;
   }
 }

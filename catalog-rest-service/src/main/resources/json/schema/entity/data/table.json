@@ -300,6 +300,10 @@
       "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "viewDefinition": {
+      "description": "View Definition in SQL. Applies to TableType.View only",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery"
+    },
     "tags": {
       "description": "Tags for this table.",
       "type": "array",

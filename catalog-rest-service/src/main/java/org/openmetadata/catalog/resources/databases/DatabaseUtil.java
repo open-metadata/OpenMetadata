@@ -19,6 +19,7 @@ package org.openmetadata.catalog.resources.databases;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TableType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -63,6 +64,14 @@ public final class DatabaseUtil {
           throw new IllegalArgumentException("Invalid column name found in table constraint");
         }
       }
+    }
+  }
+
+  public static void validateViewDefinition(TableType tableType, String viewDefinition) {
+    if ( (tableType == null || tableType.equals(TableType.Regular) || tableType.equals(TableType.External))
+            && viewDefinition != null && !viewDefinition.isEmpty()) {
+      throw new IllegalArgumentException("ViewDefinition can only be set on TableType View, " +
+              "SecureView or MaterializedView");
     }
   }
 }

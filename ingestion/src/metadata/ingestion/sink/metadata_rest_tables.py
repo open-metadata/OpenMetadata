@@ -59,12 +59,18 @@ class MetadataRestTablesSink(Sink):
                                                                              type="databaseService"))
             db = self.rest.create_database(db_request)
             table_request = CreateTableEntityRequest(name=table_and_db.table.name,
+                                                     tableType=table_and_db.table.tableType,
                                                      columns=table_and_db.table.columns,
                                                      description=table_and_db.table.description,
                                                      database=db.id)
+
+            if table_and_db.table.viewDefinition is not None and table_and_db.table.viewDefinition != "":
+                table_request.viewDefinition = table_and_db.table.viewDefinition.__root__
+
             created_table = self.rest.create_or_update_table(table_request)
-            if hasattr(table_and_db.table,'sampleData'):
-                self.rest.ingest_sample_data(id=created_table.id,sample_data=table_and_db.table.sampleData)
+            if table_and_db.table.sampleData is not None:
+                self.rest.ingest_sample_data(id=created_table.id, sample_data=table_and_db.table.sampleData)
+
             logger.info(
                 'Successfully ingested {}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
             self.status.records_written(
@@ -73,7 +79,7 @@ class MetadataRestTablesSink(Sink):
             logger.error(
                 "Failed to ingest table {} in database {} ".format(table_and_db.table.name, table_and_db.database.name))
             logger.error(err)
-            self.status.failures(table_and_db.table.name)
+            self.status.failure(table_and_db.table.name)
 
     def get_status(self):
         return self.status
