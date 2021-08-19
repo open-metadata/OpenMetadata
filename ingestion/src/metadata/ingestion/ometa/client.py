@@ -271,7 +271,7 @@ class REST(object):
             return [Table(**t) for t in resp['data']]
 
     def ingest_sample_data(self, id, sample_data):
-        resp = self.put('/tables/{}/sampleData'.format(id.__root__),data=sample_data.json())
+        resp = self.put('/tables/{}/sampleData'.format(id.__root__), data=sample_data.json())
         return TableData(**resp['sampleData'])
 
     def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> Table:

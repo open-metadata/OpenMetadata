@@ -226,13 +226,21 @@ class SQLSource(Source):
                     self.status.filtered('{}.{}'.format(self.config.get_service_name(), view),
                                          "Table pattern not allowed")
                     continue
+
+                try:
+                    view_definition = inspector.get_view_definition(view, schema)
+                    view_definition = "" if view_definition is None else str(view_definition)
+                except NotImplementedError:
+                    view_definition = ""
+
                 description = self._get_table_description(schema, view, inspector)
                 table_columns = self._get_columns(schema, view, inspector)
                 table = Table(id=uuid.uuid4(),
                               name=view,
                               tableType='View',
                               description=description if description is not None else ' ',
-                              columns=table_columns)
+                              columns=table_columns,
+                              viewDefinition=view_definition)
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
                 yield table_and_db
             except ValidationError as err:

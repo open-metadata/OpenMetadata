@@ -59,6 +59,10 @@
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
       "format": "date-Time"
+    },
+    "sqlQuery": {
+      "description": "SQL query statement. Example - 'select * from orders'.",
+      "type": "string"
     }
   }
 }
