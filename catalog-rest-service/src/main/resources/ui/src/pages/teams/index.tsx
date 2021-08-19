@@ -37,6 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ERROR404 } from '../../constants/constants';
+import { countBackground } from '../../utils/styleconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
@@ -152,6 +153,13 @@ const TeamsPage = () => {
               setCurrentTab(1);
             }}>
             Users
+            <span
+              className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
+              style={{ background: countBackground }}>
+              <span data-testid="filter-count">
+                {currentTeam?.users.length}
+              </span>
+            </span>
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -159,6 +167,11 @@ const TeamsPage = () => {
               setCurrentTab(2);
             }}>
             Assets
+            <span
+              className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
+              style={{ background: countBackground }}>
+              <span data-testid="filter-count">{currentTeam?.owns.length}</span>
+            </span>
           </button>
         </nav>
       </div>
