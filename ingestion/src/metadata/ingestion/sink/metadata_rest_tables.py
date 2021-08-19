@@ -63,6 +63,8 @@ class MetadataRestTablesSink(Sink):
                                                      description=table_and_db.table.description,
                                                      database=db.id)
             created_table = self.rest.create_or_update_table(table_request)
+            if hasattr(table_and_db.table,'sampleData'):
+                self.rest.ingest_sample_data(id=created_table.id,sample_data=table_and_db.table.sampleData)
             logger.info(
                 'Successfully ingested {}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
             self.status.records_written(
