@@ -26,9 +26,8 @@ import React, {
 import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import ListUl from '../../../assets/svg/list-ul.svg';
-import { countBackground } from '../../../utils/styleconstant';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Italic, Link } from './ToolBarOptions';
+import { Bold, Info, Italic, Link } from './ToolBarOptions';
 
 const getIntialContent = (format: string, content?: string) => {
   /*eslint-disable  */
@@ -134,27 +133,13 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
                 <Bold key="bold" />,
                 <Italic key="italic" />,
                 <Link key="link" />,
+                <Info key="info" />,
               ]
             }
             toolbarHidden={readonly}
             wrapperClassName="editor-wrapper"
             onEditorStateChange={onEditorStateChange}
           />
-        </div>
-        <div className="tw-flex tw-justify-between">
-          <div />
-          <div>
-            <p className="tw-pt-2  tw-text-grey-muted">
-              Using headings in markdown is not allowed
-            </p>
-            <p className="tw-pt-2  tw-text-grey-muted">
-              Use{' '}
-              <span
-                className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
-                style={{ background: countBackground }}>{`<br/>`}</span>{' '}
-              tag to add empty lines
-            </p>
-          </div>
         </div>
       </>
     );
