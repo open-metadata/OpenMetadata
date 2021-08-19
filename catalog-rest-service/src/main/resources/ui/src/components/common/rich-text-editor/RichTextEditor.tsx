@@ -27,7 +27,7 @@ import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import ListUl from '../../../assets/svg/list-ul.svg';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
-import { Bold, Italic, Link } from './ToolBarOptions';
+import { Bold, Info, Italic, Link } from './ToolBarOptions';
 
 const getIntialContent = (format: string, content?: string) => {
   /*eslint-disable  */
@@ -38,6 +38,7 @@ const getIntialContent = (format: string, content?: string) => {
         const rawData = markdownToDraft(content, {
           remarkablePreset: 'commonmark',
           remarkableOptions: {
+            html: false,
             disable: {
               inline: ['links', 'emphasis'],
               block: ['heading', 'code', 'list'],
@@ -132,6 +133,7 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
                 <Bold key="bold" />,
                 <Italic key="italic" />,
                 <Link key="link" />,
+                <Info key="info" />,
               ]
             }
             toolbarHidden={readonly}
@@ -139,9 +141,6 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
             onEditorStateChange={onEditorStateChange}
           />
         </div>
-        <p className="tw-pt-2 tw-float-right tw-text-grey-muted">
-          Using headings in markdown is not allowed
-        </p>
       </>
     );
   }

@@ -23,3 +23,4 @@ declare module 'draft-js';
 declare module 'react-draft-wysiwyg';
 declare module 'markdown-draft-js';
 declare module 'react-syntax-highlighter';
+declare module 'rehype-raw';

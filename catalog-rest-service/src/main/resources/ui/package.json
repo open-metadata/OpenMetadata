@@ -63,6 +63,7 @@
     "react-tippy": "^1.4.0",
     "recharts": "^1.8.5",
     "redoc": "https://github.com/deuex-solutions/redoc/tarball/master",
+    "rehype-raw": "^6.0.0",
     "remark-gfm": "^1.0.0",
     "resolve": "1.15.0",
     "resolve-url-loader": "3.1.1",
