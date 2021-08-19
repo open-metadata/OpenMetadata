@@ -143,7 +143,7 @@ const TeamsPage = () => {
     return tab === currentTab ? 'active' : '';
   };
 
-  const getCount = (count: number) => {
+  const getCount = (count = 0) => {
     return (
       <span
         className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
@@ -163,7 +163,7 @@ const TeamsPage = () => {
               setCurrentTab(1);
             }}>
             Users
-            {getCount(currentTeam?.users.length as number)}
+            {getCount(currentTeam?.users.length)}
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -171,7 +171,7 @@ const TeamsPage = () => {
               setCurrentTab(2);
             }}>
             Assets
-            {getCount(currentTeam?.owns.length as number)}
+            {getCount(currentTeam?.owns.length)}
           </button>
         </nav>
       </div>
