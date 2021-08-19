@@ -4,6 +4,7 @@ import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
   BIGQUERY,
+  GENERIC,
   HIVE,
   MSSQL,
   MYSQL,
@@ -42,7 +43,7 @@ export const serviceTypeLogo = (type: string) => {
       return MSSQL;
 
     default:
-      return null;
+      return GENERIC;
   }
 };
 
