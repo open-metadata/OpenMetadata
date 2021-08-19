@@ -33,9 +33,15 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import { pagingObject } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { fromISOString, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
+
+const getFrequencyTime = (isoDate: string): string => {
+  const { day, hour, minute } = fromISOString(isoDate);
+
+  return `${day}D-${hour}H-${minute}M`;
+};
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN } = useParams() as Record<string, string>;
@@ -140,6 +146,44 @@ const ServicePage: FunctionComponent = () => {
         <PageContainer>
           <div className="tw-px-4">
             <TitleBreadcrumb titleLinks={slashedTableName} />
+
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Driver Class :
+                </span>{' '}
+                <span className="tw-pl-1tw-font-normal ">
+                  {serviceDetails?.jdbc.driverClass || '--'}
+                </span>
+                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                  •
+                </span>
+              </span>
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Frequency :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">
+                  {' '}
+                  {serviceDetails?.ingestionSchedule
+                    ? getFrequencyTime(
+                        serviceDetails.ingestionSchedule.repeatFrequency
+                      )
+                    : 'N/A'}
+                </span>
+                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                  •
+                </span>
+              </span>
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Service Type :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">
+                  {serviceDetails?.serviceType}
+                </span>
+              </span>
+            </div>
 
             <div className="tw-bg-white tw-my-4">
               <div className="tw-col-span-3">
