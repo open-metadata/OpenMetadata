@@ -26,6 +26,7 @@ import React, {
 import { Editor } from 'react-draft-wysiwyg';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
 import ListUl from '../../../assets/svg/list-ul.svg';
+import { countBackground } from '../../../utils/styleconstant';
 import { EditorProp, editorRef, Format } from './RichTextEditor.interface';
 import { Bold, Italic, Link } from './ToolBarOptions';
 
@@ -38,6 +39,7 @@ const getIntialContent = (format: string, content?: string) => {
         const rawData = markdownToDraft(content, {
           remarkablePreset: 'commonmark',
           remarkableOptions: {
+            html: false,
             disable: {
               inline: ['links', 'emphasis'],
               block: ['heading', 'code', 'list'],
@@ -139,9 +141,21 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
             onEditorStateChange={onEditorStateChange}
           />
         </div>
-        <p className="tw-pt-2 tw-float-right tw-text-grey-muted">
-          Using headings in markdown is not allowed
-        </p>
+        <div className="tw-flex tw-justify-between">
+          <div />
+          <div>
+            <p className="tw-pt-2  tw-text-grey-muted">
+              Using headings in markdown is not allowed
+            </p>
+            <p className="tw-pt-2  tw-text-grey-muted">
+              Use{' '}
+              <span
+                className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
+                style={{ background: countBackground }}>{`<br/>`}</span>{' '}
+              tag to add empty lines
+            </p>
+          </div>
+        </div>
       </>
     );
   }

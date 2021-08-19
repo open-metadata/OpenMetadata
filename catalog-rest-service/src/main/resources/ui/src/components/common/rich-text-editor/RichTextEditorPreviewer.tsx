@@ -17,6 +17,7 @@
 
 import React, { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+import rehypeRaw from 'rehype-raw';
 import gfm from 'remark-gfm';
 
 /*eslint-disable  */
@@ -49,6 +50,7 @@ const RichTextEditorPreviewer = ({ markdown }: { markdown: string }) => {
           },
         }}
         remarkPlugins={[gfm]}
+        rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
       />
     </div>
   );
