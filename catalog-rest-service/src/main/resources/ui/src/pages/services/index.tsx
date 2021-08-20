@@ -27,6 +27,7 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
@@ -38,7 +39,6 @@ import {
 import { getServiceDetailsPath } from '../../constants/constants';
 import { NOSERVICE, PLUS } from '../../constants/services.const';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 export type ApiData = {
@@ -203,7 +203,11 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div className="tw-text-grey-body tw-pb-1">
-                        {stringToHTML(service.description) || (
+                        {service.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={service.description}
+                          />
+                        ) : (
                           <span className="tw-no-description">
                             No description added
                           </span>
