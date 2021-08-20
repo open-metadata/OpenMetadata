@@ -56,6 +56,7 @@
 * [Metadata Ingestion](install/metadata-ingestion/README.md)
   * [Ingest Sample Data](install/metadata-ingestion/ingest-sample-data.md)
   * [Connectors](install/metadata-ingestion/connectors/README.md)
+    * [Hive](install/metadata-ingestion/connectors/hive.md)
     * [Athena](install/metadata-ingestion/connectors/athena.md)
     * [BigQuery](install/metadata-ingestion/connectors/bigquery.md)
     * [ElasticSearch](install/metadata-ingestion/connectors/elastic-search.md)
