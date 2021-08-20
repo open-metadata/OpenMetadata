@@ -498,7 +498,7 @@ const MyDataDetailsPage = () => {
                         className="tw-pl-3"
                         data-testid="description"
                         id="description">
-                        {description ? (
+                        {description.trim() ? (
                           <RichTextEditorPreviewer markdown={description} />
                         ) : (
                           <span className="tw-no-description">

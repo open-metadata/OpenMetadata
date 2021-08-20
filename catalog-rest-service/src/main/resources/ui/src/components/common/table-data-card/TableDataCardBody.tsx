@@ -37,7 +37,11 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   return (
     <>
       <div className="tw-mb-1 description-text">
-        <RichTextEditorPreviewer markdown={description} />
+        {description.trim() ? (
+          <RichTextEditorPreviewer markdown={description} />
+        ) : (
+          <span className="tw-no-description">No description added</span>
+        )}
       </div>
       <p className="tw-py-1">
         {extraInfo.map(({ key, value }, i) =>
