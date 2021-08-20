@@ -177,17 +177,13 @@ class SQLSource(Source):
             self.connection = self.engine.connect()
 
     def fetch_sample_data(self, table: str):
-        print("in fetch_sample_data")
         try:
             query = f"select * from {table} limit 50"
-            print(query)
+            logger.info("Fetching sample data, this may take a while {}".format(query))
             results = self.connection.execute(query)
-            for v in results:
-                for column, value in v.items():
-                    print('{0}: {1}'.format(column, value))
+            print(results.keys())
         except:
-            logger.error("Failed to generate sample data for {}", table)
-
+            logger.error("Failed to generate sample data for {}".format(table))
 
     def standardize_schema_table_names(
             self, schema: str, table: str
