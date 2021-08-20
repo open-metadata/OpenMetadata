@@ -26,6 +26,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   aggregations,
   onSelectHandler,
   filters,
+  onClearFilter,
 }: FacetProp) => {
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
@@ -117,6 +118,17 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     );
   };
 
+  const isClearFilter = (aggregation: AggregationType) => {
+    const buckets = getBucketsByTitle(aggregation.title, aggregation.buckets);
+    const flag = buckets.some((bucket) =>
+      filters[lowerCase(aggregation.title) as keyof FilterObject].includes(
+        bucket.key
+      )
+    );
+
+    return flag;
+  };
+
   return (
     <>
       {sortAggregations().map((aggregation: AggregationType, index: number) => {
@@ -124,7 +136,20 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (
               <>
-                <h6 className="tw-heading">{aggregation.title}</h6>
+                <div className="tw-flex tw-justify-between">
+                  <h6 className="tw-heading">{aggregation.title}</h6>
+                  {isClearFilter(aggregation) && (
+                    <p
+                      className="link-text"
+                      onClick={() =>
+                        onClearFilter(
+                          lowerCase(aggregation.title) as keyof FilterObject
+                        )
+                      }>
+                      Clear filter
+                    </p>
+                  )}
+                </div>
                 <div className="sidebar-my-data-holder mt-2 mb-3">
                   {getFilterItems(aggregation)}
                 </div>

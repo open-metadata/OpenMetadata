@@ -74,7 +74,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       </div>
       <div className="tw-pt-2">
         <TableDataCardBody
-          description={description || 'No description'}
+          description={description || ''}
           extraInfo={OtherDetails}
           tags={[...new Set(tags)]}
         />
