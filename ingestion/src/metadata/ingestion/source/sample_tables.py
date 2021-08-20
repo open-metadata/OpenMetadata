@@ -18,6 +18,7 @@ import pandas as pd
 import uuid
 import os
 import json
+from faker import Faker
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Iterable, List, Dict, Any, Union
@@ -169,6 +170,33 @@ class SampleTableMetadataGenerator:
         return sorted_row_dict
 
 
+class GenerateFakeSampleData:
+    def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def checkColumns(self, columns):
+        fake = Faker()
+        colList = set()
+        colData = []
+        for i in range(15):
+            row = []
+            for column in columns:
+                colList.add(column['name'])
+                if "id" in column['name']:
+                    row.append(uuid.uuid4())
+                elif column['columnDataType'] == 'VARCHAR':
+                    row.append(fake.text(max_nb_chars=20))
+                elif column['columnDataType'] == 'NUMERIC' and "id" not in column['name']:
+                    row.append(fake.pyint())
+                elif column['columnDataType'] == 'BOOLEAN':
+                    row.append(fake.pybool())
+                elif column['columnDataType'] == 'TIMESTAMP':
+                    row.append(fake.unix_time())
+            colData.append(row)
+        return {"columns": list(colList), "rows": colData}
+
+
 class SampleTablesSource(Source):
 
     def __init__(self, config: SampleTableSourceConfig, metadata_config: MetadataServerConfig, ctx):
@@ -197,6 +225,8 @@ class SampleTablesSource(Source):
                       description=self.database['description'],
                       service=EntityReference(id=self.service.id, type=self.config.service_type))
         for table in self.tables['tables']:
+            if not table.get('sampleData'):
+                table['sampleData'] = GenerateFakeSampleData.checkColumns(table['columns'])
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned(table_metadata.name.__root__)

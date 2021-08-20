@@ -2,9 +2,9 @@
   "source": {
     "type": "redshift",
     "config": {
-      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
-      "username": "username",
-      "password": "strong_password",
+      "host_port": "redshift-cluster-1.clot5cqn1cnb.us-west-2.redshift.amazonaws.com:5439",
+      "username": "awsuser",
+      "password": "focguC-kaqqe5-nepsok", 
       "database": "warehouse",
       "service_name": "aws_redshift",
       "service_type": "Redshift"

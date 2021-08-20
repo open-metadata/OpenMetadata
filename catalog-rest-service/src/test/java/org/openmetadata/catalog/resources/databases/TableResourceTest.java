@@ -576,6 +576,40 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_viewDefinition_200(TestInfo test) throws HttpResponseException {
+    CreateTable createTable = create(test);
+    createTable.setTableType(TableType.View);
+    String query = "sales_vw\n" +
+            "create view sales_vw as\n" +
+            "select * from public.sales\n" +
+            "union all\n" +
+            "select * from spectrum.sales\n" +
+            "with no schema binding;\n";
+    createTable.setViewDefinition(query);
+    Table table = createAndCheckTable(createTable, adminAuthHeaders());
+    table = getTable(table.getId(), "viewDefinition", adminAuthHeaders());
+    LOG.info("table view definition {}", table.getViewDefinition());
+    assertEquals(table.getViewDefinition(), query);
+  }
+
+  @Test
+  public void put_viewDefinition_invalid_table_4xx(TestInfo test) throws HttpResponseException {
+    CreateTable createTable = create(test);
+    createTable.setTableType(TableType.Regular);
+    String query = "sales_vw\n" +
+            "create view sales_vw as\n" +
+            "select * from public.sales\n" +
+            "union all\n" +
+            "select * from spectrum.sales\n" +
+            "with no schema binding;\n";
+    createTable.setViewDefinition(query);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> createAndCheckTable(createTable, adminAuthHeaders()));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "ViewDefinition can only be set on " +
+            "TableType View, SecureView or MaterializedView");
+  }
+
+  @Test
   public void get_nonExistentTable_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTable(NON_EXISTENT_ENTITY, adminAuthHeaders()));

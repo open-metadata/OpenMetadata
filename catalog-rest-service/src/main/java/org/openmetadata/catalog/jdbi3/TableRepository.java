@@ -417,6 +417,7 @@ public abstract class TableRepository {
     getColumnTags(fields.contains("tags"), table);
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
+    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     return table;
   }
 
@@ -628,6 +629,7 @@ public abstract class TableRepository {
     return JsonUtils.readValue(entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"),
             TableData.class);
   }
+
 
   public interface TableDAO {
     @SqlUpdate("INSERT INTO table_entity (json) VALUES (:json)")
