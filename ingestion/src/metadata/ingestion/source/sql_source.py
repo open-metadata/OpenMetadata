@@ -83,6 +83,7 @@ class SQLConnectionConfig(ConfigModel):
         url += f"{self.host_port}"
         if self.database:
             url += f"/{self.database}"
+        logger.info(url)
         return url
 
     def get_service_type(self) -> DatabaseServiceType:
@@ -209,7 +210,7 @@ class SQLSource(Source):
         for table_name in inspector.get_table_names(schema):
             try:
                 schema, table = self.standardize_schema_table_names(schema, table_name)
-                if not self.sql_config.filter_pattern.included(table_name):
+                if not self.sql_config.filter_pattern.included(f'{schema}.{table_name}'):
                     self.status.filtered('{}.{}'.format(self.config.get_service_name(), table_name),
                                          "Table pattern not allowed")
                     continue

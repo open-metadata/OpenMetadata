@@ -71,6 +71,8 @@ class MetadataUsageBulkSink(BulkSink):
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
+            if '.' in table_usage.table:
+                table_usage.table = table_usage.table.split(".")[1]
             if table_usage.table in self.tables_dict:
                 table_entity = self.tables_dict[table_usage.table]
                 table_usage_request = TableUsageRequest(date=table_usage.date, count=table_usage.count)

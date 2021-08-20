@@ -83,7 +83,10 @@ class SnowflakeUsageSource(Source):
         for row in self._get_raw_extract_iter():
             tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
                             str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
-            self.report.scanned(f"{row['database']}.{row['schema_name']}")
+            if row['schema_name'] is not None:
+                self.report.scanned(f"{row['database']}.{row['schema_name']}")
+            else:
+                self.report.scanned(f"{row['database']}")
             yield tq
 
     def get_report(self):

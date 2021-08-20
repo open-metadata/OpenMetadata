@@ -35,7 +35,8 @@ class MetadataLoaderJob(job.JobBase, Workflow):
 
     def run(self, pipeline_data, *args, **kwargs):
         config_data = json.loads(pipeline_data)
-        del config_data['cron']
+        if config_data.get('cron'):
+            del config_data['cron']
         self.workflow = Workflow.create(config_data)
         self.workflow.execute()
         self.workflow.raise_from_status()

@@ -39,14 +39,14 @@ You only need to run above command once.
 
 ```text
 source env/bin/activate
-metadata ingest -c ./pipelines/redshift.json
+metadata ingest -c ./examples/workflows/redshift.json
 ```
 
 #### Generate Redshift Usage Data
 
 ```text
  source env/bin/activate
- metadata ingest -c ./pipelines/redshift_usage.json
+ metadata ingest -c ./examples/workflows/redshift_usage.json
 ```
 
 #### Generate Sample Tables
@@ -55,7 +55,12 @@ metadata ingest -c ./pipelines/redshift.json
  source env/bin/activate
  metadata ingest -c ./pipelines/sample_tables.json
 ```
+#### Generate Sample Usage
 
+```text
+ source env/bin/activate
+ metadata ingest -c ./pipelines/sample_usage.json
+```
 #### Generate Sample Users
 
 ```text
@@ -75,7 +80,7 @@ metadata ingest -c ./pipelines/redshift.json
 ```text
  source env/bin/activate
  export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
- metadata ingest -c ./pipelines/bigquery.json
+ metadata ingest -c ./examples/workflows/bigquery.json
 ```
 
 #### Index Metadata into ElasticSearch
