@@ -119,7 +119,7 @@ class ElasticsearchBulkSink(BulkSink):
                                         table_name=table.name.__root__,
                                         suggest=suggest,
                                         description=table.description,
-                                        table_type=table.tableType,
+                                        table_type=table.tableType.name,
                                         last_updated_timestamp=timestamp,
                                         column_names=column_names,
                                         column_descriptions=column_descriptions,
