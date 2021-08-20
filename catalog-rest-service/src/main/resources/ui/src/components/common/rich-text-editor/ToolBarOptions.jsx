@@ -343,15 +343,13 @@ export class Info extends Component {
 
   render() {
     return (
-      <div className="rdw-option-wrapper tw-order-5 tw-font-bold tw-ml-auto">
+      <div className="tw-order-5 tw-font-bold tw-ml-auto tw-pr-1">
         <PopOver
           arrow={false}
           html={
             <div className="tw-flex tw-pb-1 tw-text-white tw-text-left">
               <div>
-                <p className="tw-pt-2">
-                  Using headings in markdown is not allowed.
-                </p>
+                <p>Using headings in markdown is not allowed.</p>
                 <p className="tw-pt-2">
                   Use{' '}
                   <span className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs">{`<br/>`}</span>{' '}

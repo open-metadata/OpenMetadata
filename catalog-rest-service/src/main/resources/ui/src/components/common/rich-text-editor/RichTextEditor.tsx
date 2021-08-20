@@ -127,7 +127,7 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
                 },
               },
             }}
-            toolbarClassName="tw-py-2 tw-border-0 tw-border-b tw-border-main"
+            toolbarClassName="tw-py-2 tw-pt-4 tw-border-0 tw-border-b tw-border-main"
             toolbarCustomButtons={
               customOptions ?? [
                 <Bold key="bold" />,

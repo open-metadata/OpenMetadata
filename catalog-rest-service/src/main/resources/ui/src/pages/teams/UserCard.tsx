@@ -1,8 +1,9 @@
 import { capitalize } from 'lodash';
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../../components/common/avatar/Avatar';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import DeleteModal from '../../components/Modals/DeleteModal/DeleteModal';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -25,6 +26,8 @@ const UserCard = ({
   onSelect,
   onRemove,
 }: Props) => {
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+
   return (
     <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
@@ -58,7 +61,7 @@ const UserCard = ({
             <NonAdminAction
               position="top"
               title="Only Admin is allowed for the action">
-              <span onClick={() => onRemove?.(item.id as string)}>
+              <span onClick={() => setIsOpen(true)}>
                 <SVGIcons
                   alt="delete"
                   className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
@@ -69,6 +72,16 @@ const UserCard = ({
             </NonAdminAction>
           )}
         </div>
+      )}
+      {isOpen && (
+        <DeleteModal
+          bodyText={`Are you sure you want to delete ${item.description} ?`}
+          cancelText="Cancel"
+          confirmText="Delete"
+          header={`Deleting ${item.description}`}
+          onCancel={() => setIsOpen(false)}
+          onConfirm={() => onRemove?.(item.id as string)}
+        />
       )}
     </div>
   );

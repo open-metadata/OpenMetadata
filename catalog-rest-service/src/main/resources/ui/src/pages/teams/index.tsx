@@ -32,6 +32,7 @@ import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolder from '../../components/common/error-with-placeholder/ErrorPlaceHolder';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Searchbar from '../../components/common/searchbar/Searchbar';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
@@ -67,6 +68,7 @@ const TeamsPage = () => {
     setCurrentTeam({ ...data, users: users });
   };
 
+  const [searchText, setSearchText] = useState('');
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns'])
@@ -186,6 +188,9 @@ const TeamsPage = () => {
       </span>
     );
   };
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+  };
 
   const getTabs = () => {
     return (
@@ -236,24 +241,39 @@ const TeamsPage = () => {
 
     return (
       <>
+        <div className="tw-w-4/12">
+          <Searchbar
+            placeholder="Search for user..."
+            searchValue={searchText}
+            typingInterval={1500}
+            onSearch={handleSearchAction}
+          />
+        </div>
         <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
-          {currentTeam?.users.map((user, index) => {
-            const User = {
-              description: user.description,
-              name: user.name,
-              id: user.id,
-            };
+          {currentTeam?.users
+            .filter((user) => {
+              return (
+                user.description?.includes(searchText) ||
+                user.name.includes(searchText)
+              );
+            })
+            .map((user, index) => {
+              const User = {
+                description: user.description,
+                name: user.name,
+                id: user.id,
+              };
 
-            return (
-              <UserCard
-                isIconVisible
-                isActionVisible={isAdminUser}
-                item={User}
-                key={index}
-                onRemove={deleteUser}
-              />
-            );
-          })}
+              return (
+                <UserCard
+                  isActionVisible
+                  isIconVisible
+                  item={User}
+                  key={index}
+                  onRemove={deleteUser}
+                />
+              );
+            })}
         </div>
       </>
     );
