@@ -4,10 +4,10 @@ import { ColumnTags, TableColumn } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagsCategory } from '../pages/tags/tagsTypes';
 
-export const getTagCategories = async () => {
+export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
     let listOfCategories: Array<TagsCategory> = [];
-    const categories = await getTags('usageCount');
+    const categories = await getTags(fields);
     const categoryList = categories.data.data.map((category: TagsCategory) => {
       return {
         name: category.name,
@@ -17,7 +17,7 @@ export const getTagCategories = async () => {
     if (categoryList.length) {
       let promiseArr: Array<AxiosPromise> = [];
       promiseArr = categoryList.map((category: TagsCategory) => {
-        return getCategory(category.name, 'usageCount');
+        return getCategory(category.name, fields);
       });
 
       await Promise.all(promiseArr).then((res: Array<AxiosResponse>) => {

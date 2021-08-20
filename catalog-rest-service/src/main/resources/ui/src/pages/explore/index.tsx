@@ -104,6 +104,16 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       setFilters((prevState) => ({ ...prevState, [type]: filter }));
     }
   };
+
+  const onClearFilterHandler = (type: keyof FilterObject) => {
+    setFilters((prevFilters) => {
+      return {
+        ...prevFilters,
+        [type]: [],
+      };
+    });
+  };
+
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
@@ -261,6 +271,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       <FacetFilter
         aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
         filters={getFacetedFilter()}
+        onClearFilter={(value) => onClearFilterHandler(value)}
         onSelectHandler={handleSelectedFilter}
       />
     );

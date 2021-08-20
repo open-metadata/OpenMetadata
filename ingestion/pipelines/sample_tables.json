@@ -10,13 +10,11 @@
   },
   "processor": {
     "type": "pii",
-    "config": {
-    }
+    "config": {}
   },
   "sink": {
     "type": "metadata-rest-tables",
-    "config": {
-    }
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",

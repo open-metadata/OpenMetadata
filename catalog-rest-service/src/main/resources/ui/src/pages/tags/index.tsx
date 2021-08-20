@@ -53,7 +53,7 @@ const TagsPage = () => {
 
   const fetchCategories = () => {
     setIsLoading(true);
-    getTagCategories()
+    getTagCategories('usageCount')
       .then((res) => {
         setCategoreis(res.data);
         setCurrentCategory(res.data[0]);
