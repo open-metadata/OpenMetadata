@@ -28,7 +28,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType
+from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType, TableData
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes as types
@@ -181,7 +181,12 @@ class SQLSource(Source):
             query = f"select * from {table} limit 50"
             logger.info("Fetching sample data, this may take a while {}".format(query))
             results = self.connection.execute(query)
-            print(results.keys())
+            cols = list(results.keys())
+            rows = []
+            for r in results:
+                row = list(r)
+                rows.append(row)
+            return TableData(columns=cols, rows=rows)
         except:
             logger.error("Failed to generate sample data for {}".format(table))
 
@@ -206,67 +211,74 @@ class SQLSource(Source):
     def fetch_tables(self,
                      inspector: Inspector,
                      schema: str) -> Iterable[OMetaDatabaseAndTable]:
-        for table in inspector.get_table_names(schema):
+        for table_name in inspector.get_table_names(schema):
             try:
-                schema, table = self.standardize_schema_table_names(schema, table)
-                if not self.sql_config.filter_pattern.included(table):
-                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), table),
+                schema, table = self.standardize_schema_table_names(schema, table_name)
+                if not self.sql_config.filter_pattern.included(table_name):
+                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), table_name),
                                          "Table pattern not allowed")
                     continue
-                self.status.scanned('{}.{}'.format(self.config.get_service_name(), table))
+                self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
 
-                description = self._get_table_description(schema, table, inspector)
+                description = self._get_table_description(schema, table_name, inspector)
 
-                table_columns = self._get_columns(schema, table, inspector)
-                if self.sql_config.generate_sample_data:
-                    self._get_connection()
-                    self.fetch_sample_data(table)
+                table_columns = self._get_columns(schema, table_name, inspector)
+
                 table = Table(id=uuid.uuid4(),
-                              name=table,
+                              name=table_name,
                               tableType='Regular',
                               description=description if description is not None else ' ',
                               columns=table_columns)
+                if self.sql_config.generate_sample_data:
+                    self._get_connection()
+                    table_data = self.fetch_sample_data(table_name)
+                    table.sampleData = table_data
 
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
                 yield table_and_db
             except ValidationError as err:
                 logger.error(err)
-                self.status.filtered('{}.{}'.format(self.config.service_name, table),
+                self.status.filtered('{}.{}'.format(self.config.service_name, table_name),
                                      "Validation error")
                 continue
 
     def fetch_views(self,
                     inspector: Inspector,
                     schema: str) -> Iterable[OMetaDatabaseAndTable]:
-        for view in inspector.get_view_names(schema):
+        for view_name in inspector.get_view_names(schema):
             try:
-                if not self.sql_config.filter_pattern.included(view):
-                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), view),
-                                         "Table pattern not allowed")
+                if not self.sql_config.filter_pattern.included(view_name):
+                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), view_name),
+                                         "View pattern not allowed")
                     continue
                 try:
-                    view_definition = inspector.get_view_definition(view, schema)
+                    view_definition = inspector.get_view_definition(view_name, schema)
                     view_definition = "" if view_definition is None else str(view_definition)
                 except NotImplementedError:
                     view_definition = ""
 
-                description = self._get_table_description(schema, view, inspector)
-                table_columns = self._get_columns(schema, view, inspector)
+                description = self._get_table_description(schema, view_name, inspector)
+                table_columns = self._get_columns(schema, view_name, inspector)
                 if self.sql_config.generate_sample_data:
                     self._get_connection()
-                    self.fetch_sample_data(view)
+                    self.fetch_sample_data(view_name)
 
                 table = Table(id=uuid.uuid4(),
-                              name=view,
+                              name=view_name,
                               tableType='View',
                               description=description if description is not None else ' ',
                               columns=table_columns,
                               viewDefinition=view_definition)
+                if self.sql_config.generate_sample_data:
+                    self._get_connection()
+                    table_data = self.fetch_sample_data(view_name)
+                    table.sampleData = table_data
+
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
                 yield table_and_db
             except ValidationError as err:
                 logger.error(err)
-                self.status.filtered('{}.{}'.format(self.config.service_name, view),
+                self.status.filtered('{}.{}'.format(self.config.service_name, view_name),
                                      "Validation error")
                 continue
 
