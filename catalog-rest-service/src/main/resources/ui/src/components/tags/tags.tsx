@@ -43,7 +43,7 @@ const Tags: FunctionComponent<TagProps> = ({
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
             e.stopPropagation();
-            removeTag && removeTag(e, tag);
+            removeTag && removeTag(e, tag.startsWith('#') ? tag.slice(1) : tag);
           }}>
           <i aria-hidden="true" className="fa fa-times tw-text-grey-300" />
         </span>

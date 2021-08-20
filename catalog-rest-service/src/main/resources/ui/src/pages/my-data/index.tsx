@@ -16,6 +16,7 @@
 */
 
 import { AxiosError } from 'axios';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { FormatedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
@@ -51,10 +52,10 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   const getFilters = (): string => {
     if (filter === 'owner') {
-      const ownerIds = [
-        ...AppState.userDetails.teams.map((team) => `${filter}:${team.id}`),
-        `${filter}:${getCurrentUserId()}`,
-      ];
+      const userTeams = !isEmpty(AppState.userDetails)
+        ? AppState.userDetails.teams.map((team) => `${filter}:${team.id}`)
+        : [];
+      const ownerIds = [...userTeams, `${filter}:${getCurrentUserId()}`];
 
       return `(${ownerIds.join(' OR ')})`;
     }
