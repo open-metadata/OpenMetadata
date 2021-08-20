@@ -41,13 +41,25 @@
       "description": "Description of a messaging service instance.",
       "type": "string"
     },
-    "href": {
-      "description": "Link to the resource corresponding to this messaging service.",
-      "$ref": "../../type/basic.json#/definitions/href"
+    "brokers": {
+      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "schemaRegistry" : {
+      "description": "Schema registry URL",
+      "type": "string",
+      "format": "uri"
     },
     "ingestionSchedule": {
       "description": "Schedule for running metadata ingestion jobs.",
       "$ref": "../../type/schedule.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this messaging service.",
+      "$ref": "../../type/basic.json#/definitions/href"
     }
   },
   "required": [
