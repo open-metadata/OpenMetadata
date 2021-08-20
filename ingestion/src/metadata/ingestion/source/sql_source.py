@@ -176,9 +176,9 @@ class SQLSource(Source):
         if self.connection is None:
             self.connection = self.engine.connect()
 
-    def fetch_sample_data(self, table: str):
+    def fetch_sample_data(self, schema: str, table: str):
         try:
-            query = f"select * from {table} limit 50"
+            query = f"select * from {schema}.{table} limit 50"
             logger.info("Fetching sample data, this may take a while {}".format(query))
             results = self.connection.execute(query)
             cols = list(results.keys())
@@ -231,7 +231,7 @@ class SQLSource(Source):
                               columns=table_columns)
                 if self.sql_config.generate_sample_data:
                     self._get_connection()
-                    table_data = self.fetch_sample_data(table_name)
+                    table_data = self.fetch_sample_data(schema, table_name)
                     table.sampleData = table_data
 
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
@@ -259,10 +259,6 @@ class SQLSource(Source):
 
                 description = self._get_table_description(schema, view_name, inspector)
                 table_columns = self._get_columns(schema, view_name, inspector)
-                if self.sql_config.generate_sample_data:
-                    self._get_connection()
-                    self.fetch_sample_data(view_name)
-
                 table = Table(id=uuid.uuid4(),
                               name=view_name,
                               tableType='View',
@@ -271,7 +267,7 @@ class SQLSource(Source):
                               viewDefinition=view_definition)
                 if self.sql_config.generate_sample_data:
                     self._get_connection()
-                    table_data = self.fetch_sample_data(view_name)
+                    table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
 
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
