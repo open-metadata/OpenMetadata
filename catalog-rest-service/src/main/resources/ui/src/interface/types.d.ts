@@ -170,7 +170,7 @@ declare module 'Models' {
   export type UserTeam = {
     description: string;
     displayName?: string;
-    href: string;
+    href?: string;
     id: string;
     name: string;
     type: string;
@@ -291,7 +291,7 @@ declare module 'Models' {
     name: string;
     displayName: string;
     description: string;
-    href: string;
+    href?: string;
     users: Array<UserTeam>;
     owns: Array<UserTeam>;
   };

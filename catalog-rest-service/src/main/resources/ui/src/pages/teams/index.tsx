@@ -37,6 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ERROR404 } from '../../constants/constants';
+import { useAuth } from '../../hooks/authHooks';
 import { countBackground } from '../../utils/styleconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
@@ -53,12 +54,25 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
+  const { isAdminUser, isAuthDisabled } = useAuth();
+
+  const setCurrentTeamData = (data: Team) => {
+    const users = [...data.users].map((user) => ({
+      description: user.description,
+      id: user.id,
+      name: user.name,
+      type: user.type,
+    }));
+
+    setCurrentTeam({ ...data, users: users });
+  };
+
   const fetchTeams = () => {
     setIsLoading(true);
     getTeams(['users', 'owns'])
       .then((res: AxiosResponse) => {
         setTeams(res.data.data);
-        setCurrentTeam(res.data.data[0]);
+        setCurrentTeamData(res.data.data[0]);
         setIsLoading(false);
       })
       .catch((err: AxiosError) => {
@@ -74,7 +88,7 @@ const TeamsPage = () => {
       setIsLoading(true);
       getTeamByName(name, ['users', 'owns'])
         .then((res: AxiosResponse) => {
-          setCurrentTeam(res.data);
+          setCurrentTeamData(res.data);
           setIsLoading(false);
         })
         .catch((err: AxiosError) => {
@@ -113,6 +127,26 @@ const TeamsPage = () => {
       }
     });
     setIsAddingUsers(false);
+  };
+
+  const addUser = () => {
+    const data: UserTeam = {
+      description: AppState.userDetails.displayName,
+      displayName: AppState.userDetails.name,
+      id: AppState.userDetails.id,
+      name: AppState.userDetails.name,
+      type: 'user',
+    };
+    const updatedTeam = {
+      ...currentTeam,
+      users: [...(currentTeam?.users as Array<UserTeam>), data],
+    };
+    const jsonPatch = compare(currentTeam as Team, updatedTeam);
+    patchTeamDetail(currentTeam?.id, jsonPatch).then((res: AxiosResponse) => {
+      if (res.data) {
+        fetchCurrentTeam(res.data.name, true);
+      }
+    });
   };
 
   const deleteUser = (id: string) => {
@@ -213,6 +247,7 @@ const TeamsPage = () => {
             return (
               <UserCard
                 isIconVisible
+                isActionVisible={isAdminUser}
                 item={User}
                 key={index}
                 onRemove={deleteUser}
@@ -329,7 +364,6 @@ const TeamsPage = () => {
         return {
           description: user.displayName,
           id: user.id,
-          href: user.href,
           name: user.name,
           type: 'user',
         };
@@ -360,18 +394,32 @@ const TeamsPage = () => {
                 <div className="tw-heading tw-text-link tw-text-base">
                   {currentTeam?.displayName}
                 </div>
-                <NonAdminAction
-                  position="bottom"
-                  title="Only Admin is allowed for the action">
+                {isAdminUser || isAuthDisabled ? (
+                  <NonAdminAction
+                    position="bottom"
+                    title="Only Admin is allowed for the action">
+                    <Button
+                      className="tw-h-8 tw-rounded tw-mb-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => setIsAddingUsers(true)}>
+                      Add new user
+                    </Button>
+                  </NonAdminAction>
+                ) : (
                   <Button
                     className="tw-h-8 tw-rounded tw-mb-2"
+                    disabled={currentTeam?.users.some(
+                      (user) => user.id === AppState.userDetails.id
+                    )}
                     size="small"
                     theme="primary"
                     variant="contained"
-                    onClick={() => setIsAddingUsers(true)}>
-                    Add new user
+                    onClick={addUser}>
+                    Join team
                   </Button>
-                </NonAdminAction>
+                )}
               </div>
               <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">

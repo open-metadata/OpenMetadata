@@ -2,6 +2,7 @@ import { capitalize } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../../components/common/avatar/Avatar';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -54,14 +55,18 @@ const UserCard = ({
               }}
             />
           ) : (
-            <span onClick={() => onRemove?.(item.id as string)}>
-              <SVGIcons
-                alt="delete"
-                className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
-                icon="icon-delete"
-                title="Remove"
-              />
-            </span>
+            <NonAdminAction
+              position="top"
+              title="Only Admin is allowed for the action">
+              <span onClick={() => onRemove?.(item.id as string)}>
+                <SVGIcons
+                  alt="delete"
+                  className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
+                  icon="icon-delete"
+                  title="Remove"
+                />
+              </span>
+            </NonAdminAction>
           )}
         </div>
       )}
