@@ -65,6 +65,12 @@ export const fromISOString = (isoValue = '') => {
   }
 };
 
+export const getFrequencyTime = (isoDate: string): string => {
+  const { day, hour, minute } = fromISOString(isoDate);
+
+  return `${day}D-${hour}H-${minute}M`;
+};
+
 const getAllServiceList = (
   allServiceCollectionArr: Array<ServiceCollection>
 ): Promise<Array<ServiceDataObj>> => {

@@ -17,7 +17,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import { isNull, isUndefined } from 'lodash';
 import { Database, Paging, ServiceOption } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -33,15 +33,9 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import { pagingObject } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
-import { fromISOString, serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
-
-const getFrequencyTime = (isoDate: string): string => {
-  const { day, hour, minute } = fromISOString(isoDate);
-
-  return `${day}D-${hour}H-${minute}M`;
-};
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN } = useParams() as Record<string, string>;
@@ -223,67 +217,69 @@ const ServicePage: FunctionComponent = () => {
                 </div>
               </div>
             </div>
-            {data.length > 0 ? (
-              <>
-                <div className="tw-mt-4">
-                  <table
-                    className="tw-bg-white tw-w-full tw-mb-4"
-                    data-testid="database-tables">
-                    <thead>
-                      <tr className="tableHead-row">
-                        <th className="tableHead-cell">Database Name</th>
-                        <th className="tableHead-cell">Description</th>
-                        <th className="tableHead-cell">Owner</th>
-                        <th className="tableHead-cell">Usage</th>
-                      </tr>
-                    </thead>
-                    <tbody className="tableBody">
-                      {data.map((database, index) => (
-                        <tr
-                          className={classNames(
-                            'tableBody-row',
-                            !isEven(index + 1) ? 'odd-row' : null
+
+            <div className="tw-mt-4">
+              <table
+                className="tw-bg-white tw-w-full tw-mb-4"
+                data-testid="database-tables">
+                <thead>
+                  <tr className="tableHead-row">
+                    <th className="tableHead-cell">Database Name</th>
+                    <th className="tableHead-cell">Description</th>
+                    <th className="tableHead-cell">Owner</th>
+                    <th className="tableHead-cell">Usage</th>
+                  </tr>
+                </thead>
+                <tbody className="tableBody">
+                  {data.length > 0 ? (
+                    data.map((database, index) => (
+                      <tr
+                        className={classNames(
+                          'tableBody-row',
+                          !isEven(index + 1) ? 'odd-row' : null
+                        )}
+                        data-testid="column"
+                        key={index}>
+                        <td className="tableBody-cell">
+                          <Link to={`/database/${database.fullyQualifiedName}`}>
+                            {database.name}
+                          </Link>
+                        </td>
+                        <td className="tableBody-cell">
+                          {database.description ? (
+                            <RichTextEditorPreviewer
+                              markdown={database.description}
+                            />
+                          ) : (
+                            <span className="tw-no-description">
+                              No description added
+                            </span>
                           )}
-                          data-testid="column"
-                          key={index}>
-                          <td className="tableBody-cell">
-                            <Link
-                              to={`/database/${database.fullyQualifiedName}`}>
-                              {database.name}
-                            </Link>
-                          </td>
-                          <td className="tableBody-cell">
-                            {database.description ? (
-                              <RichTextEditorPreviewer
-                                markdown={database.description}
-                              />
-                            ) : (
-                              <span className="tw-no-description">
-                                No description added
-                              </span>
+                        </td>
+                        <td className="tableBody-cell">
+                          <p>{database?.owner?.name || '--'}</p>
+                        </td>
+                        <td className="tableBody-cell">
+                          <p>
+                            {getUsagePercentile(
+                              database.usageSummary.weeklyStats.percentileRank
                             )}
-                          </td>
-                          <td className="tableBody-cell">
-                            <p>{database?.owner?.name || '--'}</p>
-                          </td>
-                          <td className="tableBody-cell">
-                            <p>
-                              {getUsagePercentile(
-                                database.usageSummary.weeklyStats.percentileRank
-                              )}
-                            </p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-              </>
-            ) : (
-              <h1 className="tw-text-center tw-mt-60 tw-text-grey-body tw-font-normal">
-                {serviceFQN} does not have any databases
-              </h1>
+                          </p>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="tableBody-row">
+                      <td className="tableBody-cell tw-text-center" colSpan={4}>
+                        No records found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {Boolean(!isNull(paging.after) || !isNull(paging.before)) && (
+              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
             )}
           </div>
         </PageContainer>
