@@ -24,6 +24,8 @@ import google.auth.transport.requests
 from google.oauth2 import service_account
 import time
 import uuid
+import http.client
+import json
 
 from jose import jwt
 from okta.client import Client as OktaClient
@@ -42,6 +44,7 @@ class MetadataServerConfig(ConfigModel):
     client_id: str = None
     private_key: str = None
     email: str = None
+    domain: str = None
     audience: str = 'https://www.googleapis.com/oauth2/v4/token'
     auth_header: str = 'X-Catalog-Source'
 
@@ -109,3 +112,24 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         }
         token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
         return token
+
+
+class Auth0AuthenticationProvider(AuthenticationProvider):
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        conn = http.client.HTTPSConnection(self.config.domain)
+        payload = "grant_type=client_credentials" + "&client_id=" + self.config.client_id + "&client_secret=" \
+                  + self.config.secret_key + "&audience=" + "https://" + self.config.domain + "/api/v2/"
+        headers = {'content-type': "application/x-www-form-urlencoded"}
+        conn.request("POST", "/" + self.config.domain + "/oauth/token", payload,
+                     headers)
+        res = conn.getresponse()
+        data = res.read()
+        token = json.loads(data.decode("utf-8"))
+        return token['access_token']

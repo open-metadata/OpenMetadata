@@ -33,7 +33,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoinsList
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
-    GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider
+    GoogleAuthenticationProvider, NoOpAuthenticationProvider, OktaAuthenticationProvider, Auth0AuthenticationProvider
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 from metadata.generated.schema.entity.data.table import Table, TableJoins, TableData
 from metadata.generated.schema.entity.data.database import Database
@@ -112,6 +112,8 @@ class REST(object):
             self._auth_provider: AuthenticationProvider = GoogleAuthenticationProvider.create(self.config)
         elif self.config.auth_provider_type == "okta":
             self._auth_provider: AuthenticationProvider = OktaAuthenticationProvider.create(self.config)
+        elif self.config.auth_provider_type == "auth0":
+            self._auth_provider: AuthenticationProvider = Auth0AuthenticationProvider.create(self.config)
         else:
             self._auth_provider: AuthenticationProvider = NoOpAuthenticationProvider.create(self.config)
 
