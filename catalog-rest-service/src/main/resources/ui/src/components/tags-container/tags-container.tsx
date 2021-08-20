@@ -174,6 +174,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           <span className="tw-relative">
             <input
               className="tw-flex-1 tw-border-0 tw-px-1 focus:tw-outline-none"
+              placeholder="Enter tag name..."
               ref={inputRef}
               style={{ width: inputWidth, minWidth: inputMinWidth }}
               value={newTag}
