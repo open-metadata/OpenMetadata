@@ -16,8 +16,9 @@
 */
 
 import classNames from 'classnames';
-import React, { FunctionComponent, useState } from 'react';
+import React, { FunctionComponent, useRef, useState } from 'react';
 import { Button } from '../../buttons/Button/Button';
+import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 // import { serviceType } from '../../../constants/services.const';
 
 export type DatabaseObj = {
@@ -70,6 +71,9 @@ type ErrorMsg = {
   // userName: boolean;
   // password: boolean;
   driverClass: boolean;
+};
+type EditorContentRef = {
+  getEditorContent: () => string;
 };
 
 const requiredField = (label: string) => (
@@ -166,7 +170,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [name, setName] = useState(data?.name || '');
   // const [userName, setUserName] = useState(parseUrl?.userName || '');
   // const [password, setPassword] = useState(parseUrl?.password || '');
-  const [description, setDescription] = useState(data?.description || '');
   // const [tags, setTags] = useState('');
   const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
   // const [port, setPort] = useState(parseUrl?.port || '');
@@ -185,7 +188,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     driverClass: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
-
+  const markdownRef = useRef<EditorContentRef>();
   const handleChangeFrequency = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -278,7 +281,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       const { day, hour, minute } = frequency;
       const date = new Date();
       const databaseObj: DatabaseObj = {
-        description: description || undefined,
+        description: markdownRef.current?.getEditorContent(),
         ingestionSchedule: ingestion
           ? {
               repeatFrequency: `P${day}DT${hour}H${minute}M`,
@@ -478,13 +481,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               <label className="tw-block tw-form-label" htmlFor="description">
                 Description:
               </label>
-              <textarea
-                className="tw-form-inputs tw-px-3 tw-py-1 "
-                id="description"
-                name="description"
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+              <MarkdownWithPreview
+                ref={markdownRef}
+                value={data?.description || ''}
               />
             </div>
             {/* <div className="tw-mt-4">
