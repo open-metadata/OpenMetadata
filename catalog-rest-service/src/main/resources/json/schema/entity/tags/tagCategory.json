@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/tags/tagCategory.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Tag Category",
-  "description": "This schema defines the Tag Category entity. A Tag Category has one more children tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
+  "description": "This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.TagCategory",
   "definitions": {

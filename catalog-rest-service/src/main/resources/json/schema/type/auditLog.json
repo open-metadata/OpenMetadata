@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/auditLog.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Audit Log",
-  "description": "This schema defines Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.",
+  "description": "This schema defines the Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.",
   "type": "object",
 
   "properties" : {
@@ -25,11 +25,11 @@
       "type": "string"
     },
     "userName": {
-      "description": "Name of the user who requested for the API.",
+      "description": "Name of the user who made the API request.",
       "type": "string"
     },
     "dateTime": {
-      "description": "Date which the api call is made.",
+      "description": "Date when the API call is made.",
       "$ref": "basic.json#/definitions/dateTime"
     },
     "entityId": {
@@ -37,7 +37,7 @@
       "$ref": "basic.json#/definitions/uuid"
     },
     "entityType": {
-      "description": "Entity Type that modified by the operation.",
+      "description": "Entity Type that is modified by the operation.",
       "type": "string"
     }
   },
