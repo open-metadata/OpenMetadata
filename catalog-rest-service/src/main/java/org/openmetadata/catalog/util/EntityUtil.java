@@ -438,6 +438,17 @@ public final class EntityUtil {
     LOG.info(print);
   }
 
+  public static boolean addTeamUser(EntityRelationshipDAO dao, UserDAO userDAO, String addedTeamUserEntityId,
+                                String addedTeamUserEntityType, String teamUserId, String teamUserEntity)
+          throws IOException {
+    User user = EntityUtil.validate(teamUserId, userDAO.findById(teamUserId), User.class);
+    if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(teamUserId));
+    }
+    return dao.insert(teamUserId, addedTeamUserEntityId, teamUserEntity, addedTeamUserEntityType,
+            Relationship.CONTAINS.ordinal()) > 0;
+  }
+
   public static boolean addFollower(EntityRelationshipDAO dao, UserDAO userDAO, String followedEntityId,
                                     String followedEntityType, String followerId, String followerEntity)
           throws IOException {

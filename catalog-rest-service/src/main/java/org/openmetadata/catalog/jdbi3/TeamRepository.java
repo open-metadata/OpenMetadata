@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -106,6 +108,14 @@ public abstract class TeamRepository {
 
     team.setUsers(toEntityReference(users));
     return team;
+  }
+
+  @Transaction
+  public Response.Status addTeamUser(String teamId, String userId) throws IOException {
+    EntityUtil.validate(teamId, teamDAO().findById(teamId), Team.class);
+
+    return EntityUtil.addTeamUser(relationshipDAO(), userDAO(), teamId, Entity.TEAM, userId, Entity.USER) ?
+            Response.Status.CREATED : Response.Status.OK;
   }
 
   @Transaction

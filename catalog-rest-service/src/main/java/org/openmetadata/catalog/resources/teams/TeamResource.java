@@ -49,6 +49,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -264,5 +265,26 @@ public class TeamResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(id);
     return Response.ok().build();
+  }
+
+  @PUT
+  @Path("/{id}/users")
+  @Operation(summary = "Add a teamUser", tags = "teams",
+          description = "Add a teamUser identified by `userId` to a team given by `id`.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Team of instance {id} is not found")
+          })
+  public Response addTeamUser(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Id of the team", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Id of the user to be added in team",
+                                  schema = @Schema(type = "string"))
+                                  String userId) throws IOException, ParseException {
+    EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "users");
+    Response.Status status = dao.addTeamUser(id, userId);
+    Team team = dao.get(id, fields);
+    return Response.status(status).entity(team).build();
   }
 }
