@@ -169,15 +169,10 @@ class SQLSource(Source):
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
 
-    def _get_connection(self) -> Any:
-        """
-        Create a SQLAlchemy connection to Database
-        """
-        if self.connection is None:
-            self.connection = self.engine.connect()
-
     def fetch_sample_data(self, schema: str, table: str):
         try:
+            if self.connection is None:
+                self.connection = self.engine.connect()
             query = f"select * from {schema}.{table} limit 50"
             logger.info("Fetching sample data, this may take a while {}".format(query))
             results = self.connection.execute(query)
@@ -230,7 +225,6 @@ class SQLSource(Source):
                               description=description if description is not None else ' ',
                               columns=table_columns)
                 if self.sql_config.generate_sample_data:
-                    self._get_connection()
                     table_data = self.fetch_sample_data(schema, table_name)
                     table.sampleData = table_data
 
@@ -266,7 +260,6 @@ class SQLSource(Source):
                               columns=table_columns,
                               viewDefinition=view_definition)
                 if self.sql_config.generate_sample_data:
-                    self._get_connection()
                     table_data = self.fetch_sample_data(schema, view_name)
                     table.sampleData = table_data
 
@@ -331,7 +324,8 @@ class SQLSource(Source):
         return description
 
     def close(self):
-        pass
+        if self.connection is not None:
+            self.connection.close()
 
     def get_status(self) -> SourceStatus:
         return self.status
