@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -61,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -84,11 +86,11 @@ public class TopicResourceTest extends CatalogApplicationTest {
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
     CreateMessagingService createService = new CreateMessagingService().withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka);
+            .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
     MessagingService service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
     KAFKA_REFERENCE = EntityUtil.getEntityReference(service);
 
-    createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar);
+    createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar).withBrokers(List.of("192.168.1.1:0"));
     service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
     PULSAR_REFERENCE = EntityUtil.getEntityReference(service);
   }
@@ -97,15 +99,6 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public void post_topicWithLongName_400_badRequest(TestInfo test) {
     // Create topic with mandatory name field empty
     CreateTopic create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-  }
-
-  @Test
-  public void post_topicWithoutName_400_badRequest(TestInfo test) {
-    // Create topic with mandatory name field empty
-    CreateTopic create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
@@ -121,7 +114,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validTopicss_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTopics_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckTopic(create, adminAuthHeaders());
@@ -149,11 +142,29 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_topicWithoutRequiredService_4xx(TestInfo test) {
-    CreateTopic create = create(test).withService(null);
+  public void post_topicWithoutRequiredFields_4xx(TestInfo test) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createTopic(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+            createTopic(create(test).withName(null), adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+
+    exception = assertThrows(HttpResponseException.class, () ->
+            createTopic(create(test).withName(LONG_ENTITY_NAME), adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+
+    // Service is required field
+    exception = assertThrows(HttpResponseException.class, () ->
+            createTopic(create(test).withService(null), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[service must not be null]");
+
+    // Partitions is required field
+    exception = assertThrows(HttpResponseException.class, () ->
+            createTopic(create(test).withPartitions(null), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
+
+    // Partitions must be >= 1
+    exception = assertThrows(HttpResponseException.class, () ->
+            createTopic(create(test).withPartitions(0), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
   }
 
   @Test
@@ -649,10 +660,10 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateTopic create(TestInfo test) {
-    return new CreateTopic().withName(getTopicName(test)).withService(KAFKA_REFERENCE);
+    return new CreateTopic().withName(getTopicName(test)).withService(KAFKA_REFERENCE).withPartitions(1);
   }
 
   public static CreateTopic create(TestInfo test, int index) {
-    return new CreateTopic().withName(getTopicName(test, index)).withService(KAFKA_REFERENCE);
+    return new CreateTopic().withName(getTopicName(test, index)).withService(KAFKA_REFERENCE).withPartitions(1);
   }
 }

@@ -20,6 +20,14 @@
           "name": "Pulsar"
         }
       ]
+    },
+    "brokers": {
+      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
     }
   },
   "properties": {
@@ -43,10 +51,7 @@
     },
     "brokers": {
       "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "$ref" : "#/definitions/brokers"
     },
     "schemaRegistry" : {
       "description": "Schema registry URL",
@@ -66,6 +71,6 @@
     "id",
     "name",
     "serviceType",
-    "href"
+    "brokers"
   ]
 }

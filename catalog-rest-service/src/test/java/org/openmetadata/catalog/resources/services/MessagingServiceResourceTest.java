@@ -33,6 +33,7 @@ import org.openmetadata.catalog.util.TestUtils;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -58,12 +59,26 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_serviceWithoutName_400_badRequest(TestInfo test) {
-    // Create messaging with mandatory name field empty
-    CreateMessagingService create = create(test).withName("");
+  public void post_withoutRequiredFields_400_badRequest(TestInfo test) {
+    // Create messaging with mandatory name field null
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createService(create, adminAuthHeaders()));
+            createService(create(test).withName(null), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[name must not be null]");
+
+    // Create messaging with mandatory name field empty
+    exception = assertThrows(HttpResponseException.class, () ->
+            createService(create(test).withName(""), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+
+    // Create messaging with mandatory serviceType field empty
+    exception = assertThrows(HttpResponseException.class, () ->
+            createService(create(test).withServiceType(null), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[serviceType must not be null]");
+
+    // Create messaging with mandatory brokers field empty
+    exception = assertThrows(HttpResponseException.class, () ->
+            createService(create(test).withBrokers(null), adminAuthHeaders()));
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[brokers must not be null]");
   }
 
   @Test
@@ -322,11 +337,15 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   public static CreateMessagingService create(TestInfo test) {
     String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
     return new CreateMessagingService().withName(getName(test)).withServiceType(MessagingServiceType.Kafka)
+            .withBrokers(List.of("192.1.1.1:0"))
             .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
   }
 
   private static CreateMessagingService create(TestInfo test, int index) {
-    return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar);
+    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
+    return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar)
+            .withBrokers(List.of("192.1.1.1:0"))
+            .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
   }
 
   public static void updateAndCheckService(String id, UpdateMessagingService update, Status status,

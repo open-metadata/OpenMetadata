@@ -230,8 +230,13 @@ public class TopicResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateTopic create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Topic topic = new Topic().withId(UUID.randomUUID()).withName(create.getName()).withService(create.getService())
-            .withDescription(create.getDescription());
+    Topic topic =
+            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+                    .withService(create.getService()).withPartitions(create.getPartitions()).withSchema(create.getSchema())
+                    .withSchemaType(create.getSchemaType()).withCleanupPolicies(create.getCleanupPolicies())
+                    .withMaximumMessageSize(create.getMaximumMessageSize())
+                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
+                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());
     topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
     return Response.created(topic.getHref()).entity(topic).build();
   }

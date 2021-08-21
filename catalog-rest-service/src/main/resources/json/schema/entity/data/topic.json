@@ -8,9 +8,42 @@
     "topicName": {
       "description": "Name that identifies a topic.",
       "type": "string",
+      "javaType": "org.openmetadata.catalog.type.topic.TopicName",
       "minLength": 1,
       "maxLength": 64,
       "pattern": "^[^.]*$"
+    },
+    "schemaType": {
+      "description": "Schema type used for the message.",
+      "javaType": "org.openmetadata.catalog.type.topic.SchemaType",
+      "enum" : [
+        "Avro",
+        "Protobuf",
+        "JSON",
+        "Other"
+      ],
+      "javaEnums": [
+        {
+          "name": "Avro"
+        },
+        {
+          "name": "Protobuf"
+        },
+        {
+          "name": "JSON"
+        },
+        {
+          "name": "Other"
+        }
+      ]
+    },
+    "cleanupPolicy": {
+      "javaType": "org.openmetadata.catalog.type.topic.CleanupPolicy",
+      "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
+      "enum": [
+        "delete",
+        "compact"
+      ]
     }
   },
   "properties": {
@@ -30,18 +63,28 @@
       "description": "Description of the topic instance.",
       "type": "string"
     },
+    "service": {
+      "description": "Link to the messaging cluster/service where this topic is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
     "partitions" : {
       "description" : "Number of partitions into which the topic is divided.",
-      "type" : "integer"
+      "type" : "integer",
+      "minimum": "1"
     },
-    "cleanupPolicy": {
-      "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
+    "schema" : {
+      "description" : "Schema used for message serialization. Optional as some topics may not have associated schemas.",
+      "type" : "string"
+    },
+    "schemaType" : {
+      "description" : "Schema used for message serialization.",
+      "$ref": "#/definitions/schemaType"
+    },
+    "cleanupPolicies": {
+      "description": "Topic clean up policies. For Kafka - `cleanup.policy` configuration.",
       "type": "array",
       "items": {
-        "enum": [
-          "delete",
-          "compact"
-        ]
+        "$ref" : "#/definitions/cleanupPolicy"
       }
     },
     "retentionTime": {
@@ -50,22 +93,18 @@
     },
     "maximumMessageSize" : {
       "description": "Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.",
-      "type" : "int"
+      "type" : "integer"
     },
     "minimumInSyncReplicas" : {
       "description": "Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration."
     },
     "retentionSize": {
-      "description": "Maximum size of a partion in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
+      "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
       "type" : "number",
       "default" : "-1"
     },
     "owner": {
       "description": "Owner of this topic.",
-      "$ref": "../../type/entityReference.json"
-    },
-    "service": {
-      "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"
     },
     "href": {
@@ -74,7 +113,10 @@
     }
   },
   "required": [
+    "id",
     "name",
+    "fullyQualifiedName",
+    "partitions",
     "service"
   ]
 }

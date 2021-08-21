@@ -4,8 +4,7 @@
   "title": "Create Messaging service entity request",
   "description": "Create Messaging service entity request",
   "type": "object",
-
-  "properties" : {
+  "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely",
       "type": "string",
@@ -19,10 +18,23 @@
     "serviceType": {
       "$ref": "../../entity/services/messagingService.json#/definitions/messagingServiceType"
     },
-    "ingestionSchedule" :  {
+    "brokers": {
+      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
+      "$ref" : "../../entity/services/messagingService.json#/definitions/brokers"
+    },
+    "schemaRegistry": {
+      "description": "Schema registry URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "ingestionSchedule": {
       "description": "Schedule for running metadata ingestion jobs",
-      "$ref" : "../../type/schedule.json"
+      "$ref": "../../type/schedule.json"
     }
   },
-  "required": ["name", "serviceType"]
+  "required": [
+    "name",
+    "serviceType",
+    "brokers"
+  ]
 }
