@@ -18,7 +18,7 @@
       "maxLength": 127
     },
     "entityLink": {
-      "description": "Link to an entity or field of an entity of format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.",
+      "description": "Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.",
       "type": "string",
       "pattern": "^<#E/\\S+/\\S+>$"
     },
@@ -28,7 +28,7 @@
       "format": "utc-millisec"
     },
     "href": {
-      "description": "href that points to a resource.",
+      "description": "URI that points to a resource.",
       "type": "string",
       "format": "uri"
     },

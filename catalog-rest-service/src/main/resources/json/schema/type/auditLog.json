@@ -33,11 +33,11 @@
       "$ref": "basic.json#/definitions/dateTime"
     },
     "entityId": {
-      "description": "Entity Id that was modified by the operation.",
+      "description": "Identifier of entity that was modified by the operation.",
       "$ref": "basic.json#/definitions/uuid"
     },
     "entityType": {
-      "description": "Entity Type that is modified by the operation.",
+      "description": "Type of Entity that is modified by the operation.",
       "type": "string"
     }
   },
