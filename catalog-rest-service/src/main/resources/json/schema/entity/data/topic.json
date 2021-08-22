@@ -115,7 +115,6 @@
   "required": [
     "id",
     "name",
-    "fullyQualifiedName",
     "partitions",
     "service"
   ]

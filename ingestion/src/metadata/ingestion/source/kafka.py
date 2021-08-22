@@ -1,7 +1,13 @@
+import concurrent
+import uuid
 from dataclasses import field, dataclass, Field
 from typing import List, Iterable, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.entity.data.topic import Topic, SchemaType
+from metadata.generated.schema.entity.services.messagingService import MessagingServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern, Record, logger, WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
 from fastavro import json_reader
@@ -13,6 +19,9 @@ from confluent_kafka.schema_registry.schema_registry_client import (
     Schema,
     SchemaRegistryClient,
 )
+import concurrent.futures
+from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.utils.helpers import get_messaging_service_or_create
 
 
 @dataclass
@@ -42,44 +51,62 @@ class KafkaSource(Source):
     admin_client: AdminClient
     report: KafkaSourceStatus
 
-    def __init__(self, config: KafkaSourceConfig, ctx: WorkflowContext):
+    def __init__(self, config: KafkaSourceConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
         super().__init__(ctx)
         self.config = config
+        self.metadata_config = metadata_config
         self.status = KafkaSourceStatus()
+        self.service = get_messaging_service_or_create(config.service_name,
+                                                       MessagingServiceType.Kafka.name,
+                                                       config.schema_registry_url,
+                                                       config.bootstrap_servers.split(","),
+                                                       metadata_config)
         self.schema_registry_client = SchemaRegistryClient(
             {"url": self.config.schema_registry_url}
         )
         self.admin_client = AdminClient(
             {
                 "bootstrap.servers": self.config.bootstrap_servers,
+                "session.timeout.ms": 6000
             }
         )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
         config = KafkaSourceConfig.parse_obj(config_dict)
-        return cls(config, ctx)
+        metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        return cls(config, metadata_config, ctx)
 
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Record]:
+    def next_record(self) -> Iterable[Topic]:
         topics = self.admin_client.list_topics().topics
         for t in topics:
             if self.config.filter_pattern.included(t):
+                logger.info("Fetching topic schema {}".format(t))
                 topic_schema = self._parse_topic_metadata(t)
-                #resources = [ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, t)]
-                #topic_config = self.admin_client.describe_configs(resources)
-                #logger.info(topic_config)
-                self.status.topic_scanned(t)
-                yield topic_schema
+                topic = CreateTopic(name=t,
+                                    service=EntityReference(id=self.service.id, type="messagingService"),
+                                    partitions=1)
+                if topic_schema is not None:
+                    topic.schema_ = topic_schema.schema_str
+                    if topic_schema.schema_type == "AVRO":
+                        topic.schemaType = SchemaType.Avro.name
+                    elif topic_schema.schema_type == "PROTOBUF":
+                        topic.schemaType = SchemaType.Protobuf.name
+                    elif topic_schema.schema_type == "JSON":
+                        topic.schemaType = SchemaType.JSON.name
+                    else:
+                        topic.schemaType = SchemaType.Other.name
+
+                self.status.topic_scanned(topic.name.__root__)
+                yield topic
             else:
                 self.status.dropped(t)
 
-    def _parse_topic_metadata(self, topic: str) -> Record:
+    def _parse_topic_metadata(self, topic: str) -> Optional[Schema]:
         logger.debug(f"topic = {topic}")
-        dataset_name = topic
-
         schema: Optional[Schema] = None
         try:
             registered_schema = self.schema_registry_client.get_latest_version(
@@ -89,44 +116,10 @@ class KafkaSource(Source):
         except Exception as e:
             self.status.warning(topic, f"failed to get schema: {e} for topic {topic}")
 
-        # Parse the schema
-        fields: List[str] = []
-        if schema and schema.schema_type == "AVRO":
-            # "value.id" or "value.[type=string]id"
-            logger.info(schema.schema_str)
-        elif schema is not None:
-            self.status.warning(
-                topic,
-                f"{schema.schema_type} is not supported"
-            )
-            # Fetch key schema from the registry
-        key_schema: Optional[Schema] = None
-        try:
-            registered_schema = self.schema_registry_client.get_latest_version(
-                topic + "-key"
-            )
-            key_schema = registered_schema.schema
-        except Exception as e:
-            # do not report warnings because it is okay to not have key schemas
-            logger.debug(f"{topic}: no key schema found. {e}")
-            pass
-
-            # Parse the key schema
-        key_fields: List[str] = []
-        if key_schema and schema.schema_type == "AVRO":
-            print(key_schema.schema_str)
-        elif key_schema is not None:
-            self.status.warning(
-                topic,
-                f"Parsing kafka schema type {key_schema.schema_type} is currently not implemented",
-            )
-
-        key_schema_str: Optional[str] = None
-        return None
+        return schema
 
     def get_status(self):
         return self.status
 
     def close(self):
-        if self.admin_client:
-            self.admin_client.close()
+        pass

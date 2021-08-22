@@ -38,7 +38,7 @@ from metadata.ingestion.api.common import IncludeFilterPattern, ConfigModel, Rec
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.utils.helpers import get_service_or_create
+from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -156,7 +156,7 @@ class SQLSource(Source):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        self.service = get_service_or_create(config, metadata_config)
+        self.service = get_database_service_or_create(config, metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.engine = create_engine(self.sql_config.get_connection_url(), **self.sql_config.options)

@@ -23,9 +23,13 @@ from enum import Enum
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTopic import CreateTopic
 
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest, ColumnJoinsList
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
@@ -314,6 +318,28 @@ class REST(object):
     def compute_percentile(self, entity_type: str, date: str):
         resp = self.post('/usage/compute.percentile/{}/{}'.format(entity_type, date))
         logger.debug("published compute percentile {}".format(resp))
+
+    def get_messaging_service(self, service_name: str) -> MessagingService:
+        """Get the Messaging service"""
+        resp = self.get('/services/messagingServices?name={}'.format(service_name))
+        return MessagingService(**resp['data'][0]) if len(resp['data']) > 0 else None
+
+    def get_messaging_service_by_id(self, service_id: str) -> MessagingService:
+        """Get the Messaging Service by ID"""
+        resp = self.get('/services/messagingServices/{}'.format(service_id))
+        return MessagingService(**resp)
+
+    def create_messaging_service(self,
+                                 messaging_service: CreateMessagingServiceEntityRequest) -> MessagingService:
+        """Create a new Database Service"""
+        resp = self.post('/services/messagingServices', data=messaging_service.json())
+        return MessagingService(**resp)
+
+    def create_or_update_topic(self, create_topic_request: CreateTopic) -> Table:
+        """Create or Update a Table """
+        print(create_topic_request.json())
+        resp = self.put('/topics', data=create_topic_request.json())
+        return Topic(**resp)
 
     def __enter__(self):
         return self

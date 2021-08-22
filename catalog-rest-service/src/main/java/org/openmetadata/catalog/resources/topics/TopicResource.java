@@ -276,8 +276,13 @@ public class TopicResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTopic create) throws IOException {
 
-    Topic topic = new Topic().withId(UUID.randomUUID()).withName(create.getName())
-            .withDescription(create.getDescription()).withOwner(create.getOwner());
+    Topic topic =
+            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+                    .withService(create.getService()).withPartitions(create.getPartitions()).withSchema(create.getSchema())
+                    .withSchemaType(create.getSchemaType()).withCleanupPolicies(create.getCleanupPolicies())
+                    .withMaximumMessageSize(create.getMaximumMessageSize())
+                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
+                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());
     PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();

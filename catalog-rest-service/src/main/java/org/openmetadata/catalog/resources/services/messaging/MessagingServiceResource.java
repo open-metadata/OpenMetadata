@@ -152,6 +152,8 @@ public class MessagingServiceResource {
     MessagingService service = new MessagingService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
             .withServiceType(create.getServiceType())
+            .withBrokers(create.getBrokers())
+            .withSchemaRegistry(create.getSchemaRegistry())
             .withIngestionSchedule(create.getIngestionSchedule());
 
     addHref(uriInfo, dao.create(service));
