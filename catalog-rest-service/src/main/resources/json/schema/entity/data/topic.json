@@ -1,0 +1,121 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/topic.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Topic",
+  "description": "This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service",
+  "type": "object",
+  "definitions": {
+    "topicName": {
+      "description": "Name that identifies a topic.",
+      "type": "string",
+      "javaType": "org.openmetadata.catalog.type.topic.TopicName",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "schemaType": {
+      "description": "Schema type used for the message.",
+      "javaType": "org.openmetadata.catalog.type.topic.SchemaType",
+      "enum" : [
+        "Avro",
+        "Protobuf",
+        "JSON",
+        "Other"
+      ],
+      "javaEnums": [
+        {
+          "name": "Avro"
+        },
+        {
+          "name": "Protobuf"
+        },
+        {
+          "name": "JSON"
+        },
+        {
+          "name": "Other"
+        }
+      ]
+    },
+    "cleanupPolicy": {
+      "javaType": "org.openmetadata.catalog.type.topic.CleanupPolicy",
+      "description": "Topic clean up policy. For Kafka - `cleanup.policy` configuration.",
+      "enum": [
+        "delete",
+        "compact"
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this topic instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies the topic.",
+      "$ref": "#/definitions/topicName"
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the topic instance.",
+      "type": "string"
+    },
+    "service": {
+      "description": "Link to the messaging cluster/service where this topic is hosted in.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "partitions" : {
+      "description" : "Number of partitions into which the topic is divided.",
+      "type" : "integer",
+      "minimum": "1"
+    },
+    "schema" : {
+      "description" : "Schema used for message serialization. Optional as some topics may not have associated schemas.",
+      "type" : "string"
+    },
+    "schemaType" : {
+      "description" : "Schema used for message serialization.",
+      "$ref": "#/definitions/schemaType"
+    },
+    "cleanupPolicies": {
+      "description": "Topic clean up policies. For Kafka - `cleanup.policy` configuration.",
+      "type": "array",
+      "items": {
+        "$ref" : "#/definitions/cleanupPolicy"
+      }
+    },
+    "retentionTime": {
+      "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
+      "type" : "number"
+    },
+    "maximumMessageSize" : {
+      "description": "Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.",
+      "type" : "integer"
+    },
+    "minimumInSyncReplicas" : {
+      "description": "Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration."
+    },
+    "retentionSize": {
+      "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
+      "type" : "number",
+      "default" : "-1"
+    },
+    "owner": {
+      "description": "Owner of this topic.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "partitions",
+    "service"
+  ]
+}
