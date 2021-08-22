@@ -232,8 +232,9 @@ public class TopicResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions()).withSchema(create.getSchema())
-                    .withSchemaType(create.getSchemaType()).withCleanupPolicies(create.getCleanupPolicies())
+                    .withService(create.getService()).withPartitions(create.getPartitions())
+                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());
@@ -278,8 +279,9 @@ public class TopicResource {
 
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions()).withSchema(create.getSchema())
-                    .withSchemaType(create.getSchemaType()).withCleanupPolicies(create.getCleanupPolicies())
+                    .withService(create.getService()).withPartitions(create.getPartitions())
+                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());

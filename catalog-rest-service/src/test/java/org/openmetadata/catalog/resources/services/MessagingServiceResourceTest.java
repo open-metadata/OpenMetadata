@@ -326,7 +326,8 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
 
     // Ensure deleted service does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getService(id, authHeaders));
-    TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, id));
+    TestUtils.assertResponse(exception, NOT_FOUND,
+            CatalogExceptionMessage.entityNotFound(Entity.MESSAGING_SERVICE, id));
 
     // Ensure deleted service does not exist when getting by name
     exception = assertThrows(HttpResponseException.class, () -> getServiceByName(name, null, authHeaders));
