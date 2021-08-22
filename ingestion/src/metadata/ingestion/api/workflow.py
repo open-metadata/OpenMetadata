@@ -63,8 +63,10 @@ class Workflow:
         self.config = config
         self.ctx = WorkflowContext(workflow_id=self.config.run_id)
         source_type = self.config.source.type
+        print(source_type)
         source_class = self.get('metadata.ingestion.source.{}.{}Source'.format(
             self.typeClassFetch(source_type, True), self.typeClassFetch(source_type, False)))
+        print(source_class)
         metadata_config = self.config.metadata_server.dict().get("config", {})
         self.source: Source = source_class.create(
             self.config.source.dict().get("config", {}), metadata_config, self.ctx

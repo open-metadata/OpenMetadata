@@ -109,36 +109,18 @@ public class SearchResource {
                          @Parameter(description = "Sort order asc for ascending or desc for descending, " +
                                  "defaults to desc")
                            @DefaultValue("desc") @QueryParam("sort_order") String sortOrderParam) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+
     SearchRequest searchRequest = new SearchRequest(index);
     SortOrder sortOrder = SortOrder.DESC;
+    SearchSourceBuilder searchSourceBuilder;
     if (sortOrderParam.equals("asc")) {
       sortOrder = SortOrder.ASC;
     }
-
-    HighlightBuilder.Field highlightTableName =
-            new HighlightBuilder.Field("table_name");
-    highlightTableName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription =
-            new HighlightBuilder.Field("description");
-    highlightDescription.highlighterType("unified");
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightTableName);
-    hb.preTags("<b>");
-    hb.postTags("</b>");
-    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("table_name", 5.0f)
-            .field("description")
-            .field("column_names")
-            .field("column_descriptions")
-            .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
-
+    if (index.equals("topic_search_index")) {
+      searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
+    } else {
+      searchSourceBuilder = buildTableSearchBuilder(query, from, size);
+    }
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
@@ -183,5 +165,57 @@ public class SearchResource {
     return Response.status(OK)
             .entity(suggest.toString())
             .build();
+  }
+
+  private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("table_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<b>");
+    hb.postTags("</b>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("table_name", 5.0f)
+            .field("description")
+            .field("column_names")
+            .field("column_descriptions")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+   return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("topic_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<b>");
+    hb.postTags("</b>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("topic_name", 5.0f)
+            .field("description")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+    return searchSourceBuilder;
   }
 }
