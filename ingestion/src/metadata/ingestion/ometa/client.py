@@ -43,6 +43,7 @@ DatabaseServiceEntities = List[DatabaseService]
 DatabaseEntities = List[Database]
 TableEntities = List[Table]
 Tags = List[Tag]
+Topics = List[Topic]
 
 
 class RetryException(Exception):
@@ -335,11 +336,22 @@ class REST(object):
         resp = self.post('/services/messagingServices', data=messaging_service.json())
         return MessagingService(**resp)
 
-    def create_or_update_topic(self, create_topic_request: CreateTopic) -> Table:
+    def create_or_update_topic(self, create_topic_request: CreateTopic) -> Topic:
         """Create or Update a Table """
-        print(create_topic_request.json())
         resp = self.put('/topics', data=create_topic_request.json())
         return Topic(**resp)
+
+    def list_topics(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Topics:
+        """ List all topics"""
+
+        if fields is None:
+            resp = self.get('/topics')
+        else:
+            resp = self.get('/topics?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+        if self._use_raw_data:
+            return resp
+        else:
+            return [Topic(**t) for t in resp['data']]
 
     def __enter__(self):
         return self

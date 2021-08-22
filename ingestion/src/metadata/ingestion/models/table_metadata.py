@@ -190,4 +190,19 @@ class TableESDocument(BaseModel):
     schema_description: Optional[str] = None
     owner: str
     followers: List[str]
-    table_entity: Table
+
+
+class TopicESDocument(BaseModel):
+    """ Topic Elastic Search Mapping doc """
+    topic_id: str
+    service: str
+    service_type: str
+    topic_name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    schema_description: Optional[str] = None
+    owner: str

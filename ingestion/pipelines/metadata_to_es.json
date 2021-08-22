@@ -1,20 +1,17 @@
 {
   "source": {
-    "type": "metadata_es",
-    "config": {}
-  },
-  "stage": {
-    "type": "file",
+    "type": "metadata",
     "config": {
-      "filename": "/tmp/tables.txt"
+      "include_tables": "true",
+      "include_topics": "true"
     }
   },
-  "bulk_sink": {
+  "sink": {
     "type": "elasticsearch",
     "config": {
-      "filename": "/tmp/tables.txt",
-      "es_host_port": "localhost",
-      "index_name": "table_search_index"
+      "index_tables": "true",
+      "index_topics": "true",
+      "es_host_port": "localhost"
     }
   },
   "metadata_server": {
