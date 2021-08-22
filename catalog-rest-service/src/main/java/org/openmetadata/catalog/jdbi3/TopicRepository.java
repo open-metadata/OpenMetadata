@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -27,6 +28,7 @@ import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -73,6 +75,9 @@ public abstract class TopicRepository {
 
   @CreateSqlObject
   abstract MessagingServiceDAO messageServiceDAO();
+
+  @CreateSqlObject
+  abstract TagRepository.TagDAO tagDAO();
 
   @CreateSqlObject
   abstract UsageDAO usageDAO();
@@ -226,7 +231,17 @@ public abstract class TopicRepository {
   private Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
     topic.setService(fields.contains("service") ? getService(topic) : null);
+    topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
+    topic.setTags(fields.contains("tags") ? getTags(topic.getFullyQualifiedName()) : null);
     return topic;
+  }
+
+  private List<EntityReference> getFollowers(Topic topic) throws IOException {
+    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), relationshipDAO(), userDAO());
+  }
+
+  private List<TagLabel> getTags(String fqn) {
+    return tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Topic topic) throws IOException {
@@ -254,6 +269,19 @@ public abstract class TopicRepository {
               Entity.TOPIC, Relationship.CONTAINS.ordinal());
       topic.setService(service);
     }
+  }
+
+  @Transaction
+  public Status addFollower(String topicId, String userId) throws IOException {
+    EntityUtil.validate(topicId, topicDAO().findById(topicId), Table.class);
+    return EntityUtil.addFollower(relationshipDAO(), userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
+            Status.CREATED : Status.OK;
+  }
+
+  @Transaction
+  public void deleteFollower(String topicId, String userId) {
+    EntityUtil.validateUser(userDAO(), userId);
+    EntityUtil.removeFollower(relationshipDAO(), topicId, userId);
   }
 
   public interface TopicDAO {

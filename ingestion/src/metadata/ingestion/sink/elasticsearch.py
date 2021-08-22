@@ -166,9 +166,18 @@ class ElasticsearchSink(Sink):
         suggest = [{'input': [fqdn], 'weight': 5}, {'input': [topic_name], 'weight': 10}]
         tags = set()
         timestamp = time.time()
-        tier = None
         service_entity = self.rest.get_messaging_service_by_id(str(topic.service.id.__root__))
         topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
+        topic_followers = []
+        if topic.followers:
+            for follower in topic.followers.__root__:
+                topic_followers.append(str(follower.id.__root__))
+        tier = None
+        for topic_tag in topic.tags:
+            if "Tier" in topic_tag.tagFQN:
+                tier = topic_tag.tagFQN
+            else:
+                tags.add(topic_tag.tagFQN)
         topic_doc = TopicESDocument(topic_id=str(topic.id.__root__),
                                     service=service_entity.name,
                                     service_type=service_entity.serviceType.name,
@@ -179,7 +188,8 @@ class ElasticsearchSink(Sink):
                                     tier=tier,
                                     tags=list(tags),
                                     fqdn=fqdn,
-                                    owner=topic_owner)
+                                    owner=topic_owner,
+                                    followers=topic_followers)
 
         return topic_doc
 

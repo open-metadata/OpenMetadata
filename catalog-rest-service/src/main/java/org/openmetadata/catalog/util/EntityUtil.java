@@ -38,6 +38,7 @@ import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
@@ -208,16 +209,16 @@ public final class EntityUtil {
   public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO,
                                                          MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                         ReportDAO reportDAO) throws IOException {
+                                                         ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO);
+      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO);
     }
     return list;
   }
 
   public static EntityReference getEntityReference(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO) throws IOException {
+                                                   ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
     String id = ref.getId().toString();
@@ -236,20 +237,23 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
       Report instance = EntityUtil.validate(id, reportDAO.findById(id), Report.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
+    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
+      Topic instance = EntityUtil.validate(id, topicDAO.findById(id), Topic.class);
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
-  public static EntityReference getEntityReference(String entity, String id, TableDAO tableDAO, DatabaseDAO databaseDAO,
+  public static EntityReference getEntityReference(String entity, UUID id, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO) throws IOException {
-    EntityReference ref = new EntityReference().withId(UUID.fromString(id)).withType(entity);
-    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO);
+                                                   ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
+    EntityReference ref = new EntityReference().withId(id).withType(entity);
+    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO);
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
-                                                         ReportDAO reportDAO) throws IOException {
+                                                         ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TABLE)
@@ -265,6 +269,10 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
       Report instance = EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.REPORT)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
+      Topic instance = EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TOPIC)
               .withDescription(instance.getDescription());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
@@ -292,6 +300,9 @@ public final class EntityUtil {
     } else if (clazz.toString().toLowerCase().endsWith(Entity.USER.toLowerCase())) {
       User instance = (User) entity;
       return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
+      Topic instance = (Topic) entity;
+      return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
             String.format("Failed to find entity class %s", clazz.toString())));
@@ -309,25 +320,29 @@ public final class EntityUtil {
 
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
                                                    TableDAO tableDAO, DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
-                                                   DashboardDAO dashboardDAO, ReportDAO reportDAO) throws IOException {
+                                                   DashboardDAO dashboardDAO, ReportDAO reportDAO, TopicDAO topicDAO)
+          throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityId();
-    if (entityType.equals(Entity.USER)) {
-      return getEntityReference(EntityUtil.validate(fqn, userDAO.findByName(fqn), User.class));
-    } else  if (entityType.equals(Entity.TEAM)) {
-      return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
-    } else if (entityType.equals(Entity.TABLE)) {
-      return getEntityReference(EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class));
-    } else if (entityType.equals(Entity.DATABASE)) {
-      return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
-    } else if (entityType.equals(Entity.METRICS)) {
-      return getEntityReference(EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class));
-    } else if (entityType.equals(Entity.DASHBOARD)) {
-      return getEntityReference(EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class));
-    } else if (entityType.equals(Entity.REPORT)) {
-      return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
-    } else {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    switch (entityType) {
+      case Entity.USER:
+        return getEntityReference(EntityUtil.validate(fqn, userDAO.findByName(fqn), User.class));
+      case Entity.TEAM:
+        return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
+      case Entity.TABLE:
+        return getEntityReference(EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class));
+      case Entity.DATABASE:
+        return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
+      case Entity.METRICS:
+        return getEntityReference(EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class));
+      case Entity.DASHBOARD:
+        return getEntityReference(EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class));
+      case Entity.REPORT:
+        return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
+      case Entity.TOPIC:
+        return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class));
+      default:
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
   }
 
@@ -383,6 +398,7 @@ public final class EntityUtil {
     return new EntityReference().withDescription(user.getDisplayName()).withId(user.getId())
             .withName(user.getName()).withType(Entity.USER);
   }
+
 
   public static void validateTags(TagDAO tagDAO, List<TagLabel> tagLabels) {
     Optional.ofNullable(tagLabels).orElse(Collections.emptyList()).forEach(tagLabel -> {

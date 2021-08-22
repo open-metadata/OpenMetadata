@@ -25,6 +25,7 @@ import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -91,6 +92,9 @@ public abstract class UserRepository {
 
   @CreateSqlObject
   abstract ReportDAO reportDAO();
+
+  @CreateSqlObject
+  abstract TopicDAO topicDAO();
 
   @Transaction
   public List<User> listAfter(Fields fields, int limitParam, String after) throws IOException,
@@ -210,12 +214,12 @@ public abstract class UserRepository {
     }
     // Populate details in entity reference
     return EntityUtil.getEntityReference(ownedEntities, tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(),
-            reportDAO());
+            reportDAO(), topicDAO());
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.getEntityReference(relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
-            tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO());
+            tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO());
   }
 
   private void patchTeams(User original, User updated) throws IOException {

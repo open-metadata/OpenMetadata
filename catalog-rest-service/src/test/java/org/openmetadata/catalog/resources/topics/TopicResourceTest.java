@@ -26,6 +26,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -56,17 +57,11 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
-import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
-import static org.openmetadata.catalog.util.TestUtils.assertResponse;
-import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 
 public class TopicResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
@@ -477,6 +472,42 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
+    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+
+    // Add follower to the table
+    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(topic, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
+    addAndCheckFollower(topic, user1.getId(), OK, 1, userAuthHeaders());
+
+    // Add a new follower to the table
+    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    addAndCheckFollower(topic, user2.getId(), CREATED, 2, userAuthHeaders());
+
+    // Delete followers and make sure they are deleted
+    deleteAndCheckFollower(topic, user1.getId(), 1, userAuthHeaders());
+    deleteAndCheckFollower(topic, user2.getId(), 0, userAuthHeaders());
+  }
+
+  @Test
+  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
+    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+
+    // Add non existent user as follower to the table
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            addAndCheckFollower(topic, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+
+    // Delete non existent user as follower to the table
+    exception = assertThrows(HttpResponseException.class, () ->
+            deleteAndCheckFollower(topic, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+  }
+
+
+  @Test
   public void delete_nonExistentTopic_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTopic(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
@@ -665,5 +696,70 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   public static CreateTopic create(TestInfo test, int index) {
     return new CreateTopic().withName(getTopicName(test, index)).withService(KAFKA_REFERENCE).withPartitions(1);
+  }
+
+  public static void addAndCheckFollower(Topic topic, UUID userId, Status status, int totalFollowerCount,
+                                         Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("topics/%s/followers", topic.getId()));
+    TestUtils.put(target, userId.toString(), status, authHeaders);
+
+    // GET .../topics/{topicId} returns newly added follower
+    Topic getTopic = getTopic(topic.getId(), "followers", authHeaders);
+    assertEquals(totalFollowerCount, getTopic.getFollowers().size());
+    TestUtils.validateEntityReference(getTopic.getFollowers());
+    boolean followerFound = false;
+    for (EntityReference followers : getTopic.getFollowers()) {
+      if (followers.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertTrue(followerFound, "Follower added was not found in table get response");
+
+    // GET .../users/{userId} shows user as following table
+    checkUserFollowing(userId, topic.getId(), true, authHeaders);
+  }
+
+  private static void checkUserFollowing(UUID userId, UUID topicId, boolean expectedFollowing,
+                                         Map<String, String> authHeaders) throws HttpResponseException {
+    // GET .../users/{userId} shows user as following table
+    boolean following = false;
+    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
+    for (EntityReference follows : user.getFollows()) {
+      TestUtils.validateEntityReference(follows);
+      if (follows.getId().equals(topicId)) {
+        following = true;
+        break;
+      }
+    }
+    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
+  }
+
+  private void deleteAndCheckFollower(Topic topic, UUID userId, int totalFollowerCount,
+                                      Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("topics/%s/followers/%s",
+            topic.getId(), userId));
+    TestUtils.delete(target, authHeaders);
+
+    Topic getTopic = checkFollowerDeleted(topic.getId(), userId, authHeaders);
+    assertEquals(totalFollowerCount, getTopic.getFollowers().size());
+  }
+
+  public static Topic checkFollowerDeleted(UUID topicId, UUID userId, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    Topic getTopic = getTopic(topicId, "followers", authHeaders);
+    TestUtils.validateEntityReference(getTopic.getFollowers());
+    boolean followerFound = false;
+    for (EntityReference followers : getTopic.getFollowers()) {
+      if (followers.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertFalse(followerFound, "Follower deleted is still found in table get response");
+
+    // GET .../users/{userId} shows user as following table
+    checkUserFollowing(userId, topicId, false, authHeaders);
+    return getTopic;
   }
 }

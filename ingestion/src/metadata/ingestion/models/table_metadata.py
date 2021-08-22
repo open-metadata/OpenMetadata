@@ -206,3 +206,4 @@ class TopicESDocument(BaseModel):
     tier: Optional[str] = None
     schema_description: Optional[str] = None
     owner: str
+    followers: List[str]

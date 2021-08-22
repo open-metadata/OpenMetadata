@@ -56,6 +56,14 @@
     "owner": {
       "description": "Owner of this topic",
       "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this table",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     }
   },
   "required": [
