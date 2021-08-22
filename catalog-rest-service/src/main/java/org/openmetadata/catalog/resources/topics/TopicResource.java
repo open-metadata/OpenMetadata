@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -83,6 +84,10 @@ public class TopicResource {
   private static final String TOPIC_COLLECTION_PATH = "v1/topics/";
   private final TopicRepository dao;
   private final CatalogAuthorizer authorizer;
+
+  public static void addHref(UriInfo uriInfo, EntityReference ref) {
+    ref.withHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, ref.getId()));
+  }
 
   public static List<Topic> addHref(UriInfo uriInfo, List<Topic> topics) {
     Optional.ofNullable(topics).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -261,9 +266,11 @@ public class TopicResource {
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
                                          JsonPatch patch) throws IOException {
-    Topic topic = dao.patch(id, patch);
+    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(topic));
+    topic = dao.patch(id, patch);
     return addHref(uriInfo, topic);
   }
 

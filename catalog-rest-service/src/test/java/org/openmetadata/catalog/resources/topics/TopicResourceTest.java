@@ -33,10 +33,12 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -47,10 +49,13 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -71,6 +76,10 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static EntityReference TEAM_OWNER1;
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
+  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
+
+
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -388,22 +397,25 @@ public class TopicResourceTest extends CatalogApplicationTest {
     assertNull(topic.getDescription());
     assertNull(topic.getOwner());
     assertNotNull(topic.getService());
+    List<TagLabel> topicTags = singletonList(USER_ADDRESS_TAG_LABEL);
 
-    topic = getTopic(topic.getId(), "service,owner", adminAuthHeaders());
+    topic = getTopic(topic.getId(), "service,owner,tags", adminAuthHeaders());
     topic.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, adminAuthHeaders());
+    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags, adminAuthHeaders());
     topic.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(KAFKA_REFERENCE); // Get rid of href and name returned in the response for service
+    topic.setTags(singletonList(USER_ADDRESS_TAG_LABEL));
 
     // Replace description, tier, owner
-    topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, adminAuthHeaders());
+    topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, topicTags,
+            adminAuthHeaders());
     topic.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(PULSAR_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchTopicAttributesAndCheck(topic, null, null, adminAuthHeaders());
+    patchTopicAttributesAndCheck(topic, null, null, topicTags, adminAuthHeaders());
   }
 
   @Test
@@ -517,7 +529,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static Topic createAndCheckTopic(CreateTopic create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     Topic topic = createTopic(create, authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
     return getAndValidate(topic.getId(), create, authHeaders);
   }
 
@@ -525,7 +537,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
                                           Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     Topic updatedTopic = updateTopic(create, status, authHeaders);
-    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
 
     // GET the newly updated topic and validate
     return getAndValidate(updatedTopic.getId(), create, authHeaders);
@@ -537,12 +549,12 @@ public class TopicResourceTest extends CatalogApplicationTest {
                                      Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created topic by ID and validate
     Topic topic = getTopic(topicId, "service,owner", authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
 
     // GET the newly created topic by name and validate
     String fqn = topic.getFullyQualifiedName();
     topic = getTopicByName(fqn, "service,owner", authHeaders);
-    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
   }
 
   public static Topic updateTopic(CreateTopic create,
@@ -583,7 +595,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   private static Topic validateTopic(Topic topic, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService) {
+                                     EntityReference expectedService, List<TagLabel> expectedTags)
+          throws HttpResponseException {
     assertNotNull(topic.getId());
     assertNotNull(topic.getHref());
     assertEquals(expectedDescription, topic.getDescription());
@@ -602,25 +615,29 @@ public class TopicResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), topic.getService().getId());
       assertEquals(expectedService.getType(), topic.getService().getType());
     }
+    validateTags(expectedTags, topic.getTags());
     return topic;
   }
 
   private Topic patchTopicAttributesAndCheck(Topic topic, String newDescription,
-                                             EntityReference newOwner, Map<String, String> authHeaders)
+                                             EntityReference newOwner,
+                                             List<TagLabel> tags,
+                                             Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     String topicJson = JsonUtils.pojoToJson(topic);
 
     // Update the topic attributes
     topic.setDescription(newDescription);
     topic.setOwner(newOwner);
+    topic.setTags(tags);
 
     // Validate information returned in patch response has the updates
     Topic updateTopic = patchTopic(topicJson, topic, authHeaders);
-    validateTopic(updateTopic, topic.getDescription(), newOwner, null);
+    validateTopic(updateTopic, topic.getDescription(), newOwner, null, tags);
 
     // GET the topic and Validate information returned
-    Topic getTopic = getTopic(topic.getId(), "service,owner", authHeaders);
-    validateTopic(getTopic, topic.getDescription(), newOwner, null);
+    Topic getTopic = getTopic(topic.getId(), "service,owner,tags", authHeaders);
+    validateTopic(getTopic, topic.getDescription(), newOwner, null, tags);
     return updateTopic;
   }
 
@@ -714,7 +731,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
         break;
       }
     }
-    assertTrue(followerFound, "Follower added was not found in table get response");
+    assertTrue(followerFound, "Follower added was not found in topic get response");
 
     // GET .../users/{userId} shows user as following table
     checkUserFollowing(userId, topic.getId(), true, authHeaders);
@@ -762,4 +779,25 @@ public class TopicResourceTest extends CatalogApplicationTest {
     checkUserFollowing(userId, topicId, false, authHeaders);
     return getTopic;
   }
+
+  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+          throws HttpResponseException {
+    if (expectedList == null) {
+      return;
+    }
+    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
+    // So add to the expectedList, the derived tags before validating the tags
+    List<TagLabel> updatedExpectedList = new ArrayList<>();
+    updatedExpectedList.addAll(expectedList);
+    for (TagLabel expected : expectedList) {
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
+              adminAuthHeaders()));
+      updatedExpectedList.addAll(derived);
+    }
+    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+
+    assertTrue(actualList.containsAll(updatedExpectedList));
+    assertTrue(updatedExpectedList.containsAll(actualList));
+  }
+
 }

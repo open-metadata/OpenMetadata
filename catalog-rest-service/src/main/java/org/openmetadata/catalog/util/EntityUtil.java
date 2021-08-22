@@ -48,6 +48,7 @@ import org.openmetadata.catalog.resources.services.database.DatabaseServiceResou
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
+import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
@@ -122,6 +123,9 @@ public final class EntityUtil {
         break;
       case Entity.DATABASE_SERVICE:
         DatabaseServiceResource.addHref(uriInfo, ref);
+        break;
+      case Entity.TOPIC:
+        TopicResource.addHref(uriInfo, ref);
         break;
       case Entity.MESSAGING_SERVICE:
         MessagingServiceResource.addHref(uriInfo, ref);
