@@ -17,15 +17,19 @@ OpenMetadata Github repository can be accessed here [https://github.com/open-met
 ![./images/fork-github.png](../../.gitbook/assets/fork-github.png)
 
 Create a local clone of your fork
-```bash 
+
+```bash
 git clone https://github.com/<username>/OpenMetadata.git
 ```
+
 Set a new remote repository that points to the OpenMetadata repository to pull changes from the open source OpenMetadata codebase into your clone
+
 ```bash
 cd OpenMetadata/
 git remote add upstream https://github.com/open-metadata/OpenMetadata.git
 git remote -v
 ```
+
 ## Create a branch in your fork
 
 ```bash

@@ -47,6 +47,30 @@ export const serviceTypeLogo = (type: string) => {
   }
 };
 
+export const fromISOString = (isoValue = '') => {
+  if (isoValue) {
+    // 'P1DT 0H 0M'
+    const [d, hm] = isoValue.split('T');
+    const day = +d.replace('D', '').replace('P', '');
+    const [h, time] = hm.split('H');
+    const minute = +time.replace('M', '');
+
+    return { day, hour: +h, minute };
+  } else {
+    return {
+      day: 1,
+      hour: 0,
+      minute: 0,
+    };
+  }
+};
+
+export const getFrequencyTime = (isoDate: string): string => {
+  const { day, hour, minute } = fromISOString(isoDate);
+
+  return `${day}D-${hour}H-${minute}M`;
+};
+
 const getAllServiceList = (
   allServiceCollectionArr: Array<ServiceCollection>
 ): Promise<Array<ServiceDataObj>> => {

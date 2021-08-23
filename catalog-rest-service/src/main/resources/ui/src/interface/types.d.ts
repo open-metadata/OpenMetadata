@@ -54,6 +54,10 @@ declare module 'Models' {
   export type ServiceOption = {
     id: string;
     description: string;
+    ingestionSchedule?: {
+      repeatFrequency: string;
+      startDate: string;
+    };
     jdbc: { connectionUrl: string; driverClass: string };
     name: string;
     serviceType: string;

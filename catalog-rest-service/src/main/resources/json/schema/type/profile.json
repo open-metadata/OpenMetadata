@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/profile.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Profile",
-  "description": "This schema defines the type for profile of a user, team, or an organization.",
+  "description": "This schema defines the type for a profile of a user, team, or organization.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.Profile",
   "definitions": {

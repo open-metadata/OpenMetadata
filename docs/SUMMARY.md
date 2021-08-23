@@ -61,6 +61,7 @@
     * [ElasticSearch](install/metadata-ingestion/connectors/elastic-search.md)
     * [MSSQL](install/metadata-ingestion/connectors/mssql.md)
     * [MySQL](install/metadata-ingestion/connectors/mysql.md)
+    * [Hive](install/metadata-ingestion/connectors/hive.md)
     * [Oracle](install/metadata-ingestion/connectors/oracle.md)
     * [Postgres](install/metadata-ingestion/connectors/postgres.md)
     * [Presto](install/metadata-ingestion/connectors/presto.md)

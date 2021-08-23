@@ -150,7 +150,6 @@ class PostgresSource(Source):
                 if col_type is not None:
                     columns.append(Column(name=row['col_name'], description=row['col_description'],
                                           columnDataType=col_type, ordinalPosition=int(row['col_sort_order'])))
-            print(last_row)
             table_metadata = Table(id=uuid.uuid4(), name=last_row['name'],
                                    description=last_row['description'],
                                    columns=columns)

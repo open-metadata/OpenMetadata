@@ -38,7 +38,7 @@ import {
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { NOSERVICE, PLUS } from '../../constants/services.const';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
 export type ApiData = {
@@ -218,6 +218,22 @@ const ServicesPage = () => {
                         <span className="tw-tag tw-ml-3">mysql</span>
                         <span className="tw-tag tw-ml-2">sales</span>
                       </div> */}
+                      <div className="tw-mb-1">
+                        <label className="tw-mb-0">Driver Class:</label>
+                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                          {service.driverClass}
+                        </span>
+                      </div>
+                      <div className="tw-mb-1">
+                        <label className="tw-mb-0">Frequency:</label>
+                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                          {service.ingestionSchedule
+                            ? getFrequencyTime(
+                                service.ingestionSchedule.repeatFrequency
+                              )
+                            : 'N/A'}
+                        </span>
+                      </div>
                       <div className="">
                         <label className="tw-mb-0">Type:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">

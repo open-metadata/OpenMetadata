@@ -215,7 +215,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_nonExistentTeam_404_notFound() {
+  public void get_nonExistentDatabaseService_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getService(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
@@ -223,7 +223,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void get_nonExistentTeamByName_404_notFound() {
+  public void get_nonExistentDatabaseServiceByName_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, ()
             -> getServiceByName("invalidName", null, adminAuthHeaders()));
     TestUtils.assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.DATABASE_SERVICE,
@@ -297,7 +297,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void delete_ExistentDatabaseService_ad_admin_200(TestInfo test) throws HttpResponseException {
+  public void delete_ExistentDatabaseService_as_admin_200(TestInfo test) throws HttpResponseException {
     Map<String, String> authHeaders = adminAuthHeaders();
     DatabaseService databaseService = createService(create(test), authHeaders);
     deleteService(databaseService.getId(), databaseService.getName(), authHeaders);

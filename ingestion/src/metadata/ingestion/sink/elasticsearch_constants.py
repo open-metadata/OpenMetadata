@@ -99,3 +99,58 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     }
     """
 )
+
+TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+    {
+    "mappings":{
+          "properties": {
+            "topic_name": {
+              "type":"text",
+              "analyzer": "keyword"
+            },
+            "schema": {
+              "type":"text",
+              "analyzer": "simple",
+              "fields": {
+                "raw": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "display_name": {
+              "type": "keyword"
+            },
+            "owner": {
+              "type": "keyword"
+            },
+            "followers": {
+              "type": "keyword"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "description": {
+              "type": "text"
+            },
+            "tier": {
+              "type": "keyword"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "service": {
+              "type": "keyword"
+            },
+            "service_type": {
+              "type": "keyword"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)

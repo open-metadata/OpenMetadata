@@ -175,7 +175,7 @@ class GenerateFakeSampleData:
         pass
 
     @classmethod
-    def checkColumns(self, columns):
+    def check_columns(self, columns):
         fake = Faker()
         colList = set()
         colData = []
@@ -226,7 +226,7 @@ class SampleTablesSource(Source):
                       service=EntityReference(id=self.service.id, type=self.config.service_type))
         for table in self.tables['tables']:
             if not table.get('sampleData'):
-                table['sampleData'] = GenerateFakeSampleData.checkColumns(table['columns'])
+                table['sampleData'] = GenerateFakeSampleData.check_columns(table['columns'])
             table_metadata = Table(**table)
             table_and_db = OMetaDatabaseAndTable(table=table_metadata, database=db)
             self.status.scanned(table_metadata.name.__root__)

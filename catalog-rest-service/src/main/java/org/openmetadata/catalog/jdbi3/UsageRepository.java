@@ -20,6 +20,7 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.type.EntityReference;
@@ -43,6 +44,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 
@@ -68,12 +70,17 @@ public abstract class UsageRepository {
   abstract ReportDAO reportDAO();
 
   @CreateSqlObject
+  abstract TopicDAO topicDAO();
+
+  @CreateSqlObject
   abstract EntityRelationshipDAO relationshipDAO();
+
+
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = getEntityReference(entityType, id, tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(),
-            reportDAO());
+    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), tableDAO(), databaseDAO(),
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO());
     List<UsageDetails> usageDetails = usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -81,7 +88,7 @@ public abstract class UsageRepository {
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, tableDAO(), databaseDAO(),
-            metricsDAO(), reportDAO());
+            metricsDAO(), reportDAO(), topicDAO());
     List<UsageDetails> usageDetails = usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -89,14 +96,15 @@ public abstract class UsageRepository {
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    getEntityReference(entityType, id, tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO());
+    getEntityReference(entityType, UUID.fromString(id), tableDAO(), databaseDAO(), metricsDAO(),
+            dashboardDAO(), reportDAO(), topicDAO());
     addUsage(entityType, id, usage);
   }
 
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, tableDAO(),
-            databaseDAO(), metricsDAO(), reportDAO());
+            databaseDAO(), metricsDAO(), reportDAO(), topicDAO());
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }

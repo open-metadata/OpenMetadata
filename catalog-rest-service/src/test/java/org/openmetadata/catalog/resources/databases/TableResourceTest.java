@@ -812,8 +812,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     List<TableConstraint> tableConstraints = List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE)
             .withColumns(List.of(COLUMNS.get(0).getName())));
     List<TagLabel> tableTags = singletonList(USER_ADDRESS_TAG_LABEL);
-    table = patchTableAttributesAndCheck(table, "description", TEAM_OWNER1, TableType.Regular, tableConstraints,
-            tableTags, adminAuthHeaders());
+    table = patchTableAttributesAndCheck(table, "description", TEAM_OWNER1, TableType.Regular,
+            tableConstraints, tableTags, adminAuthHeaders());
     table.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Replace description, tier, owner, tableType, tableConstraints
@@ -1033,7 +1033,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     List<TagLabel> updatedExpectedList = new ArrayList<>();
     updatedExpectedList.addAll(expectedList);
     for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(), adminAuthHeaders()));
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
+              adminAuthHeaders()));
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());

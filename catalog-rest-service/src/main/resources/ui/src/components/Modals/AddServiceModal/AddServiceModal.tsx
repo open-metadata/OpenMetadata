@@ -17,6 +17,7 @@
 
 import classNames from 'classnames';
 import React, { FunctionComponent, useRef, useState } from 'react';
+import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 // import { serviceType } from '../../../constants/services.const';
@@ -117,24 +118,6 @@ const seprateUrl = (url?: string) => {
   }
 
   return {};
-};
-
-const fromISOString = (isoValue = '') => {
-  if (isoValue) {
-    // 'P1DT 0H 0M'
-    const [d, hm] = isoValue.split('T');
-    const day = +d.replace('D', '').replace('P', '');
-    const [h, time] = hm.split('H');
-    const minute = +time.replace('M', '');
-
-    return { day, hour: +h, minute };
-  } else {
-    return {
-      day: 1,
-      hour: 0,
-      minute: 0,
-    };
-  }
 };
 
 const errorMsg = (value: string) => {

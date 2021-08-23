@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS dbservice_entity (
     UNIQUE KEY unique_name(name)
 );
 
+CREATE TABLE IF NOT EXISTS messaging_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(name)
+);
+
 --
 -- Data entities
 --
@@ -110,6 +120,15 @@ CREATE TABLE IF NOT EXISTS dashboard_entity (
 );
 
 CREATE TABLE IF NOT EXISTS pipeline_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName)
+);
+
+CREATE TABLE IF NOT EXISTS topic_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
