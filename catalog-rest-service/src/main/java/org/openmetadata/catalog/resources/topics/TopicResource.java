@@ -239,7 +239,7 @@ public class TopicResource {
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
                     .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
@@ -289,7 +289,7 @@ public class TopicResource {
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
                     .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())

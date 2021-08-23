@@ -72,7 +72,7 @@
       "type" : "integer",
       "minimum": "1"
     },
-    "schema" : {
+    "schemaText" : {
       "description" : "Schema used for message serialization. Optional as some topics may not have associated schemas.",
       "type" : "string"
     },
