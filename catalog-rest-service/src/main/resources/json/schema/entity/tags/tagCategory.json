@@ -33,8 +33,8 @@
     "tag": {
       "javaType": "org.openmetadata.catalog.type.Tag",
       "properties": {
-        "description" : "Name of the tag",
         "name": {
+          "description" : "Name of the tag",
           "$ref": "#/definitions/tagName"
         },
         "fullyQualifiedName": {
