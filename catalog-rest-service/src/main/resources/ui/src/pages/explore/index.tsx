@@ -87,7 +87,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [orderListVisible, setOrderListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>(sortingFields[3].value);
-  const [sortOrder, setSortOrder] = useState<string>(sortingOrder[0].value);
+  const [sortOrder, setSortOrder] = useState<string>(sortingOrder[1].value);
   const isMounting = useRef(true);
 
   const handleSelectedFilter = (
@@ -272,7 +272,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
-    setSortOrder(value || sortingOrder[0].value);
+    setSortOrder(value || sortingOrder[1].value);
     setOrderListVisible(false);
   };
 
