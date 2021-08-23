@@ -39,7 +39,7 @@
     },
     "threadTs": {
       "description": "Timestamp of the when the first post created the thread.",
-      "format": "date-time"
+      "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "about": {
       "description": "Data asset about which this thread is created for with format <#E/{enties}/{entityName}/{field}/{fieldValue}.",
