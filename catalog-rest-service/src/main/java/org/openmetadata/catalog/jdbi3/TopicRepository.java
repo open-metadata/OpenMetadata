@@ -27,6 +27,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.topics.TopicResource;
+import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -55,7 +56,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 public abstract class TopicRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner");
-  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service");
+  private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
 
   public static String getFQN(EntityReference service, Topic topic) {
     return (service.getName() + "." + topic.getName());
@@ -137,19 +138,19 @@ public abstract class TopicRepository {
   }
 
   @Transaction
-  public PutResponse<Topic> createOrUpdate(Topic updatedDB, EntityReference service, EntityReference newOwner)
+  public PutResponse<Topic> createOrUpdate(Topic updatedTopic, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
 
-    String fqn = getFQN(service, updatedDB);
+    String fqn = getFQN(service, updatedTopic);
     Topic storedDB = JsonUtils.readValue(topicDAO().findByFQN(fqn), Topic.class);
     if (storedDB == null) {  // Topic does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updatedDB, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updatedTopic, service, newOwner));
     }
     // Update the existing topic
     EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
     if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
-      storedDB.withDescription(updatedDB.getDescription());
+      storedDB.withDescription(updatedTopic.getDescription());
     }
     topicDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
 
@@ -160,6 +161,7 @@ public abstract class TopicRepository {
     // Service can't be changed in update since service name is part of FQN and
     // change to a different service will result in a different FQN and creation of a new topic under the new service
     storedDB.setService(service);
+    applyTags(updatedTopic);
 
     return new PutResponse<>(Status.OK, storedDB);
   }
@@ -180,7 +182,14 @@ public abstract class TopicRepository {
     topicDAO().insert(JsonUtils.pojoToJson(topic));
     setService(topic, service);
     setOwner(topic, owner);
+    applyTags(topic);
     return topic;
+  }
+
+  private void applyTags(Topic topic) throws IOException {
+    // Add topic level tags by adding tag to topic relationship
+    EntityUtil.applyTags(tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
+    topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private void patch(Topic original, Topic updated) throws IOException {
@@ -205,6 +214,7 @@ public abstract class TopicRepository {
     topicDAO().update(topicId, JsonUtils.pojoToJson(updated));
     updateOwner(updated, original.getOwner(), newOwner);
     updated.setService(newService);
+    applyTags(updated);
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
