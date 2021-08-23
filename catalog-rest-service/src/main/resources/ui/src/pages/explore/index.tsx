@@ -167,19 +167,19 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     const serviceTypeAgg = searchData(
       searchText,
       currentPage,
-      PAGE_SIZE,
+      0,
       getFilterString(filters, ['service type'])
     );
     const tierAgg = searchData(
       searchText,
       currentPage,
-      PAGE_SIZE,
+      0,
       getFilterString(filters, ['tier'])
     );
     const tagAgg = searchData(
       searchText,
       currentPage,
-      PAGE_SIZE,
+      0,
       getFilterString(filters, ['tags'])
     );
 
