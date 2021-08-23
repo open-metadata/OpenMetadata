@@ -48,6 +48,21 @@ export const tiers = [
   { key: 'Tier.Tier5', doc_count: 0 },
 ];
 
+export const sortingFields = [
+  { name: 'Weekly_stats', value: 'weekly_stats' },
+  { name: 'Daily_stats', value: 'daily_stats' },
+  { name: 'Monthly_stats', value: 'monthly_stats' },
+  {
+    name: 'Last_updated_timestamp',
+    value: 'last_updated_timestamp',
+  },
+];
+
+export const sortingOrder = [
+  { name: 'Ascending', value: 'asc' },
+  { name: 'Descending', value: 'desc' },
+];
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
