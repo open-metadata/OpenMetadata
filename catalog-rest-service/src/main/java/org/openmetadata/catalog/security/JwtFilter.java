@@ -90,8 +90,10 @@ public class JwtFilter implements ContainerRequestFilter {
     String authorizedEmail;
     if (jwt.getClaim("email") != null) {
        authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
-    } else {
+    } else if (jwt.getClaim("sub") != null){
       authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
+    } else {
+      throw new AuthenticationException("Email id and subject not present");
     }
     String userName = authorizedEmail.split("@")[0];
     //Setting Security Context
