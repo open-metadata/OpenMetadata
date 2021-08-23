@@ -77,6 +77,9 @@ const SigninPage = () => {
                 Sign in with Github
               </button>
             )}
+            {appState.authProvider.provider === AuthTypes.AUTH0 && (
+              <button className="tw-signin-button">Sign in with Auth0</button>
+            )}
           </div>
         </div>
       </div>
