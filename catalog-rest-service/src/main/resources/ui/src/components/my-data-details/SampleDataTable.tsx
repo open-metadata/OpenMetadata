@@ -19,6 +19,7 @@ import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { isEven } from '../../utils/CommonUtils';
+import { countBackground } from '../../utils/styleconstant';
 
 type Columns = { name: string; dataType: string };
 
@@ -44,7 +45,9 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                   data-testid="column-name"
                   key={column.name}>
                   <p className="tw-mb-2">{column.name}</p>
-                  <span className={'sl-label ' + lowerCase(column.dataType)}>
+                  <span
+                    className="tw-py-1 tw-px-2 tw-rounded tw-text-grey-muted"
+                    style={{ background: countBackground }}>
                     {lowerCase(column.dataType)}
                   </span>
                 </th>
