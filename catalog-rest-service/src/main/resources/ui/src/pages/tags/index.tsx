@@ -300,17 +300,19 @@ const TagsPage = () => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
                               }}>
-                              <div className="tw-cursor-pointer hover:tw-underline">
-                                {tag.description ? (
-                                  <RichTextEditorPreviewer
-                                    markdown={tag.description}
-                                  />
-                                ) : (
-                                  <span className="tw-no-description">
-                                    No description added
-                                  </span>
-                                )}
-                                <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                              <div className="tw-cursor-pointer hover:tw-underline tw-flex">
+                                <div>
+                                  {tag.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={tag.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description added
+                                    </span>
+                                  )}
+                                </div>
+                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                   <SVGIcons
                                     alt="edit"
                                     icon="icon-edit"
