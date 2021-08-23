@@ -139,7 +139,7 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws HttpResponseException {
-    Schedule schedule = new Schedule().withStartDate(RestUtil.DATE_TIME_FORMAT.format(new Date()));
+    Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M");  // Repeat every 60M should be valid
     createAndCheckService(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
 
@@ -182,13 +182,12 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
     DatabaseService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             adminAuthHeaders());
     String id = dbService.getId().toString();
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update database description and ingestion service that are null
     UpdateDatabaseService update = new UpdateDatabaseService().withDescription("description1");
     updateAndCheckService(id, update, OK, adminAuthHeaders());
     // Update ingestion schedule
-    Schedule schedule = new Schedule().withStartDate(startDate).withRepeatFrequency("P1D");
+    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
     updateAndCheckService(id, update, OK, adminAuthHeaders());
 
@@ -336,10 +335,9 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateDatabaseService create(TestInfo test) {
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
     return new CreateDatabaseService().withName(getName(test)).withServiceType(DatabaseServiceType.Snowflake)
             .withJdbc(TestUtils.JDBC_INFO)
-            .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
+            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   private static CreateDatabaseService create(TestInfo test, int index) {

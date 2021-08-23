@@ -27,22 +27,14 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerResponseContext;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
 
 public class AuditEventHandler implements  EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
   private AuditLogRepository auditLogRepository;
-  private final DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'"); // Quoted "Z" to indicate UTC,
-  // no timezone offset
-
 
   public void init(CatalogApplicationConfig config, DBI jdbi) {
     this.auditLogRepository = jdbi.onDemand(AuditLogRepository.class);
-    TimeZone tz = TimeZone.getTimeZone("UTC");
-    this.df.setTimeZone(tz);
   }
 
   public Void process(ContainerRequestContext requestContext,
@@ -52,7 +44,7 @@ public class AuditEventHandler implements  EventHandler {
     if (responseContext.getEntity() != null) {
       String path = requestContext.getUriInfo().getPath();
       String username = requestContext.getSecurityContext().getUserPrincipal().getName();
-      String nowAsISO = df.format(new Date());
+      Date nowAsISO = new Date();
 
       try {
         EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
@@ -79,5 +71,4 @@ public class AuditEventHandler implements  EventHandler {
   }
 
   public void close() {}
-
 }
