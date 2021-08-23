@@ -26,7 +26,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -62,11 +61,21 @@ import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
-import static org.openmetadata.catalog.util.TestUtils.*;
+import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class TopicResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
@@ -77,8 +86,6 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
-
 
 
   @BeforeAll
@@ -102,7 +109,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void post_topicWithLongName_400_badRequest(TestInfo test) {
     // Create topic with mandatory name field empty
-    CreateTopic create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
+    CreateTopic create = create(test).withName(LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
@@ -158,17 +165,17 @@ public class TopicResourceTest extends CatalogApplicationTest {
     // Service is required field
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withService(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[service must not be null]");
+    assertResponse(exception, BAD_REQUEST, "[service must not be null]");
 
     // Partitions is required field
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withPartitions(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
+    assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
 
     // Partitions must be >= 1
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withPartitions(0), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
+    assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
   }
 
   @Test
@@ -183,11 +190,11 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_topicWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
+    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
     CreateTopic create = create(test).withOwner(owner);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -369,9 +376,9 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void get_nonExistentTopic_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTopic(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.TOPIC, TestUtils.NON_EXISTENT_ENTITY));
+            entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -522,8 +529,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void delete_nonExistentTopic_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteTopic(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, TestUtils.NON_EXISTENT_ENTITY));
+            deleteTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
   }
 
   public static Topic createAndCheckTopic(CreateTopic create,
