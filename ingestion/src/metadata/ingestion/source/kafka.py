@@ -80,7 +80,7 @@ class KafkaSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Topic]:
+    def next_record(self) -> Iterable[CreateTopic]:
         topics = self.admin_client.list_topics().topics
         for t in topics:
             if self.config.filter_pattern.included(t):
@@ -90,7 +90,7 @@ class KafkaSource(Source):
                                     service=EntityReference(id=self.service.id, type="messagingService"),
                                     partitions=1)
                 if topic_schema is not None:
-                    topic.schema_ = topic_schema.schema_str
+                    topic.schemaText = topic_schema.schema_str
                     if topic_schema.schema_type == "AVRO":
                         topic.schemaType = SchemaType.Avro.name
                     elif topic_schema.schema_type == "PROTOBUF":
