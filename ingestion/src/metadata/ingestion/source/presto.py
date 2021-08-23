@@ -33,6 +33,9 @@ class PrestoConfig(SQLConnectionConfig):
             url += f"?schema={quote_plus(self.database)}"
         return url
 
+    def fetch_sample_data(self, schema: str, table: str, connection):
+        return super().fetch_sample_data(schema, table, connection)
+
 
 class PrestoSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

@@ -24,6 +24,12 @@ class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
 
+    def fetch_sample_data(self, schema: str, table: str, connection):
+        return super().fetch_sample_data(schema, table, connection)
+
+    def get_connection_url(self):
+        return super().get_connection_url()
+
 
 class OracleSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

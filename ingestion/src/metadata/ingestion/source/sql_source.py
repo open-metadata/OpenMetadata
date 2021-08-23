@@ -73,6 +73,21 @@ class SQLConnectionConfig(ConfigModel):
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @abstractmethod
+    def fetch_sample_data(self, schema: str, table: str, connection):
+        try:
+            query = f"select * from {schema}.{table} limit 50"
+            logger.info("Fetching sample data, this may take a while {}".format(query))
+            results = connection.execute(query)
+            cols = list(results.keys())
+            rows = []
+            for r in results:
+                row = list(r)
+                rows.append(row)
+            return TableData(columns=cols, rows=rows)
+        except Exception as err:
+            logger.error("Failed to generate sample data for {} - {}".format(table, err))
+
+    @abstractmethod
     def get_connection_url(self):
         url = f"{self.scheme}://"
         if self.username:
@@ -161,7 +176,7 @@ class SQLSource(Source):
         self.status = SQLSourceStatus()
         self.sql_config = self.config
         self.engine = create_engine(self.sql_config.get_connection_url(), **self.sql_config.options)
-        self.connection = None
+        self.connection = self.engine.connect()
 
     def prepare(self):
         pass
@@ -170,29 +185,7 @@ class SQLSource(Source):
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
 
-    def fetch_sample_data(self, schema: str, table: str):
-        try:
-            if self.connection is None:
-                self.connection = self.engine.connect()
-            query = f"select * from {schema}.{table} limit 50"
-            logger.info("Fetching sample data, this may take a while {}".format(query))
-            results = self.connection.execute(query)
-            cols = list(results.keys())
-            rows = []
-            for r in results:
-                row = list(r)
-                rows.append(row)
-            return TableData(columns=cols, rows=rows)
-        except:
-            logger.error("Failed to generate sample data for {}".format(table))
-
-    def standardize_schema_table_names(
-            self, schema: str, table: str
-    ) -> Tuple[str, str]:
-        return schema, table
-
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-
         inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
             if not self.sql_config.filter_pattern.included(schema):
@@ -209,8 +202,7 @@ class SQLSource(Source):
                      schema: str) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
-                schema, table = self.standardize_schema_table_names(schema, table_name)
-                if not self.sql_config.filter_pattern.included(f'{schema}.{table_name}'):
+                if not self.sql_config.filter_pattern.included(table_name):
                     self.status.filtered('{}.{}'.format(self.config.get_service_name(), table_name),
                                          "Table pattern not allowed")
                     continue
@@ -226,7 +218,7 @@ class SQLSource(Source):
                               description=description if description is not None else ' ',
                               columns=table_columns)
                 if self.sql_config.generate_sample_data:
-                    table_data = self.fetch_sample_data(schema, table_name)
+                    table_data = self.sql_config.fetch_sample_data(schema, table_name, self.connection)
                     table.sampleData = table_data
 
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
@@ -261,7 +253,7 @@ class SQLSource(Source):
                               columns=table_columns,
                               viewDefinition=view_definition)
                 if self.sql_config.generate_sample_data:
-                    table_data = self.fetch_sample_data(schema, view_name)
+                    table_data = self.sql_config.fetch_sample_data(schema, view_name, self.connection)
                     table.sampleData = table_data
 
                 table_and_db = OMetaDatabaseAndTable(table=table, database=self._get_database(schema))
@@ -294,7 +286,11 @@ class SQLSource(Source):
         table_columns = []
         row_order = 1
         for column in columns:
-            col_type = get_column_type(self.status, dataset_name, column['type'])
+            col_type = None
+            try:
+                col_type = get_column_type(self.status, dataset_name, column['type'])
+            except Exception as err:
+                logger.error(err)
             col_constraint = None
             if column['nullable']:
                 col_constraint = ColumnConstraint.NULL
@@ -316,10 +312,11 @@ class SQLSource(Source):
         return table_columns
 
     def _get_table_description(self, schema: str, table: str, inspector: Inspector) -> str:
+        description = None
         try:
             table_info: dict = inspector.get_table_comment(table, schema)
-        except NotImplementedError:
-            description: Optional[str] = None
+        except Exception as err:
+            logger.error(f"Table Description Error : {err}")
         else:
             description = table_info["text"]
         return description

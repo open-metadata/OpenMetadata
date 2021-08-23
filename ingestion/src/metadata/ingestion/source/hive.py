@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Optional
 from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
@@ -30,9 +31,14 @@ register_custom_type(HiveDecimal, "NUMBER")
 
 class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
+    auth_options = Optional[str]
 
     def get_connection_url(self):
-        return super().get_connection_url()
+        url = super().get_connection_url()
+        return f'{url};{self.auth_options}'
+
+    def fetch_sample_data(self, schema: str, table: str, connection):
+        return super().fetch_sample_data(schema, table, connection)
 
 
 class HiveSource(SQLSource):
