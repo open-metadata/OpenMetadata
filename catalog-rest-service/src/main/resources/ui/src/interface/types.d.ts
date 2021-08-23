@@ -220,7 +220,7 @@ declare module 'Models' {
   export type ClientAuth = {
     authority: string;
     client_id: string;
-    provider?: 'google' | 'okta' | 'github';
+    provider?: 'google' | 'okta' | 'github' | 'auth0';
     callbackUrl?: string;
     signingIn?: boolean;
   };
