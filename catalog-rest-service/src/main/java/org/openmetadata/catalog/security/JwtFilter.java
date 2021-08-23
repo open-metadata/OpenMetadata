@@ -87,7 +87,13 @@ public class JwtFilter implements ContainerRequestFilter {
     } catch (RuntimeException runtimeException) {
       throw new AuthenticationException("Invalid token");
     }
-    String authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
+    String authorizedEmail;
+    if (jwt.getClaim("email") != null) {
+       authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
+    }
+    else {
+      authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
+    }
     String userName = authorizedEmail.split("@")[0];
     //Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
