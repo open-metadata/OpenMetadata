@@ -18,6 +18,7 @@
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isNull } from 'lodash';
 import { observer } from 'mobx-react';
 import { Database, Paging, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
@@ -265,102 +266,100 @@ const DatabaseDetails: FunctionComponent = () => {
                 </div>
               </div>
             </div>
-            {data.length ? (
-              <>
-                <table
-                  className="tw-bg-white tw-w-full tw-mb-4"
-                  data-testid="database-tables">
-                  <thead>
-                    <tr className="tableHead-row">
-                      <th className="tableHead-cell">Table Name</th>
-                      <th className="tableHead-cell">Description</th>
-                      <th className="tableHead-cell">Owner</th>
-                      <th className="tableHead-cell">Usage</th>
-                      <th className="tableHead-cell tw-w-60">Tags</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tableBody">
-                    {data.map((table, index) => (
-                      <tr
-                        className={classNames(
-                          'tableBody-row',
-                          !isEven(index + 1) ? 'odd-row' : null
+            <table
+              className="tw-bg-white tw-w-full tw-mb-4"
+              data-testid="database-tables">
+              <thead>
+                <tr className="tableHead-row">
+                  <th className="tableHead-cell">Table Name</th>
+                  <th className="tableHead-cell">Description</th>
+                  <th className="tableHead-cell">Owner</th>
+                  <th className="tableHead-cell">Usage</th>
+                  <th className="tableHead-cell tw-w-60">Tags</th>
+                </tr>
+              </thead>
+              <tbody className="tableBody">
+                {data.length > 0 ? (
+                  data.map((table, index) => (
+                    <tr
+                      className={classNames(
+                        'tableBody-row',
+                        !isEven(index + 1) ? 'odd-row' : null
+                      )}
+                      data-testid="column"
+                      key={index}>
+                      <td className="tableBody-cell">
+                        <Link
+                          to={getDatasetDetailsPath(table.fullyQualifiedName)}>
+                          {table.name}
+                        </Link>
+                      </td>
+                      <td className="tableBody-cell">
+                        {table.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={table.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
                         )}
-                        data-testid="column"
-                        key={index}>
-                        <td className="tableBody-cell">
-                          <Link
-                            to={getDatasetDetailsPath(
-                              table.fullyQualifiedName
-                            )}>
-                            {table.name}
-                          </Link>
-                        </td>
-                        <td className="tableBody-cell">
-                          {table.description ? (
-                            <RichTextEditorPreviewer
-                              markdown={table.description}
-                            />
-                          ) : (
-                            <span className="tw-no-description">
-                              No description added
-                            </span>
+                      </td>
+                      <td className="tableBody-cell">
+                        <p>{getOwnerFromId(table?.owner?.id)?.name || '--'}</p>
+                      </td>
+                      <td className="tableBody-cell">
+                        <p>
+                          {getUsagePercentile(
+                            table.usageSummary.weeklyStats.percentileRank || 0
                           )}
-                        </td>
-                        <td className="tableBody-cell">
-                          <p>
-                            {getOwnerFromId(table?.owner?.id)?.name || '--'}
-                          </p>
-                        </td>
-                        <td className="tableBody-cell">
-                          <p>
-                            {getUsagePercentile(
-                              table.usageSummary.weeklyStats.percentileRank || 0
-                            )}
-                          </p>
-                        </td>
-                        <td className="tableBody-cell">
-                          {table.tags.map((tag, tagIndex) => (
-                            <PopOver
-                              key={tagIndex}
-                              position="top"
-                              size="small"
-                              title={tag.labelType}
-                              trigger="mouseenter">
-                              <Tags
-                                className="tw-bg-gray-200"
-                                tag={`#${
-                                  tag.tagFQN.startsWith('Tier.Tier')
-                                    ? tag.tagFQN.split('.')[1]
-                                    : tag.tagFQN
-                                }`}
-                              />
-                            </PopOver>
-                          ))}
-                          {getTableTags(table.columns).map((tag, tagIdx) => (
-                            <PopOver
-                              key={tagIdx}
-                              position="top"
-                              size="small"
-                              title={tag.labelType}
-                              trigger="mouseenter">
-                              <Tags
-                                className="tw-bg-gray-200"
-                                tag={`#${tag.tagFQN}`}
-                              />
-                            </PopOver>
-                          ))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-              </>
-            ) : (
-              <h1 className="tw-text-center tw-mt-60 tw-text-grey-body tw-font-normal">
-                {databaseName} does not have any tables
-              </h1>
+                        </p>
+                      </td>
+                      <td className="tableBody-cell">
+                        {table.tags.map((tag, tagIndex) => (
+                          <PopOver
+                            key={tagIndex}
+                            position="top"
+                            size="small"
+                            title={tag.labelType}
+                            trigger="mouseenter">
+                            <Tags
+                              className="tw-bg-gray-200"
+                              tag={`#${
+                                tag.tagFQN.startsWith('Tier.Tier')
+                                  ? tag.tagFQN.split('.')[1]
+                                  : tag.tagFQN
+                              }`}
+                            />
+                          </PopOver>
+                        ))}
+                        {getTableTags(table.columns).map((tag, tagIdx) => (
+                          <PopOver
+                            key={tagIdx}
+                            position="top"
+                            size="small"
+                            title={tag.labelType}
+                            trigger="mouseenter">
+                            <Tags
+                              className="tw-bg-gray-200"
+                              tag={`#${tag.tagFQN}`}
+                            />
+                          </PopOver>
+                        ))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="tableBody-row">
+                    <td className="tableBody-cell tw-text-center" colSpan={5}>
+                      No records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {Boolean(!isNull(paging.after) || !isNull(paging.before)) && (
+              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
             )}
           </div>
         </PageContainer>

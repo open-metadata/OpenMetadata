@@ -93,7 +93,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                         </div>
                       ))}
 
-                      {totalValue > 0 && data.length > 0 && (
+                      {totalValue > PAGE_SIZE && data.length > 0 && (
                         <Pagination
                           currentPage={currentPage}
                           paginate={paginate}
