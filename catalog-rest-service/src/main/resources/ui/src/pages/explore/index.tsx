@@ -278,48 +278,51 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   const getSortingElements = () => {
     return (
-      <div className="tw-flex tw-gap-2">
-        <div className="tw-mt-2 tw-mb-4">
-          <span className="tw-mr-2">Sort by :</span>
-          <span className="tw-relative">
-            <Button
-              className="tw-underline"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setFieldListVisible((visible) => !visible)}>
-              {capitalize(sortField)}
-              <DropDownIcon />
-            </Button>
-            {fieldListVisible && (
-              <DropDownList
-                dropDownList={sortingFields}
-                value={sortField}
-                onSelect={handleFieldDropDown}
-              />
-            )}
-          </span>
-        </div>
-        <div className="tw-mt-2 tw-mb-4">
-          <span className="tw-mr-2">Order by :</span>
-          <span className="tw-relative">
-            <Button
-              className="tw-underline"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setOrderListVisible((visible) => !visible)}>
-              {sortingOrder.find((order) => order.value === sortOrder)?.name}
-              <DropDownIcon />
-            </Button>
-            {orderListVisible && (
-              <DropDownList
-                dropDownList={sortingOrder}
-                value={sortOrder}
-                onSelect={handleOrderDropDown}
-              />
-            )}
-          </span>
+      <div className="tw-flex tw-justify-between">
+        <div />
+        <div className="tw-flex tw-gap-2">
+          <div className="tw-mt-2 tw-mb-4">
+            <span className="tw-mr-2">Sort by :</span>
+            <span className="tw-relative">
+              <Button
+                className="tw-underline"
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => setFieldListVisible((visible) => !visible)}>
+                {capitalize(sortField)}
+                <DropDownIcon />
+              </Button>
+              {fieldListVisible && (
+                <DropDownList
+                  dropDownList={sortingFields}
+                  value={sortField}
+                  onSelect={handleFieldDropDown}
+                />
+              )}
+            </span>
+          </div>
+          <div className="tw-mt-2 tw-mb-4">
+            <span className="tw-mr-2">Order by :</span>
+            <span className="tw-relative">
+              <Button
+                className="tw-underline"
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => setOrderListVisible((visible) => !visible)}>
+                {sortingOrder.find((order) => order.value === sortOrder)?.name}
+                <DropDownIcon />
+              </Button>
+              {orderListVisible && (
+                <DropDownList
+                  dropDownList={sortingOrder}
+                  value={sortOrder}
+                  onSelect={handleOrderDropDown}
+                />
+              )}
+            </span>
+          </div>
         </div>
       </div>
     );
