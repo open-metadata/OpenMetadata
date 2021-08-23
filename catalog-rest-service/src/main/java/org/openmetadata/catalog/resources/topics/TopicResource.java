@@ -28,11 +28,13 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -64,6 +66,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -82,6 +85,10 @@ public class TopicResource {
   private final TopicRepository dao;
   private final CatalogAuthorizer authorizer;
 
+  public static void addHref(UriInfo uriInfo, EntityReference ref) {
+    ref.withHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, ref.getId()));
+  }
+
   public static List<Topic> addHref(UriInfo uriInfo, List<Topic> topics) {
     Optional.ofNullable(topics).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return topics;
@@ -91,6 +98,7 @@ public class TopicResource {
     topic.setHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, topic.getId()));
     EntityUtil.addHref(uriInfo, topic.getOwner());
     EntityUtil.addHref(uriInfo, topic.getService());
+    EntityUtil.addHref(uriInfo, topic.getFollowers());
     return topic;
   }
 
@@ -113,7 +121,7 @@ public class TopicResource {
     }
   }
 
-  static final String FIELDS = "owner,service";
+  static final String FIELDS = "owner,service,followers,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -186,15 +194,13 @@ public class TopicResource {
                                   schema = @Schema(implementation = Dashboard.class))),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
-  public Response get(@Context UriInfo uriInfo, @PathParam("id") String id,
+  public Topic get(@Context UriInfo uriInfo, @PathParam("id") String id,
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Topic topic = dao.get(id, fields);
-    addHref(uriInfo, topic);
-    return Response.ok(topic).build();
+    return addHref(uriInfo, dao.get(id, fields));
   }
 
   @GET
@@ -237,7 +243,8 @@ public class TopicResource {
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());
+                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+                    .withTags(create.getTags());
     topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
     return Response.created(topic.getHref()).entity(topic).build();
   }
@@ -259,9 +266,11 @@ public class TopicResource {
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
                                          JsonPatch patch) throws IOException {
-    Topic topic = dao.patch(id, patch);
+    Fields fields = new Fields(FIELD_LIST, FIELDS);
+    Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(topic));
+    topic = dao.patch(id, patch);
     return addHref(uriInfo, topic);
   }
 
@@ -284,11 +293,52 @@ public class TopicResource {
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime());
+                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+                    .withTags(create.getTags());
     PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();
   }
+
+  @PUT
+  @Path("/{id}/followers")
+  @Operation(summary = "Add a follower", tags = "topics",
+          description = "Add a user identified by `userId` as followed of this topic",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+          })
+  public Response addFollower(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the topic", schema = @Schema(type = "string"))
+                              @PathParam("id") String id,
+                              @Parameter(description = "Id of the user to be added as follower",
+                                      schema = @Schema(type = "string"))
+                                      String userId) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "followers");
+    Response.Status status = dao.addFollower(id, userId);
+    Topic table = dao.get(id, fields);
+    return Response.status(status).entity(table).build();
+  }
+
+  @DELETE
+  @Path("/{id}/followers/{userId}")
+  @Operation(summary = "Remove a follower", tags = "topic",
+          description = "Remove the user identified `userId` as a follower of the topic.")
+  public Topic deleteFollower(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the topic",
+                                      schema = @Schema(type = "string"))
+                              @PathParam("id") String id,
+                              @Parameter(description = "Id of the user being removed as follower",
+                                      schema = @Schema(type = "string"))
+                              @PathParam("userId") String userId) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "followers");
+    dao.deleteFollower(id, userId);
+    Topic topic = dao.get(id, fields);
+    return addHref(uriInfo, topic);
+  }
+
 
   @DELETE
   @Path("/{id}")

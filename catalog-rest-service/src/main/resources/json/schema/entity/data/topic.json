@@ -107,6 +107,18 @@
       "description": "Owner of this topic.",
       "$ref": "../../type/entityReference.json"
     },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this table.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"

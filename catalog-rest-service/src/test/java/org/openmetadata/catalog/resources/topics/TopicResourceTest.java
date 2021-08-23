@@ -32,10 +32,12 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -46,10 +48,13 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -57,16 +62,20 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class TopicResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
@@ -76,6 +85,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static EntityReference TEAM_OWNER1;
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
+  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -98,7 +109,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void post_topicWithLongName_400_badRequest(TestInfo test) {
     // Create topic with mandatory name field empty
-    CreateTopic create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
+    CreateTopic create = create(test).withName(LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
@@ -154,17 +165,17 @@ public class TopicResourceTest extends CatalogApplicationTest {
     // Service is required field
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withService(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[service must not be null]");
+    assertResponse(exception, BAD_REQUEST, "[service must not be null]");
 
     // Partitions is required field
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withPartitions(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
+    assertResponse(exception, BAD_REQUEST, "[partitions must not be null]");
 
     // Partitions must be >= 1
     exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create(test).withPartitions(0), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
+    assertResponse(exception, BAD_REQUEST, "[partitions must be greater than or equal to 1]");
   }
 
   @Test
@@ -179,11 +190,11 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_topicWithNonExistentOwner_4xx(TestInfo test) {
-    EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
+    EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
     CreateTopic create = create(test).withOwner(owner);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createTopic(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -365,9 +376,9 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void get_nonExistentTopic_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getTopic(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
+            getTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.TOPIC, TestUtils.NON_EXISTENT_ENTITY));
+            entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -393,22 +404,25 @@ public class TopicResourceTest extends CatalogApplicationTest {
     assertNull(topic.getDescription());
     assertNull(topic.getOwner());
     assertNotNull(topic.getService());
+    List<TagLabel> topicTags = singletonList(USER_ADDRESS_TAG_LABEL);
 
-    topic = getTopic(topic.getId(), "service,owner", adminAuthHeaders());
+    topic = getTopic(topic.getId(), "service,owner,tags", adminAuthHeaders());
     topic.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, adminAuthHeaders());
+    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags, adminAuthHeaders());
     topic.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(KAFKA_REFERENCE); // Get rid of href and name returned in the response for service
+    topic.setTags(singletonList(USER_ADDRESS_TAG_LABEL));
 
     // Replace description, tier, owner
-    topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, adminAuthHeaders());
+    topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, topicTags,
+            adminAuthHeaders());
     topic.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(PULSAR_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchTopicAttributesAndCheck(topic, null, null, adminAuthHeaders());
+    patchTopicAttributesAndCheck(topic, null, null, topicTags, adminAuthHeaders());
   }
 
   @Test
@@ -477,16 +491,52 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
+    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+
+    // Add follower to the table
+    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(topic, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
+    addAndCheckFollower(topic, user1.getId(), OK, 1, userAuthHeaders());
+
+    // Add a new follower to the table
+    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    addAndCheckFollower(topic, user2.getId(), CREATED, 2, userAuthHeaders());
+
+    // Delete followers and make sure they are deleted
+    deleteAndCheckFollower(topic, user1.getId(), 1, userAuthHeaders());
+    deleteAndCheckFollower(topic, user2.getId(), 0, userAuthHeaders());
+  }
+
+  @Test
+  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
+    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+
+    // Add non existent user as follower to the table
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            addAndCheckFollower(topic, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+
+    // Delete non existent user as follower to the table
+    exception = assertThrows(HttpResponseException.class, () ->
+            deleteAndCheckFollower(topic, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+  }
+
+
+  @Test
   public void delete_nonExistentTopic_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteTopic(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, TestUtils.NON_EXISTENT_ENTITY));
+            deleteTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
   }
 
   public static Topic createAndCheckTopic(CreateTopic create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     Topic topic = createTopic(create, authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
     return getAndValidate(topic.getId(), create, authHeaders);
   }
 
@@ -494,7 +544,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
                                           Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     Topic updatedTopic = updateTopic(create, status, authHeaders);
-    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
 
     // GET the newly updated topic and validate
     return getAndValidate(updatedTopic.getId(), create, authHeaders);
@@ -506,12 +556,12 @@ public class TopicResourceTest extends CatalogApplicationTest {
                                      Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created topic by ID and validate
     Topic topic = getTopic(topicId, "service,owner", authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
 
     // GET the newly created topic by name and validate
     String fqn = topic.getFullyQualifiedName();
     topic = getTopicByName(fqn, "service,owner", authHeaders);
-    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService());
+    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
   }
 
   public static Topic updateTopic(CreateTopic create,
@@ -552,7 +602,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   private static Topic validateTopic(Topic topic, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService) {
+                                     EntityReference expectedService, List<TagLabel> expectedTags)
+          throws HttpResponseException {
     assertNotNull(topic.getId());
     assertNotNull(topic.getHref());
     assertEquals(expectedDescription, topic.getDescription());
@@ -571,25 +622,29 @@ public class TopicResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), topic.getService().getId());
       assertEquals(expectedService.getType(), topic.getService().getType());
     }
+    validateTags(expectedTags, topic.getTags());
     return topic;
   }
 
   private Topic patchTopicAttributesAndCheck(Topic topic, String newDescription,
-                                             EntityReference newOwner, Map<String, String> authHeaders)
+                                             EntityReference newOwner,
+                                             List<TagLabel> tags,
+                                             Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     String topicJson = JsonUtils.pojoToJson(topic);
 
     // Update the topic attributes
     topic.setDescription(newDescription);
     topic.setOwner(newOwner);
+    topic.setTags(tags);
 
     // Validate information returned in patch response has the updates
     Topic updateTopic = patchTopic(topicJson, topic, authHeaders);
-    validateTopic(updateTopic, topic.getDescription(), newOwner, null);
+    validateTopic(updateTopic, topic.getDescription(), newOwner, null, tags);
 
     // GET the topic and Validate information returned
-    Topic getTopic = getTopic(topic.getId(), "service,owner", authHeaders);
-    validateTopic(getTopic, topic.getDescription(), newOwner, null);
+    Topic getTopic = getTopic(topic.getId(), "service,owner,tags", authHeaders);
+    validateTopic(getTopic, topic.getDescription(), newOwner, null, tags);
     return updateTopic;
   }
 
@@ -666,4 +721,90 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static CreateTopic create(TestInfo test, int index) {
     return new CreateTopic().withName(getTopicName(test, index)).withService(KAFKA_REFERENCE).withPartitions(1);
   }
+
+  public static void addAndCheckFollower(Topic topic, UUID userId, Status status, int totalFollowerCount,
+                                         Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("topics/%s/followers", topic.getId()));
+    TestUtils.put(target, userId.toString(), status, authHeaders);
+
+    // GET .../topics/{topicId} returns newly added follower
+    Topic getTopic = getTopic(topic.getId(), "followers", authHeaders);
+    assertEquals(totalFollowerCount, getTopic.getFollowers().size());
+    TestUtils.validateEntityReference(getTopic.getFollowers());
+    boolean followerFound = false;
+    for (EntityReference followers : getTopic.getFollowers()) {
+      if (followers.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertTrue(followerFound, "Follower added was not found in topic get response");
+
+    // GET .../users/{userId} shows user as following table
+    checkUserFollowing(userId, topic.getId(), true, authHeaders);
+  }
+
+  private static void checkUserFollowing(UUID userId, UUID topicId, boolean expectedFollowing,
+                                         Map<String, String> authHeaders) throws HttpResponseException {
+    // GET .../users/{userId} shows user as following table
+    boolean following = false;
+    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
+    for (EntityReference follows : user.getFollows()) {
+      TestUtils.validateEntityReference(follows);
+      if (follows.getId().equals(topicId)) {
+        following = true;
+        break;
+      }
+    }
+    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
+  }
+
+  private void deleteAndCheckFollower(Topic topic, UUID userId, int totalFollowerCount,
+                                      Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("topics/%s/followers/%s",
+            topic.getId(), userId));
+    TestUtils.delete(target, authHeaders);
+
+    Topic getTopic = checkFollowerDeleted(topic.getId(), userId, authHeaders);
+    assertEquals(totalFollowerCount, getTopic.getFollowers().size());
+  }
+
+  public static Topic checkFollowerDeleted(UUID topicId, UUID userId, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    Topic getTopic = getTopic(topicId, "followers", authHeaders);
+    TestUtils.validateEntityReference(getTopic.getFollowers());
+    boolean followerFound = false;
+    for (EntityReference followers : getTopic.getFollowers()) {
+      if (followers.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertFalse(followerFound, "Follower deleted is still found in table get response");
+
+    // GET .../users/{userId} shows user as following table
+    checkUserFollowing(userId, topicId, false, authHeaders);
+    return getTopic;
+  }
+
+  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+          throws HttpResponseException {
+    if (expectedList == null) {
+      return;
+    }
+    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
+    // So add to the expectedList, the derived tags before validating the tags
+    List<TagLabel> updatedExpectedList = new ArrayList<>();
+    updatedExpectedList.addAll(expectedList);
+    for (TagLabel expected : expectedList) {
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
+              adminAuthHeaders()));
+      updatedExpectedList.addAll(derived);
+    }
+    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+
+    assertTrue(actualList.containsAll(updatedExpectedList));
+    assertTrue(updatedExpectedList.containsAll(actualList));
+  }
+
 }
