@@ -42,8 +42,6 @@
       }
     }
   },
-  "type": "object",
-  "javaType": "org.openmetadata.catalog.type.Profile",
   "properties": {
     "images": {
       "$ref": "#/definitions/imageList"

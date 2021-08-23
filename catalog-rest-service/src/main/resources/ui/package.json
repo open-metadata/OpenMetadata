@@ -86,7 +86,8 @@
     "lint:fix": "eslint './src/**/*.{js,jsx,ts,tsx}' --fix",
     "pretty": "prettier . --config './.prettierrc' --write",
     "build-check": "npm run lint",
-    "commit-check": "npm run pretty && npm run build-check && npm run build"
+    "commit-check": "npm run pretty && npm run build-check && npm run build",
+    "json2ts": "./json2ts.sh ../json/schema ./src/generated && npm run lint:fix"
   },
   "browserslist": {
     "production": [
