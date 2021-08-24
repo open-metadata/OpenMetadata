@@ -92,7 +92,8 @@ plugins: Dict[str, Set[str]] = {
     "scheduler": scheduler_requirements,
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
-    "sample-tables": {"faker~=8.1.1", }
+    "sample-tables": {"faker~=8.1.1", },
+    "sample-topics": {}
 }
 
 build_options = {"includes": ["_cffi_backend"]}

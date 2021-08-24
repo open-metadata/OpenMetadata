@@ -144,7 +144,7 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_validIngestionSchedules_as_admin_200(TestInfo test) throws HttpResponseException {
-    Schedule schedule = new Schedule().withStartDate(RestUtil.DATE_TIME_FORMAT.format(new Date()));
+    Schedule schedule = new Schedule().withStartDate(new Date());
     schedule.withRepeatFrequency("PT60M");  // Repeat every 60M should be valid
     createAndCheckService(create(test, 1).withIngestionSchedule(schedule), adminAuthHeaders());
 
@@ -187,13 +187,12 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
     MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
             adminAuthHeaders());
     String id = dbService.getId().toString();
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
 
     // Update messaging description and ingestion service that are null
     UpdateMessagingService update = new UpdateMessagingService().withDescription("description1");
     updateAndCheckService(id, update, OK, adminAuthHeaders());
     // Update ingestion schedule
-    Schedule schedule = new Schedule().withStartDate(startDate).withRepeatFrequency("P1D");
+    Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");
     update.withIngestionSchedule(schedule);
     updateAndCheckService(id, update, OK, adminAuthHeaders());
 
@@ -336,17 +335,15 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateMessagingService create(TestInfo test) {
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
     return new CreateMessagingService().withName(getName(test)).withServiceType(MessagingServiceType.Kafka)
             .withBrokers(List.of("192.1.1.1:0"))
-            .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
+            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   private static CreateMessagingService create(TestInfo test, int index) {
-    String startDate = RestUtil.DATE_TIME_FORMAT.format(new Date());
     return new CreateMessagingService().withName(getName(test, index)).withServiceType(MessagingServiceType.Pulsar)
             .withBrokers(List.of("192.1.1.1:0"))
-            .withIngestionSchedule(new Schedule().withStartDate(startDate).withRepeatFrequency("P1D"));
+            .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   public static void updateAndCheckService(String id, UpdateMessagingService update, Status status,

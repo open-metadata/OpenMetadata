@@ -1,6 +1,6 @@
 import React, { CSSProperties } from 'react';
 
-export const dropdownIcon = ({ style }: { style: CSSProperties }) => {
+export const dropdownIcon = ({ style }: { style?: CSSProperties }) => {
   return (
     <svg
       aria-hidden="true"

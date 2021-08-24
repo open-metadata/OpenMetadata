@@ -49,7 +49,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       <span
         aria-disabled={item.disabled as boolean}
         className={classNames(
-          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover',
+          'tw-text-gray-700 tw-block tw-px-4 tw-py-2 tw-text-sm hover:tw-bg-body-hover tw-cursor-pointer',
           !isNil(value) && item.value === value ? 'tw-bg-primary-lite' : null
         )}
         id={`menu-item-${index}`}
@@ -89,7 +89,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             aria-labelledby="menu-button"
             aria-orientation="vertical"
             className={classNames(
-              'dropdown-list',
+              'dropdown-list tw-mt-0.5',
               horzPosRight ? 'dd-horz-right' : 'dd-horz-left'
             )}
             role="menu">
