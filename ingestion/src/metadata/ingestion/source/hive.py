@@ -31,14 +31,11 @@ register_custom_type(HiveDecimal, "NUMBER")
 
 class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
-    auth_options = Optional[str]
+    auth_options: Optional[str] = None
 
     def get_connection_url(self):
         url = super().get_connection_url()
         return f'{url};{self.auth_options}'
-
-    def fetch_sample_data(self, schema: str, table: str, connection):
-        return super().fetch_sample_data(schema, table, connection)
 
 
 class HiveSource(SQLSource):

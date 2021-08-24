@@ -49,8 +49,7 @@ class SnowflakeConfig(SQLConnectionConfig):
             connect_string = f"{connect_string}?{params}"
         return connect_string
 
-    def fetch_sample_data(self, schema: str, table: str, connection):
-        return super().fetch_sample_data(schema, table, connection)
+    
 
 
 class SnowflakeSource(SQLSource):

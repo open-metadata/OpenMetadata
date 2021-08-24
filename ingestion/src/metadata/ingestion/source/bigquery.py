@@ -32,16 +32,6 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
             return f"{self.scheme}://{self.project_id}"
         return f"{self.scheme}://"
 
-    def fetch_sample_data(self, schema: str, table: str, connection):
-        query = f"select * from {self.project_id}.{schema},{table} limit 50"
-        results = self.connection.execute(query)
-        cols = list(results.keys())
-        rows = []
-        for r in results:
-            row = list(r)
-            rows.append(row)
-        return TableData(columns=cols, rows=rows)
-
 
 class BigquerySource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
@@ -52,3 +42,23 @@ class BigquerySource(SQLSource):
         config = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
+
+    def fetch_sample_data(self, schema: str, table: str):
+        query = f"select * from {self.config.project_id}.{schema}.{table} limit 50"
+        results = self.connection.execute(query)
+        cols = list(results.keys())
+        rows = []
+        for r in results:
+            row = list(r)
+            rows.append(row)
+        return TableData(columns=cols, rows=rows)
+
+    def standardize_schema_table_names(
+        self, schema: str, table: str
+    ) -> Tuple[str, str]:
+        segments = table.split(".")
+        if len(segments) != 2:
+            raise ValueError(f"expected table to contain schema name already {table}")
+        if segments[0] != schema:
+            raise ValueError(f"schema {schema} does not match table {table}")
+        return segments[0], segments[1]

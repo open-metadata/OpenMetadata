@@ -37,8 +37,7 @@ class RedshiftConfig(SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
-    def fetch_sample_data(self, schema: str, table: str, connection):
-        return super().fetch_sample_data(schema, table, connection)
+    
 
 
 class RedshiftSource(SQLSource):
