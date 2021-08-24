@@ -267,20 +267,22 @@ const SchemaTable: FunctionComponent<Props> = ({
                 <td className="tw-group tableBody-cell tw-relative">
                   <div>
                     <div
-                      className="tw-cursor-pointer hover:tw-underline"
+                      className="tw-cursor-pointer hover:tw-underline tw-flex"
                       data-testid="description"
                       id={`column-description-${index}`}
                       onClick={() => handleEditColumn(column, index)}>
-                      {column.description ? (
-                        <RichTextEditorPreviewer
-                          markdown={column.description}
-                        />
-                      ) : (
-                        <span className="tw-no-description">
-                          No description added
-                        </span>
-                      )}
-                      <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                      <div>
+                        {column.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={column.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
+                      </div>
+                      <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                         <SVGIcons
                           alt="edit"
                           icon="icon-edit"
