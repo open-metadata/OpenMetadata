@@ -311,4 +311,9 @@ declare module 'Models' {
       name: string;
     };
   };
+
+  export type SampleData = {
+    columns: Array<string>;
+    rows: Array<Array<string>>;
+  };
 }

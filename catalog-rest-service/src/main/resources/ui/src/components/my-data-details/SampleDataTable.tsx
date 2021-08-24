@@ -15,52 +15,36 @@
   * limitations under the License.
 */
 
+import classNames from 'classnames';
+import { lowerCase } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { isEven } from '../../utils/CommonUtils';
-
-// type Column = {
-//   columnConstraint?: string;
-//   columnDataType: string;
-//   description: string;
-//   name: string;
-//   ordinalPosition: number;
-//   piiTags?: Array<string>;
-// };
-
-type MockColumn = {
-  columnId: number;
-  name: string;
-  columnDataType: string;
-  description?: string;
-  selected?: boolean;
-  piiTags?: Array<string>;
-};
+type Columns = { name: string; dataType: string };
 
 type Props = {
-  columns: Array<MockColumn>;
-  data: Array<Record<string, string>>;
+  sampleData: {
+    columns: Array<Columns>;
+    rows: Array<Array<string>>;
+  };
 };
 
-const SampleDataTable: FunctionComponent<Props> = ({
-  columns,
-  data,
-}: Props) => {
+const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   return (
     <div className="tw-table-responsive">
       <table
         className="tw-min-w-max tw-w-full tw-table-auto"
         data-testid="sample-data-table">
         <thead>
-          <tr className="tw-border tw-border-main tw-bg-gray-200 tw-text-gray-600 tw-text-sm tw-leading-normal">
-            {columns.map((column) => {
+          <tr className="tableHead-row">
+            {sampleData.columns.map((column) => {
               return (
                 <th
-                  className="tw-py-3 tw-px-6 tw-text-left tw-whitespace-nowrap"
+                  className="tableHead-cell"
                   data-testid="column-name"
-                  key={column.columnId}>
-                  <p className="tw-mb-2">{column.name}</p>
-                  <span className={'sl-label ' + column.columnDataType}>
-                    {column.columnDataType}
+                  key={column.name}>
+                  {column.name}
+                  <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
+                    ({lowerCase(column.dataType)})
                   </span>
                 </th>
               );
@@ -68,21 +52,22 @@ const SampleDataTable: FunctionComponent<Props> = ({
           </tr>
         </thead>
         <tbody className="tw-text-gray-600 tw-text-sm">
-          {data.map((row, rowIndex) => {
+          {sampleData.rows.map((row, rowIndex) => {
             return (
               <tr
-                className={`tw-border tw-border-main tableBody-row ${
-                  !isEven(rowIndex + 1) && 'odd-row'
-                }`}
+                className={classNames(
+                  'tableBody-row',
+                  !isEven(rowIndex + 1) ? 'odd-row' : null
+                )}
                 data-testid="row"
                 key={rowIndex}>
-                {columns.map((column) => {
+                {row.map((data) => {
                   return (
                     <td
-                      className="tw-py-3 tw-px-6 tw-text-left"
+                      className="tableBody-cell"
                       data-testid="cell"
-                      key={column.columnId}>
-                      {row[column.name]}
+                      key={data}>
+                      {data}
                     </td>
                   );
                 })}
