@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { ServiceTypes } from 'Models';
 import noService from '../assets/img/no-service.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
@@ -48,4 +49,9 @@ export const serviceType = [
   'Hive',
   'Oracle',
   'Snowflake',
+];
+
+export const arrServiceTypes: Array<ServiceTypes> = [
+  'databaseServices',
+  'messagingServices',
 ];

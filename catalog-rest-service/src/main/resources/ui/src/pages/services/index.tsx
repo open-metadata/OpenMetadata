@@ -17,7 +17,12 @@
 
 import { AxiosResponse } from 'axios';
 import { isNull } from 'lodash';
-import { ServiceCollection, ServiceData } from 'Models';
+import {
+  ServiceCollection,
+  ServiceData,
+  ServiceRecord,
+  ServiceTypes,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -37,7 +42,12 @@ import {
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { NOSERVICE, PLUS } from '../../constants/services.const';
+import {
+  arrServiceTypes,
+  NOSERVICE,
+  PLUS,
+} from '../../constants/services.const';
+import { getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -53,7 +63,12 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [serviceName] = useState('databaseServices');
+  const [serviceName, setServiceName] =
+    useState<ServiceTypes>('databaseServices');
+  const [services, setServices] = useState<ServiceRecord>({
+    databaseServices: [],
+    messagingServices: [],
+  });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -61,7 +76,7 @@ const ServicesPage = () => {
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
-    let listArr = [];
+    // let listArr = [];
     //   fetch services of all individual collection
     if (allServiceCollectionArr.length) {
       let promiseArr = [];
@@ -71,19 +86,33 @@ const ServicesPage = () => {
       Promise.all(promiseArr).then((result: AxiosResponse[]) => {
         if (result.length) {
           let serviceArr = [];
+          const serviceRecord = {} as ServiceRecord;
           serviceArr = result.map((service) => service?.data?.data || []);
-          // converted array of arrays to array
-          const allServices = serviceArr.reduce(
-            (acc, el) => acc.concat(el),
-            []
-          );
-          listArr = allServices.map((s: ApiData) => {
-            return { ...s, ...s.jdbc };
-          });
-          setServiceList(listArr);
+          for (let i = 0; i < serviceArr.length; i++) {
+            serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
+              serviceArr[i].map((s: ApiData) => {
+                return { ...s, ...s.jdbc };
+              });
+          }
+          // // converted array of arrays to array
+          // const allServices = serviceArr.reduce(
+          //   (acc, el) => acc.concat(el),
+          //   []
+          // );
+          // listArr = allServices.map((s: ApiData) => {
+          //   return { ...s, ...s.jdbc };
+          // });
+          setServices(serviceRecord);
+          setServiceList(serviceRecord[serviceName]);
         }
       });
     }
+  };
+
+  const getServiceTabs = (): Array<ServiceTypes> => {
+    const tabs = Object.keys(services);
+
+    return arrServiceTypes.filter((item) => tabs.includes(item));
   };
 
   const handleAddService = () => {
@@ -188,6 +217,22 @@ const ServicesPage = () => {
       {!isLoading ? (
         <PageContainer>
           <div className="container-fluid">
+            <div className="tw-bg-transparent tw-mb-4">
+              <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
+                {getServiceTabs().map((tab, index) => (
+                  <button
+                    className={getTabClasses(tab, serviceName)}
+                    data-testid="tab"
+                    key={index}
+                    onClick={() => {
+                      setServiceName(tab);
+                      setServiceList(services[tab]);
+                    }}>
+                    {tab}
+                  </button>
+                ))}
+              </nav>
+            </div>
             {serviceList.length ? (
               <div className="tw-grid tw-grid-cols-4 tw-gap-4">
                 {serviceList.map((service, index) => (

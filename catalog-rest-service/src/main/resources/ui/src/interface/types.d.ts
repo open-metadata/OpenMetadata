@@ -311,4 +311,8 @@ declare module 'Models' {
       name: string;
     };
   };
+
+  export type ServiceTypes = 'databaseServices' | 'messagingServices';
+
+  export type ServiceRecord = Record<ServiceTypes, Array<ServiceDataObj>>;
 }
