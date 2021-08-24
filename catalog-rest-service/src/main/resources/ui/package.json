@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@craco/craco": "^5.8.0",
+    "@deuex-solutions/redoc": "^2.0.0-rc.23",
     "@fortawesome/fontawesome-free": "^5.15.1",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
@@ -62,7 +63,6 @@
     "react-syntax-highlighter": "^15.4.4",
     "react-tippy": "^1.4.0",
     "recharts": "^1.8.5",
-    "redoc": "https://github.com/deuex-solutions/redoc/tarball/master",
     "rehype-raw": "^6.0.0",
     "remark-gfm": "^1.0.0",
     "resolve": "1.15.0",
