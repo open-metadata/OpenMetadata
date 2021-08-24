@@ -68,7 +68,7 @@ class MetadataRestTablesSink(Sink):
             if table_and_db.table.viewDefinition is not None and table_and_db.table.viewDefinition != "":
                 table_request.viewDefinition = table_and_db.table.viewDefinition.__root__
 
-            created_table = self.rest.create_or_update_table(table_request)
+            created_table = self.client.create_or_update_table(table_request)
             if table_and_db.table.sampleData is not None:
                 self.client.ingest_sample_data(id=created_table.id, sample_data=table_and_db.table.sampleData)
 
@@ -86,4 +86,4 @@ class MetadataRestTablesSink(Sink):
         return self.status
 
     def close(self):
-        self.client.close()
+        pass

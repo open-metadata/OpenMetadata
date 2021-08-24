@@ -65,4 +65,4 @@ class MetadataRestTopicsSink(Sink):
         return self.status
 
     def close(self):
-        self.close()
+        pass
