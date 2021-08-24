@@ -16,7 +16,7 @@
 */
 
 import { AxiosError } from 'axios';
-import { capitalize, cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash';
 import {
   AggregationType,
   FilterObject,
@@ -290,7 +290,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
                 theme="primary"
                 variant="link"
                 onClick={() => setFieldListVisible((visible) => !visible)}>
-                {capitalize(sortField)}
+                {sortingFields.find((field) => field.value === sortField)?.name}
                 <DropDownIcon />
               </Button>
               {fieldListVisible && (

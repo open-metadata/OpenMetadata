@@ -49,11 +49,11 @@ export const tiers = [
 ];
 
 export const sortingFields = [
-  { name: 'Weekly_stats', value: 'weekly_stats' },
-  { name: 'Daily_stats', value: 'daily_stats' },
-  { name: 'Monthly_stats', value: 'monthly_stats' },
+  { name: 'Weekly Stats', value: 'weekly_stats' },
+  { name: 'Daily Stats', value: 'daily_stats' },
+  { name: 'Monthly Stats', value: 'monthly_stats' },
   {
-    name: 'Last_updated_timestamp',
+    name: 'Last Updated Timestamp',
     value: 'last_updated_timestamp',
   },
 ];
