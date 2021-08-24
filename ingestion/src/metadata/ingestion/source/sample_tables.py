@@ -179,7 +179,7 @@ class GenerateFakeSampleData:
         fake = Faker()
         colData = []
         colList = [column['name'] for column in columns]
-        for i in range(5):
+        for i in range(25):
             row = []
             for column in columns:
                 col_name = column['name']
