@@ -15,8 +15,8 @@
   * limitations under the License.
 */
 
+import { RedocStandalone } from '@deuex-solutions/redoc';
 import React from 'react';
-import { RedocStandalone } from 'redoc';
 
 const SwaggerPage = () => {
   // return (<RedocStandalone
