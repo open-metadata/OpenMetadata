@@ -45,6 +45,7 @@ class AthenaConfig(SQLConnectionConfig):
 
         return url
 
+    
 
 class AthenaSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

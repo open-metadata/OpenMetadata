@@ -49,6 +49,8 @@ class SnowflakeConfig(SQLConnectionConfig):
             connect_string = f"{connect_string}?{params}"
         return connect_string
 
+    
+
 
 class SnowflakeSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

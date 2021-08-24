@@ -15,6 +15,8 @@
 
 from typing import Optional, Tuple
 
+from metadata.generated.schema.entity.data.table import TableData
+
 # This import verifies that the dependencies are available.
 
 from .sql_source import SQLConnectionConfig, SQLSource
@@ -41,8 +43,18 @@ class BigquerySource(SQLSource):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
 
+    def fetch_sample_data(self, schema: str, table: str):
+        query = f"select * from {self.config.project_id}.{schema}.{table} limit 50"
+        results = self.connection.execute(query)
+        cols = list(results.keys())
+        rows = []
+        for r in results:
+            row = list(r)
+            rows.append(row)
+        return TableData(columns=cols, rows=rows)
+
     def standardize_schema_table_names(
-            self, schema: str, table: str
+        self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:

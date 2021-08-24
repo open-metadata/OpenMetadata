@@ -25,21 +25,18 @@ from .status import Status
 class SourceStatus(Status):
     records = 0
 
-    warnings: Dict[str, List[str]] = field(default_factory=dict)
-    failures: Dict[str, List[str]] = field(default_factory=dict)
+    warnings: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
 
     def scanned(self, record: Record) -> None:
         self.records += 1
 
     def warning(self, key: str, reason: str) -> None:
-        if key not in self.warnings:
-            self.warnings[key] = []
-        self.warnings[key].append(reason)
+        self.warnings.append({key:reason})
 
     def failure(self, key: str, reason: str) -> None:
-        if key not in self.failures:
-            self.failures[key] = []
-        self.failures[key].append(reason)
+        self.failures.append({key:reason})
+
 
 
 @dataclass  # type: ignore[misc]

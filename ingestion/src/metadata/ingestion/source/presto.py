@@ -33,6 +33,8 @@ class PrestoConfig(SQLConnectionConfig):
             url += f"?schema={quote_plus(self.database)}"
         return url
 
+    
+
 
 class PrestoSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

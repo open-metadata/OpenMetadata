@@ -50,6 +50,8 @@ class PostgresSourceConfig(SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
+    
+
 
 def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
     """

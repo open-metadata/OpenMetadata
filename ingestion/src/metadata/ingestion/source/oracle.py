@@ -24,6 +24,11 @@ class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
 
+    
+
+    def get_connection_url(self):
+        return super().get_connection_url()
+
 
 class OracleSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
