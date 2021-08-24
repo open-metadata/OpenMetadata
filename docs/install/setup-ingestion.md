@@ -79,7 +79,6 @@ metadata ingest -c ./examples/workflows/redshift.json
 
 ```text
  source env/bin/activate
- export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
  metadata ingest -c ./examples/workflows/bigquery.json
 ```
 

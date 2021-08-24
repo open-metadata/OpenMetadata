@@ -6,6 +6,9 @@
       "host_port": "https://bigquery.googleapis.com",
       "username": "gcpuser@project_id.iam.gserviceaccount.com",
       "service_name": "gcp_bigquery",
+      "options": {
+        "credentials_path": "examples/creds/bigquery-cred.json"
+      },
       "service_type": "BigQuery",
       "filter_pattern": {
         "excludes": [
