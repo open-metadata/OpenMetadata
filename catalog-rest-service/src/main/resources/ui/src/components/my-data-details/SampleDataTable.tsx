@@ -19,7 +19,6 @@ import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { isEven } from '../../utils/CommonUtils';
-
 type Columns = { name: string; dataType: string };
 
 type Props = {
