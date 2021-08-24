@@ -213,6 +213,8 @@ public class SearchResource {
             .field("description")
             .lenient(true))
             .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
             .highlighter(hb)
             .from(from).size(size);
 
