@@ -61,4 +61,4 @@ class LdapRestUsersSink(Sink):
         return self.status
 
     def close(self):
-        pass
+        self.rest.close()

@@ -22,6 +22,7 @@ from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.client import REST, APIError, MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class MetadataRestTopicsSink(Sink):
         self.metadata_config = metadata_config
         self.status = SinkStatus()
         self.wrote_something = False
-        self.rest = REST(self.metadata_config)
+        self.rest = OpenMetadataAPIClient(self.metadata_config)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -64,4 +65,4 @@ class MetadataRestTopicsSink(Sink):
         return self.status
 
     def close(self):
-        pass
+        self.close()

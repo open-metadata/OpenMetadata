@@ -29,7 +29,7 @@ from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 from metadata.utils.helpers import snake_to_camel
 
 
@@ -170,14 +170,14 @@ class PiiProcessor(Processor):
     config: PiiProcessorConfig
     metadata_config: MetadataServerConfig
     status: ProcessorStatus
-    client: REST
+    client: OpenMetadataAPIClient
 
     def __init__(self, ctx: WorkflowContext, config: PiiProcessorConfig, metadata_config: MetadataServerConfig):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.status = ProcessorStatus()
-        self.client = REST(self.metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config)
         self.tags = self.__get_tags()
         self.column_scanner = ColumnNameScanner()
         self.ner_scanner = NERScanner()

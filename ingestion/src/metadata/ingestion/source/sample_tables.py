@@ -29,9 +29,9 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
@@ -41,7 +41,7 @@ TableKey = namedtuple('TableKey', ['schema', 'table_name'])
 
 
 def get_service_or_create(service_json, metadata_config) -> DatabaseService:
-    client = REST(metadata_config)
+    client = OpenMetadataAPIClient(metadata_config)
     service = client.get_database_service(service_json['name'])
     if service is not None:
         return service
@@ -204,7 +204,7 @@ class SampleTablesSource(Source):
         self.status = SampleTableSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = REST(metadata_config)
+        self.client = OpenMetadataAPIClient(metadata_config)
         self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
         self.database = json.load(open(config.sample_schema_folder + "/database.json", 'r'))
         self.tables = json.load(open(config.sample_schema_folder + "/tables.json", 'r'))
@@ -233,7 +233,7 @@ class SampleTablesSource(Source):
             yield table_and_db
 
     def close(self):
-        pass
+        self.close()
 
     def get_status(self):
         return self.status

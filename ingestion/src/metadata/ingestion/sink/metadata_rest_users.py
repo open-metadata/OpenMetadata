@@ -96,4 +96,4 @@ class MetadataRestUsersSink(Sink):
         return self.status
 
     def close(self):
-        pass
+        self.rest.close()

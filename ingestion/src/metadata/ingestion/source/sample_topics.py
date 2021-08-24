@@ -24,11 +24,11 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 
 def get_service_or_create(service_json, metadata_config) -> MessagingService:
-    client = REST(metadata_config)
+    client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_json['name'])
     if service is not None:
         return service
@@ -61,7 +61,7 @@ class SampleTopicsSource(Source):
         self.status = SampleTopicSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = REST(metadata_config)
+        self.client = OpenMetadataAPIClient(metadata_config)
         self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
         self.topics = json.load(open(config.sample_schema_folder + "/topics.json", 'r'))
         self.service = get_service_or_create(self.service_json, metadata_config)
@@ -83,7 +83,7 @@ class SampleTopicsSource(Source):
             yield create_topic
 
     def close(self):
-        pass
+        self.client.close()
 
     def get_status(self):
         return self.status

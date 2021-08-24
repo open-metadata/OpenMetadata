@@ -21,6 +21,7 @@ from metadata.generated.schema.api.services.createMessagingService import Create
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 
 def get_start_and_end(duration):
@@ -39,7 +40,7 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(config, metadata_config) -> DatabaseService:
-    client = REST(metadata_config)
+    client = OpenMetadataAPIClient(metadata_config)
     service = client.get_database_service(config.service_name)
     if service is not None:
         return service
@@ -55,7 +56,7 @@ def get_messaging_service_or_create(service_name: str,
                                     schema_registry_url: str,
                                     brokers: List[str],
                                     metadata_config) -> MessagingService:
-    client = REST(metadata_config)
+    client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_name)
     if service is not None:
         return service

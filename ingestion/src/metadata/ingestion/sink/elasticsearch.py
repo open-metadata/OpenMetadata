@@ -13,7 +13,6 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import inspect
 import logging
 import time
 from typing import Optional
@@ -25,6 +24,7 @@ import metadata
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.api.sink import Sink, SinkStatus
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 from metadata.ingestion.sink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING, \
     TOPIC_ELASTICSEARCH_INDEX_MAPPING
 
@@ -32,7 +32,6 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,7 @@ class ElasticsearchSink(Sink):
         self.metadata_config = metadata_config
         self.ctx = ctx
         self.status = SinkStatus()
-        self.rest = REST(self.metadata_config)
+        self.rest = OpenMetadataAPIClient(self.metadata_config)
         self.elasticsearch_doc_type = '_doc'
         self.elasticsearch_client = Elasticsearch([
             {'host': self.config.es_host_port},
