@@ -32,11 +32,10 @@ class SourceStatus(Status):
         self.records += 1
 
     def warning(self, key: str, reason: str) -> None:
-        self.warnings.append({key:reason})
+        self.warnings.append({key: reason})
 
     def failure(self, key: str, reason: str) -> None:
-        self.failures.append({key:reason})
-
+        self.failures.append({key: reason})
 
 
 @dataclass  # type: ignore[misc]

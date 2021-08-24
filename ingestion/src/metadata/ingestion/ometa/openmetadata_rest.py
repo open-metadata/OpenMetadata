@@ -1,6 +1,22 @@
+#  Licensed to the Apache Software Foundation (ASF) under one or more
+#  contributor license agreements. See the NOTICE file distributed with
+#  this work for additional information regarding copyright ownership.
+#  The ASF licenses this file to You under the Apache License, Version 2.0
+#  (the "License"); you may not use this file except in compliance with
+#  the License. You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
 import logging
 from typing import List
 
+from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
@@ -13,9 +29,17 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig, AuthenticationProvider, \
-    GoogleAuthenticationProvider, OktaAuthenticationProvider, NoOpAuthenticationProvider
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.client import REST, ClientConfig
+
+import google.auth
+import google.auth.transport.requests
+from google.oauth2 import service_account
+import time
+import uuid
+
+from jose import jwt
+from okta.jwt import JWT
 
 logger = logging.getLogger(__name__)
 DatabaseServiceEntities = List[DatabaseService]
@@ -25,8 +49,76 @@ Tags = List[Tag]
 Topics = List[Topic]
 
 
+class MetadataServerConfig(ConfigModel):
+    api_endpoint: str
+    api_version: str = 'v1'
+    retry: int = 3
+    retry_wait: int = 3
+    auth_provider_type: str = None
+    secret_key: str = None
+    org_url: str = None
+    client_id: str = None
+    private_key: str = None
+    email: str = None
+    audience: str = 'https://www.googleapis.com/oauth2/v4/token'
+    auth_header: str = 'X-Catalog-Source'
+
+
+class NoOpAuthenticationProvider(AuthenticationProvider):
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        return "no_token"
+
+
+class GoogleAuthenticationProvider(AuthenticationProvider):
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        credentials = service_account.IDTokenCredentials.from_service_account_file(
+            self.config.secret_key,
+            target_audience=self.config.audience)
+        request = google.auth.transport.requests.Request()
+        credentials.refresh(request)
+        return credentials.token
+
+
+class OktaAuthenticationProvider(AuthenticationProvider):
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
+        claims = {
+            'sub': self.config.client_id,
+            'iat': time.time(),
+            'exp': time.time() + JWT.ONE_HOUR,
+            'iss': self.config.client_id,
+            'aud': self.config.org_url + JWT.OAUTH_ENDPOINT,
+            'jti': uuid.uuid4(),
+            'email': self.config.email
+        }
+        token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
+        return token
+
+
 class OpenMetadataAPIClient(object):
     client: REST
+    _auth_provider: AuthenticationProvider
 
     def __init__(self,
                  config: MetadataServerConfig,
@@ -39,7 +131,10 @@ class OpenMetadataAPIClient(object):
             self._auth_provider: AuthenticationProvider = OktaAuthenticationProvider.create(self.config)
         else:
             self._auth_provider: AuthenticationProvider = NoOpAuthenticationProvider.create(self.config)
-        self.client = REST(config, raw_data, self._auth_provider.auth_token())
+        client_config: ClientConfig = ClientConfig(base_url=self.config.api_endpoint,
+                                                   api_version=self.config.api_version,
+                                                   auth_token=self._auth_provider.auth_token())
+        self.client = REST(client_config)
         self._use_raw_data = raw_data
 
     def get_database_service(self, service_name: str) -> DatabaseService:

@@ -14,15 +14,14 @@
 #  limitations under the License.
 
 import logging
-import os
-from typing import Optional
+from typing import Optional, List
 
 import requests
 from requests.exceptions import HTTPError
 import time
 from enum import Enum
 
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 
 logger = logging.getLogger(__name__)
@@ -71,26 +70,33 @@ class TimeFrame(Enum):
     Sec = "1Sec"
 
 
-class REST(object):
-    def __init__(self,
-                 config: MetadataServerConfig,
-                 raw_data: bool = False,
-                 auth_token: Optional[str] = None
-                 ):
-        """
+class ClientConfig(ConfigModel):
+    """
         :param raw_data: should we return api response raw or wrap it with
-                         Entity objects.
-        """
+                             Entity objects.
+    """
+    base_url: str
+    api_version: Optional[str] = "v1"
+    retry: Optional[int] = 3
+    retry_wait: Optional[int] = 30
+    retry_codes: List[int] = [429, 504]
+    auth_token: Optional[str] = None
+    auth_header: Optional[str] = None
+    raw_data: Optional[bool] = False
+    allow_redirects: Optional[bool] = False
+
+
+class REST(object):
+    def __init__(self, config: ClientConfig):
         self.config = config
-        self._base_url: URL = URL(self.config.api_endpoint)
+        self._base_url: URL = URL(self.config.base_url)
         self._api_version = get_api_version(self.config.api_version)
         self._session = requests.Session()
-        self._use_raw_data = raw_data
+        self._use_raw_data = self.config.raw_data
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
-        self._retry_codes = [int(o) for o in os.environ.get(
-            'OMETA_RETRY_CODES', '429,504').split(',')]
-        self._auth_token = auth_token
+        self._retry_codes = self.config.retry_codes
+        self._auth_token = self.config.auth_token
 
     def _request(self,
                  method,
@@ -105,14 +111,13 @@ class REST(object):
         headers = {'Content-type': 'application/json'}
         if self._auth_token is not None:
             headers[self.config.auth_header] = self._auth_token
-
         opts = {
             'headers': headers,
             # Since we allow users to set endpoint URL via env var,
             # human error to put non-SSL endpoint could exploit
             # uncanny issues in non-GET request redirecting http->https.
             # It's better to fail early if the URL isn't right.
-            'allow_redirects': False,
+            'allow_redirects': self.config.allow_redirects,
         }
         if method.upper() == 'GET':
             opts['params'] = data
