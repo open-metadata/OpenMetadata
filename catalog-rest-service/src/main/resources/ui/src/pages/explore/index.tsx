@@ -26,14 +26,23 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import { Button } from '../../components/buttons/Button/Button';
 import Error from '../../components/common/error/Error';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
+import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
-import { ERROR404, ERROR500, PAGE_SIZE } from '../../constants/constants';
+import {
+  ERROR404,
+  ERROR500,
+  PAGE_SIZE,
+  sortingFields,
+  sortingOrder,
+} from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
 import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getFilterString } from '../../utils/FilterUtils';
+import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { getAggrWithDefaultValue } from './explore.constants';
 import { Params } from './explore.interface';
 
@@ -75,6 +84,10 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
+  const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
+  const [orderListVisible, setOrderListVisible] = useState<boolean>(false);
+  const [sortField, setSortField] = useState<string>(sortingFields[3].value);
+  const [sortOrder, setSortOrder] = useState<string>(sortingOrder[1].value);
   const isMounting = useRef(true);
 
   const handleSelectedFilter = (
@@ -162,25 +175,33 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       currentPage,
       PAGE_SIZE,
-      getFilterString(filters)
+      getFilterString(filters),
+      sortField,
+      sortOrder
     );
     const serviceTypeAgg = searchData(
       searchText,
       currentPage,
       0,
-      getFilterString(filters, ['service type'])
+      getFilterString(filters, ['service type']),
+      sortField,
+      sortOrder
     );
     const tierAgg = searchData(
       searchText,
       currentPage,
       0,
-      getFilterString(filters, ['tier'])
+      getFilterString(filters, ['tier']),
+      sortField,
+      sortOrder
     );
     const tagAgg = searchData(
       searchText,
       currentPage,
       0,
-      getFilterString(filters, ['tags'])
+      getFilterString(filters, ['tags']),
+      sortField,
+      sortOrder
     );
 
     Promise.all([searchResults, serviceTypeAgg, tierAgg, tagAgg])
@@ -240,6 +261,73 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     return facetFilters;
   };
 
+  const handleFieldDropDown = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    setSortField(value || sortingFields[3].value);
+    setFieldListVisible(false);
+  };
+  const handleOrderDropDown = (
+    _e: React.MouseEvent<HTMLElement, MouseEvent>,
+    value?: string
+  ) => {
+    setSortOrder(value || sortingOrder[1].value);
+    setOrderListVisible(false);
+  };
+
+  const getSortingElements = () => {
+    return (
+      <div className="tw-flex tw-justify-between">
+        <div />
+        <div className="tw-flex tw-gap-2">
+          <div className="tw-mt-2 tw-mb-4">
+            <span className="tw-mr-2">Sort by :</span>
+            <span className="tw-relative">
+              <Button
+                className="tw-underline"
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => setFieldListVisible((visible) => !visible)}>
+                {sortingFields.find((field) => field.value === sortField)?.name}
+                <DropDownIcon />
+              </Button>
+              {fieldListVisible && (
+                <DropDownList
+                  dropDownList={sortingFields}
+                  value={sortField}
+                  onSelect={handleFieldDropDown}
+                />
+              )}
+            </span>
+          </div>
+          <div className="tw-mt-2 tw-mb-4">
+            <span className="tw-mr-2">Order by :</span>
+            <span className="tw-relative">
+              <Button
+                className="tw-underline"
+                size="custom"
+                theme="primary"
+                variant="link"
+                onClick={() => setOrderListVisible((visible) => !visible)}>
+                {sortingOrder.find((order) => order.value === sortOrder)?.name}
+                <DropDownIcon />
+              </Button>
+              {orderListVisible && (
+                <DropDownList
+                  dropDownList={sortingOrder}
+                  value={sortOrder}
+                  onSelect={handleOrderDropDown}
+                />
+              )}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   useEffect(() => {
     setSearchText(searchQuery || '');
     setCurrentPage(1);
@@ -253,7 +341,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   useEffect(() => {
     fetchTableData(true);
-  }, [searchText]);
+  }, [searchText, sortField, sortOrder]);
 
   useEffect(() => {
     if (!isMounting.current) {
@@ -290,8 +378,9 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           isLoading={isLoading}
           paginate={paginate}
           searchText={searchText}
-          totalValue={totalNumberOfValue}
-        />
+          totalValue={totalNumberOfValue}>
+          {getSortingElements()}
+        </SearchedData>
       )}
     </>
   );
