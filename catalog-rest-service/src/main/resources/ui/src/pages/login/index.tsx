@@ -52,7 +52,7 @@ const SigninPage = () => {
       case AuthTypes.AUTH0: {
         return <button className="tw-signin-button">Sign in with Auth0</button>;
       }
-      // TODO: Add case AuthTypes.GITHUB after adding support for Github SSO
+      // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
       default: {
         return <></>;
       }
