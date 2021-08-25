@@ -77,9 +77,9 @@ class MetadataRestTablesSink(Sink):
                 '{}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(table_and_db.table.name, table_and_db.database.name))
+                "Failed to ingest table {} in database {} ".format(table_and_db.table.name.__root__, table_and_db.database.name.__root__))
             logger.error(err)
-            self.status.failure(table_and_db.table.name)
+            self.status.failure(table_and_db.table.name.__root__)
 
     def get_status(self):
         return self.status

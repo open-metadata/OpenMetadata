@@ -1,0 +1,48 @@
+{
+  "source": {
+    "type": "bigquery-usage",
+    "config": {
+      "project_id": "arched-champion-319818",
+      "username": "gcpuser@arched-champion-319818.iam.gserviceaccount.com",
+      "host_port": "https://bigquery.googleapis.com",
+      "service_name": "gcp_bigquery",
+      "duration": 2,
+      "options": {
+        "credentials_path": "examples/creds/bigquery-cred.json"
+      },
+      "service_type": "BigQuery"
+    }
+  },
+  "processor": {
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
+  },
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/bigquery_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/bigquery_usage"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
