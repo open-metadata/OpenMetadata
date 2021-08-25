@@ -247,9 +247,13 @@
   .custom-checkbox {
     @apply tw-form-checkbox tw-text-primary tw-rounded-sm tw-border tw-border-text hover:tw-border-primary focus:tw-border-primary;
   }
-  .custom-checkbox:not(:checked) {
+  .custom-checkbox:not(:checked):not(:disabled) {
     @apply hover:tw-bg-primary-lite;
   }
+  .custom-checkbox:disabled {
+    @apply tw-opacity-50;
+  }
+
   .custom-checkbox:checked ~ .custom-checkbox-label {
     @apply tw-text-primary tw-font-normal;
   }
