@@ -95,7 +95,12 @@ public class JwtFilter implements ContainerRequestFilter {
     } else {
       throw new AuthenticationException("Invalid JWT token, \"email\" or \"subject\" not present.");
     }
-    String userName = authorizedEmail.split("@")[0];
+    String userName;
+    if (authorizedEmail.contains("@")) {
+      userName = authorizedEmail.split("@")[0];
+    } else {
+      userName = authorizedEmail;
+    }
     //Setting Security Context
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName);
     String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
