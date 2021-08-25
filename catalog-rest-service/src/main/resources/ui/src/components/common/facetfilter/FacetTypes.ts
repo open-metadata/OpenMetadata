@@ -34,4 +34,5 @@ export type FilterContainerProp = {
   onSelect: (checked: boolean, name: string, type: keyof FilterObject) => void;
   isSelected: boolean;
   type: keyof FilterObject;
+  isDisabled: boolean;
 };

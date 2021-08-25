@@ -18,7 +18,7 @@
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../../constants/constants';
-import { getBadgeName, getUsagePercentile } from '../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -37,7 +37,6 @@ const TableDataCard: FunctionComponent<Props> = ({
   name,
   owner = '--',
   description,
-  tableType,
   tier = 'No Tier',
   usage,
   serviceType,
@@ -45,10 +44,10 @@ const TableDataCard: FunctionComponent<Props> = ({
   tags,
 }: Props) => {
   const percentile = getUsagePercentile(usage || 0);
-  const badgeName = getBadgeName(tableType);
+
   const OtherDetails = [
     { key: 'Owner', value: owner },
-    { key: 'Service Type', value: serviceType },
+    { key: 'Service', value: serviceType },
     { key: 'Usage', value: percentile },
     { key: 'Tier', value: tier },
   ];
@@ -62,14 +61,6 @@ const TableDataCard: FunctionComponent<Props> = ({
               {name + ' '}
             </button>
           </Link>
-          <span
-            className={
-              'tw-ml-2 tw-text-xs tw-uppercase tw-tracking-widest tw-rounded tw-px-2 tw-py-1 badge-' +
-              badgeName
-            }
-            data-testid="badge">
-            {badgeName}
-          </span>
         </h6>
       </div>
       <div className="tw-pt-2">
