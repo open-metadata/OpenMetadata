@@ -25,7 +25,8 @@ export const searchData: Function = (
   size: number,
   filters: string,
   sortField: string,
-  sortOrder: string
+  sortOrder: string,
+  searchIndex: string
 ): Promise<AxiosResponse> => {
   const start = (from - 1) * size;
   const query = queryString ? `*${queryString}*` : '*';
@@ -35,7 +36,7 @@ export const searchData: Function = (
       filters ? ` AND ${filters}` : ''
     }&from=${start}&size=${size}${sortField ? `&sort_field=${sortField}` : ''}${
       sortOrder ? `&sort_order=${sortOrder}` : ''
-    }`
+    }${searchIndex ? `&index=${searchIndex}` : ''}`
   );
 };
 

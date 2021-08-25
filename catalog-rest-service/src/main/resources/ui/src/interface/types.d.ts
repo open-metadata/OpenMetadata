@@ -22,10 +22,7 @@ declare module 'Models' {
     };
   };
   export type FilterObject = {
-    tags: Array<string>;
-    // service: Array<string>;
-    'service type': Array<string>;
-    tier: Array<string>;
+    [key: string]: Array<string>;
   };
   export type PaginationProps = {
     sizePerPage: number;
