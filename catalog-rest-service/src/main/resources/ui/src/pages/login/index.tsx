@@ -49,16 +49,10 @@ const SigninPage = () => {
           </button>
         );
       }
-      case AuthTypes.GITHUB: {
-        return (
-          <button className="tw-signin-button tw-text-white tw-bg-gray-800 hover:tw-bg-gray-700">
-            Sign in with Github
-          </button>
-        );
-      }
       case AuthTypes.AUTH0: {
         return <button className="tw-signin-button">Sign in with Auth0</button>;
       }
+      // TODO: Add case AuthTypes.GITHUB after adding support for Github SSO
       default: {
         return <></>;
       }
