@@ -178,8 +178,8 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTableName);
-    hb.preTags("<b>");
-    hb.postTags("</b>");
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
             .field("table_name", 5.0f)
             .field("description")
@@ -206,13 +206,15 @@ public class SearchResource {
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTableName);
-    hb.preTags("<b>");
-    hb.postTags("</b>");
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
             .field("topic_name", 5.0f)
             .field("description")
             .lenient(true))
             .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
             .highlighter(hb)
             .from(from).size(size);
 
