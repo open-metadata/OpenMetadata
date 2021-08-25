@@ -205,6 +205,10 @@ declare module 'Models' {
     service?: string;
     serviceType?: string;
     tier: string;
+    highlight?: {
+      description: string[];
+      table_name: string[];
+    };
   };
 
   export type NewUser = {

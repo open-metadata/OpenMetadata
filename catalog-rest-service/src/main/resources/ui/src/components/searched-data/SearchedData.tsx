@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { isEmpty } from 'lodash';
 import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
@@ -54,6 +55,38 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   totalValue,
   fetchLeftPanel,
 }) => {
+  const highlightSearchResult = () => {
+    return data.map((table, index) => {
+      const description = isEmpty(table.highlight?.description)
+        ? table.description
+        : table.highlight?.description.join(' ');
+
+      const name = isEmpty(table.highlight?.table_name)
+        ? table.name
+        : table.highlight?.table_name.join(' ') || table.name;
+
+      return (
+        <div className="tw-mb-3" key={index}>
+          <TableDataCard
+            description={description}
+            fullyQualifiedName={table.fullyQualifiedName}
+            name={name}
+            owner={getOwnerFromId(table.owner)?.name}
+            serviceType={table.serviceType || '--'}
+            tableType={table.tableType}
+            tags={table.tags}
+            tier={
+              (table.tier || getTierFromSearchTableTags(table.tags))?.split(
+                '.'
+              )[1]
+            }
+            usage={table.weeklyPercentileRank}
+          />
+        </div>
+      );
+    });
+  };
+
   return (
     <>
       <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
@@ -72,27 +105,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                   ) : null}
                   {data.length > 0 ? (
                     <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                      {data.map((table, index) => (
-                        <div className="tw-mb-3" key={index}>
-                          <TableDataCard
-                            description={table.description}
-                            fullyQualifiedName={table.fullyQualifiedName}
-                            name={table.name}
-                            owner={getOwnerFromId(table.owner)?.name}
-                            serviceType={table.serviceType || '--'}
-                            tableType={table.tableType}
-                            tags={table.tags}
-                            tier={
-                              (
-                                table.tier ||
-                                getTierFromSearchTableTags(table.tags)
-                              )?.split('.')[1]
-                            }
-                            usage={table.weeklyPercentileRank}
-                          />
-                        </div>
-                      ))}
-
+                      {highlightSearchResult()}
                       {totalValue > PAGE_SIZE && data.length > 0 && (
                         <Pagination
                           currentPage={currentPage}
