@@ -43,12 +43,13 @@ const TableDataCard: FunctionComponent<Props> = ({
   fullyQualifiedName,
   tags,
 }: Props) => {
-  const percentile = getUsagePercentile(usage || 0);
-
   const OtherDetails = [
     { key: 'Owner', value: owner },
     { key: 'Service', value: serviceType },
-    { key: 'Usage', value: percentile },
+    {
+      key: 'Usage',
+      value: usage !== undefined ? getUsagePercentile(usage) : usage,
+    },
     { key: 'Tier', value: tier },
   ];
 
