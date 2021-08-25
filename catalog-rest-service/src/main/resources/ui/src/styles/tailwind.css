@@ -291,4 +291,8 @@
   .disable-cta * {
     @apply tw-cursor-not-allowed !important;
   }
+
+  .text-highlighter {
+    @apply tw-bg-warning-lite tw-p-1;
+  }
 }

@@ -30,6 +30,7 @@ const success = '#51C41A';
 const error = '#FF4C3B';
 const info = '#1890FF';
 const warning = '#FFC34E';
+const warningBG = '#FFC34E40';
 
 // Background colors
 const bodyBG = '#FCFBFE';
@@ -89,6 +90,7 @@ module.exports = {
         success: success,
         error: error,
         warning: warning,
+        'warning-lite': warningBG,
         info: info,
       },
       fontFamily: {

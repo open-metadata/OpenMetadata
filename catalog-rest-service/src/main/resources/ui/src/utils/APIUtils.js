@@ -21,6 +21,7 @@ export const formatDataResponse = (hits) => {
     newData.tableEntity = hit._source.table_entity;
     newData.tier = hit._source.tier;
     newData.owner = hit._source.owner;
+    newData.highlight = hit.highlight;
 
     return newData;
   });
