@@ -47,7 +47,7 @@
     },
     "minimumInSyncReplicas" : {
       "description": "Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration.",
-      "type" : "integer"
+      "type": "integer"
     },
     "retentionSize": {
       "description": "Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.",
@@ -59,7 +59,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "tags": {
-      "description": "Tags for this table",
+      "description": "Tags for this topic",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"

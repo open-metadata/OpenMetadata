@@ -1,0 +1,126 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/chart.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Chart",
+  "description": "This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard",
+  "type": "object",
+  "definitions": {
+    "chartType": {
+      "javaType": "org.openmetadata.catalog.type.ChartType",
+      "description": "This schema defines the type used for describing different types of charts",
+      "type": "string",
+      "enum": [
+        "Line",
+        "Table",
+        "Bar",
+        "Area",
+        "Pie",
+        "Histogram",
+        "Scatter",
+        "Text",
+        "BoxPlot",
+        "Other"
+      ],
+      "javaEnums": [
+        {
+          "name": "Line"
+        },
+        {
+          "name": "Table"
+        },
+        {
+          "name": "Bar"
+        },
+        {
+          "name": "Area"
+        },
+        {
+          "name": "Pie"
+        },
+        {
+          "name": "Histogram"
+        },
+        {
+          "name": "Scatter"
+        },
+        {
+          "name": "Text"
+        },
+        {
+          "name": "BoxPlot"
+        },
+        {
+          "name": "Other"
+        }
+      ]
+    }
+  },
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies a chart instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this Chart.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "fullyQualifiedName": {
+      "description": "A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of the dashboard, what it is, and how to use it.",
+      "type": "string"
+    },
+    "chartId": {
+      "description": "Unique Identifier of the Chart from the Source Service.",
+      "type": "string"
+    },
+    "chartType": {
+      "$ref": "#/definitions/chartType"
+    },
+    "chartUrl" : {
+      "description": "Chart URL, pointing to its own Service URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this dashboard.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tables": {
+      "description": "Link to table used in this chart.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "followers": {
+      "description": "Followers of this chart.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this chart.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "service" : {
+      "description": "Link to service where this dashboard is hosted in.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "usageSummary" : {
+      "description": "Latest usage information for this database.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    }
+  },
+  "required": ["id", "name", "service"]
+}

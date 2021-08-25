@@ -1,5 +1,5 @@
 {
-  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/services/updateMessagingService.json",
+  "$id": "https://open-metadata.org/schema/api/services/updateMessagingService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Update Messaging service entity request",
   "description": "Update Messaging service entity request",

@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.topics;
+package org.openmetadata.catalog.resources.charts;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -26,10 +26,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateTopic;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -74,48 +76,48 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-@Path("/v1/topics")
-@Api(value = "Topic data asset collection", tags = "Topic data asset collection")
+@Path("/v1/charts")
+@Api(value = "Chart data asset collection", tags = "Chart data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "topics", repositoryClass = "org.openmetadata.catalog.jdbi3.TopicRepository")
-public class TopicResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicResource.class);
-  private static final String TOPIC_COLLECTION_PATH = "v1/topics/";
-  private final TopicRepository dao;
+@Collection(name = "topics", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository")
+public class ChartResource {
+  private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
+  private static final String CHART_COLLECTION_PATH = "v1/charts/";
+  private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, ref.getId()));
+    ref.withHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, ref.getId()));
   }
 
-  public static List<Topic> addHref(UriInfo uriInfo, List<Topic> topics) {
-    Optional.ofNullable(topics).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-    return topics;
+  public static List<Chart> addHref(UriInfo uriInfo, List<Chart> charts) {
+    Optional.ofNullable(charts).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    return charts;
   }
 
-  public static Topic addHref(UriInfo uriInfo, Topic topic) {
-    topic.setHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, topic.getId()));
-    EntityUtil.addHref(uriInfo, topic.getOwner());
-    EntityUtil.addHref(uriInfo, topic.getService());
-    EntityUtil.addHref(uriInfo, topic.getFollowers());
-    return topic;
+  public static Chart addHref(UriInfo uriInfo, Chart chart) {
+    chart.setHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, chart.getId()));
+    EntityUtil.addHref(uriInfo, chart.getOwner());
+    EntityUtil.addHref(uriInfo, chart.getService());
+    EntityUtil.addHref(uriInfo, chart.getFollowers());
+    return chart;
   }
 
   @Inject
-  public TopicResource(TopicRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TopicRepository must not be null");
+  public ChartResource(ChartRepository dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "ChartRepository must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }
 
-  static class TopicList extends ResultList<Topic> {
+  static class ChartList extends ResultList<Chart> {
     @SuppressWarnings("unused")
-    TopicList() {
+    ChartList() {
       // Empty constructor needed for deserialization
     }
 
-    TopicList(List<Topic> data, int limitParam, String beforeCursor,
+    ChartList(List<Chart> data, int limitParam, String beforeCursor,
               String afterCursor) throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, limitParam, beforeCursor, afterCursor);
     }
@@ -127,22 +129,22 @@ public class TopicResource {
 
   @GET
   @Valid
-  @Operation(summary = "List topics", tags = "topics",
-          description = "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields` " +
+  @Operation(summary = "List charts", tags = "charts",
+          description = "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "List of topics",
+                  @ApiResponse(responseCode = "200", description = "List of charts",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = TopicList.class)))
+                                  schema = @Schema(implementation = ChartList.class)))
           })
-  public TopicList list(@Context UriInfo uriInfo,
+  public ChartList list(@Context UriInfo uriInfo,
                         @Context SecurityContext securityContext,
                         @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter topics by service name",
-                                schema = @Schema(type = "string", example = "kafkaWestCoast"))
+                        @Parameter(description = "Filter charts by service name",
+                                schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
                         @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
@@ -159,42 +161,42 @@ public class TopicResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Topic> topics;
+    List<Chart> charts;
     String beforeCursor = null, afterCursor = null;
 
     // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
     // beforeCursor is not null. Remove the extra entry before returning results.
     if (before != null) { // Reverse paging
-      topics = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
-      if (topics.size() > limitParam) {
-        topics.remove(0);
-        beforeCursor = topics.get(0).getFullyQualifiedName();
+      charts = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
+      if (charts.size() > limitParam) {
+        charts.remove(0);
+        beforeCursor = charts.get(0).getFullyQualifiedName();
       }
-      afterCursor = topics.get(topics.size() - 1).getFullyQualifiedName();
+      afterCursor = charts.get(charts.size() - 1).getFullyQualifiedName();
     } else { // Forward paging or first page
-      topics = dao.listAfter(fields, serviceParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : topics.get(0).getFullyQualifiedName();
-      if (topics.size() > limitParam) {
-        topics.remove(limitParam);
-        afterCursor = topics.get(limitParam - 1).getFullyQualifiedName();
+      charts = dao.listAfter(fields, serviceParam, limitParam + 1, after);
+      beforeCursor = after == null ? null : charts.get(0).getFullyQualifiedName();
+      if (charts.size() > limitParam) {
+        charts.remove(limitParam);
+        afterCursor = charts.get(limitParam - 1).getFullyQualifiedName();
       }
     }
-    addHref(uriInfo, topics);
-    return new TopicList(topics, limitParam, beforeCursor, afterCursor);
+    addHref(uriInfo, charts);
+    return new ChartList(charts, limitParam, beforeCursor, afterCursor);
   }
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a topic", tags = "topics",
-          description = "Get a topic by `id`.",
+  @Operation(summary = "Get a Chart", tags = "charts",
+          description = "Get a chart by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The topic",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Topic.class))),
+                                  schema = @Schema(implementation = Dashboard.class))),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
-  public Topic get(@Context UriInfo uriInfo, @PathParam("id") String id,
+  public Chart get(@Context UriInfo uriInfo, @PathParam("id") String id,
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
@@ -205,12 +207,12 @@ public class TopicResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a topic by name", tags = "topics",
-          description = "Get a topic by fully qualified name.",
+  @Operation(summary = "Get a chart by name", tags = "charts",
+          description = "Get a chart by fully qualified name.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The topic",
+                  @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Dashboard.class))),
+                                  schema = @Schema(implementation = Chart.class))),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
   public Response getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
@@ -219,44 +221,41 @@ public class TopicResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Topic topic = dao.getByName(fqn, fields);
-    addHref(uriInfo, topic);
-    return Response.ok(topic).build();
+    Chart chart = dao.getByName(fqn, fields);
+    addHref(uriInfo, chart);
+    return Response.ok(chart).build();
   }
 
   @POST
-  @Operation(summary = "Create a topic", tags = "topics",
-          description = "Create a topic under an existing `service`.",
+  @Operation(summary = "Create a chart", tags = "charts",
+          description = "Create a chart under an existing `service`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The topic",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Topic.class))),
+                                  schema = @Schema(implementation = Chart.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTopic create) throws IOException {
+                         @Valid CreateChart create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withTags(create.getTags());
-    topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
-    return Response.created(topic.getHref()).entity(topic).build();
+    Chart chart =
+            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+                    .withService(create.getService()).withChartId(create.getChartId())
+                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
+                    .withTables(create.getTables()).withTags(create.getTags())
+                    .withOwner(create.getOwner());
+    chart = addHref(uriInfo, dao.create(chart, create.getService(), create.getOwner()));
+    return Response.created(chart.getHref()).entity(chart).build();
   }
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a topic", tags = "topics",
-          description = "Update an existing topic using JsonPatch.",
+  @Operation(summary = "Update a chart", tags = "charts",
+          description = "Update an existing chart using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Topic updateDescription(@Context UriInfo uriInfo,
+  public Chart updateDescription(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @PathParam("id") String id,
                                  @RequestBody(description = "JsonPatch with array of operations",
@@ -267,67 +266,64 @@ public class TopicResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Topic topic = dao.get(id, fields);
+    Chart chart = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(topic));
-    topic = dao.patch(id, patch);
-    return addHref(uriInfo, topic);
+            EntityUtil.getEntityReference(chart));
+    chart = dao.patch(id, patch);
+    return addHref(uriInfo, chart);
   }
 
   @PUT
-  @Operation(summary = "Create or update topic", tags = "topics",
-          description = "Create a topic, it it does not exist or update an existing topic.",
+  @Operation(summary = "Create or update chart", tags = "charts",
+          description = "Create a chart, it it does not exist or update an existing chart.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The updated topic ",
+                  @ApiResponse(responseCode = "200", description = "The updated chart ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Topic.class)))
+                                  schema = @Schema(implementation = Chart.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTopic create) throws IOException {
+                                 @Valid CreateChart create) throws IOException {
 
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withTags(create.getTags());
-    PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
-    topic = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(topic).build();
+    Chart chart =
+            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+                    .withService(create.getService()).withChartId(create.getChartId())
+                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
+                    .withTables(create.getTables()).withTags(create.getTags())
+                    .withOwner(create.getOwner());
+    PutResponse<Chart> response = dao.createOrUpdate(chart, create.getService(), create.getOwner());
+    chart = addHref(uriInfo, response.getEntity());
+    return Response.status(response.getStatus()).entity(chart).build();
   }
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "topics",
-          description = "Add a user identified by `userId` as followed of this topic",
+  @Operation(summary = "Add a follower", tags = "charts",
+          description = "Add a user identified by `userId` as followed of this chart",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the topic", schema = @Schema(type = "string"))
+                              @Parameter(description = "Id of the chart", schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
-    Topic table = dao.get(id, fields);
-    return Response.status(status).entity(table).build();
+    Chart chart = dao.get(id, fields);
+    return Response.status(status).entity(chart).build();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "topics",
+  @Operation(summary = "Remove a follower", tags = "charts",
           description = "Remove the user identified `userId` as a follower of the topic.")
-  public Topic deleteFollower(@Context UriInfo uriInfo,
+  public Chart deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the topic",
+                              @Parameter(description = "Id of the chart",
                                       schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
@@ -335,18 +331,18 @@ public class TopicResource {
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
-    Topic topic = dao.get(id, fields);
-    return addHref(uriInfo, topic);
+    Chart chart = dao.get(id, fields);
+    return addHref(uriInfo, chart);
   }
 
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a topic", tags = "topics",
-          description = "Delete a topic by `id`.",
+  @Operation(summary = "Delete a Chart", tags = "charts",
+          description = "Delete a chart by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(id);
