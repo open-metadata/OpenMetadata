@@ -2,9 +2,9 @@
   "source": {
     "type": "bigquery-usage",
     "config": {
-      "project_id": "arched-champion-319818",
-      "username": "gcpuser@arched-champion-319818.iam.gserviceaccount.com",
+      "project_id": "project_id",
       "host_port": "https://bigquery.googleapis.com",
+      "username": "gcpuser@project_id.iam.gserviceaccount.com",
       "service_name": "gcp_bigquery",
       "duration": 2,
       "options": {
