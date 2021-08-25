@@ -9,7 +9,7 @@
       "service_name": "aws_redshift",
       "service_type": "Redshift",
       "filter_pattern": {
-        "excludes": ["information_schema.*"]
+        "excludes": ["information_schema.*","[\\w]*event_vw.*"]
       }
     }
   },
