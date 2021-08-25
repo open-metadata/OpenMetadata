@@ -18,6 +18,7 @@
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../../constants/constants';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
@@ -59,7 +60,7 @@ const TableDataCard: FunctionComponent<Props> = ({
         <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
           <Link to={getDatasetDetailsPath(fullyQualifiedName)}>
             <button className="tw-text-grey-body tw-font-medium">
-              {name + ' '}
+              {stringToHTML(name)}
             </button>
           </Link>
         </h6>
