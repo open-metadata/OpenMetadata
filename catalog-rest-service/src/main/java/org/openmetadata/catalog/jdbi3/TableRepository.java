@@ -80,7 +80,7 @@ public abstract class TableRepository {
           "owner,columns,database,tags,tableConstraints");
   // Table fields that can be updated in a PUT request
   private static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags, tableConstraints");
+          "owner,columns,database,tags,tableConstraints");
 
   @CreateSqlObject
   abstract DatabaseDAO databaseDAO();

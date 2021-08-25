@@ -78,8 +78,6 @@ public abstract class ChartRepository {
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
 
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
 
   @Transaction
   public List<Chart> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,

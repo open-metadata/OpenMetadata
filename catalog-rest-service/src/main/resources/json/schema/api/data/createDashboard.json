@@ -28,6 +28,14 @@
       },
       "default": null
     },
+    "tags": {
+      "description": "Tags for this chart",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "owner": {
       "description": "Owner of this database",
       "$ref": "../../type/entityReference.json"

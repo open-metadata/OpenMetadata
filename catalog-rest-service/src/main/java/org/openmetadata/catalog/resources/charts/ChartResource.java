@@ -27,12 +27,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
-import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
-import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -80,7 +77,7 @@ import java.util.UUID;
 @Api(value = "Chart data asset collection", tags = "Chart data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "topics", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository")
+@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository")
 public class ChartResource {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
@@ -146,15 +143,15 @@ public class ChartResource {
                         @Parameter(description = "Filter charts by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
+                        @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
                         @Min(1)
                         @Max(1000000)
                         @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of topics before this cursor",
+                        @Parameter(description = "Returns list of charts before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of topics after this cursor",
+                        @Parameter(description = "Returns list of charts after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException {
@@ -191,10 +188,10 @@ public class ChartResource {
   @Operation(summary = "Get a Chart", tags = "charts",
           description = "Get a chart by `id`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The topic",
+                  @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Dashboard.class))),
-                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Chart get(@Context UriInfo uriInfo, @PathParam("id") String id,
                       @Context SecurityContext securityContext,
@@ -213,7 +210,7 @@ public class ChartResource {
                   @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Chart.class))),
-                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Response getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
                             @Context SecurityContext securityContext,
@@ -230,7 +227,7 @@ public class ChartResource {
   @Operation(summary = "Create a chart", tags = "charts",
           description = "Create a chart under an existing `service`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The topic",
+                  @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Chart.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
@@ -302,7 +299,7 @@ public class ChartResource {
           description = "Add a user identified by `userId` as followed of this chart",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
@@ -320,7 +317,7 @@ public class ChartResource {
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "charts",
-          description = "Remove the user identified `userId` as a follower of the topic.")
+          description = "Remove the user identified `userId` as a follower of the chart.")
   public Chart deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the chart",
