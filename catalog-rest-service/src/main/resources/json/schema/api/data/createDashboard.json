@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createDatabase.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Dashboard entity request",
+  "description": "Create Dashboard entity request",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this dashboard.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of the database instance. What it has and how to use it.",
+      "type": "string"
+    },
+    "dashboardUrl" : {
+      "description": "Dashboard URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "charts": {
+      "description": "All the charts included in this Dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this chart",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to the database service where this database is hosted in",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "service"]
+}

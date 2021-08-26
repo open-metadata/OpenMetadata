@@ -21,6 +21,7 @@ from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class MetadataSource(Source):
         self.metadata_config = metadata_config
         self.status = SourceStatus()
         self.wrote_something = False
-        self.client = REST(self.metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config)
         self.tables = None
         self.topics = None
 

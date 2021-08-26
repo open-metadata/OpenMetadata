@@ -17,18 +17,21 @@
 package org.openmetadata.catalog.util;
 
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseDAO;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO;
@@ -41,9 +44,12 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
+import org.openmetadata.catalog.resources.charts.ChartResource;
+import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
@@ -127,8 +133,17 @@ public final class EntityUtil {
       case Entity.TOPIC:
         TopicResource.addHref(uriInfo, ref);
         break;
+      case Entity.CHART:
+        ChartResource.addHref(uriInfo, ref);
+        break;
+      case Entity.DASHBOARD:
+        DashboardResource.addHref(uriInfo, ref);
+        break;
       case Entity.MESSAGING_SERVICE:
         MessagingServiceResource.addHref(uriInfo, ref);
+        break;
+      case Entity.DASHBOARD_SERVICE:
+        DashboardServiceResource.addHref(uriInfo, ref);
         break;
       default:
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
@@ -211,18 +226,19 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO tableDAO,
-                                                         DatabaseDAO databaseDAO,
-                                                         MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                         ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
+                                                         DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
+                                                         DashboardDAO dashboardDAO, ReportDAO reportDAO,
+                                                         TopicDAO topicDAO, ChartDAO chartDAO) throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO);
+      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
     }
     return list;
   }
 
   public static EntityReference getEntityReference(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+          throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
     String id = ref.getId().toString();
@@ -235,7 +251,7 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
       Metrics instance = EntityUtil.validate(id, metricsDAO.findById(id), Metrics.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
-    } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       Dashboard instance = EntityUtil.validate(id, dashboardDAO.findById(id), Dashboard.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
@@ -244,20 +260,26 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
       Topic instance = EntityUtil.validate(id, topicDAO.findById(id), Topic.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
+    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
+      Chart instance = EntityUtil.validate(id, chartDAO.findById(id), Chart.class);
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
   public static EntityReference getEntityReference(String entity, UUID id, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+          throws IOException {
     EntityReference ref = new EntityReference().withId(id).withType(entity);
-    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO);
+    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
-                                                         ReportDAO reportDAO, TopicDAO topicDAO) throws IOException {
+                                                         ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         DashboardDAO dashboardDAO)
+          throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TABLE)
@@ -277,6 +299,14 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
       Topic instance = EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TOPIC)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
+      Chart instance = EntityUtil.validate(fqn, chartDAO.findByFQN(fqn), Chart.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.CHART)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
+      Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DASHBOARD)
               .withDescription(instance.getDescription());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
@@ -307,6 +337,18 @@ public final class EntityUtil {
     } else if (clazz.toString().toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
       Topic instance = (Topic) entity;
       return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.CHART.toLowerCase())) {
+      Chart instance = (Chart) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
+      Dashboard instance = (Dashboard) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
+      MessagingService instance = (MessagingService) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD_SERVICE.toLowerCase())) {
+      DashboardService instance = (DashboardService) entity;
+      return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
             String.format("Failed to find entity class %s", clazz.toString())));
@@ -320,6 +362,11 @@ public final class EntityUtil {
   public static EntityReference getEntityReference(MessagingService service) {
     return new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.MESSAGING_SERVICE);
+  }
+
+  public static EntityReference getEntityReference(DashboardService service) {
+    return new EntityReference().withName(service.getName()).withId(service.getId())
+            .withType(Entity.DASHBOARD_SERVICE);
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
@@ -361,6 +408,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Chart chart) {
+    return new EntityReference().withDescription(chart.getDescription()).withId(chart.getId())
+            .withName(chart.getFullyQualifiedName()).withType(Entity.CHART);
   }
 
   public static EntityReference getEntityReference(Topic topic) {

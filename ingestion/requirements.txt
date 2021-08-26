@@ -14,3 +14,6 @@ PyHive~=0.6.4
 ldap3~=2.9.1
 confluent_kafka>=1.5.0
 fastavro>=1.2.0
+google~=3.0.0
+okta~=2.0.0
+PyMySQL~=1.0.2

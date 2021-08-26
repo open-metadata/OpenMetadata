@@ -6,7 +6,7 @@ from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.models.table_queries import TableQuery
 from typing import Iterable
 from datetime import datetime
-from metadata.ingestion.ometa.client import REST
+from ..ometa.openmetadata_rest import OpenMetadataAPIClient
 
 
 class SampleUsageSource(Source):
@@ -16,7 +16,7 @@ class SampleUsageSource(Source):
         self.status = SampleTableSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = REST(metadata_config)
+        self.client = OpenMetadataAPIClient(metadata_config)
         self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
         self.query_log_csv = config.sample_schema_folder + "/query_log"
         with open(self.query_log_csv, 'r') as fin:

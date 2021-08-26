@@ -24,7 +24,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.client import REST, APIError, MetadataServerConfig
+from metadata.ingestion.ometa.client import APIError, MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class MetadataRestTablesSink(Sink):
         self.metadata_config = metadata_config
         self.status = SinkStatus()
         self.wrote_something = False
-        self.rest = REST(self.metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -57,7 +58,7 @@ class MetadataRestTablesSink(Sink):
                                                      description=table_and_db.database.description,
                                                      service=EntityReference(id=table_and_db.database.service.id,
                                                                              type="databaseService"))
-            db = self.rest.create_database(db_request)
+            db = self.client.create_database(db_request)
             table_request = CreateTableEntityRequest(name=table_and_db.table.name,
                                                      tableType=table_and_db.table.tableType,
                                                      columns=table_and_db.table.columns,
@@ -67,9 +68,9 @@ class MetadataRestTablesSink(Sink):
             if table_and_db.table.viewDefinition is not None and table_and_db.table.viewDefinition != "":
                 table_request.viewDefinition = table_and_db.table.viewDefinition.__root__
 
-            created_table = self.rest.create_or_update_table(table_request)
+            created_table = self.client.create_or_update_table(table_request)
             if table_and_db.table.sampleData is not None:
-                self.rest.ingest_sample_data(id=created_table.id, sample_data=table_and_db.table.sampleData)
+                self.client.ingest_sample_data(id=created_table.id, sample_data=table_and_db.table.sampleData)
 
             logger.info(
                 'Successfully ingested {}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))

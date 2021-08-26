@@ -127,7 +127,7 @@ public abstract class TopicRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
+    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
     if (topicDAO().delete(id) <= 0) {
@@ -282,7 +282,7 @@ public abstract class TopicRepository {
 
   @Transaction
   public Status addFollower(String topicId, String userId) throws IOException {
-    EntityUtil.validate(topicId, topicDAO().findById(topicId), Table.class);
+    EntityUtil.validate(topicId, topicDAO().findById(topicId), Topic.class);
     return EntityUtil.addFollower(relationshipDAO(), userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }

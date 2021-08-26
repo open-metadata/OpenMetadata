@@ -25,6 +25,7 @@ from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageR
     ColumnJoinedWith
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.metadata_config = metadata_config
         self.wrote_something = False
         self.file_handler = open(self.config.filename, 'r')
-        self.client = REST(self.metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config)
         self.status = BulkSinkStatus()
         self.tables_dict = {}
         self.table_join_dict = {}
@@ -146,3 +147,4 @@ class MetadataUsageBulkSink(BulkSink):
 
     def close(self):
         self.file_handler.close()
+        self.client.close()

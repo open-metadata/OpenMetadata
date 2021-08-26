@@ -93,7 +93,8 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-tables": {"faker~=8.1.1", },
-    "sample-topics": {}
+    "sample-topics": {},
+    "superset": {}
 }
 
 build_options = {"includes": ["_cffi_backend"]}
