@@ -20,6 +20,8 @@ OpenMetadata  has the following high-level core entities and relationships:
 
 {% page-ref page="database-service.md" %}
 
+{% page-ref page="messagingService.md" %}
+
 {% page-ref page="thread.md" %}
 
 {% page-ref page="metrics.md" %}
@@ -31,6 +33,8 @@ OpenMetadata  has the following high-level core entities and relationships:
 {% page-ref page="table.md" %}
 
 {% page-ref page="team.md" %}
+
+{% page-ref page="topic.md" %}
 
 {% page-ref page="user.md" %}
 
