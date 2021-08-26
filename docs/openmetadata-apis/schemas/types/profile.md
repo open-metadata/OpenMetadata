@@ -2,41 +2,44 @@
 
 This schema defines the type for a profile of a user, team, or organization.
 
-**$id:** [**https://open-metadata.org/schema/type/profile.json**](https://open-metadata.org/schema/type/profile.json)
+<b id="https/open-metadata.org/schema/type/profile.json">&#36;id: https://open-metadata.org/schema/type/profile.json</b>
 
 Type: `object`
 
 ## Properties
+ - **images**
+	 - $ref: [#/definitions/imageList](#imagelist)
 
-* **images**
-  * $ref: [\#/definitions/imageList](profile.md#types-definitions-in-this-schema)
 
-## Types definitions in this schema
+## Type definitions in this schema
+### imageList
 
-**imageList**
+ - Links to a list of images of varying resolutions/sizes.
+ - Type: `object`
+ - **Properties**
+	 - **image**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image24**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image32**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image48**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image72**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image192**
+		 - Type: `string`
+		 - String format must be a "uri"
+	 - **image512**
+		 - Type: `string`
+		 - String format must be a "uri"
 
-* Links to a list of images of varying resolutions/sizes.
-* Type: `object`
-* **Properties**
-  * **image**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image24**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image32**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image48**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image72**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image192**
-    * Type: `string`
-    * String format must be a "uri"
-  * **image512**
-    * Type: `string`
-    * String format must be a "uri"
 
+
+
+_This document was updated on: Thursday, August 26, 2021_
