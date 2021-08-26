@@ -23,8 +23,7 @@ from metadata.generated.schema.api.services.createMessagingService import Create
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 
 def get_service_or_create(service_json, metadata_config) -> MessagingService:

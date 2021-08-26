@@ -24,14 +24,13 @@ import metadata
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING, \
     TOPIC_ELASTICSEARCH_INDEX_MAPPING
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 

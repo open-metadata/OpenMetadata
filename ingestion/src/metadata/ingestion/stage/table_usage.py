@@ -20,7 +20,7 @@ import pathlib
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.models.table_queries import TableUsageCount, QueryParserData, TableColumnJoin, TableColumn
-from metadata.ingestion.ometa.client import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.stage.file import FileStageConfig
 
 logger = logging.getLogger(__name__)

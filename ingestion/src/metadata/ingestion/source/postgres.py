@@ -32,8 +32,8 @@ from itertools import groupby
 from typing import Iterator, Union, Dict, Any, Iterable
 from collections import namedtuple
 
-from ..ometa.auth_provider import MetadataServerConfig
-from ...utils.helpers import get_service_or_create
+from ..ometa.openmetadata_rest import MetadataServerConfig
+from ...utils.helpers import get_database_service_or_create
 
 TableKey = namedtuple('TableKey', ['schema', 'table_name'])
 
@@ -96,7 +96,7 @@ class PostgresSource(Source):
         self._database = 'postgres'
         self.metadata_config = metadata_config
         self.status = SQLSourceStatus()
-        self.service = get_service_or_create(config, metadata_config)
+        self.service = get_database_service_or_create(config, metadata_config)
         self.pattern = config
         self.filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 

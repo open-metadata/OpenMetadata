@@ -17,7 +17,7 @@
 import cx_Oracle  # noqa: F401
 
 from .sql_source import SQLSource, SQLConnectionConfig
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OracleConfig(SQLConnectionConfig):

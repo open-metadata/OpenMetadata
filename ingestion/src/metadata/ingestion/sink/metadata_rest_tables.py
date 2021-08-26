@@ -24,8 +24,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.client import APIError, MetadataServerConfig
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient,  MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 

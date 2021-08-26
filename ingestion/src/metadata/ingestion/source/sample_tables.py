@@ -28,7 +28,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
@@ -233,7 +233,7 @@ class SampleTablesSource(Source):
             yield table_and_db
 
     def close(self):
-        self.close()
+        pass
 
     def get_status(self):
         return self.status

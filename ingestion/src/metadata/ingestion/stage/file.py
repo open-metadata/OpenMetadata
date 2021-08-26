@@ -21,7 +21,7 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.ometa.client import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 

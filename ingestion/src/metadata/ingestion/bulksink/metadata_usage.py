@@ -23,9 +23,8 @@ from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageRequest, TableColumn, \
     ColumnJoinedWith
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 

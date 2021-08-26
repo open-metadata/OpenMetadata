@@ -28,8 +28,7 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 from metadata.utils.helpers import snake_to_camel
 
 
