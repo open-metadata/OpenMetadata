@@ -5,42 +5,53 @@ import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceM
 import {
   BIGQUERY,
   HIVE,
+  KAFKA,
   MSSQL,
   MYSQL,
   ORACLE,
   POSTGRES,
+  PULSAR,
   REDSHIFT,
   SERVICE_DEFAULT,
   SNOWFLAKE,
 } from '../constants/services.const';
-import { ServiceType } from '../enums/service.enum';
+import {
+  DatabaseServiceType,
+  MessagingServiceType,
+} from '../enums/service.enum';
 import { ApiData } from '../pages/services';
 
 export const serviceTypeLogo = (type: string) => {
   switch (type) {
-    case ServiceType.MYSQL:
+    case DatabaseServiceType.MYSQL:
       return MYSQL;
 
-    case ServiceType.REDSHIFT:
+    case DatabaseServiceType.REDSHIFT:
       return REDSHIFT;
 
-    case ServiceType.BIGQUERY:
+    case DatabaseServiceType.BIGQUERY:
       return BIGQUERY;
 
-    case ServiceType.HIVE:
+    case DatabaseServiceType.HIVE:
       return HIVE;
 
-    case ServiceType.POSTGRES:
+    case DatabaseServiceType.POSTGRES:
       return POSTGRES;
 
-    case ServiceType.ORACLE:
+    case DatabaseServiceType.ORACLE:
       return ORACLE;
 
-    case ServiceType.SNOWFLAKE:
+    case DatabaseServiceType.SNOWFLAKE:
       return SNOWFLAKE;
 
-    case ServiceType.MSSQL:
+    case DatabaseServiceType.MSSQL:
       return MSSQL;
+
+    case MessagingServiceType.KAFKA:
+      return KAFKA;
+
+    case MessagingServiceType.PULSAR:
+      return PULSAR;
 
     default:
       return SERVICE_DEFAULT;

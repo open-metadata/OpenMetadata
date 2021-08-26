@@ -15,7 +15,12 @@
   * limitations under the License.
 */
 
-export enum ServiceType {
+export enum ServiceCategory {
+  DATABASE_SERVICES = 'databaseServices',
+  MESSAGING_SERVICES = 'messagingServices',
+}
+
+export enum DatabaseServiceType {
   MYSQL = 'MySQL',
   REDSHIFT = 'Redshift',
   BIGQUERY = 'BigQuery',
@@ -24,4 +29,9 @@ export enum ServiceType {
   ORACLE = 'Oracle',
   SNOWFLAKE = 'Snowflake',
   MSSQL = 'MSSQL',
+}
+
+export enum MessagingServiceType {
+  KAFKA = 'Kafka',
+  PULSAR = 'Pulsar',
 }

@@ -37,7 +37,7 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
   AddServiceModal,
-  DatabaseObj,
+  DataObj,
   EditObj,
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
@@ -46,7 +46,9 @@ import {
   arrServiceTypes,
   NOSERVICE,
   PLUS,
+  servicesDisplayName,
 } from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
 import { getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -109,12 +111,6 @@ const ServicesPage = () => {
     }
   };
 
-  const getServiceTabs = (): Array<ServiceTypes> => {
-    const tabs = Object.keys(services);
-
-    return arrServiceTypes.filter((item) => tabs.includes(item));
-  };
-
   const handleAddService = () => {
     setEditData(undefined);
     setIsModalOpen(true);
@@ -132,36 +128,43 @@ const ServicesPage = () => {
   const handleUpdate = (
     selectedService: string,
     id: string,
-    dataObj: DatabaseObj
+    dataObj: DataObj
   ) => {
     updateService(selectedService, id, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
         const updatedServiceList = serviceList.map((s) =>
           s.id === updatedData.id ? updatedData : s
         );
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     );
   };
 
-  const handleAdd = (selectedService: string, dataObj: DatabaseObj) => {
+  const handleAdd = (selectedService: string, dataObj: DataObj) => {
     postService(selectedService, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
-        setServiceList([...serviceList, updatedData]);
+        const updatedServiceList = [...serviceList, updatedData];
+        setServices({ ...services, [serviceName]: updatedServiceList });
+        setServiceList(updatedServiceList);
       }
     );
   };
 
   const handleSave = (
-    dataObj: DatabaseObj,
+    dataObj: DataObj,
     selectedService: string,
     isEdit: EditObj
   ) => {
@@ -178,6 +181,7 @@ const ServicesPage = () => {
     deleteService(serviceName, id).then((res: AxiosResponse) => {
       if (res.statusText === 'OK') {
         const updatedServiceList = serviceList.filter((s) => s.id !== id);
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     });
@@ -190,6 +194,54 @@ const ServicesPage = () => {
     }
 
     return null;
+  };
+
+  const getServiceTabs = (): Array<{
+    name: ServiceTypes;
+    displayName: string;
+  }> => {
+    const tabs = Object.keys(services);
+
+    return arrServiceTypes
+      .filter((item) => tabs.includes(item))
+      .map((type) => {
+        return {
+          name: type,
+          displayName: servicesDisplayName[type],
+        };
+      });
+  };
+
+  const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Driver Class:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.driverClass}
+              </span>
+            </div>
+          </>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Brokers:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.brokers?.join(', ')}
+              </span>
+            </div>
+          </>
+        );
+      }
+      default: {
+        return <></>;
+      }
+    }
   };
 
   useEffect(() => {
@@ -221,14 +273,14 @@ const ServicesPage = () => {
               <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
                 {getServiceTabs().map((tab, index) => (
                   <button
-                    className={getTabClasses(tab, serviceName)}
+                    className={getTabClasses(tab.name, serviceName)}
                     data-testid="tab"
                     key={index}
                     onClick={() => {
-                      setServiceName(tab);
-                      setServiceList(services[tab]);
+                      setServiceName(tab.name);
+                      setServiceList(services[tab.name]);
                     }}>
-                    {tab}
+                    {tab.displayName}
                   </button>
                 ))}
               </nav>
@@ -258,19 +310,9 @@ const ServicesPage = () => {
                           </span>
                         )}
                       </div>
-                      {/* <div className="tw-my-2">
-                        <label className="tw-font-semibold ">Tags:</label>
-                        <span className="tw-tag tw-ml-3">mysql</span>
-                        <span className="tw-tag tw-ml-2">sales</span>
-                      </div> */}
+                      {getOptionalFields(service)}
                       <div className="tw-mb-1">
-                        <label className="tw-mb-0">Driver Class:</label>
-                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                          {service.driverClass}
-                        </span>
-                      </div>
-                      <div className="tw-mb-1">
-                        <label className="tw-mb-0">Frequency:</label>
+                        <label className="tw-mb-0">Ingestion:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                           {service.ingestionSchedule
                             ? getFrequencyTime(
@@ -320,8 +362,8 @@ const ServicesPage = () => {
                   className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
                   onClick={() => handleAddService()}>
                   <img alt="" src={PLUS} />
-                  <p className="tw-text-base tw-font-normal tw-mt-1">
-                    Add new service
+                  <p className="tw-text-base tw-font-normal tw-mt-4">
+                    Add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>
@@ -334,11 +376,11 @@ const ServicesPage = () => {
                   <p className="tw-text-lg">
                     No services found.{' '}
                     <button
-                      className="tw-text-blue-700 tw-cursor-pointer tw-underline"
+                      className="link-text tw-underline"
                       onClick={handleAddService}>
                       Click here
                     </button>{' '}
-                    to add new services
+                    to add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>

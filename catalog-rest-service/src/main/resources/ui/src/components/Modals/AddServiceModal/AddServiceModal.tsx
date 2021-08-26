@@ -16,13 +16,16 @@
 */
 
 import classNames from 'classnames';
-import React, { FunctionComponent, useRef, useState } from 'react';
+import { ServiceTypes } from 'Models';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { serviceTypes } from '../../../constants/services.const';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 // import { serviceType } from '../../../constants/services.const';
 
-export type DatabaseObj = {
+export type DataObj = {
   description: string | undefined;
   ingestionSchedule:
     | {
@@ -30,25 +33,36 @@ export type DatabaseObj = {
         startDate: string;
       }
     | undefined;
-  jdbc: {
+  name: string;
+  serviceType: string;
+  jdbc?: {
     connectionUrl: string;
     driverClass: string;
   };
-  name: string;
-  serviceType: string;
+  brokers?: Array<string>;
+  schemaRegistry?: string;
+};
+
+type DatabaseService = {
+  connectionUrl: string;
+  driverClass: string;
+  jdbc: { driverClass: string; connectionUrl: string };
+};
+
+type MessagingService = {
+  brokers: Array<string>;
+  schemaRegistry: string;
 };
 
 export type ServiceDataObj = {
-  connectionUrl: string;
   description: string;
-  driverClass: string;
   href: string;
   id: string;
-  jdbc: { driverClass: string; connectionUrl: string };
   name: string;
   serviceType: string;
   ingestionSchedule?: { repeatFrequency: string; startDate: string };
-};
+} & Partial<DatabaseService> &
+  Partial<MessagingService>;
 
 export type EditObj = {
   edit: boolean;
@@ -57,21 +71,22 @@ export type EditObj = {
 
 type Props = {
   header: string;
-  serviceName: string;
+  serviceName: ServiceTypes;
   serviceList: Array<ServiceDataObj>;
   data?: ServiceDataObj;
-  onSave: (obj: DatabaseObj, text: string, editData: EditObj) => void;
+  onSave: (obj: DataObj, text: string, editData: EditObj) => void;
   onCancel: () => void;
 };
 
 type ErrorMsg = {
   selectService: boolean;
   name: boolean;
-  url: boolean;
+  url?: boolean;
   // port: boolean;
   // userName: boolean;
   // password: boolean;
-  driverClass: boolean;
+  driverClass?: boolean;
+  broker?: boolean;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -137,15 +152,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   serviceList,
 }: Props) => {
   const [editData] = useState({ edit: !!data, id: data?.id });
-  const [serviceType] = useState([
-    'BigQuery',
-    'MySQL',
-    'Redshift',
-    'Snowflake',
-    'Postgres',
-    'MSSQL',
-    'Hive',
-  ]);
+  const [serviceType, setServiceType] = useState(
+    serviceTypes[serviceName] || []
+  );
   const [parseUrl] = useState(seprateUrl(data?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
@@ -158,10 +167,16 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
   const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
+  const [broker, setBroker] = useState(
+    data?.brokers?.length ? data.brokers[0] : ''
+  );
+  const [schemaRegistry, setSchemaRegistry] = useState(
+    data?.schemaRegistry || ''
+  );
   const [frequency, setFrequency] = useState(
     fromISOString(data?.ingestionSchedule?.repeatFrequency)
   );
-  const [showErrorMsg, setShowErrorMsg] = useState({
+  const [showErrorMsg, setShowErrorMsg] = useState<ErrorMsg>({
     selectService: false,
     name: false,
     url: false,
@@ -169,6 +184,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     // userName: false,
     // password: false,
     driverClass: false,
+    broker: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
   const markdownRef = useRef<EditorContentRef>();
@@ -235,7 +251,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const onSaveHelper = (value: ErrorMsg) => {
-    const { selectService, name, url, driverClass } = value;
+    const { selectService, name, url, driverClass, broker } = value;
 
     return (
       !sameNameError &&
@@ -245,25 +261,47 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       // !port &&
       // !userName &&
       // !password &&
-      !driverClass
+      !driverClass &&
+      !broker
     );
   };
 
   const handleSave = () => {
-    const setMsg = {
+    let setMsg: ErrorMsg = {
       selectService: !selectService,
       name: !name,
-      url: !url,
-      // port: !port,
-      // userName: !userName,
-      // password: !password,
-      driverClass: !driverClass,
     };
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            url: !url,
+            // port: !port,
+            // userName: !userName,
+            // password: !password,
+            driverClass: !driverClass,
+          };
+        }
+
+        break;
+      case ServiceCategory.MESSAGING_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            broker: !broker,
+          };
+        }
+
+        break;
+      default:
+        break;
+    }
     setShowErrorMsg(setMsg);
     if (onSaveHelper(setMsg)) {
       const { day, hour, minute } = frequency;
       const date = new Date();
-      const databaseObj: DatabaseObj = {
+      let dataObj: DataObj = {
         description: markdownRef.current?.getEditorContent(),
         ingestionSchedule: ingestion
           ? {
@@ -271,16 +309,194 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               startDate: date.toISOString(),
             }
           : undefined,
-        jdbc: {
-          connectionUrl: `${url}${database && '/' + database}`,
-          driverClass: driverClass,
-        },
         name: name,
         serviceType: selectService,
       };
-      onSave(databaseObj, serviceName, editData);
+      switch (serviceName) {
+        case ServiceCategory.DATABASE_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              jdbc: {
+                connectionUrl: `${url}${database && '/' + database}`,
+                driverClass: driverClass,
+              },
+            };
+          }
+
+          break;
+        case ServiceCategory.MESSAGING_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              brokers: [broker],
+              schemaRegistry: schemaRegistry,
+            };
+          }
+
+          break;
+        default:
+          break;
+      }
+      onSave(dataObj, serviceName, editData);
     }
   };
+
+  const getDatabaseFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
+          <div className="tw-col-span-3">
+            <label className="tw-block tw-form-label" htmlFor="url">
+              {requiredField('Connection Url:')}
+            </label>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              id="url"
+              name="url"
+              type="text"
+              value={url}
+              onChange={handleValidation}
+            />
+            {showErrorMsg.url && errorMsg('Connection url is required')}
+          </div>
+
+          {/* didn't removed below code as it will be need in future relase */}
+
+          {/* <div>
+                <label className="tw-block tw-form-label" htmlFor="port">
+                  {requiredField('Connection Port:')}
+                </label>
+                <input
+                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  id="port"
+                  name="port"
+                  type="number"
+                  value={port}
+                  onChange={handleValidation}
+                />
+                {showErrorMsg.port && errorMsg('Port is required')}
+              </div> */}
+        </div>
+        {/* <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
+              <div>
+                <label className="tw-block tw-form-label" htmlFor="userName">
+                  {requiredField('Username:')}
+                </label>
+                <input
+                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  id="userName"
+                  name="userName"
+                  type="text"
+                  value={userName}
+                  onChange={handleValidation}
+                />
+                {showErrorMsg.userName && errorMsg('Username is required')}
+              </div>
+              <div>
+                <label className="tw-block tw-form-label" htmlFor="password">
+                  {requiredField('Password:')}
+                </label>
+                <input
+                  className="tw-form-inputs tw-px-3 tw-py-1"
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={password}
+                  onChange={handleValidation}
+                />
+                {showErrorMsg.password && errorMsg('Password is required')}
+              </div>
+            </div> */}
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="database">
+            Database:
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="database"
+            name="database"
+            type="text"
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
+          />
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="driverClass">
+            {requiredField('Driver Class:')}
+          </label>
+          {!editData.edit ? (
+            <select
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              id="driverClass"
+              name="driverClass"
+              value={driverClass}
+              onChange={handleValidation}>
+              <option value="jdbc">jdbc</option>
+            </select>
+          ) : (
+            <input
+              disabled
+              className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
+              id="driverClass"
+              name="driverClass"
+              value={driverClass}
+            />
+          )}
+          {showErrorMsg.driverClass && errorMsg('Driver class is required')}
+        </div>
+      </>
+    );
+  };
+
+  const getMessagingFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="broker">
+            {requiredField('Broker Url:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="broker"
+            name="broker"
+            type="text"
+            value={broker}
+            onChange={(e) => setBroker(e.target.value)}
+          />
+          {showErrorMsg.broker && errorMsg('Broker url is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="schema-registry">
+            Schema Registry:
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="schema-registry"
+            name="schema-registry"
+            type="text"
+            value={schemaRegistry}
+            onChange={(e) => setSchemaRegistry(e.target.value)}
+          />
+        </div>
+      </>
+    );
+  };
+
+  const getOptionalFields = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return getDatabaseFields();
+      case ServiceCategory.MESSAGING_SERVICES:
+        return getMessagingFields();
+      default:
+        return <></>;
+    }
+  };
+
+  useEffect(() => {
+    setServiceType(serviceTypes[serviceName] || []);
+  }, [serviceName]);
 
   return (
     <dialog className="tw-modal">
@@ -288,20 +504,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       <div className="tw-modal-container tw-max-w-lg">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
-          <svg
-            className="tw-w-6 tw-h-6 tw-cursor-pointer"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            onClick={onCancel}>
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
         </div>
         <div className="tw-modal-body">
           <form className="tw-min-w-full">
@@ -360,106 +562,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {showErrorMsg.name && errorMsg('Service name is required.')}
               {sameNameError && errorMsg('Service name already exist.')}
             </div>
-            <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
-              <div className="tw-col-span-3">
-                <label className="tw-block tw-form-label" htmlFor="url">
-                  {requiredField('Connection Url:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="url"
-                  name="url"
-                  type="text"
-                  value={url}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.url && errorMsg('Connection url is required')}
-              </div>
-
-              {/* didn't removed below code as it will be need in future relase */}
-
-              {/* <div>
-                <label className="tw-block tw-form-label" htmlFor="port">
-                  {requiredField('Connection Port:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="port"
-                  name="port"
-                  type="number"
-                  value={port}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.port && errorMsg('Port is required')}
-              </div> */}
-            </div>
-            {/* <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="userName">
-                  {requiredField('Username:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="userName"
-                  name="userName"
-                  type="text"
-                  value={userName}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.userName && errorMsg('Username is required')}
-              </div>
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="password">
-                  {requiredField('Password:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.password && errorMsg('Password is required')}
-              </div>
-            </div> */}
-            <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="database">
-                Database:
-              </label>
-              <input
-                className="tw-form-inputs tw-px-3 tw-py-1"
-                id="database"
-                name="database"
-                type="text"
-                value={database}
-                onChange={(e) => setDatabase(e.target.value)}
-              />
-            </div>
-            <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="driverClass">
-                {requiredField('Driver Class:')}
-              </label>
-              {!editData.edit ? (
-                <select
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="driverClass"
-                  name="driverClass"
-                  value={driverClass}
-                  onChange={handleValidation}>
-                  <option value="jdbc">jdbc</option>
-                </select>
-              ) : (
-                <input
-                  disabled
-                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
-                  id="driverClass"
-                  name="driverClass"
-                  value={driverClass}
-                />
-              )}
-              {showErrorMsg.driverClass && errorMsg('Driver class is required')}
-            </div>
+            {getOptionalFields()}
             <div className="tw-mt-4">
               <label className="tw-block tw-form-label" htmlFor="description">
                 Description:
@@ -469,23 +572,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 value={data?.description || ''}
               />
             </div>
-            {/* <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="tags">
-                Tags:
-              </label>
-              <select
-                className="tw-form-inputs tw-px-3 tw-py-1 "
-                name="tags"
-                id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}>
-                <option value="">Select Tags</option>
-                <option value="volvo">Volvo</option>
-                <option value="saab">Saab</option>
-                <option value="opel">Opel</option>
-                <option value="audi">Audi</option>
-              </select>
-            </div> */}
             <div className="tw-mt-4 tw-flex tw-items-center">
               <label className="tw-form-label tw-mb-0">Enable Ingestion</label>
               <div
