@@ -50,7 +50,7 @@ export const tiers = [
 
 export const tableSortingFields = [
   {
-    name: 'Last Updated Timestamp',
+    name: 'Last Updated',
     value: 'last_updated_timestamp',
   },
   { name: 'Weekly Usage', value: 'weekly_stats' },
