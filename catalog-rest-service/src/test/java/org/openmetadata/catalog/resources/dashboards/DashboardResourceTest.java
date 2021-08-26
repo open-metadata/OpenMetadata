@@ -445,16 +445,16 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
     dashboard.getService().setHref(null); // Remove href from returned response as it is read-only field
 
-    String DashboardJson = JsonUtils.pojoToJson(dashboard);
+    String dashboardJson = JsonUtils.pojoToJson(dashboard);
     dashboard.setService(LOOKER_REFERENCE);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
 
     // Service relationship can't be removed
     dashboard.setService(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
   }
 
@@ -497,11 +497,11 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   }
 
   // Make sure in GET operations the returned Dashboard has all the required information passed during creation
-  public static Dashboard getAndValidate(UUID DashboardId,
+  public static Dashboard getAndValidate(UUID dashboardId,
                                         CreateDashboard create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created Dashboard by ID and validate
-    Dashboard dashboard = getDashboard(DashboardId, "service,owner", authHeaders);
+    Dashboard dashboard = getDashboard(dashboardId, "service,owner", authHeaders);
     validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
 
     // GET the newly created Dashboard by name and validate
