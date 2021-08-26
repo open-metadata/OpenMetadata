@@ -23,7 +23,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.EntityReference;

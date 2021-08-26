@@ -406,17 +406,17 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void patch_DashboardIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure Dashboard ID can't be changed using patch
     Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    UUID DashboardId = Dashboard.getId();
+    UUID dashboardId = Dashboard.getId();
     String DashboardJson = JsonUtils.pojoToJson(Dashboard);
     Dashboard.setId(UUID.randomUUID());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
 
     // ID can't be deleted
     Dashboard.setId(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
   }
 
@@ -424,16 +424,16 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void patch_DashboardNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure Dashboard name can't be changed using patch
     Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    String DashboardJson = JsonUtils.pojoToJson(Dashboard);
+    String dashboardJson = JsonUtils.pojoToJson(Dashboard);
     Dashboard.setName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, Dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
 
     // Name can't be removed
     Dashboard.setName(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, Dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
   }
 
@@ -499,13 +499,13 @@ public class DashboardResourceTest extends CatalogApplicationTest {
                                         CreateDashboard create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created Dashboard by ID and validate
-    Dashboard Dashboard = getDashboard(DashboardId, "service,owner", authHeaders);
-    validateDashboard(Dashboard, create.getDescription(), create.getOwner(), create.getService());
+    Dashboard dashboard = getDashboard(DashboardId, "service,owner", authHeaders);
+    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
 
     // GET the newly created Dashboard by name and validate
-    String fqn = Dashboard.getFullyQualifiedName();
-    Dashboard = getDashboardByName(fqn, "service,owner", authHeaders);
-    return validateDashboard(Dashboard, create.getDescription(), create.getOwner(), create.getService());
+    String fqn = dashboard.getFullyQualifiedName();
+    dashboard = getDashboardByName(fqn, "service,owner", authHeaders);
+    return validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
   }
 
   public static Dashboard updateDashboard(CreateDashboard create,
@@ -576,14 +576,14 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   private Dashboard patchDashboardAttributesAndCheck(Dashboard dashboard, String newDescription,
                                                 EntityReference newOwner, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
-    String DashboardJson = JsonUtils.pojoToJson(dashboard);
+    String dashboardJson = JsonUtils.pojoToJson(dashboard);
 
     // Update the table attributes
     dashboard.setDescription(newDescription);
     dashboard.setOwner(newOwner);
 
     // Validate information returned in patch response has the updates
-    Dashboard updatedDashboard = patchDashboard(DashboardJson, dashboard, authHeaders);
+    Dashboard updatedDashboard = patchDashboard(dashboardJson, dashboard, authHeaders);
     validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null);
 
     // GET the table and Validate information returned

@@ -147,7 +147,8 @@ public class DashboardResource {
                                       @Parameter(description = "Filter dashboards by service name",
                                               schema = @Schema(type = "string", example = "superset"))
                                       @QueryParam("service") String serviceParam,
-                                      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, default = 10)")
+                                      @Parameter(description = "Limit the number dashboards returned. (1 to 1000000, " +
+                                              "default = 10)")
                                       @DefaultValue("10")
                                       @Min(1)
                                       @Max(1000000)
