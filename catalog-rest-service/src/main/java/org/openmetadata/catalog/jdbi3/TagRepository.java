@@ -120,6 +120,21 @@ public abstract class TagRepository {
   }
 
   @Transaction
+  public void deleteCategory(String categoryName) throws IOException {
+    EntityUtil.validate(categoryName, tagDAO().findCategory(categoryName), TagCategory.class);
+    tagDAO().deleteCategory(categoryName);
+  }
+
+  @Transaction
+  public void deleteTag(String category, String fqn) throws IOException {
+    // Validate category
+    EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
+    // Get tags that match <category>.<tagName>
+    EntityUtil.validate(fqn, tagDAO().findTag(fqn), Tag.class);
+    tagDAO().deleteTag(fqn);
+  }
+
+  @Transaction
   public TagCategory updateCategory(String category, TagCategory updated) throws IOException {
     // Validate category
     TagCategory original = EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
@@ -263,11 +278,11 @@ public abstract class TagRepository {
     return tag.withUsageCount(fields.contains("usageCount") ? getUsageCount(tag) : null);
   }
 
-  private Integer getUsageCount(TagCategory category) {
+  public Integer getUsageCount(TagCategory category) {
     return tagDAO().getTagCount(category.getName());
   }
 
-  private Integer getUsageCount(Tag tag) {
+  public Integer getUsageCount(Tag tag) {
     return tagDAO().getTagCount(tag.getFullyQualifiedName());
   }
 
@@ -323,6 +338,12 @@ public abstract class TagRepository {
 
     @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:fqnPrefix, '%')")
     void deleteTagsByPrefix(@Bind("fqnPrefix") String fqnPrefix);
+
+    @SqlUpdate("DELETE json FROM tag_category WHERE name = :name")
+    void deleteCategory(@Bind("name") String name);
+
+    @SqlUpdate("DELETE json FROM tag WHERE fullyQualifiedName = :fqn")
+    void deleteTag(@Bind("fqn") String fqn);
   }
 
   public static class TagLabelMapper implements ResultSetMapper<TagLabel> {
