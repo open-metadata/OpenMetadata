@@ -78,7 +78,7 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "jdbc": {
-      "description": "JDBC connection information",
+      "description": "JDBC connection information.",
       "$ref": "../../type/jdbcConnection.json#/definitions/jdbcInfo"
     },
     "ingestionSchedule": {

@@ -4,15 +4,15 @@ OpenMetadata supports many common types reused across different schemas. Definin
 
 {% page-ref page="basic.md" %}
 
-{% page-ref page="audit-log.md" %}
+{% page-ref page="auditlog.md" %}
 
-{% page-ref page="daily-count.md" %}
+{% page-ref page="dailycount.md" %}
 
-{% page-ref page="entity-reference.md" %}
+{% page-ref page="entityreference.md" %}
 
-{% page-ref page="entity-usage.md" %}
+{% page-ref page="entityusage.md" %}
 
-{% page-ref page="jdbc-connection.md" %}
+{% page-ref page="jdbcconnection.md" %}
 
 {% page-ref page="profile.md" %}
 
@@ -20,5 +20,5 @@ OpenMetadata supports many common types reused across different schemas. Definin
 
 {% page-ref page="tag-label.md" %}
 
-{% page-ref page="usage-details.md" %}
+{% page-ref page="usagedetails.md" %}
 

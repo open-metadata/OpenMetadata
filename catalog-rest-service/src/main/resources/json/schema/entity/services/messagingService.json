@@ -6,7 +6,7 @@
   "type": "object",
   "definitions": {
     "messagingServiceType": {
-      "description": "Type of messaging service - Kafka or Pulsar",
+      "description": "Type of messaging service - Kafka or Pulsar.",
       "type": "string",
       "enum": [
         "Kafka",
@@ -54,7 +54,7 @@
       "$ref" : "#/definitions/brokers"
     },
     "schemaRegistry" : {
-      "description": "Schema registry URL",
+      "description": "Schema registry URL.",
       "type": "string",
       "format": "uri"
     },
