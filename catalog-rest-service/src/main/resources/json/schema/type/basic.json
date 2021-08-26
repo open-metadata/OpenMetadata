@@ -23,7 +23,7 @@
       "pattern": "^<#E/\\S+/\\S+>$"
     },
     "timestamp": {
-      "description": "Timestamp in unixTimeMillis",
+      "description": "Timestamp in unixTimeMillis.",
       "type": "string",
       "format": "utc-millisec"
     },

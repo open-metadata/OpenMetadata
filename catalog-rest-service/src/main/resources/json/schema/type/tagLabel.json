@@ -22,7 +22,7 @@
       "default": "Manual"
     },
     "state": {
-      "description" : "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'",
+      "description" : "'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.",
       "type": "string",
       "enum": [
         "Suggested",

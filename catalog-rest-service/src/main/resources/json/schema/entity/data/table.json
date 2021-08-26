@@ -309,7 +309,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only",
+      "description": "View Definition in SQL. Applies to TableType.View only.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "tags": {

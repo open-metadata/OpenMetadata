@@ -22,11 +22,11 @@
       "javaEnums": [
         {
           "name": "Descriptive",
-          "description": "Tag category used for describing an entity. Example - column is of of type User.Addres.s"
+          "description": "Tag category used for describing an entity. Example - column is of of type User.Address."
         },
         {
           "name": "Classification",
-          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitiv.e"
+          "description": "Tag category used for classifying an entity. Example - column is of of type PII.sensitive."
         }
       ]
     },
@@ -34,7 +34,7 @@
       "javaType": "org.openmetadata.catalog.type.Tag",
       "properties": {
         "name": {
-          "description" : "Name of the tag",
+          "description" : "Name of the tag.",
           "$ref": "#/definitions/tagName"
         },
         "fullyQualifiedName": {
