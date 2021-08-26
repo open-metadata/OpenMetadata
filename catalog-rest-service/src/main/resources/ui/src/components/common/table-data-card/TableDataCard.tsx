@@ -18,10 +18,7 @@
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../../constants/constants';
-
-
 import { stringToHTML } from '../../../utils/StringsUtils';
-
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
