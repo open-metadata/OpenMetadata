@@ -98,6 +98,7 @@ public class ChartResource {
     EntityUtil.addHref(uriInfo, chart.getOwner());
     EntityUtil.addHref(uriInfo, chart.getService());
     EntityUtil.addHref(uriInfo, chart.getFollowers());
+
     return chart;
   }
 

@@ -17,13 +17,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
-import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
@@ -59,6 +57,9 @@ public abstract class DashboardRepository {
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
 
+  public static String getFQN(EntityReference service, Dashboard dashboard) {
+    return (service.getName() + "." + dashboard.getName());
+  }
 
   @CreateSqlObject
   abstract DashboardDAO dashboardDAO();
@@ -112,6 +113,12 @@ public abstract class DashboardRepository {
   }
 
   @Transaction
+  public Dashboard getByName(String fqn, Fields fields) throws IOException {
+    Dashboard dashboard = EntityUtil.validate(fqn, dashboardDAO().findByFQN(fqn), Dashboard.class);
+    return setFields(dashboard, fields);
+  }
+
+  @Transaction
   public Dashboard create(Dashboard dashboard, EntityReference service, EntityReference owner) throws IOException {
     getService(service); // Validate service
     return createInternal(dashboard, service, owner);
@@ -120,7 +127,8 @@ public abstract class DashboardRepository {
   @Transaction
   public PutResponse<Dashboard> createOrUpdate(Dashboard updatedDashboard, EntityReference service,
                                                EntityReference newOwner) throws IOException {
-    String fqn = service.getName() + "." + updatedDashboard.getName();
+    getService(service); // Validate service
+    String fqn = getFQN(service, updatedDashboard);
     Dashboard storedDashboard = JsonUtils.readValue(dashboardDAO().findByFQN(fqn), Dashboard.class);
     if (storedDashboard == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updatedDashboard, service, newOwner));
@@ -134,11 +142,12 @@ public abstract class DashboardRepository {
 
     // Update owner relationship
     setFields(storedDashboard, DASHBOARD_UPDATE_FIELDS); // First get the ownership information
-    updateRelationships(storedDashboard, updatedDashboard);
+    updateOwner(storedDashboard, storedDashboard.getOwner(), newOwner);
 
     // Service can't be changed in update since service name is part of FQN and
     // change to a different service will result in a different FQN and creation of a new database under the new service
     storedDashboard.setService(service);
+    applyTags(updatedDashboard);
 
     return new PutResponse<>(Response.Status.OK, storedDashboard);
   }
@@ -216,16 +225,24 @@ public abstract class DashboardRepository {
     return dashboard;
   }
 
-  private EntityReference getService(Dashboard dashboard) {
+  private EntityReference getService(Dashboard dashboard) throws IOException {
     return dashboard == null ? null : getService(EntityUtil.getService(relationshipDAO(), dashboard.getId()));
   }
 
-  private EntityReference getService(EntityReference service) {
-    // TODO What are the dashboard services?
+  private EntityReference getService(EntityReference service) throws IOException {
+    String id = service.getId().toString();
+    if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      DashboardService serviceInstance = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
+              DashboardService.class);
+      service.setDescription(serviceInstance.getDescription());
+      service.setName(serviceInstance.getName());
+    } else {
+      throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
+    }
     return service;
   }
 
-  public void setService(Dashboard dashboard, EntityReference service) {
+  public void setService(Dashboard dashboard, EntityReference service) throws IOException {
     if (service != null && dashboard != null) {
       getService(service); // Populate service details
       relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
@@ -303,23 +320,17 @@ public abstract class DashboardRepository {
   private void addRelationships(Dashboard dashboard) throws IOException {
     // Add relationship from dashboard to chart
     String dashboardId = dashboard.getId().toString();
-    for (EntityReference chart: dashboard.getCharts()) {
-      relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
-              Relationship.CONTAINS.ordinal());
+    if (dashboard.getCharts() != null) {
+      for (EntityReference chart : dashboard.getCharts()) {
+        relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
+                Relationship.CONTAINS.ordinal());
+      }
     }
     // Add owner relationship
     EntityUtil.setOwner(relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);
-  }
-
-  private void updateRelationships(Dashboard origDashboard, Dashboard updatedDashboard) throws IOException {
-    // Add owner relationship
-    origDashboard.setOwner(getOwner(origDashboard));
-    EntityUtil.updateOwner(relationshipDAO(), origDashboard.getOwner(), updatedDashboard.getOwner(),
-            origDashboard.getId(), Entity.TABLE);
-    applyTags(updatedDashboard);
   }
 
   private Dashboard validateDashboard(String id) throws IOException {
@@ -351,7 +362,7 @@ public abstract class DashboardRepository {
     List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
                             @Bind("before") String before);
 
-    @SqlQuery("SELECT json FROM chart_entity WHERE " +
+    @SqlQuery("SELECT json FROM dashboard_entity WHERE " +
             "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
             "fullyQualifiedName > :after " +
             "ORDER BY fullyQualifiedName " +

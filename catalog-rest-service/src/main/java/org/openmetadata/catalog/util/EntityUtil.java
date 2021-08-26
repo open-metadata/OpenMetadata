@@ -45,6 +45,7 @@ import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
+import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -134,6 +135,9 @@ public final class EntityUtil {
         break;
       case Entity.CHART:
         ChartResource.addHref(uriInfo, ref);
+        break;
+      case Entity.DASHBOARD:
+        DashboardResource.addHref(uriInfo, ref);
         break;
       case Entity.MESSAGING_SERVICE:
         MessagingServiceResource.addHref(uriInfo, ref);
@@ -273,7 +277,8 @@ public final class EntityUtil {
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
-                                                         ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+                                                         ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         DashboardDAO dashboardDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
@@ -298,6 +303,10 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       Chart instance = EntityUtil.validate(fqn, chartDAO.findByFQN(fqn), Chart.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.CHART)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
+      Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DASHBOARD)
               .withDescription(instance.getDescription());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
@@ -330,6 +339,9 @@ public final class EntityUtil {
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.CHART.toLowerCase())) {
       Chart instance = (Chart) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
+      Dashboard instance = (Dashboard) entity;
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
       MessagingService instance = (MessagingService) entity;

@@ -92,7 +92,7 @@ public abstract class UsageRepository {
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, tableDAO(), databaseDAO(),
-            metricsDAO(), reportDAO(), topicDAO(), chartDAO());
+            metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO());
     List<UsageDetails> usageDetails = usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -108,7 +108,7 @@ public abstract class UsageRepository {
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, tableDAO(),
-            databaseDAO(), metricsDAO(), reportDAO(), topicDAO(), chartDAO());
+            databaseDAO(), metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO());
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }

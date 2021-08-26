@@ -26,6 +26,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -77,20 +78,30 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepository")
 public class DashboardResource {
-  public static final String COLLECTION_PATH = "/v1/dashboards/";
+  public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
   private final List<String> attributes = RestUtil.getAttributes(Dashboard.class);
   private final List<String> relationships = RestUtil.getAttributes(Dashboard.class);
 
   private final DashboardRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  private static List<Dashboard> addHref(UriInfo uriInfo, List<Dashboard> dashboards) {
+  public static void addHref(UriInfo uriInfo, EntityReference ref) {
+    ref.withHref(RestUtil.getHref(uriInfo, DASHBOARD_COLLECTION_PATH, ref.getId()));
+  }
+
+  public static List<Dashboard> addHref(UriInfo uriInfo, List<Dashboard> dashboards) {
     Optional.ofNullable(dashboards).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return dashboards;
   }
 
-  private static Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
-    dashboard.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, dashboard.getId()));
+  public static Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
+    dashboard.setHref(RestUtil.getHref(uriInfo, DASHBOARD_COLLECTION_PATH, dashboard.getId()));
+    EntityUtil.addHref(uriInfo, dashboard.getOwner());
+    EntityUtil.addHref(uriInfo, dashboard.getService());
+    if (dashboard.getCharts() != null) {
+      EntityUtil.addHref(uriInfo, dashboard.getCharts());
+    }
+    EntityUtil.addHref(uriInfo, dashboard.getFollowers());
     return dashboard;
   }
 
@@ -113,7 +124,7 @@ public class DashboardResource {
     }
   }
 
-  static final String FIELDS = "owner,service,followers,tags,usageSummary";
+  static final String FIELDS = "owner,service,charts,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -196,6 +207,27 @@ public class DashboardResource {
     return addHref(uriInfo, dao.get(id, fields));
   }
 
+  @GET
+  @Path("/name/{fqn}")
+  @Operation(summary = "Get a dashboard by name", tags = "dashboards",
+          description = "Get a dashboard by fully qualified name.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "The dashboard",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Chart.class))),
+                  @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
+          })
+  public Dashboard getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
+                            @Context SecurityContext securityContext,
+                            @Parameter(description = "Fields requested in the returned resource",
+                                    schema = @Schema(type = "string", example = FIELDS))
+                            @QueryParam("fields") String fieldsParam) throws IOException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    Dashboard dashboard = dao.getByName(fqn, fields);
+    return addHref(uriInfo, dashboard);
+  }
+
+
   @POST
   @Operation(summary = "Create a dashboard", tags = "dashboards",
           description = "Create a new dashboard.",
@@ -209,9 +241,10 @@ public class DashboardResource {
                          @Valid CreateDashboard create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags());
-    addHref(uriInfo, dao.create(dashboard, dashboard.getService(), dashboard.getOwner()));
+            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
+            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
+            .withOwner(create.getOwner());
+    dashboard = addHref(uriInfo, dao.create(dashboard, dashboard.getService(), dashboard.getOwner()));
     return Response.created(dashboard.getHref()).entity(dashboard).build();
   }
 
@@ -249,15 +282,17 @@ public class DashboardResource {
                           schema = @Schema(implementation = Dashboard.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
-  public Response createOrUpdate(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                                 @Valid Dashboard create) throws IOException {
+  public Response createOrUpdate(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Valid CreateDashboard create) throws IOException {
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags());
-    addHref(uriInfo, dao.create(dashboard, dashboard.getService(), dashboard.getOwner()));
+            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
+            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
+            .withOwner(create.getOwner());
+
     PutResponse<Dashboard> response = dao.createOrUpdate(dashboard, dashboard.getService(), dashboard.getOwner());
-    addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(response.getEntity()).build();
+    dashboard = addHref(uriInfo, response.getEntity());
+    return Response.status(response.getStatus()).entity(dashboard).build();
   }
 
   @PUT
