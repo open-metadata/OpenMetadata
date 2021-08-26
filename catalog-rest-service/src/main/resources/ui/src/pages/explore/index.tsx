@@ -16,6 +16,7 @@
 */
 
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import {
   AggregationType,
@@ -35,7 +36,6 @@ import {
   ERROR404,
   ERROR500,
   PAGE_SIZE,
-  sortingOrder,
   tableSortingFields,
   topicSortingFields,
 } from '../../constants/constants';
@@ -87,7 +87,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
-  const [orderListVisible, setOrderListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('last_updated_timestamp');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [searchIndex, setSearchIndex] = useState<string>(SearchIndex.TABLE);
@@ -278,12 +277,8 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setSortField(value || 'last_updated_timestamp');
     setFieldListVisible(false);
   };
-  const handleOrderDropDown = (
-    _e: React.MouseEvent<HTMLElement, MouseEvent>,
-    value?: string
-  ) => {
-    setSortOrder(value || 'desc');
-    setOrderListVisible(false);
+  const handleOrder = (value: string) => {
+    setSortOrder(value);
   };
 
   const getSortingElements = () => {
@@ -313,26 +308,24 @@ const ExplorePage: React.FC = (): React.ReactElement => {
             )}
           </span>
         </div>
-        <div className="tw-mt-4">
-          <span className="tw-mr-2">Order by :</span>
-          <span className="tw-relative">
-            <Button
-              className="tw-underline"
-              size="custom"
-              theme="primary"
-              variant="link"
-              onClick={() => setOrderListVisible((visible) => !visible)}>
-              {sortingOrder.find((order) => order.value === sortOrder)?.name}
-              <DropDownIcon />
-            </Button>
-            {orderListVisible && (
-              <DropDownList
-                dropDownList={sortingOrder}
-                value={sortOrder}
-                onSelect={handleOrderDropDown}
+        <div className="tw-mt-2 tw-flex tw-gap-2">
+          {sortOrder === 'asc' ? (
+            <button onClick={() => handleOrder('desc')}>
+              <i
+                className={classNames(
+                  'fas fa-sort-amount-down-alt tw-text-base tw-text-primary'
+                )}
               />
-            )}
-          </span>
+            </button>
+          ) : (
+            <button onClick={() => handleOrder('asc')}>
+              <i
+                className={classNames(
+                  'fas fa-sort-amount-up-alt tw-text-base tw-text-primary'
+                )}
+              />
+            </button>
+          )}
         </div>
       </div>
     );
