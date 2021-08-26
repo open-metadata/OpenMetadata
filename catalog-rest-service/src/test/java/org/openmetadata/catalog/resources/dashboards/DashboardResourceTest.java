@@ -365,94 +365,96 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void get_DashboardWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
-    Dashboard Dashboard = createAndCheckDashboard(create, adminAuthHeaders());
-    validateGetWithDifferentFields(Dashboard, false);
+    Dashboard dashboard = createAndCheckDashboard(create, adminAuthHeaders());
+    validateGetWithDifferentFields(dashboard, false);
   }
 
   @Test
   public void get_DashboardByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
-    Dashboard Dashboard = createAndCheckDashboard(create, adminAuthHeaders());
-    validateGetWithDifferentFields(Dashboard, true);
+    Dashboard dashboard = createAndCheckDashboard(create, adminAuthHeaders());
+    validateGetWithDifferentFields(dashboard, true);
   }
 
   @Test
   public void patch_DashboardAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create Dashboard without description, owner
-    Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    assertNull(Dashboard.getDescription());
-    assertNull(Dashboard.getOwner());
-    assertNotNull(Dashboard.getService());
+    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
+    assertNull(dashboard.getDescription());
+    assertNull(dashboard.getOwner());
+    assertNotNull(dashboard.getService());
 
-    Dashboard = getDashboard(Dashboard.getId(), "service,owner,usageSummary", adminAuthHeaders());
-    Dashboard.getService().setHref(null); // href is readonly and not patchable
+    dashboard = getDashboard(dashboard.getId(), "service,owner,usageSummary", adminAuthHeaders());
+    dashboard.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    Dashboard = patchDashboardAttributesAndCheck(Dashboard, "description", TEAM_OWNER1, adminAuthHeaders());
-    Dashboard.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    Dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
+    dashboard = patchDashboardAttributesAndCheck(dashboard, "description",
+            TEAM_OWNER1, adminAuthHeaders());
+    dashboard.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
+    dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Replace description, tier, owner
-    Dashboard = patchDashboardAttributesAndCheck(Dashboard, "description1", USER_OWNER1, adminAuthHeaders());
-    Dashboard.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    Dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
+    dashboard = patchDashboardAttributesAndCheck(dashboard, "description1",
+            USER_OWNER1, adminAuthHeaders());
+    dashboard.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
+    dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchDashboardAttributesAndCheck(Dashboard, null, null, adminAuthHeaders());
+    patchDashboardAttributesAndCheck(dashboard, null, null, adminAuthHeaders());
   }
 
   @Test
   public void patch_DashboardIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure Dashboard ID can't be changed using patch
-    Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    UUID dashboardId = Dashboard.getId();
-    String DashboardJson = JsonUtils.pojoToJson(Dashboard);
-    Dashboard.setId(UUID.randomUUID());
+    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
+    UUID dashboardId = dashboard.getId();
+    String dashboardJson = JsonUtils.pojoToJson(dashboard);
+    dashboard.setId(UUID.randomUUID());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
 
     // ID can't be deleted
-    Dashboard.setId(null);
+    dashboard.setId(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardId, DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
   }
 
   @Test
   public void patch_DashboardNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure Dashboard name can't be changed using patch
-    Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    String dashboardJson = JsonUtils.pojoToJson(Dashboard);
-    Dashboard.setName("newName");
+    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
+    String dashboardJson = JsonUtils.pojoToJson(dashboard);
+    dashboard.setName("newName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
 
     // Name can't be removed
-    Dashboard.setName(null);
+    dashboard.setName(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
   }
 
   @Test
   public void patch_DashboardRemoveService_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure service corresponding to Dashboard can't be changed by patch operation
-    Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    Dashboard.getService().setHref(null); // Remove href from returned response as it is read-only field
+    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
+    dashboard.getService().setHref(null); // Remove href from returned response as it is read-only field
 
-    String DashboardJson = JsonUtils.pojoToJson(Dashboard);
-    Dashboard.setService(LOOKER_REFERENCE);
+    String DashboardJson = JsonUtils.pojoToJson(dashboard);
+    dashboard.setService(LOOKER_REFERENCE);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(DashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
 
     // Service relationship can't be removed
-    Dashboard.setService(null);
+    dashboard.setService(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(DashboardJson, Dashboard, adminAuthHeaders()));
+            patchDashboard(DashboardJson, dashboard, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
   }
 
@@ -461,8 +463,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   @Test
   public void delete_emptyDashboard_200_ok(TestInfo test) throws HttpResponseException {
-    Dashboard Dashboard = createDashboard(create(test), adminAuthHeaders());
-    deleteDashboard(Dashboard.getId(), adminAuthHeaders());
+    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
+    deleteDashboard(dashboard.getId(), adminAuthHeaders());
   }
 
   @Test
@@ -479,9 +481,9 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   public static Dashboard createAndCheckDashboard(CreateDashboard create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
-    Dashboard Dashboard = createDashboard(create, authHeaders);
-    validateDashboard(Dashboard, create.getDescription(), create.getOwner(), create.getService());
-    return getAndValidate(Dashboard.getId(), create, authHeaders);
+    Dashboard dashboard = createDashboard(create, authHeaders);
+    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
+    return getAndValidate(dashboard.getId(), create, authHeaders);
   }
 
   public static Dashboard updateAndCheckDashboard(CreateDashboard create,
@@ -521,32 +523,32 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   }
 
   /** Validate returned fields GET .../dashboards/{id}?fields="..." or GET .../dashboards/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(Dashboard Dashboard, boolean byName) throws HttpResponseException {
+  private void validateGetWithDifferentFields(Dashboard dashboard, boolean byName) throws HttpResponseException {
     // .../Dashboards?fields=owner
     String fields = "owner";
-    Dashboard = byName ? getDashboardByName(Dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDashboard(Dashboard.getId(), fields, adminAuthHeaders());
-    assertNotNull(Dashboard.getOwner());
-    assertNull(Dashboard.getService());
-    assertNull(Dashboard.getCharts());
+    dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getDashboard(dashboard.getId(), fields, adminAuthHeaders());
+    assertNotNull(dashboard.getOwner());
+    assertNull(dashboard.getService());
+    assertNull(dashboard.getCharts());
 
     // .../Dashboards?fields=owner,service
     fields = "owner,service";
-    Dashboard = byName ? getDashboardByName(Dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDashboard(Dashboard.getId(), fields, adminAuthHeaders());
-    assertNotNull(Dashboard.getOwner());
-    assertNotNull(Dashboard.getService());
-    assertNull(Dashboard.getCharts());
+    dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getDashboard(dashboard.getId(), fields, adminAuthHeaders());
+    assertNotNull(dashboard.getOwner());
+    assertNotNull(dashboard.getService());
+    assertNull(dashboard.getCharts());
 
     // .../Dashboards?fields=owner,service,tables
     fields = "owner,service,charts,usageSummary";
-    Dashboard = byName ? getDashboardByName(Dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
-            getDashboard(Dashboard.getId(), fields, adminAuthHeaders());
-    assertNotNull(Dashboard.getOwner());
-    assertNotNull(Dashboard.getService());
-    assertNotNull(Dashboard.getCharts());
-    TestUtils.validateEntityReference(Dashboard.getCharts());
-    assertNotNull(Dashboard.getUsageSummary());
+    dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getDashboard(dashboard.getId(), fields, adminAuthHeaders());
+    assertNotNull(dashboard.getOwner());
+    assertNotNull(dashboard.getService());
+    assertNotNull(dashboard.getCharts());
+    TestUtils.validateEntityReference(dashboard.getCharts());
+    assertNotNull(dashboard.getUsageSummary());
 
   }
 
