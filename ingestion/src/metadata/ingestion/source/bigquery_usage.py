@@ -14,10 +14,12 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
-import logging
+import logging as log
 from metadata.ingestion.models.table_queries import TableQuery
 from sqlalchemy.engine import create_engine
-from sqlalchemy.inspection import inspect
+from google.cloud import logging
+import collections
+from datetime import datetime
 from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Dict, Any, Iterable
@@ -25,67 +27,20 @@ from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end
 from metadata.ingestion.source.bigquery import BigQueryConfig
 
-logger = logging.getLogger(__name__)
+logger = log.getLogger(__name__)
 
 
 class BigqueryUsageSource(Source):
-    # SELECT statement from mysql information_schema to extract table and column metadata
-    SQL_STATEMENT = """
-        DECLARE start_date, end_date DATE;
-        SET start_date = DATE("{start_date}");
-        SET end_date = DATE("{end_date}");
-
-        WITH
-        auditlog AS (
-          SELECT *
-      FROM `{project_id}.{dataset}.cloudaudit_googleapis_com_data*`
-      WHERE
-        _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', start_date)
-                          AND FORMAT_DATE('%Y%m%d', end_date)
-        AND resource.type = "bigquery_resource"
-    )
-    , job_completed AS (
-      SELECT *
-      FROM auditlog
-      WHERE
-        protopayload_auditlog.methodName = "jobservice.jobcompleted"
-        AND protopayload_auditlog.status.message = "DONE"
-    )
-    , insert AS (
-      SELECT *
-      FROM auditlog
-      WHERE
-        protopayload_auditlog.methodName = "jobservice.insert"
-        AND protopayload_auditlog.status.message = "DONE"
-    )
-    , unioned AS (
-      SELECT * FROM job_completed
-      UNION ALL
-      SELECT * FROM insert
-    )
-
-    SELECT * FROM unioned
-    ORDER BY timestamp
-    LIMIT 1000
-            """
-
     SERVICE_TYPE = 'Bigquery'
     scheme = "bigquery"
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
-        start, end = get_start_and_end(config.duration)
-        self.project_id = config.project_id
-        self.engine = create_engine(self.get_connection_url(), **config.options).connect()
-        inspector = inspect(self.engine)
-        for schema in inspector.get_schema_names():
-            dataset_name = schema
-        self.sql_stmt = BigqueryUsageSource.SQL_STATEMENT.format(
-            project_id=self.project_id,
-            start_date=start,
-            end_date=end,
-            dataset=dataset_name
-        )
+
+        self.config = config
+        self.project_id = self.config.project_id
+        self.engine = create_engine(self.get_connection_url(), **self.config.options).connect()
+        self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
 
     def get_connection_url(self):
@@ -103,24 +58,27 @@ class BigqueryUsageSource(Source):
     def prepare(self):
         pass
 
-    def _get_raw_extract_iter(self) -> Iterable[Dict[str, Any]]:
-        """
-        Provides iterator of result row from SQLAlchemy helper
-        :return:
-        """
-        try:
-            rows = self.engine.execute(self.sql_stmt).fetchall()
-            for row in rows:
-                yield row
-        except Exception as err:
-            logger.error(f"{repr(err)} + {err}")
-
     def next_record(self) -> Iterable[TableQuery]:
-        for row in self._get_raw_extract_iter():
-            tq = TableQuery(row['query'], row['label'], row['userid'], row['xid'], row['pid'], str(row['starttime']),
-                            str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'],
-                            row['aborted'], row['sql'])
-            yield tq
+        logging_client = logging.Client()
+        logger = logging_client.logger(self.logger_name)
+        print("Listing entries for logger {}:".format(logger.name))
+        start, end = get_start_and_end(self.config.duration)
+        for entry in logger.list_entries():
+            timestamp = entry.timestamp.isoformat()
+            timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
+            if("query" in str(entry.payload)) and type(entry.payload) == collections.OrderedDict:
+                payload = list(entry.payload.items())[-1][1]
+                if "jobChange" in payload:
+                    queryConfig = payload['jobChange']['job']['jobConfig']['queryConfig']
+                    jobStats = payload['jobChange']['job']['jobStats']
+                    statementType = queryConfig['statementType'] if hasattr(queryConfig, 'statementType') else ''
+                    database = queryConfig['destinationTable'] if hasattr(queryConfig, 'destinationTable') is not None else ''
+                    analysis_date = str(datetime.strptime(jobStats['startTime'][0:19],"%Y-%m-%dT%H:%M:%S").strftime('%Y-%m-%d %H:%M:%S'))
+                    tq = TableQuery(statementType,
+                                    queryConfig['priority'], 0, 0, 0, str(jobStats['startTime']),
+                                    str(jobStats['endTime']), analysis_date, self.config.duration, str(
+                                        database), 0, queryConfig['query'])
+                    yield tq
 
     def close(self):
         self.engine.close()
