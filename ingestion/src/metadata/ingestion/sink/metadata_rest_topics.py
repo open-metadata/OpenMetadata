@@ -21,8 +21,8 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.ometa.client import REST, APIError, MetadataServerConfig
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.client import  APIError
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
