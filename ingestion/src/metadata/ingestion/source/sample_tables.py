@@ -177,24 +177,49 @@ class GenerateFakeSampleData:
     @classmethod
     def check_columns(self, columns):
         fake = Faker()
-        colList = set()
         colData = []
-        for i in range(15):
+        colList = [column['name'] for column in columns]
+        for i in range(25):
             row = []
             for column in columns:
-                colList.add(column['name'])
-                if "id" in column['name']:
-                    row.append(uuid.uuid4())
-                elif column['columnDataType'] == 'VARCHAR':
-                    row.append(fake.text(max_nb_chars=20))
-                elif column['columnDataType'] == 'NUMERIC' and "id" not in column['name']:
-                    row.append(fake.pyint())
-                elif column['columnDataType'] == 'BOOLEAN':
-                    row.append(fake.pybool())
-                elif column['columnDataType'] == 'TIMESTAMP':
-                    row.append(fake.unix_time())
+                col_name = column['name']
+                value = None
+                if "id" in col_name:
+                    value = uuid.uuid4()
+                elif "price" in col_name:
+                    value = fake.pricetag()
+                elif "barcode" in col_name:
+                    value = fake.ean(length=13)
+                elif "phone" in col_name:
+                    value = fake.phone_number()
+                elif "zip" in col_name:
+                    value = fake.postcode()
+                elif "address" in col_name:
+                    value = fake.street_address()
+                elif "company" in col_name:
+                    value = fake.company()
+                elif "region" in col_name:
+                    value = fake.street_address()
+                elif "name" in col_name:
+                    value = fake.first_name()
+                elif "city" in col_name:
+                    value = fake.city()
+                elif "country" in col_name:
+                    value = fake.country()
+                if value is None:
+                    if "TIMESTAMP" in column['columnDataType'] or "date" in col_name:
+                        value = fake.unix_time()
+                    elif "BOOLEAN" in column['columnDataType']:
+                        value = fake.pybool()
+                    elif "NUMERIC" in column['columnDataType']:
+                        value = fake.pyint()
+                    elif "VARCHAR" in column['columnDataType']:
+                        value = fake.text(max_nb_chars=20)
+                    else:
+                        value = None
+                row.append(value)
             colData.append(row)
-        return {"columns": list(colList), "rows": colData}
+        return {"columns": colList, "rows": colData}
 
 
 class SampleTablesSource(Source):
