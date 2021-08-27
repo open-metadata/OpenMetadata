@@ -31,15 +31,22 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { pagingObject } from '../../constants/constants';
+import { ServiceCategory } from '../../enums/service.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
-import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getFrequencyTime,
+  getServiceCategoryFromType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 
 const ServicePage: FunctionComponent = () => {
-  const { serviceFQN } = useParams() as Record<string, string>;
-  const [serviceName] = useState('databaseServices');
+  const { serviceFQN, serviceType } = useParams() as Record<string, string>;
+  const [serviceName, setServiceName] = useState(
+    getServiceCategoryFromType(serviceType)
+  );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -47,7 +54,7 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServiceOption>();
   const [data, setData] = useState<Array<Database>>([]);
-  const [isLoading, setIsloading] = useState(false);
+  const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const showToast = useToastContext();
 
@@ -70,6 +77,67 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchTopics = (paging?: string) => {
+    setIsloading(false);
+    // eslint-disable-next-line no-console
+    console.log(paging);
+  };
+
+  const getOtherDetails = (paging?: string) => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        fetchDatabases(paging);
+
+        break;
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        fetchTopics(paging);
+
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  const getOptionalFields = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">
+              Driver Class :
+            </span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.jdbc?.driverClass || '--'}
+            </span>
+            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+          </span>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">Brokers :</span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.brokers?.length
+                ? serviceDetails?.brokers.join(', ')
+                : '--'}
+            </span>
+            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+          </span>
+        );
+      }
+      default: {
+        return <></>;
+      }
+    }
+  };
+
+  useEffect(() => {
+    setServiceName(getServiceCategoryFromType(serviceType));
+  }, [serviceType]);
+
   useEffect(() => {
     getServiceByFQN(serviceName, serviceFQN).then(
       (resService: AxiosResponse) => {
@@ -84,13 +152,10 @@ const ServicePage: FunctionComponent = () => {
             activeTitle: true,
           },
         ]);
+        getOtherDetails();
       }
     );
-  }, []);
-
-  useEffect(() => {
-    fetchDatabases();
-  }, [serviceFQN]);
+  }, [serviceFQN, serviceName]);
 
   const onCancel = () => {
     setIsEdit(false);
@@ -129,7 +194,7 @@ const ServicePage: FunctionComponent = () => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
-    fetchDatabases(pagingString);
+    getOtherDetails(pagingString);
   };
 
   return (
@@ -142,17 +207,7 @@ const ServicePage: FunctionComponent = () => {
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Driver Class :
-                </span>{' '}
-                <span className="tw-pl-1tw-font-normal ">
-                  {serviceDetails?.jdbc.driverClass || '--'}
-                </span>
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
-                </span>
-              </span>
+              {getOptionalFields()}
               <span>
                 <span className="tw-text-grey-muted tw-font-normal">
                   Frequency :

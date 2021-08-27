@@ -50,12 +50,13 @@ declare module 'Models' {
 
   export type ServiceOption = {
     id: string;
+    brokers?: Array<string>;
     description: string;
     ingestionSchedule?: {
       repeatFrequency: string;
       startDate: string;
     };
-    jdbc: { connectionUrl: string; driverClass: string };
+    jdbc?: { connectionUrl: string; driverClass: string };
     name: string;
     serviceType: string;
   };

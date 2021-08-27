@@ -115,7 +115,10 @@ const DatabaseDetails: FunctionComponent = () => {
               {
                 name: resService.data.name,
                 url: resService.data.name
-                  ? getServiceDetailsPath(resService.data.name)
+                  ? getServiceDetailsPath(
+                      resService.data.name,
+                      resService.data.serviceType
+                    )
                   : '',
                 imgSrc: resService.data.serviceType
                   ? serviceTypeLogo(resService.data.serviceType)

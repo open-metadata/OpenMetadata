@@ -292,7 +292,11 @@ const ServicesPage = () => {
                     className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                     key={index}>
                     <div className="tw-flex-auto">
-                      <Link to={getServiceDetailsPath(service.name)}>
+                      <Link
+                        to={getServiceDetailsPath(
+                          service.name,
+                          service.serviceType
+                        )}>
                         <button>
                           <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
                             {service.name}
