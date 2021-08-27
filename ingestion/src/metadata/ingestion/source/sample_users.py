@@ -21,7 +21,7 @@ from typing import Iterable, List
 from dataclasses import dataclass, field
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from metadata.ingestion.models.user import User
 
@@ -86,6 +86,7 @@ class SampleUsersSource(Source):
 
     def __init__(self, config: SampleUserSourceConfig, metadata_config: MetadataServerConfig, ctx):
         super().__init__(ctx)
+        self.client = OpenMetadataAPIClient(metadata_config)
         self.status = SampleUserSourceStatus()
         metadata_gen = SampleUserMetadataGenerator(config.no_of_users)
         self.sample_columns = metadata_gen.generate_sample_user()

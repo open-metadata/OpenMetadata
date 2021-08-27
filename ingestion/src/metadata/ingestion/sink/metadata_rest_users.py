@@ -19,8 +19,8 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from metadata.ingestion.ometa.client import APIError
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class MetadataRestUsersSink(Sink):
         self.org_entities = {}
         self.role_entities = {}
         self.team_entities = {}
-        self.rest = REST(metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config).client
         self._bootstrap_entities()
 
     @classmethod
@@ -60,7 +60,7 @@ class MetadataRestUsersSink(Sink):
     def _bootstrap_entities(self):
         # Fetch teams per org
 
-        team_response = self.rest.get(self.api_team_get)
+        team_response = self.client.get(self.api_team_get)
         for team in team_response['data']:
             self.team_entities[team['displayName']] = team['id']
 
@@ -68,9 +68,9 @@ class MetadataRestUsersSink(Sink):
         team_name = record.team_name
         metadata_team = MetadataTeam(team_name, 'Team Name')
         try:
-            r = self.rest.post(self.api_team_post,
-                               data=metadata_team.to_json()
-                               )
+            r = self.client.post(self.api_team_post,
+                                 data=metadata_team.to_json()
+                                 )
             instance_id = r['id']
             self.team_entities[team_name] = instance_id
         except APIError:
@@ -86,7 +86,7 @@ class MetadataRestUsersSink(Sink):
                                      email=record.email,
                                      teams=teams)
         try:
-            self.rest.post(self.api_users, data=metadata_user.to_json())
+            self.client.post(self.api_users, data=metadata_user.to_json())
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))
         except APIError:
