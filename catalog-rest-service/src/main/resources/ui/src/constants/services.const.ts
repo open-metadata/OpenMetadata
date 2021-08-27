@@ -15,12 +15,15 @@
   * limitations under the License.
 */
 
+import { ServiceTypes } from 'Models';
 import noService from '../assets/img/no-service.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
+import kafka from '../assets/img/service-icon-kafka.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
+import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
@@ -35,17 +38,32 @@ export const HIVE = hive;
 export const POSTGRES = postgres;
 export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
+export const KAFKA = kafka;
+export const PULSAR = pulsar;
 export const SERVICE_DEFAULT = serviceDefault;
 
 export const PLUS = plus;
 export const NOSERVICE = noService;
 
-export const serviceType = [
-  'MySQL',
-  'Postgres',
-  'Redshift',
-  'BigQuery',
-  'Hive',
-  'Oracle',
-  'Snowflake',
+export const serviceTypes: Record<ServiceTypes, Array<string>> = {
+  databaseServices: [
+    'BigQuery',
+    'MySQL',
+    'Redshift',
+    'Snowflake',
+    'Postgres',
+    'MSSQL',
+    'Hive',
+  ],
+  messagingServices: ['Kafka', 'Pulsar'],
+};
+
+export const arrServiceTypes: Array<ServiceTypes> = [
+  'databaseServices',
+  'messagingServices',
 ];
+
+export const servicesDisplayName = {
+  databaseServices: 'Database Service',
+  messagingServices: 'Messaging Service',
+};

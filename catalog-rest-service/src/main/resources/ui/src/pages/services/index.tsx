@@ -17,7 +17,12 @@
 
 import { AxiosResponse } from 'axios';
 import { isNull } from 'lodash';
-import { ServiceCollection, ServiceData } from 'Models';
+import {
+  ServiceCollection,
+  ServiceData,
+  ServiceRecord,
+  ServiceTypes,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -32,12 +37,19 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
   AddServiceModal,
-  DatabaseObj,
+  DataObj,
   EditObj,
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { NOSERVICE, PLUS } from '../../constants/services.const';
+import {
+  arrServiceTypes,
+  NOSERVICE,
+  PLUS,
+  servicesDisplayName,
+} from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
+import { getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -53,7 +65,12 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [serviceName] = useState('databaseServices');
+  const [serviceName, setServiceName] =
+    useState<ServiceTypes>('databaseServices');
+  const [services, setServices] = useState<ServiceRecord>({
+    databaseServices: [],
+    messagingServices: [],
+  });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -61,7 +78,7 @@ const ServicesPage = () => {
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
-    let listArr = [];
+    // let listArr = [];
     //   fetch services of all individual collection
     if (allServiceCollectionArr.length) {
       let promiseArr = [];
@@ -71,16 +88,24 @@ const ServicesPage = () => {
       Promise.all(promiseArr).then((result: AxiosResponse[]) => {
         if (result.length) {
           let serviceArr = [];
+          const serviceRecord = {} as ServiceRecord;
           serviceArr = result.map((service) => service?.data?.data || []);
-          // converted array of arrays to array
-          const allServices = serviceArr.reduce(
-            (acc, el) => acc.concat(el),
-            []
-          );
-          listArr = allServices.map((s: ApiData) => {
-            return { ...s, ...s.jdbc };
-          });
-          setServiceList(listArr);
+          for (let i = 0; i < serviceArr.length; i++) {
+            serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
+              serviceArr[i].map((s: ApiData) => {
+                return { ...s, ...s.jdbc };
+              });
+          }
+          // // converted array of arrays to array
+          // const allServices = serviceArr.reduce(
+          //   (acc, el) => acc.concat(el),
+          //   []
+          // );
+          // listArr = allServices.map((s: ApiData) => {
+          //   return { ...s, ...s.jdbc };
+          // });
+          setServices(serviceRecord);
+          setServiceList(serviceRecord[serviceName]);
         }
       });
     }
@@ -103,36 +128,43 @@ const ServicesPage = () => {
   const handleUpdate = (
     selectedService: string,
     id: string,
-    dataObj: DatabaseObj
+    dataObj: DataObj
   ) => {
     updateService(selectedService, id, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
         const updatedServiceList = serviceList.map((s) =>
           s.id === updatedData.id ? updatedData : s
         );
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     );
   };
 
-  const handleAdd = (selectedService: string, dataObj: DatabaseObj) => {
+  const handleAdd = (selectedService: string, dataObj: DataObj) => {
     postService(selectedService, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
-        setServiceList([...serviceList, updatedData]);
+        const updatedServiceList = [...serviceList, updatedData];
+        setServices({ ...services, [serviceName]: updatedServiceList });
+        setServiceList(updatedServiceList);
       }
     );
   };
 
   const handleSave = (
-    dataObj: DatabaseObj,
+    dataObj: DataObj,
     selectedService: string,
     isEdit: EditObj
   ) => {
@@ -149,6 +181,7 @@ const ServicesPage = () => {
     deleteService(serviceName, id).then((res: AxiosResponse) => {
       if (res.statusText === 'OK') {
         const updatedServiceList = serviceList.filter((s) => s.id !== id);
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     });
@@ -161,6 +194,54 @@ const ServicesPage = () => {
     }
 
     return null;
+  };
+
+  const getServiceTabs = (): Array<{
+    name: ServiceTypes;
+    displayName: string;
+  }> => {
+    const tabs = Object.keys(services);
+
+    return arrServiceTypes
+      .filter((item) => tabs.includes(item))
+      .map((type) => {
+        return {
+          name: type,
+          displayName: servicesDisplayName[type],
+        };
+      });
+  };
+
+  const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Driver Class:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.driverClass}
+              </span>
+            </div>
+          </>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Brokers:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.brokers?.join(', ')}
+              </span>
+            </div>
+          </>
+        );
+      }
+      default: {
+        return <></>;
+      }
+    }
   };
 
   useEffect(() => {
@@ -188,6 +269,22 @@ const ServicesPage = () => {
       {!isLoading ? (
         <PageContainer>
           <div className="container-fluid">
+            <div className="tw-bg-transparent tw-mb-4">
+              <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
+                {getServiceTabs().map((tab, index) => (
+                  <button
+                    className={getTabClasses(tab.name, serviceName)}
+                    data-testid="tab"
+                    key={index}
+                    onClick={() => {
+                      setServiceName(tab.name);
+                      setServiceList(services[tab.name]);
+                    }}>
+                    {tab.displayName}
+                  </button>
+                ))}
+              </nav>
+            </div>
             {serviceList.length ? (
               <div className="tw-grid tw-grid-cols-4 tw-gap-4">
                 {serviceList.map((service, index) => (
@@ -213,19 +310,9 @@ const ServicesPage = () => {
                           </span>
                         )}
                       </div>
-                      {/* <div className="tw-my-2">
-                        <label className="tw-font-semibold ">Tags:</label>
-                        <span className="tw-tag tw-ml-3">mysql</span>
-                        <span className="tw-tag tw-ml-2">sales</span>
-                      </div> */}
+                      {getOptionalFields(service)}
                       <div className="tw-mb-1">
-                        <label className="tw-mb-0">Driver Class:</label>
-                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                          {service.driverClass}
-                        </span>
-                      </div>
-                      <div className="tw-mb-1">
-                        <label className="tw-mb-0">Frequency:</label>
+                        <label className="tw-mb-0">Ingestion:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                           {service.ingestionSchedule
                             ? getFrequencyTime(
@@ -275,8 +362,8 @@ const ServicesPage = () => {
                   className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
                   onClick={() => handleAddService()}>
                   <img alt="" src={PLUS} />
-                  <p className="tw-text-base tw-font-normal tw-mt-1">
-                    Add new service
+                  <p className="tw-text-base tw-font-normal tw-mt-4">
+                    Add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>
@@ -289,11 +376,11 @@ const ServicesPage = () => {
                   <p className="tw-text-lg">
                     No services found.{' '}
                     <button
-                      className="tw-text-blue-700 tw-cursor-pointer tw-underline"
+                      className="link-text tw-underline"
                       onClick={handleAddService}>
                       Click here
                     </button>{' '}
-                    to add new services
+                    to add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>

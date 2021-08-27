@@ -84,3 +84,10 @@ export const getUserTeams = (): Array<UserTeam> => {
 
   return retVal;
 };
+
+export const getTabClasses = (
+  tab: number | string,
+  activeTab: number | string
+) => {
+  return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
+};
