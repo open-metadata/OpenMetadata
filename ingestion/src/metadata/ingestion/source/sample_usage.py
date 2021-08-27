@@ -2,11 +2,10 @@ import json
 import csv
 from metadata.ingestion.api.source import Source
 from .sample_tables import SampleTableSourceConfig, SampleTableSourceStatus, get_service_or_create
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
 from metadata.ingestion.models.table_queries import TableQuery
 from typing import Iterable
 from datetime import datetime
-from ..ometa.openmetadata_rest import OpenMetadataAPIClient
+from ..ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 
 class SampleUsageSource(Source):

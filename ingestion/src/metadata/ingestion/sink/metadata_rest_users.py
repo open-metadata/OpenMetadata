@@ -19,7 +19,7 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.client import REST, APIError
 
 logger = logging.getLogger(__name__)

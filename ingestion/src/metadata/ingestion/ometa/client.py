@@ -109,7 +109,7 @@ class REST(object):
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + '/' + version + path)
         headers = {'Content-type': 'application/json'}
-        if self._auth_token is not None:
+        if self._auth_token is not None and self._auth_token != 'no_token':
             headers[self.config.auth_header] = self._auth_token
         opts = {
             'headers': headers,
@@ -129,8 +129,8 @@ class REST(object):
             retry = 0
         while retry >= 0:
             try:
-                logger.debug('URL {}, method {}'.format(url, method))
-                logger.debug('Data {}'.format(opts))
+                logger.info('URL {}, method {}'.format(url, method))
+                logger.info('Data {}'.format(opts))
                 return self._one_request(method, url, opts, retry)
             except RetryException:
                 retry_wait = self._retry_wait
