@@ -199,6 +199,7 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
     // Update description and ingestion schedule again
     update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
     updateAndCheckService(id, update, OK, adminAuthHeaders());
+
   }
 
   @Test
