@@ -48,13 +48,14 @@ class SQLSourceStatus(SourceStatus):
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    filtered: List[str] = field(default_factory=list)
 
     def scanned(self, table_name: str) -> None:
         self.success.append(table_name)
         logger.info('Table Scanned: {}'.format(table_name))
 
-    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
-        self.warnings.append(table_name)
+    def filter(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+        self.filtered.append(table_name)
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 
@@ -194,7 +195,7 @@ class SQLSource(Source):
         inspector = inspect(self.engine)
         for schema in inspector.get_schema_names():
             if not self.sql_config.filter_pattern.included(schema):
-                self.status.filtered(schema, "Schema pattern not allowed")
+                self.status.filter(schema, "Schema pattern not allowed")
                 continue
             logger.debug("total tables {}".format(inspector.get_table_names(schema)))
             if self.config.include_tables:
@@ -209,7 +210,7 @@ class SQLSource(Source):
             try:
                 schema, table_name = self.standardize_schema_table_names(schema, table_name)
                 if not self.sql_config.filter_pattern.included(table_name):
-                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), table_name),
+                    self.status.filter('{}.{}'.format(self.config.get_service_name(), table_name),
                                          "Table pattern not allowed")
                     continue
                 self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
@@ -230,7 +231,7 @@ class SQLSource(Source):
                 yield table_and_db
             except ValidationError as err:
                 logger.error(err)
-                self.status.filtered('{}.{}'.format(self.config.service_name, table_name),
+                self.status.filter('{}.{}'.format(self.config.service_name, table_name),
                                      "Validation error")
                 continue
 
@@ -240,7 +241,7 @@ class SQLSource(Source):
         for view_name in inspector.get_view_names(schema):
             try:
                 if not self.sql_config.filter_pattern.included(view_name):
-                    self.status.filtered('{}.{}'.format(self.config.get_service_name(), view_name),
+                    self.status.filter('{}.{}'.format(self.config.get_service_name(), view_name),
                                          "View pattern not allowed")
                     continue
                 try:

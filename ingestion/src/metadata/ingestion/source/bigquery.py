@@ -26,6 +26,7 @@ from ..ometa.auth_provider import MetadataServerConfig
 class BigQueryConfig(SQLConnectionConfig, SQLSource):
     scheme = "bigquery"
     project_id: Optional[str] = None
+    duration: int = 1
 
     def get_connection_url(self):
         if self.project_id:
