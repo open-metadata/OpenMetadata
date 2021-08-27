@@ -23,14 +23,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
@@ -46,6 +49,8 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -59,6 +64,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -74,6 +80,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public static EntityReference TEAM_OWNER1;
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
+  public static List<EntityReference> CHART_REFERENCES;
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -92,6 +99,12 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     createService.withName("looker").withServiceType(DashboardServiceType.Looker);
     service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
     LOOKER_REFERENCE = EntityUtil.getEntityReference(service);
+    CHART_REFERENCES = new ArrayList<>();
+    for (int i=0; i < 3; i++) {
+      CreateChart createChart = ChartResourceTest.create(test, i).withService(SUPERSET_REFERENCE);
+      Chart chart = ChartResourceTest.createChart(createChart, adminAuthHeaders());
+      CHART_REFERENCES.add(EntityUtil.getEntityReference(chart));
+    }
 
   }
 
@@ -140,6 +153,11 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckDashboard(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+  }
+
+  @Test
+  public void post_DashboardWithCharts_200_ok(TestInfo test) throws HttpResponseException {
+    createAndCheckDashboard(create(test), CHART_REFERENCES, adminAuthHeaders());
   }
 
   @Test
@@ -353,6 +371,19 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     assertNull(db.getOwner());
   }
 
+
+  @Test
+  public void put_DashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
+    CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
+    createAndCheckDashboard(request, adminAuthHeaders());
+
+    Dashboard dashboard = updateAndCheckDashboard(request
+                    .withDescription("newDescription").withCharts(CHART_REFERENCES),
+            OK, adminAuthHeaders());
+    validateDashboardCharts(dashboard, CHART_REFERENCES);
+    assertEquals("newDescription", dashboard.getDescription());
+  }
+
   @Test
   public void get_nonExistentDashboard_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -486,6 +517,14 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     return getAndValidate(dashboard.getId(), create, authHeaders);
   }
 
+  public static Dashboard createAndCheckDashboard(CreateDashboard create, List<EntityReference> charts,
+                                                  Map<String, String> authHeaders) throws HttpResponseException {
+    create.withCharts(charts);
+    Dashboard dashboard = createDashboard(create, authHeaders);
+    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), charts);
+    return getAndValidate(dashboard.getId(), create, authHeaders);
+  }
+
   public static Dashboard updateAndCheckDashboard(CreateDashboard create,
                                                 Status status,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
@@ -501,12 +540,12 @@ public class DashboardResourceTest extends CatalogApplicationTest {
                                         CreateDashboard create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created Dashboard by ID and validate
-    Dashboard dashboard = getDashboard(dashboardId, "service,owner", authHeaders);
+    Dashboard dashboard = getDashboard(dashboardId, "service,owner,charts", authHeaders);
     validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
 
     // GET the newly created Dashboard by name and validate
     String fqn = dashboard.getFullyQualifiedName();
-    dashboard = getDashboardByName(fqn, "service,owner", authHeaders);
+    dashboard = getDashboardByName(fqn, "service,owner,charts", authHeaders);
     return validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
   }
 
@@ -573,6 +612,46 @@ public class DashboardResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getType(), dashboard.getService().getType());
     }
     return dashboard;
+  }
+
+  private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription,
+                                             EntityReference expectedOwner, EntityReference expectedService,
+                                              List<EntityReference> charts) {
+    assertNotNull(dashboard.getId());
+    assertNotNull(dashboard.getHref());
+    assertEquals(expectedDescription, dashboard.getDescription());
+
+    // Validate owner
+    if (expectedOwner != null) {
+      TestUtils.validateEntityReference(dashboard.getOwner());
+      assertEquals(expectedOwner.getId(), dashboard.getOwner().getId());
+      assertEquals(expectedOwner.getType(), dashboard.getOwner().getType());
+      assertNotNull(dashboard.getOwner().getHref());
+    }
+
+    // Validate service
+    if (expectedService != null) {
+      TestUtils.validateEntityReference(dashboard.getService());
+      assertEquals(expectedService.getId(), dashboard.getService().getId());
+      assertEquals(expectedService.getType(), dashboard.getService().getType());
+    }
+    validateDashboardCharts(dashboard, charts);
+    return dashboard;
+  }
+
+  private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> charts) {
+    if (charts != null) {
+      List<UUID> expectedChartReferences = new ArrayList<>();
+      for (EntityReference chart: charts) {
+        expectedChartReferences.add(chart.getId());
+      }
+      List<UUID> actualChartReferences = new ArrayList<>();
+      for (EntityReference chart: dashboard.getCharts()) {
+        TestUtils.validateEntityReference(chart);
+        actualChartReferences.add(chart.getId());
+      }
+      assertTrue(actualChartReferences.containsAll(expectedChartReferences));
+    }
   }
 
   private Dashboard patchDashboardAttributesAndCheck(Dashboard dashboard, String newDescription,

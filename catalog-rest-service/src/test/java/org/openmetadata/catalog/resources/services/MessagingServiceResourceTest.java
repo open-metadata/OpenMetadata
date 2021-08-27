@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.resources.services;
 
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -26,16 +27,26 @@ import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingSer
 import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.TeamResourceTest;
+import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -45,10 +56,21 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class MessagingServiceResourceTest extends CatalogApplicationTest {
+
+  public static List<String> KAFKA_BROKERS;
+  public static URI SCHEMA_REGISTRY_URL;
+
+  @BeforeAll
+  public static void setup(TestInfo test) throws URISyntaxException {
+    KAFKA_BROKERS = List.of("192.168.1.1:0");
+    SCHEMA_REGISTRY_URL = new URI("http://localhost:0");
+  }
+
   @Test
   public void post_serviceWithLongName_400_badRequest(TestInfo test) {
     // Create messaging with mandatory name field empty
@@ -183,9 +205,9 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException {
-    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null),
-            adminAuthHeaders());
+  public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
+    MessagingService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null)
+            .withBrokers(KAFKA_BROKERS).withSchemaRegistry(SCHEMA_REGISTRY_URL), adminAuthHeaders());
     String id = dbService.getId().toString();
 
     // Update messaging description and ingestion service that are null
@@ -200,6 +222,11 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
     update.withDescription("description1").withIngestionSchedule(schedule.withRepeatFrequency("PT1H"));
     updateAndCheckService(id, update, OK, adminAuthHeaders());
 
+    // update broker list and schema registry
+    update.withBrokers(List.of("localhost:0")).withSchemaRegistry(new URI("http://localhost:9000"));
+    updateAndCheckService(id, update, OK, adminAuthHeaders());
+    MessagingService updatedService = getService(dbService.getId(), adminAuthHeaders());
+    validateMessagingServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
   }
 
   @Test
@@ -337,7 +364,8 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
 
   public static CreateMessagingService create(TestInfo test) {
     return new CreateMessagingService().withName(getName(test)).withServiceType(MessagingServiceType.Kafka)
-            .withBrokers(List.of("192.1.1.1:0"))
+            .withBrokers(KAFKA_BROKERS)
+            .withSchemaRegistry(SCHEMA_REGISTRY_URL)
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
@@ -366,5 +394,12 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
           throws HttpResponseException {
     return TestUtils.put(CatalogApplicationTest.getResource("services/messagingServices/" + id), updated,
             MessagingService.class, status, authHeaders);
+  }
+
+  private static void validateMessagingServiceConfig(MessagingService actualService, List<String> expectedBrokers,
+                                                     URI expectedSchemaRegistry)
+          throws HttpResponseException {
+    assertTrue(actualService.getBrokers().containsAll(expectedBrokers));
+    assertEquals(actualService.getSchemaRegistry(), expectedSchemaRegistry);
   }
 }

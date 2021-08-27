@@ -26,11 +26,13 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
@@ -46,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -101,6 +104,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     createService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
     MYSQL_REFERENCE = EntityUtil.getEntityReference(service);
+
   }
 
   @Test
