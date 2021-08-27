@@ -19,7 +19,10 @@ import { lowerCase } from 'lodash';
 import { AggregationType, Bucket, FilterObject } from 'Models';
 import PropTypes from 'prop-types';
 import React, { Fragment, FunctionComponent, useState } from 'react';
-import { LIST_SIZE } from '../../../constants/constants';
+import {
+  facetFilterPlaceholder,
+  LIST_SIZE,
+} from '../../../constants/constants';
 import { FacetProp } from './FacetTypes';
 import FilterContainer from './FilterContainer';
 const FacetFilter: FunctionComponent<FacetProp> = ({
@@ -51,11 +54,9 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
     );
   };
   const getSeparator = (length: number, index: number) => {
-    return (
-      (length === 1 || index !== length - 1) && (
-        <div className="seperator mb-3" />
-      )
-    );
+    return length !== 1 && index < length - 1 ? (
+      <div className="seperator tw-mb-4 tw--mx-4 " />
+    ) : null;
   };
   const sortBuckets = (buckets: Array<Bucket>) => {
     return buckets.sort((a, b) => (a.key > b.key ? 1 : -1));
@@ -103,6 +104,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
           (bucket: Bucket, index: number) => (
             <FilterContainer
               count={bucket.doc_count}
+              isDisabled={aggregation.buckets.length === 1}
               isSelected={filters[
                 lowerCase(aggregation.title) as keyof FilterObject
               ].includes(bucket.key)}
@@ -137,7 +139,13 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
             {aggregation.buckets.length > 0 ? (
               <>
                 <div className="tw-flex tw-justify-between">
-                  <h6 className="tw-heading">{aggregation.title}</h6>
+                  <h6 className="tw-heading">
+                    {
+                      facetFilterPlaceholder.find(
+                        (filter) => filter.name === aggregation.title
+                      )?.value
+                    }
+                  </h6>
                   {isClearFilter(aggregation) && (
                     <p
                       className="link-text"

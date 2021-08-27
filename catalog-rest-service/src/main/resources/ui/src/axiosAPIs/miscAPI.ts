@@ -23,7 +23,10 @@ export const searchData: Function = (
   queryString: string,
   from: number,
   size: number,
-  filters: string
+  filters: string,
+  sortField: string,
+  sortOrder: string,
+  searchIndex: string
 ): Promise<AxiosResponse> => {
   const start = (from - 1) * size;
   const query = queryString ? `*${queryString}*` : '*';
@@ -31,7 +34,9 @@ export const searchData: Function = (
   return APIClient.get(
     `/search/query?q=${query}${
       filters ? ` AND ${filters}` : ''
-    }&from=${start}&size=${size}`
+    }&from=${start}&size=${size}${sortField ? `&sort_field=${sortField}` : ''}${
+      sortOrder ? `&sort_order=${sortOrder}` : ''
+    }${searchIndex ? `&index=${searchIndex}` : ''}`
   );
 };
 

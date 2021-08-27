@@ -7,11 +7,11 @@
 
   "definitions": {
     "driverClass": {
-      "description": "Type used for JDBC driver class",
+      "description": "Type used for JDBC driver class.",
       "type": "string"
     },
     "connectionUrl": {
-      "description": "Type used for JDBC connection URL",
+      "description": "Type used for JDBC connection URL.",
       "type": "string",
       "format": "uri"
     },
@@ -19,7 +19,7 @@
     "jdbcInfo": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.JdbcInfo",
-      "description": "Type for capturing JDBC connector information",
+      "description": "Type for capturing JDBC connector information.",
       "properties": {
         "driverClass": {
           "$ref" : "#/definitions/driverClass"
@@ -37,11 +37,11 @@
 
   "properties": {
     "driverClass": {
-      "description": "JDBC driver class",
+      "description": "JDBC driver class.",
       "$ref" : "#/definitions/driverClass"
     },
     "connectionUrl": {
-      "description": "JDBC connection URL",
+      "description": "JDBC connection URL.",
       "$ref" : "#/definitions/connectionUrl"
     },
     "userName": {

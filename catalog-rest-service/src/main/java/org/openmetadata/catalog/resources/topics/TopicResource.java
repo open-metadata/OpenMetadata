@@ -191,7 +191,7 @@ public class TopicResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The topic",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Dashboard.class))),
+                                  schema = @Schema(implementation = Topic.class))),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
   public Topic get(@Context UriInfo uriInfo, @PathParam("id") String id,
@@ -239,7 +239,7 @@ public class TopicResource {
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
                     .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
@@ -289,7 +289,7 @@ public class TopicResource {
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
                     .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchema(create.getSchema()).withSchemaType(create.getSchemaType())
+                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
                     .withCleanupPolicies(create.getCleanupPolicies())
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
@@ -323,7 +323,7 @@ public class TopicResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "topic",
+  @Operation(summary = "Remove a follower", tags = "topics",
           description = "Remove the user identified `userId` as a follower of the topic.")
   public Topic deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,

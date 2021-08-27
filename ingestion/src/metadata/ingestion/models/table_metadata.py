@@ -20,8 +20,7 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 from pydantic import BaseModel
 
-from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.models.json_serializable import JsonSerializable, NODE_KEY, NODE_LABEL
+from metadata.ingestion.models.json_serializable import JsonSerializable
 
 DESCRIPTION_NODE_LABEL_VAL = 'Description'
 DESCRIPTION_NODE_LABEL = DESCRIPTION_NODE_LABEL_VAL
@@ -207,3 +206,32 @@ class TopicESDocument(BaseModel):
     schema_description: Optional[str] = None
     owner: str
     followers: List[str]
+
+
+class DashboardOwner(BaseModel):
+    """Dashboard owner"""
+    username: str
+    first_name: str
+    last_name: str
+
+
+class Chart(BaseModel):
+    """Chart"""
+    name: str
+    description: str
+    chart_type: str
+    url: str
+    owners: List[DashboardOwner]
+    lastModified: int
+    datasource_fqn: str
+    custom_props: Dict[Any, Any]
+
+
+class Dashboard(BaseModel):
+    """Dashboard"""
+    name: str
+    description: str
+    url: str
+    owners: List
+    charts: List
+    lastModified: int

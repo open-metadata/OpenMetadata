@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/updateDashboardService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Update Dashboard service entity request",
+  "description": "Update Dashboard service entity request",
+  "type": "object",
+
+  "properties" : {
+    "description": {
+      "description": "Description of Dashboard service entity.",
+      "type": "string"
+    },
+    "dashboardUrl": {
+      "description": "Dashboard Service URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "username" : {
+      "description": "Username to log-into Dashboard Service",
+      "type": "string"
+    },
+    "password" : {
+      "description": "Password to log-into Dashboard Service",
+      "type": "string"
+    },
+    "ingestionSchedule" :  {
+      "description": "Schedule for running metadata ingestion jobs",
+      "$ref" : "../../type/schedule.json"
+    }
+  }
+}

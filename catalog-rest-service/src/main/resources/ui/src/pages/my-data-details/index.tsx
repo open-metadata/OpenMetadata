@@ -20,7 +20,13 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEqual, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { ColumnTags, TableColumn, TableDetail, TableJoinsData } from 'Models';
+import {
+  ColumnTags,
+  SampleData,
+  TableColumn,
+  TableDetail,
+  TableJoinsData,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
@@ -89,6 +95,10 @@ const MyDataDetailsPage = () => {
   const [usage, setUsage] = useState('');
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [columns, setColumns] = useState<Array<TableColumn>>([]);
+  const [sampleData, setSampleData] = useState<SampleData>({
+    columns: [],
+    rows: [],
+  });
   const [tableTags, setTableTags] = useState<Array<ColumnTags>>([]);
   const [isEdit, setIsEdit] = useState(false);
   const [owner, setOwner] = useState<TableDetail['owner']>();
@@ -108,7 +118,7 @@ const MyDataDetailsPage = () => {
   useEffect(() => {
     getTableDetailsByFQN(
       tableFQN,
-      'columns, database, usageSummary, followers, joins, tags, owner'
+      'columns, database, usageSummary, followers, joins, tags, owner,sampleData'
     ).then((res: AxiosResponse) => {
       const {
         description,
@@ -122,6 +132,7 @@ const MyDataDetailsPage = () => {
         followers,
         joins,
         tags,
+        sampleData,
       } = res.data;
       setTableDetails(res.data);
       setTableId(id);
@@ -162,6 +173,7 @@ const MyDataDetailsPage = () => {
 
       setDescription(description);
       setColumns(columns || []);
+      setSampleData(sampleData);
       setTableTags(getTableTags(columns || []));
       if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
         const percentile = getUsagePercentile(
@@ -529,6 +541,7 @@ const MyDataDetailsPage = () => {
                   <SchemaTab
                     columns={columns}
                     joins={tableJoinData.columnJoins}
+                    sampleData={sampleData}
                     onUpdate={onColumnsUpdate}
                   />
                 </div>

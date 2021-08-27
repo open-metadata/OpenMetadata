@@ -20,7 +20,7 @@ import pathlib
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
 from metadata.ingestion.models.table_queries import TableUsageCount, QueryParserData, TableColumnJoin, TableColumn
-from metadata.ingestion.ometa.client import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.stage.file import FileStageConfig
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,11 @@ def get_table_column_join(table, table_aliases, joins):
     for join in joins:
         try:
             if "." in join:
-                jtable, column = join.split(".")
+                if join.count(".") < 3:
+                    jtable, column = join.split(".")
+                else:
+                    jtable, column = join.split(".")[2:]
+
             if table == jtable or jtable in table_aliases:
                 table_column = TableColumn(table=table_aliases[jtable] if jtable in table_aliases else jtable,
                                            column=column)

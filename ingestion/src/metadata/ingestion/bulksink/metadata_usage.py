@@ -23,8 +23,8 @@ from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageRequest, TableColumn, \
     ColumnJoinedWith
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.metadata_config = metadata_config
         self.wrote_something = False
         self.file_handler = open(self.config.filename, 'r')
-        self.client = REST(self.metadata_config)
+        self.client = OpenMetadataAPIClient(self.metadata_config)
         self.status = BulkSinkStatus()
         self.tables_dict = {}
         self.table_join_dict = {}
@@ -71,6 +71,8 @@ class MetadataUsageBulkSink(BulkSink):
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
+            if '.' in table_usage.table:
+                table_usage.table = table_usage.table.split(".")[1]
             if table_usage.table in self.tables_dict:
                 table_entity = self.tables_dict[table_usage.table]
                 table_usage_request = TableUsageRequest(date=table_usage.date, count=table_usage.count)
@@ -144,3 +146,4 @@ class MetadataUsageBulkSink(BulkSink):
 
     def close(self):
         self.file_handler.close()
+        self.client.close()

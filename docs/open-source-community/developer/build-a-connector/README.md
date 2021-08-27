@@ -12,17 +12,17 @@ Please look at our framework [APIs](https://github.com/open-metadata/OpenMetadat
 
 [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) is a simple orchestration job that runs the components in an Order.
 
-It consists of [Source](source.md) ,[Processor](processor.md), [Sink](sink.md) . It also provides support for [Stage](stage.md) , [BulkSink](bulksink.md)
+A workflow consists of [Source](source.md), [Processor](processor.md) and [Sink](sink.md). It also provides support for [Stage](stage.md) and [BulkSink](bulksink.md).
 
 Workflow execution happens in serial fashion.
 
-1. It runs **source** component first. **Source** component retrieves a record from external sources and emits the record downstream. 
-2. if the **processor** component is configured **workflow** sends the record to processor next
-3. There can be multiple processors attached to the workflow it passes them in the order they are configurd
-4. Once the **processors** finished , it sends the modified to record to Sink. 
-5. The above steps repeats per record emitted from source component
+1. **Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
+2. If the **processor** component is configured, the **workflow** sends the record to the **processor** next.
+3. There can be multiple **processor** components attached to the **workflow**.  The **workflow** passes a record to each **processor** in the order they are configured.
+4. Once a **processor** is finished, it sends the modified record to **sink**.
+5. The above steps are repeated for each record emitted from the **source**.
 
-In the cases where we need to aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**
+In the cases where we need aggregation over the records, we can use **stage** to write to a file or other store.  Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**.
 
 {% page-ref page="source.md" %}
 
@@ -33,4 +33,3 @@ In the cases where we need to aggregation over the records, we can use **stage**
 {% page-ref page="stage.md" %}
 
 {% page-ref page="bulksink.md" %}
-

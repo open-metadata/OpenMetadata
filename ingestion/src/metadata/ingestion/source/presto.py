@@ -15,7 +15,7 @@
 from urllib.parse import quote_plus
 
 from .sql_source import SQLSource, SQLConnectionConfig
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
 class PrestoConfig(SQLConnectionConfig):
@@ -32,6 +32,8 @@ class PrestoConfig(SQLConnectionConfig):
         if self.database:
             url += f"?schema={quote_plus(self.database)}"
         return url
+
+    
 
 
 class PrestoSource(SQLSource):

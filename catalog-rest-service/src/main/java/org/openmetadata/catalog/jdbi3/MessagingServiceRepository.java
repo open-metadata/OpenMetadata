@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -71,12 +72,14 @@ public abstract class MessagingServiceRepository {
     return messagingService;
   }
 
-  public MessagingService update(String id, String description, Schedule ingestionSchedule)
+  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+                                 Schedule ingestionSchedule)
           throws IOException {
     validateIngestionSchedule(ingestionSchedule);
     MessagingService dbService = EntityUtil.validate(id, messagingServiceDOA().findById(id), MessagingService.class);
     // Update fields
-    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule);
+    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
+            .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
     messagingServiceDOA().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }

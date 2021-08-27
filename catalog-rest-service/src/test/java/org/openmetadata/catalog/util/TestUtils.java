@@ -49,11 +49,22 @@ public final class TestUtils {
   public static final String LONG_ENTITY_NAME = "012345678901234567890123456789012345678901234567890123456789012345";
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static JdbcInfo JDBC_INFO;
+  public static URI DASHBOARD_URL;
+
   static {
     try {
       JDBC_INFO = new JdbcInfo().withConnectionUrl(new URI("jdbc:service://")).withDriverClass("driverClass");
     } catch (URISyntaxException e) {
       JDBC_INFO = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      DASHBOARD_URL = new URI("http://localhost:8088");
+    } catch (URISyntaxException e) {
+      DASHBOARD_URL = null;
       e.printStackTrace();
     }
   }
@@ -169,7 +180,8 @@ public final class TestUtils {
     assertNotNull(ref.getName());
     assertNotNull(ref.getType());
     // Ensure data entities use fully qualified name
-    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic").contains(ref.getName())) {
+    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
+            .contains(ref.getName())) {
       ref.getName().contains("."); // FullyQualifiedName has "." as separator
     }
   }

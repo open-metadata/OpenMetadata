@@ -26,6 +26,19 @@
       "description": "Description of the dashboard, what it is, and how to use it.",
       "type": "string"
     },
+    "dashboardUrl" : {
+      "description": "Dashboard URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "charts": {
+      "description": "All the charts included in this Dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -33,6 +46,18 @@
     "owner": {
       "description": "Owner of this dashboard.",
       "$ref": "../../type/entityReference.json"
+    },
+    "followers": {
+      "description": "Followers of this dashboard.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "service" : {
       "description": "Link to service where this dashboard is hosted in.",

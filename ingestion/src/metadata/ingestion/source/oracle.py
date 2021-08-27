@@ -17,12 +17,17 @@
 import cx_Oracle  # noqa: F401
 
 from .sql_source import SQLSource, SQLConnectionConfig
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
 class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
+
+    
+
+    def get_connection_url(self):
+        return super().get_connection_url()
 
 
 class OracleSource(SQLSource):

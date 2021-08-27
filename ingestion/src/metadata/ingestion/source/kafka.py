@@ -1,5 +1,17 @@
-import concurrent
-import uuid
+#  The ASF licenses this file to You under the Apache License, Version 2.0
+#  (the "License"); you may not use this file except in compliance with
+#  the License. You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# This import verifies that the dependencies are available.
+
 from dataclasses import field, dataclass, Field
 from typing import List, Iterable, Optional
 
@@ -10,8 +22,6 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import IncludeFilterPattern, Record, logger, WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
-from fastavro import json_reader
-from fastavro import parse_schema
 
 import confluent_kafka
 from confluent_kafka.admin import AdminClient, ConfigResource
@@ -20,7 +30,7 @@ from confluent_kafka.schema_registry.schema_registry_client import (
     SchemaRegistryClient,
 )
 import concurrent.futures
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_messaging_service_or_create
 
 
@@ -80,7 +90,7 @@ class KafkaSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[Topic]:
+    def next_record(self) -> Iterable[CreateTopic]:
         topics = self.admin_client.list_topics().topics
         for t in topics:
             if self.config.filter_pattern.included(t):
@@ -90,7 +100,7 @@ class KafkaSource(Source):
                                     service=EntityReference(id=self.service.id, type="messagingService"),
                                     partitions=1)
                 if topic_schema is not None:
-                    topic.schema_ = topic_schema.schema_str
+                    topic.schemaText = topic_schema.schema_str
                     if topic_schema.schema_type == "AVRO":
                         topic.schemaType = SchemaType.Avro.name
                     elif topic_schema.schema_type == "PROTOBUF":

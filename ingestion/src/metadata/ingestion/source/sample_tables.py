@@ -28,10 +28,10 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
@@ -41,7 +41,7 @@ TableKey = namedtuple('TableKey', ['schema', 'table_name'])
 
 
 def get_service_or_create(service_json, metadata_config) -> DatabaseService:
-    client = REST(metadata_config)
+    client = OpenMetadataAPIClient(metadata_config)
     service = client.get_database_service(service_json['name'])
     if service is not None:
         return service
@@ -177,24 +177,49 @@ class GenerateFakeSampleData:
     @classmethod
     def check_columns(self, columns):
         fake = Faker()
-        colList = set()
         colData = []
-        for i in range(15):
+        colList = [column['name'] for column in columns]
+        for i in range(25):
             row = []
             for column in columns:
-                colList.add(column['name'])
-                if "id" in column['name']:
-                    row.append(uuid.uuid4())
-                elif column['columnDataType'] == 'VARCHAR':
-                    row.append(fake.text(max_nb_chars=20))
-                elif column['columnDataType'] == 'NUMERIC' and "id" not in column['name']:
-                    row.append(fake.pyint())
-                elif column['columnDataType'] == 'BOOLEAN':
-                    row.append(fake.pybool())
-                elif column['columnDataType'] == 'TIMESTAMP':
-                    row.append(fake.unix_time())
+                col_name = column['name']
+                value = None
+                if "id" in col_name:
+                    value = uuid.uuid4()
+                elif "price" in col_name:
+                    value = fake.pricetag()
+                elif "barcode" in col_name:
+                    value = fake.ean(length=13)
+                elif "phone" in col_name:
+                    value = fake.phone_number()
+                elif "zip" in col_name:
+                    value = fake.postcode()
+                elif "address" in col_name:
+                    value = fake.street_address()
+                elif "company" in col_name:
+                    value = fake.company()
+                elif "region" in col_name:
+                    value = fake.street_address()
+                elif "name" in col_name:
+                    value = fake.first_name()
+                elif "city" in col_name:
+                    value = fake.city()
+                elif "country" in col_name:
+                    value = fake.country()
+                if value is None:
+                    if "TIMESTAMP" in column['columnDataType'] or "date" in col_name:
+                        value = fake.unix_time()
+                    elif "BOOLEAN" in column['columnDataType']:
+                        value = fake.pybool()
+                    elif "NUMERIC" in column['columnDataType']:
+                        value = fake.pyint()
+                    elif "VARCHAR" in column['columnDataType']:
+                        value = fake.text(max_nb_chars=20)
+                    else:
+                        value = None
+                row.append(value)
             colData.append(row)
-        return {"columns": list(colList), "rows": colData}
+        return {"columns": colList, "rows": colData}
 
 
 class SampleTablesSource(Source):
@@ -204,7 +229,7 @@ class SampleTablesSource(Source):
         self.status = SampleTableSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = REST(metadata_config)
+        self.client = OpenMetadataAPIClient(metadata_config)
         self.service_json = json.load(open(config.sample_schema_folder + "/service.json", 'r'))
         self.database = json.load(open(config.sample_schema_folder + "/database.json", 'r'))
         self.tables = json.load(open(config.sample_schema_folder + "/tables.json", 'r'))

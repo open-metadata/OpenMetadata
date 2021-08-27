@@ -10,10 +10,8 @@
       "service_name": "snowflake",
       "service_type": "Snowflake",
       "filter_pattern": {
-        "includes": [
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf10tcl"
+        "excludes": [
+          "tpcds_sf100tcl"
         ]
       }
     }

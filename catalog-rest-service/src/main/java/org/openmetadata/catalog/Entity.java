@@ -22,12 +22,14 @@ public final class Entity {
   // Services
   public static final String DATABASE_SERVICE = "databaseService";
   public static final String MESSAGING_SERVICE = "messagingService";
+  public static final String DASHBOARD_SERVICE = "dashboardService";
 
   // Data assets
   public static final String TABLE = "table";
   public static final String DATABASE = "database";
   public static final String METRICS = "metrics";
   public static final String DASHBOARD = "dashboard";
+  public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
 

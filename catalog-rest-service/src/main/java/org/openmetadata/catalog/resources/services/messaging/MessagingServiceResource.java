@@ -177,7 +177,8 @@ public class MessagingServiceResource {
                          @Valid UpdateMessagingService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getIngestionSchedule()));
+            dao.update(id, update.getDescription(), update.getBrokers(), update.getSchemaRegistry(),
+                    update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
 

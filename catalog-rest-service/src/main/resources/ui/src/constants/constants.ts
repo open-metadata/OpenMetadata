@@ -48,6 +48,43 @@ export const tiers = [
   { key: 'Tier.Tier5', doc_count: 0 },
 ];
 
+export const tableSortingFields = [
+  {
+    name: 'Last Updated',
+    value: 'last_updated_timestamp',
+  },
+  { name: 'Weekly Usage', value: 'weekly_stats' },
+  // { name: 'Daily Usage', value: 'daily_stats' },
+  // { name: 'Monthly Usage', value: 'monthly_stats' },
+];
+
+export const topicSortingFields = [
+  {
+    name: 'Last Updated Timestamp',
+    value: 'last_updated_timestamp',
+  },
+];
+
+export const sortingOrder = [
+  { name: 'Ascending', value: 'asc' },
+  { name: 'Descending', value: 'desc' },
+];
+
+export const facetFilterPlaceholder = [
+  {
+    name: 'Service Type',
+    value: 'Service',
+  },
+  {
+    name: 'Tier',
+    value: 'Tier',
+  },
+  {
+    name: 'Tags',
+    value: 'Tags',
+  },
+];
+
 export const ROUTES = {
   HOME: '/',
   CALLBACK: '/callback',
