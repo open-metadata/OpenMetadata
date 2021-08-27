@@ -231,8 +231,7 @@ class SQLSource(Source):
                 yield table_and_db
             except ValidationError as err:
                 logger.error(err)
-                self.status.filter('{}.{}'.format(self.config.service_name, table_name),
-                                     "Validation error")
+                self.status.failures.append('{}.{}'.format(self.config.service_name, table_name))
                 continue
 
     def fetch_views(self,
@@ -266,8 +265,7 @@ class SQLSource(Source):
                 yield table_and_db
             except ValidationError as err:
                 logger.error(err)
-                self.status.filtered('{}.{}'.format(self.config.service_name, view_name),
-                                     "Validation error")
+                self.status.failures.append('{}.{}'.format(self.config.service_name, view_name))
                 continue
 
     def _get_database(self, schema: str) -> Database:

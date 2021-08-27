@@ -17,7 +17,7 @@
 import sqlalchemy_pytds  # noqa: F401
 
 from .sql_source import SQLConnectionConfig, SQLSource
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
 class MssqlConfig(SQLConnectionConfig):

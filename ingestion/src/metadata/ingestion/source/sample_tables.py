@@ -32,6 +32,9 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+import logging
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 COLUMN_NAME = 'Column'
 KEY_TYPE = 'Key type'
@@ -72,11 +75,18 @@ class SampleTableSourceConfig(ConfigModel):
 
 @dataclass
 class SampleTableSourceStatus(SourceStatus):
-    tables_scanned: List[str] = field(default_factory=list)
 
-    def report_table_scanned(self, table_name: str) -> None:
-        self.tables_scanned.append(table_name)
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
 
+    def scanned(self, table_name: str) -> None:
+        self.success.append(table_name)
+        logger.info('Table Scanned: {}'.format(table_name))
+
+    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+        self.warnings.append(table_name)
+        logger.warning("Dropped Table {} due to {}".format(table_name, err))
 
 class TableSchema:
     def __init__(self, filename):

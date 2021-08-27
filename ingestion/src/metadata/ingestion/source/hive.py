@@ -22,7 +22,7 @@ from .sql_source import (
     SQLSource,
     register_custom_type,
 )
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 register_custom_type(HiveDate, "DATE")
 register_custom_type(HiveTimestamp, "TIME")
@@ -35,7 +35,10 @@ class HiveConfig(SQLConnectionConfig):
 
     def get_connection_url(self):
         url = super().get_connection_url()
-        return f'{url};{self.auth_options}'
+        if self.auth_options is not None:
+            return f'{url};{self.auth_options}'
+        else:
+            return url
 
 
 class HiveSource(SQLSource):
