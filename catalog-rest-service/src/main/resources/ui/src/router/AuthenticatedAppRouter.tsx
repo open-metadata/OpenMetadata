@@ -62,6 +62,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route component={MyDataDetailsPage} path={ROUTES.DATASET_DETAILS} />
+      <Route component={MyDataDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

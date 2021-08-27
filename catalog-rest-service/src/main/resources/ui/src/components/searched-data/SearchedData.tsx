@@ -20,6 +20,7 @@ import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
+import { SearchIndex } from '../../pages/explore/explore.interface';
 import { pluralize } from '../../utils/CommonUtils';
 import {
   getOwnerFromId,
@@ -42,6 +43,7 @@ type SearchedDataProp = {
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
+  indexType?: string;
 };
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
@@ -54,7 +56,8 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   searchText,
   totalValue,
   fetchLeftPanel,
-}) => {
+  indexType = SearchIndex.TABLE,
+}: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
       const description = isEmpty(table.highlight?.description)
@@ -70,6 +73,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
           <TableDataCard
             description={description}
             fullyQualifiedName={table.fullyQualifiedName}
+            indexType={indexType}
             name={name}
             owner={getOwnerFromId(table.owner)?.name}
             serviceType={table.serviceType || '--'}

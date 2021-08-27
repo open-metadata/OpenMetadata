@@ -17,7 +17,11 @@
 
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatasetDetailsPath } from '../../../constants/constants';
+import {
+  getDatasetDetailsPath,
+  getTopicDetailsPath,
+} from '../../../constants/constants';
+import { SearchIndex } from '../../../pages/explore/explore.interface';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import { getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
@@ -32,6 +36,7 @@ type Props = {
   serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[];
+  indexType: string;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
@@ -43,6 +48,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   serviceType,
   fullyQualifiedName,
   tags,
+  indexType,
 }: Props) => {
   const OtherDetails = [
     { key: 'Owner', value: owner },
@@ -54,11 +60,24 @@ const TableDataCard: FunctionComponent<Props> = ({
     { key: 'Tier', value: tier },
   ];
 
+  const getEntityLink = (indexType: string) => {
+    switch (indexType) {
+      case SearchIndex.TABLE:
+        return getDatasetDetailsPath(fullyQualifiedName);
+
+      case SearchIndex.TOPIC:
+        return getTopicDetailsPath(fullyQualifiedName);
+
+      default:
+        return getDatasetDetailsPath(fullyQualifiedName);
+    }
+  };
+
   return (
     <div className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
       <div>
         <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-          <Link to={getDatasetDetailsPath(fullyQualifiedName)}>
+          <Link to={getEntityLink(indexType)}>
             <button className="tw-text-grey-body tw-font-medium">
               {stringToHTML(name)}
             </button>
