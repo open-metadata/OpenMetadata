@@ -99,7 +99,7 @@ class ElasticsearchSink(Sink):
             topic_doc = self._create_topic_es_doc(record)
             self.elasticsearch_client.index(index=self.config.topic_index_name, id=str(topic_doc.topic_id),
                                             body=topic_doc.json())
-        self.status.records_written(record)
+        self.status.records_written(record.name.__root__)
 
     def _create_table_es_doc(self, table: Table):
         fqdn = table.fullyQualifiedName

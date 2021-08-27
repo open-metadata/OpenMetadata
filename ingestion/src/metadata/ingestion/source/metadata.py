@@ -19,7 +19,10 @@ from typing import Iterable, Optional
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.source import SourceStatus, Source
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from typing import Iterable, List
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +33,21 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     limit_records: int = 50000
 
 
+@dataclass
+class MetadataSourceStatus(SourceStatus):
+
+    success: List[str] = field(default_factory=list)
+    failures: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+
+    def scanned(self, table_name: str) -> None:
+        self.success.append(table_name)
+        logger.info('Table Scanned: {}'.format(table_name))
+
+    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+        self.warnings.append(table_name)
+        logger.warning("Dropped Table {} due to {}".format(table_name, err))
+
 class MetadataSource(Source):
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
@@ -39,7 +57,7 @@ class MetadataSource(Source):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        self.status = SourceStatus()
+        self.status = MetadataSourceStatus()
         self.wrote_something = False
         self.client = OpenMetadataAPIClient(self.metadata_config)
         self.tables = None
@@ -63,6 +81,7 @@ class MetadataSource(Source):
 
     def next_record(self) -> Iterable[Record]:
         for table in self.tables:
+            self.status.scanned(table.name.__root__)
             yield table
         for topic in self.topics:
             yield topic

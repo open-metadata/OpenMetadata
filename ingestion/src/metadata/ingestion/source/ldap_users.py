@@ -83,6 +83,7 @@ class LdapUsersSource(Source):
                                  user['attributes']['uid'],
                                  '', '', '', True,
                                  0)
+            self.status.scanned(user_metadata.name)
             yield user_metadata
 
     def get_status(self) -> SourceStatus:
