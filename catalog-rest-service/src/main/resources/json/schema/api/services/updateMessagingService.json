@@ -10,6 +10,14 @@
       "description": "Description of Messaging service entity.",
       "type": "string"
     },
+    "brokers": {
+      "$ref" : "../../entity/services/messagingService.json#/definitions/brokers"
+    },
+    "schemaRegistry" : {
+      "description": "Schema registry URL.",
+      "type": "string",
+      "format": "uri"
+    },
     "ingestionSchedule" :  {
       "description": "Schedule for running metadata ingestion jobs",
       "$ref" : "../../type/schedule.json"
