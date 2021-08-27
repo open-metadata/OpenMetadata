@@ -18,7 +18,7 @@ from typing import Any, Iterable
 from metadata.ingestion.api.common import WorkflowContext
 from sqlalchemy import create_engine
 from .sql_source import SQLConnectionConfig, SQLSourceStatus
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class SQLAlchemyHelper:

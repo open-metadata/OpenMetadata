@@ -19,7 +19,7 @@ from metadata.ingestion.models.table_queries import TableQuery
 from google.cloud import logging
 import collections
 from datetime import datetime
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Dict, Any, Iterable
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus

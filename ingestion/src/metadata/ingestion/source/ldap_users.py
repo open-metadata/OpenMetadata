@@ -21,7 +21,7 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.user import MetadataUser, User
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
