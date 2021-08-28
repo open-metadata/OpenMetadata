@@ -17,14 +17,20 @@ import logging
 from typing import List
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardEntityRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, TableData, TableJoins
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
@@ -284,6 +290,32 @@ class OpenMetadataAPIClient(object):
             return resp
         else:
             return [Topic(**t) for t in resp['data']]
+
+    def get_dashboard_service(self, service_name: str) -> DashboardService:
+        """Get the Dashboard service"""
+        resp = self.client.get('/services/dashboardServices?name={}'.format(service_name))
+        return DashboardService(**resp['data'][0]) if len(resp['data']) > 0 else None
+
+    def get_dashboard_service_by_id(self, service_id: str) -> DashboardService:
+        """Get the Dashboard Service by ID"""
+        resp = self.client.get('/services/dashboardServices/{}'.format(service_id))
+        return DashboardService(**resp)
+
+    def create_dashboard_service(self,
+                                 dashboard_service: CreateDashboardServiceEntityRequest) -> DashboardService:
+        """Create a new Database Service"""
+        resp = self.client.post('/services/dashboardServices', data=dashboard_service.json())
+        return DashboardService(**resp)
+
+    def create_or_update_chart(self, create_chart_request: CreateChartEntityRequest) -> Chart:
+        """Create or Update a Chart """
+        resp = self.client.put('/charts', data=create_chart_request.json())
+        return Chart(**resp)
+
+    def create_or_update_dashboard(self, create_dashboard_request: CreateDashboardEntityRequest) -> Dashboard:
+        """Create or Update a Dashboard """
+        resp = self.client.put('/dashboards', data=create_dashboard_request.json())
+        return Dashboard(**resp)
 
     def close(self):
         self.client.close()
