@@ -334,10 +334,19 @@ public abstract class DashboardRepository {
     applyTags(dashboard);
   }
 
-  private void updateChartRelationships(Dashboard dashboard)  {
-    // Add relationship from dashboard to chart
+  private void updateChartRelationships(Dashboard dashboard) throws IOException  {
     String dashboardId = dashboard.getId().toString();
+
+    // Add relationship from dashboard to chart
     if (dashboard.getCharts() != null) {
+      // Remove any existing charts associated with this dashboard
+      List<Chart> existingCharts = getCharts(dashboard);
+      if (existingCharts != null) {
+        for (Chart chart: existingCharts) {
+          relationshipDAO().delete(dashboardId, chart.getId().toString(), Relationship.CONTAINS.ordinal());
+        }
+      }
+
       for (EntityReference chart : dashboard.getCharts()) {
         relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
                 Relationship.CONTAINS.ordinal());

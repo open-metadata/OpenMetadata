@@ -385,6 +385,23 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
+    CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
+    createAndCheckDashboard(request, adminAuthHeaders());
+
+    Dashboard dashboard = updateAndCheckDashboard(request
+                    .withDescription("newDescription").withCharts(CHART_REFERENCES),
+            OK, adminAuthHeaders());
+    validateDashboardCharts(dashboard, CHART_REFERENCES);
+    // remove a chart
+    CHART_REFERENCES.remove(0);
+    dashboard = updateAndCheckDashboard(request
+                    .withDescription("newDescription").withCharts(CHART_REFERENCES),
+            OK, adminAuthHeaders());
+    validateDashboardCharts(dashboard, CHART_REFERENCES);
+  }
+
+  @Test
   public void get_nonExistentDashboard_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
