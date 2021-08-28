@@ -29,7 +29,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.entity.data.database import Database
 
 from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType, TableData
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.inspection import inspect
@@ -37,8 +37,10 @@ from sqlalchemy.inspection import inspect
 from metadata.ingestion.api.common import IncludeFilterPattern, ConfigModel, Record
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.dataprofiler import DataProfiler
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -72,6 +74,7 @@ class SQLConnectionConfig(ConfigModel):
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
+    data_profiler_enabled: Optional[bool] = True
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @abstractmethod
@@ -152,8 +155,10 @@ def get_column_type(status: SQLSourceStatus, dataset_name: str, column_type: Any
     return type_class
 
 
-class SQLSource(Source):
 
+
+
+class SQLSource(Source):
     def __init__(self, config: SQLConnectionConfig, metadata_config: MetadataServerConfig,
                  ctx: WorkflowContext):
         super().__init__(ctx)
@@ -171,6 +176,9 @@ class SQLSource(Source):
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
+
+    def _get_profiler_instance(self, inspector: Inspector) -> DataProfiler:
+        return DataProfiler(conn=inspector.bind, status=self.status)
 
     def standardize_schema_table_names(
             self, schema: str, table: str
@@ -211,7 +219,7 @@ class SQLSource(Source):
                 schema, table_name = self.standardize_schema_table_names(schema, table_name)
                 if not self.sql_config.filter_pattern.included(table_name):
                     self.status.filter('{}.{}'.format(self.config.get_service_name(), table_name),
-                                         "Table pattern not allowed")
+                                       "Table pattern not allowed")
                     continue
                 self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
 
@@ -227,6 +235,11 @@ class SQLSource(Source):
                     table_data = self.fetch_sample_data(schema, table_name)
                     table_entity.sampleData = table_data
 
+                if self.config.data_profiler_enabled:
+                    data_profiler = self._get_profiler_instance(inspector)
+                    profile = self.run_data_profiler(data_profiler, table_name, schema)
+                    logger.info(profile.json())
+
                 table_and_db = OMetaDatabaseAndTable(table=table_entity, database=self._get_database(schema))
                 yield table_and_db
             except ValidationError as err:
@@ -241,7 +254,7 @@ class SQLSource(Source):
             try:
                 if not self.sql_config.filter_pattern.included(view_name):
                     self.status.filter('{}.{}'.format(self.config.get_service_name(), view_name),
-                                         "View pattern not allowed")
+                                       "View pattern not allowed")
                     continue
                 try:
                     view_definition = inspector.get_view_definition(view_name, schema)
@@ -323,6 +336,24 @@ class SQLSource(Source):
         else:
             description = table_info["text"]
         return description
+
+    def run_data_profiler(
+            self,
+            profiler: DataProfiler,
+            table: str,
+            schema: str
+    ) -> DatasetProfile:
+        dataset_name = f"{schema}.{table}"
+        self.status.scanned(f"profile of {dataset_name}")
+        logger.info(f"Profiling {dataset_name} (this may take a while)")
+        profile = profiler.generate_profile(
+                    pretty_name=dataset_name,
+                    schema=schema,
+                    table=table,
+                    limit=50000,
+                    offset=0)
+        logger.debug(f"Finished profiling {dataset_name}")
+        return profile
 
     def close(self):
         if self.connection is not None:
