@@ -54,7 +54,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public abstract class TopicRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
-  private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner");
+  private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
 
   public static String getFQN(EntityReference service, Topic topic) {
