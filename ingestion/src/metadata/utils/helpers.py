@@ -16,8 +16,10 @@
 from datetime import datetime, timedelta
 from typing import List
 
+from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.ingestion.ometa.client import REST
@@ -26,7 +28,7 @@ from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 def get_start_and_end(duration):
     today = datetime.utcnow()
-    start = (today + timedelta(0-duration)).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = (today + timedelta(0 - duration)).replace(hour=0, minute=0, second=0, microsecond=0)
     end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
@@ -68,4 +70,26 @@ def get_messaging_service_or_create(service_name: str,
             schemaRegistry=schema_registry_url
         )
         created_service = client.create_messaging_service(create_messaging_service_request)
+        return created_service
+
+
+def get_dashboard_service_or_create(service_name: str,
+                                    dashboard_service_type: str,
+                                    username: str,
+                                    password: str,
+                                    dashboard_url: str,
+                                    metadata_config) -> DashboardService:
+    client = OpenMetadataAPIClient(metadata_config)
+    service = client.get_dashboard_service(service_name)
+    if service is not None:
+        return service
+    else:
+        create_dashboard_service_request = CreateDashboardServiceEntityRequest(
+            name=service_name,
+            serviceType=dashboard_service_type,
+            username=username,
+            password=password,
+            dashboardUrl=dashboard_url
+        )
+        created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service

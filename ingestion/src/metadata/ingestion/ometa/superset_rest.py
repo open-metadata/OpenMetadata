@@ -27,6 +27,8 @@ class SupersetConfig(ConfigModel):
     url: str = "localhost:8088"
     username: Optional[str] = None
     password: Optional[str] = None
+    service_name: str
+    service_type: str = "Superset"
     provider: str = "db"
     options: dict = {}
 
@@ -67,23 +69,19 @@ class SupersetAPIClient(object):
         self.client = REST(client_config)
 
     def fetch_total_dashboards(self) -> int:
-        params = "q=(page:0,page_size:1)"
-        response = self.client.get(f"/dashboard", data=params)
+        response = self.client.get(f"/dashboard?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_dashboards(self, current_page: int, page_size: int):
-        params = f"'q=(page:{current_page},page_size:{page_size})'"
-        response = self.client.get(f"/dashboard", data=params)
+        response = self.client.get(f"/dashboard?q=(page:{current_page},page_size:{page_size})")
         return response
 
     def fetch_total_charts(self) -> int:
-        params = "q=(page:0,page_size:1)"
-        response = self.client.get(f"/chart", data=params)
+        response = self.client.get(f"/chart?q=(page:0,page_size:1)")
         return response.get("count") or 0
 
     def fetch_charts(self, current_page: int, page_size: int):
-        params = f"'q=(page:{current_page},page_size:{page_size})'"
-        response = self.client.get(f"/chart", data=params)
+        response = self.client.get(f"/chart?q=(page:{current_page},page_size:{page_size})")
         return response
 
     def fetch_datasource(self, datasource_id: str):

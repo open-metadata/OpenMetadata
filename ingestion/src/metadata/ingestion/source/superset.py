@@ -2,11 +2,16 @@ import json
 from typing import Iterable, Tuple
 import dateutil.parser as dateparser
 
+from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
+from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DashboardOwner, Dashboard, Chart
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.superset_rest import SupersetConfig, SupersetAPIClient
+from metadata.utils.helpers import get_dashboard_service_or_create
 
 
 def get_metric_name(metric):
@@ -84,7 +89,12 @@ class SupersetSource(Source):
         self.metadata_config = metadata_config
         self.status = SourceStatus()
         self.client = SupersetAPIClient(self.config)
-        self.charts_dict = {}
+        self.service = get_dashboard_service_or_create(config.service_name,
+                                                       DashboardServiceType.Superset.name,
+                                                       config.username,
+                                                       config.password,
+                                                       config.url,
+                                                       metadata_config)
 
 
     @classmethod
@@ -94,9 +104,10 @@ class SupersetSource(Source):
         return cls(config, metadata_config, ctx)
 
     def prepare(self):
-        self._fetch_charts()
+        pass
 
     def next_record(self) -> Iterable[Record]:
+        yield from self._fetch_charts()
         yield from self._fetch_dashboards()
 
     def _build_dashboard(self, dashboard_json) -> Dashboard:
@@ -112,26 +123,25 @@ class SupersetSource(Source):
                 if not key.startswith("CHART-"):
                     continue
                 chart_id = value.get('meta', {}).get('chartId', 'unknown')
-                if chart_id in self.charts_dict.keys():
-                    charts.append(self.charts_dict[chart_id])
+                charts.append(chart_id)
 
         return Dashboard(name=name,
                          description="",
                          url=dashboard_url,
                          owners=owners,
                          charts=charts,
+                         service=EntityReference(id=self.service.id, type="dashboardService"),
                          lastModified=last_modified)
 
     def _fetch_dashboards(self) -> Iterable[Record]:
         current_page = 0
-        page_size = 10
+        page_size = 25
         total_dashboards = self.client.fetch_total_dashboards()
         while current_page * page_size <= total_dashboards:
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
             for dashboard_json in dashboards['result']:
                 dashboard = self._build_dashboard(dashboard_json)
-                print(dashboard.json())
                 yield dashboard
 
     def _get_service_type_from_database_id(self, database_id):
@@ -158,7 +168,7 @@ class SupersetSource(Source):
             return dataset_fqn
         return None
 
-    def _build_chart(self, chart_json) -> Tuple[int, Chart]:
+    def _build_chart(self, chart_json) -> Chart:
         chart_id = chart_json['id']
         name = chart_json['slice_name']
         last_modified = dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
@@ -187,24 +197,25 @@ class SupersetSource(Source):
 
         chart = Chart(name=name,
                       description="",
+                      chart_id=chart_id,
                       chart_type=chart_type,
                       url=chart_url,
                       owners=owners,
                       datasource_fqn=datasource_fqn,
                       lastModified=last_modified,
+                      service=EntityReference(id=self.service.id, type="dashboardService"),
                       custom_props=custom_properties)
-        return chart_id, chart
+        return chart
 
     def _fetch_charts(self):
         current_page = 0
-        page_size = 10
+        page_size = 25
         total_charts = self.client.fetch_total_charts()
         while current_page * page_size <= total_charts:
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
             for chart_json in charts['result']:
-                chart_id, chart = self._build_chart(chart_json)
-                self.charts_dict[chart_id] = chart
+                yield self._build_chart(chart_json)
 
     def get_status(self):
         return self.status
