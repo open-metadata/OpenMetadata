@@ -98,7 +98,7 @@ public class SearchResource {
                          @javax.ws.rs.QueryParam("q") String query,
                          @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
                            @DefaultValue("table_search_index") @QueryParam("index") String index,
-                         @Parameter(description = "From field to paginate the results, defaults to 1")
+                         @Parameter(description = "From field to paginate the results, defaults to 0")
                            @DefaultValue("0") @QueryParam("from") int from,
                          @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
                            @DefaultValue("10") @QueryParam("size") int size,
