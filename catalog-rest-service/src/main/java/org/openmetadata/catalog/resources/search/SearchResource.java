@@ -85,8 +85,8 @@ public class SearchResource {
                          @Context SecurityContext securityContext,
                          @Parameter(description = "Search Query Text, Pass *text* for substring match; " +
                                  "Pass without wildcards for exact match. <br/> " +
-                                 "1. For listing all tables pass q=* <br/>" +
-                                 "2. For search tables pass q=*search_term* <br/>" +
+                                 "1. For listing all tables or topics pass q=* <br/>" +
+                                 "2. For search tables or topics pass q=*search_term* <br/>" +
                                  "3. For searching field names such as search by column_name " +
                                  "pass q=column_names:address <br/>" +
                                  "4. For searching by tag names pass q=tags:user.email <br/>" +
