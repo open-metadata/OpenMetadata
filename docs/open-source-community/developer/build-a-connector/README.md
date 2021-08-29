@@ -22,7 +22,7 @@ Workflow execution happens in serial fashion.
 4. Once a **processor** is finished, it sends the modified record to **sink**.
 5. The above steps are repeated for each record emitted from the **source**.
 
-In the cases where we need aggregation over the records, we can use **stage** to write to a file or other store.  Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**.
+In the cases where we need aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**.
 
 {% page-ref page="source.md" %}
 
@@ -33,3 +33,4 @@ In the cases where we need aggregation over the records, we can use **stage** to
 {% page-ref page="stage.md" %}
 
 {% page-ref page="bulksink.md" %}
+

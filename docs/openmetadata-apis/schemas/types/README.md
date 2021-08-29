@@ -18,7 +18,5 @@ OpenMetadata supports many common types reused across different schemas. Definin
 
 {% page-ref page="schedule.md" %}
 
-{% page-ref page="tag-label.md" %}
-
 {% page-ref page="usagedetails.md" %}
 
