@@ -39,7 +39,7 @@ import {
 } from '../../axiosAPIs/tableAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
-import EntityPageTabs from '../../components/common/EntityPageTabs/EntityPageTabs';
+import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
@@ -383,7 +383,7 @@ const MyDataDetailsPage = () => {
         />
 
         <div className="tw-block tw-mt-1">
-          <EntityPageTabs
+          <TabsPane
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             tabs={tabs}

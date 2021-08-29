@@ -2,6 +2,11 @@ import { ColumnTags, TableDetail } from 'Models';
 import React from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
+import {
+  getDatasetDetailsPath,
+  getTopicDetailsPath,
+} from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
@@ -141,4 +146,18 @@ export const getConstraintIcon = (constraint = '') => {
       <SVGIcons alt={title} icon={icon} width="12px" />
     </PopOver>
   );
+};
+
+export const getEntityLink = (
+  indexType: string,
+  fullyQualifiedName: string
+) => {
+  switch (indexType) {
+    case SearchIndex.TOPIC:
+      return getTopicDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.TABLE:
+    default:
+      return getDatasetDetailsPath(fullyQualifiedName);
+  }
 };

@@ -20,3 +20,8 @@ export enum FilterType {
   PLATFORM = 'platform',
   CLUSTER = 'cluster',
 }
+
+export enum SearchIndex {
+  TABLE = 'table_search_index',
+  TOPIC = 'topic_search_index',
+}

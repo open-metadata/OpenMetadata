@@ -17,7 +17,7 @@ type Props = {
   setActiveTab: (value: number) => void;
   tabs: Array<Tab>;
 };
-const EntityPageTabs = ({ activeTab, setActiveTab, tabs }: Props) => {
+const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
     return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
   };
@@ -61,4 +61,4 @@ const EntityPageTabs = ({ activeTab, setActiveTab, tabs }: Props) => {
   );
 };
 
-export default EntityPageTabs;
+export default TabsPane;
