@@ -425,6 +425,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           currentPage={currentPage}
           data={data}
           fetchLeftPanel={fetchLeftPanel}
+          indexType={searchIndex}
           isLoading={isLoading}
           paginate={paginate}
           searchText={searchText}

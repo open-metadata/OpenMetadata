@@ -17,9 +17,8 @@
 
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatasetDetailsPath } from '../../../constants/constants';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getUsagePercentile } from '../../../utils/TableUtils';
+import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -32,6 +31,7 @@ type Props = {
   serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[];
+  indexType: string;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
@@ -43,6 +43,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   serviceType,
   fullyQualifiedName,
   tags,
+  indexType,
 }: Props) => {
   const OtherDetails = [
     { key: 'Owner', value: owner },
@@ -58,7 +59,7 @@ const TableDataCard: FunctionComponent<Props> = ({
     <div className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
       <div>
         <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-          <Link to={getDatasetDetailsPath(fullyQualifiedName)}>
+          <Link to={getEntityLink(indexType, fullyQualifiedName)}>
             <button className="tw-text-grey-body tw-font-medium">
               {stringToHTML(name)}
             </button>

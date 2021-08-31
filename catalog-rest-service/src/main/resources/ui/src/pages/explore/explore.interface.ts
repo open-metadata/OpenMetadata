@@ -33,8 +33,3 @@ export type Team = {
   description: string;
   href: string;
 };
-
-export enum SearchIndex {
-  TABLE = 'table_search_index',
-  TOPIC = 'topic_search_index',
-}
