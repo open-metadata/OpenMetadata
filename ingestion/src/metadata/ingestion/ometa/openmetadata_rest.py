@@ -43,6 +43,8 @@ import google.auth.transport.requests
 from google.oauth2 import service_account
 import time
 import uuid
+import http.client
+import json
 
 from jose import jwt
 from okta.jwt import JWT
@@ -65,6 +67,7 @@ class MetadataServerConfig(ConfigModel):
     org_url: str = None
     client_id: str = None
     private_key: str = None
+    domain: str = None
     email: str = None
     audience: str = 'https://www.googleapis.com/oauth2/v4/token'
     auth_header: str = 'X-Catalog-Source'
@@ -122,6 +125,26 @@ class OktaAuthenticationProvider(AuthenticationProvider):
         return token
 
 
+class Auth0AuthenticationProvider(AuthenticationProvider):
+    def __init__(self, config: MetadataServerConfig):
+        self.config = config
+
+    @classmethod
+    def create(cls, config: MetadataServerConfig):
+        return cls(config)
+
+    def auth_token(self) -> str:
+        conn = http.client.HTTPSConnection(self.config.domain)
+        payload = f"grant_type=client_credentials&client_id={self.config.client_id}" \
+                  f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
+        headers = {'content-type': "application/x-www-form-urlencoded"}
+        conn.request("POST", f"/{self.config.domain}/oauth/token", payload,
+                     headers)
+        res = conn.getresponse()
+        data = res.read()
+        token = json.loads(data.decode("utf-8"))
+        return token['access_token']
+
 class OpenMetadataAPIClient(object):
     client: REST
     _auth_provider: AuthenticationProvider
@@ -135,6 +158,8 @@ class OpenMetadataAPIClient(object):
             self._auth_provider: AuthenticationProvider = GoogleAuthenticationProvider.create(self.config)
         elif self.config.auth_provider_type == "okta":
             self._auth_provider: AuthenticationProvider = OktaAuthenticationProvider.create(self.config)
+        elif self.config.auth_provider_type == "auth0":
+            self._auth_provider: AuthenticationProvider = Auth0AuthenticationProvider.create(self.config)
         else:
             self._auth_provider: AuthenticationProvider = NoOpAuthenticationProvider.create(self.config)
         client_config: ClientConfig = ClientConfig(base_url=self.config.api_endpoint,
