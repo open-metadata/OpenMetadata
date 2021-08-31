@@ -72,7 +72,6 @@ class MetadataRestDashboardsSink(Sink):
         return cls(ctx, config, metadata_config)
 
     def write_record(self, record: Record) -> None:
-        print(type(record))
         if isinstance(record, Chart):
             self._ingest_charts(record)
         elif isinstance(record, Dashboard):
@@ -118,13 +117,10 @@ class MetadataRestDashboardsSink(Sink):
                 service=dashboard.service
             )
             created_dashboard = self.client.create_or_update_dashboard(dashboard_request)
-            logger.info(
-                'Successfully ingested {}'.format(created_dashboard.name))
-            self.status.records_written(
-                '{}'.format(created_dashboard.name))
+            logger.info('Successfully ingested {}'.format(created_dashboard.name))
+            self.status.records_written('{}'.format(created_dashboard.name))
         except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest chart {}".format(dashboard.name))
+            logger.error("Failed to ingest chart {}".format(dashboard.name))
             logger.error(err)
             self.status.failure(dashboard.name)
 
