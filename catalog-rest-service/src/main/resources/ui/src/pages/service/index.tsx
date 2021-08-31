@@ -155,7 +155,7 @@ const ServicePage: FunctionComponent = () => {
               </span>
               <span>
                 <span className="tw-text-grey-muted tw-font-normal">
-                  Frequency :
+                  Ingestion :
                 </span>{' '}
                 <span className="tw-pl-1 tw-font-normal">
                   {' '}

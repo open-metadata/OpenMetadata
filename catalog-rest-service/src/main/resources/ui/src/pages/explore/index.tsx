@@ -39,6 +39,7 @@ import {
   tableSortingFields,
   topicSortingFields,
 } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
 import useToastContext from '../../hooks/useToastContext';
 import { getAggregationList } from '../../utils/AggregationUtils';
@@ -46,7 +47,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { getAggrWithDefaultValue } from './explore.constants';
-import { Params, SearchIndex } from './explore.interface';
+import { Params } from './explore.interface';
 
 const visibleFilters = ['tags', 'service type', 'tier'];
 

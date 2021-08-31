@@ -20,7 +20,7 @@ import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
-import { SearchIndex } from '../../pages/explore/explore.interface';
+import { SearchIndex } from '../../enums/search.enum';
 import { pluralize } from '../../utils/CommonUtils';
 import {
   getOwnerFromId,
