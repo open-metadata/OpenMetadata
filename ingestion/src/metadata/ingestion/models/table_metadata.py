@@ -223,11 +223,11 @@ class Chart(BaseModel):
     description: str
     chart_type: str
     url: str
-    owners: List[DashboardOwner]
-    lastModified: int
-    datasource_fqn: str
+    owners: List[DashboardOwner] = None
+    lastModified: int = None
+    datasource_fqn: str = None
     service: EntityReference
-    custom_props: Dict[Any, Any]
+    custom_props: Dict[Any, Any] = None
 
 
 class Dashboard(BaseModel):
@@ -235,7 +235,7 @@ class Dashboard(BaseModel):
     name: str
     description: str
     url: str
-    owners: List
+    owners: List = None
     charts: List
     service: EntityReference
-    lastModified: int
+    lastModified: int = None
