@@ -363,9 +363,9 @@ const ServicesPage = () => {
                   </div>
                 ))}
                 <div
-                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
+                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
                   onClick={() => handleAddService()}>
-                  <img alt="" src={PLUS} />
+                  <img alt="Add service" src={PLUS} />
                   <p className="tw-text-base tw-font-normal tw-mt-4">
                     Add new {servicesDisplayName[serviceName]}
                   </p>

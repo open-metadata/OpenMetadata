@@ -33,15 +33,15 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
           return (
             <li key={index}>
+              {link.imgSrc ? (
+                <img
+                  alt=""
+                  className="tw-inline tw-h-5 tw-w-5 tw-mr-2"
+                  src={link.imgSrc}
+                />
+              ) : null}
               {index < titleLinks.length - 1 ? (
                 <>
-                  {link.imgSrc ? (
-                    <img
-                      alt=""
-                      className="tw-inline tw-h-5 tw-w-5 tw-mr-2"
-                      src={link.imgSrc}
-                    />
-                  ) : null}
                   <Link className={classes} to={link.url}>
                     {link.name}
                   </Link>

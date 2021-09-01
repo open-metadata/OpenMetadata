@@ -19,7 +19,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNull, isUndefined } from 'lodash';
 import { Database, Paging, ServiceOption } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
@@ -137,9 +137,34 @@ const ServicePage: FunctionComponent = () => {
           <span>
             <span className="tw-text-grey-muted tw-font-normal">Brokers :</span>{' '}
             <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.brokers?.length
-                ? serviceDetails?.brokers.join(', ')
-                : '--'}
+              {serviceDetails?.brokers?.length ? (
+                <>
+                  {serviceDetails.brokers.slice(0, 3).join(', ')}
+                  {serviceDetails.brokers.length > 3 ? (
+                    <PopOver
+                      html={
+                        <div className="tw-text-left">
+                          {serviceDetails.brokers
+                            .slice(3)
+                            .map((broker, index) => (
+                              <Fragment key={index}>
+                                <span className="tw-block tw-py-1">
+                                  {broker}
+                                </span>
+                              </Fragment>
+                            ))}
+                        </div>
+                      }
+                      position="bottom"
+                      theme="light"
+                      trigger="click">
+                      <span className="show-more tw-ml-1">...</span>
+                    </PopOver>
+                  ) : null}
+                </>
+              ) : (
+                '--'
+              )}
             </span>
             <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
           </span>

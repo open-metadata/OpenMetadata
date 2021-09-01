@@ -19,7 +19,10 @@ import classNames from 'classnames';
 import { ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { serviceTypes } from '../../../constants/services.const';
-import { ServiceCategory } from '../../../enums/service.enum';
+import {
+  MessagingServiceType,
+  ServiceCategory,
+} from '../../../enums/service.enum';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -167,8 +170,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
   const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
-  const [broker, setBroker] = useState(
-    data?.brokers?.length ? data.brokers[0] : ''
+  const [brokers, setBrokers] = useState(
+    data?.brokers?.length ? data.brokers.join(', ') : ''
   );
   const [schemaRegistry, setSchemaRegistry] = useState(
     data?.schemaRegistry || ''
@@ -188,6 +191,13 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   });
   const [sameNameError, setSameNameError] = useState(false);
   const markdownRef = useRef<EditorContentRef>();
+
+  const getBrokerUrlPlaceholder = (): string => {
+    return selectService === MessagingServiceType.PULSAR
+      ? 'eg.: hostname:port'
+      : 'eg.: hostname1:port1, hostname2:port2';
+  };
+
   const handleChangeFrequency = (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
@@ -289,7 +299,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         {
           setMsg = {
             ...setMsg,
-            broker: !broker,
+            broker: !brokers,
           };
         }
 
@@ -329,7 +339,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           {
             dataObj = {
               ...dataObj,
-              brokers: [broker],
+              brokers:
+                selectService === MessagingServiceType.PULSAR
+                  ? [brokers]
+                  : brokers.split(',').map((broker) => broker.trim()),
               schemaRegistry: schemaRegistry,
             };
           }
@@ -354,6 +367,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               className="tw-form-inputs tw-px-3 tw-py-1"
               id="url"
               name="url"
+              placeholder="eg.: username:password@hostname:port"
               type="text"
               value={url}
               onChange={handleValidation}
@@ -416,6 +430,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             className="tw-form-inputs tw-px-3 tw-py-1"
             id="database"
             name="database"
+            placeholder="Enter database name"
             type="text"
             value={database}
             onChange={(e) => setDatabase(e.target.value)}
@@ -460,9 +475,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             className="tw-form-inputs tw-px-3 tw-py-1"
             id="broker"
             name="broker"
+            placeholder={getBrokerUrlPlaceholder()}
             type="text"
-            value={broker}
-            onChange={(e) => setBroker(e.target.value)}
+            value={brokers}
+            onChange={(e) => setBrokers(e.target.value)}
           />
           {showErrorMsg.broker && errorMsg('Broker url is required')}
         </div>
@@ -474,6 +490,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             className="tw-form-inputs tw-px-3 tw-py-1"
             id="schema-registry"
             name="schema-registry"
+            placeholder="eg.: hostname:port"
             type="text"
             value={schemaRegistry}
             onChange={(e) => setSchemaRegistry(e.target.value)}
@@ -546,6 +563,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   className="tw-form-inputs tw-px-3 tw-py-1"
                   id="name"
                   name="name"
+                  placeholder="Enter service name"
                   type="text"
                   value={name}
                   onChange={handleValidation}
