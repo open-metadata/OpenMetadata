@@ -15,11 +15,11 @@
 
 # This import verifies that the dependencies are available.
 import logging
+from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.utils.helpers import get_start_and_end
 from metadata.ingestion.source.redshift import RedshiftConfig
 
@@ -69,7 +69,9 @@ class RedshiftUsageSource(Source):
             start_date=start,
             end_date=end
         )
-        self.alchemy_helper = SQLAlchemyHelper(config, metadata_config, ctx, "Redshift", self.sql_stmt)
+        self.alchemy_helper = SQLAlchemyHelper(
+            config, metadata_config, ctx, "Redshift", self.sql_stmt
+        )
         self._extract_iter: Union[None, Iterator] = None
         self._database = 'redshift'
         self.status = SQLSourceStatus()
@@ -94,13 +96,17 @@ class RedshiftUsageSource(Source):
 
     def next_record(self) -> Iterable[TableQuery]:
         """
-                Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
-                :return:
-                """
+            Using itertools.groupby and raw level iterator, it groups to table and yields
+            TableMetadata
+            :return:
+        """
         for row in self._get_raw_extract_iter():
-            tq = TableQuery(row['query'], row['label'], row['userid'], row['xid'], row['pid'], str(row['starttime']),
-                            str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'],
-                            row['aborted'], row['sql'])
+            tq = TableQuery(
+                row['query'], row['label'], row['userid'], row['xid'], row['pid'],
+                str(row['starttime']),
+                str(row['endtime']), str(row['analysis_date']), row['duration'], row['database'],
+                row['aborted'], row['sql']
+            )
             yield tq
 
     def close(self):

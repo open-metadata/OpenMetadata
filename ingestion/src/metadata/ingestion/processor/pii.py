@@ -171,7 +171,10 @@ class PiiProcessor(Processor):
     status: ProcessorStatus
     client: OpenMetadataAPIClient
 
-    def __init__(self, ctx: WorkflowContext, config: PiiProcessorConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: PiiProcessorConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -206,10 +209,14 @@ class PiiProcessor(Processor):
                 else:
                     logging.debug("Fail to tag column {} with tag {}".format(column.name, pii_tag))
                     continue
-                tag_labels.append(TagLabel(tagFQN=tag_entity.fullyQualifiedName,
-                                           labelType='Automated',
-                                           state='Suggested',
-                                           href=tag_entity.href))
+                tag_labels.append(
+                    TagLabel(
+                        tagFQN=tag_entity.fullyQualifiedName,
+                        labelType='Automated',
+                        state='Suggested',
+                        href=tag_entity.href
+                        )
+                    )
             column.tags = tag_labels
 
         return table_and_db

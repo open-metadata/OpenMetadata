@@ -16,9 +16,12 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import \
+    CreateDashboardServiceEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import \
+    CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import \
+    CreateMessagingServiceEntityRequest
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -53,11 +56,13 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
         return created_service
 
 
-def get_messaging_service_or_create(service_name: str,
-                                    message_service_type: str,
-                                    schema_registry_url: str,
-                                    brokers: List[str],
-                                    metadata_config) -> MessagingService:
+def get_messaging_service_or_create(
+        service_name: str,
+        message_service_type: str,
+        schema_registry_url: str,
+        brokers: List[str],
+        metadata_config
+        ) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_name)
     if service is not None:
@@ -73,12 +78,14 @@ def get_messaging_service_or_create(service_name: str,
         return created_service
 
 
-def get_dashboard_service_or_create(service_name: str,
-                                    dashboard_service_type: str,
-                                    username: str,
-                                    password: str,
-                                    dashboard_url: str,
-                                    metadata_config) -> DashboardService:
+def get_dashboard_service_or_create(
+        service_name: str,
+        dashboard_service_type: str,
+        username: str,
+        password: str,
+        dashboard_url: str,
+        metadata_config
+        ) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_dashboard_service(service_name)
     if service is not None:

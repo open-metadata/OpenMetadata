@@ -61,16 +61,21 @@ class KafkaSource(Source):
     admin_client: AdminClient
     report: KafkaSourceStatus
 
-    def __init__(self, config: KafkaSourceConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
+    def __init__(
+            self, config: KafkaSourceConfig, metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.status = KafkaSourceStatus()
-        self.service = get_messaging_service_or_create(config.service_name,
-                                                       MessagingServiceType.Kafka.name,
-                                                       config.schema_registry_url,
-                                                       config.bootstrap_servers.split(","),
-                                                       metadata_config)
+        self.service = get_messaging_service_or_create(
+            config.service_name,
+            MessagingServiceType.Kafka.name,
+            config.schema_registry_url,
+            config.bootstrap_servers.split(","),
+            metadata_config
+            )
         self.schema_registry_client = SchemaRegistryClient(
             {"url": self.config.schema_registry_url}
         )
@@ -96,9 +101,11 @@ class KafkaSource(Source):
             if self.config.filter_pattern.included(t):
                 logger.info("Fetching topic schema {}".format(t))
                 topic_schema = self._parse_topic_metadata(t)
-                topic = CreateTopic(name=t,
-                                    service=EntityReference(id=self.service.id, type="messagingService"),
-                                    partitions=1)
+                topic = CreateTopic(
+                    name=t,
+                    service=EntityReference(id=self.service.id, type="messagingService"),
+                    partitions=1
+                    )
                 if topic_schema is not None:
                     topic.schemaText = topic_schema.schema_str
                     if topic_schema.schema_type == "AVRO":

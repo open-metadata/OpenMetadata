@@ -34,7 +34,10 @@ class FileStage(Stage):
     config: FileStageConfig
     status: StageStatus
 
-    def __init__(self, ctx: WorkflowContext, config: FileStageConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: FileStageConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.status = StageStatus()
@@ -50,8 +53,8 @@ class FileStage(Stage):
         return cls(ctx, config, metadata_config)
 
     def stage_record(
-        self,
-        record: Table
+            self,
+            record: Table
     ) -> None:
         json_record = json.loads(record.json())
         self.file.write(json.dumps(json_record))

@@ -15,16 +15,27 @@
 
 import logging
 from typing import List
-
+import google.auth
+import google.auth.transport.requests
+from google.oauth2 import service_account
+import time
+import uuid
+import http.client
+import json
+from jose import jwt
+from okta.jwt import JWT
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardEntityRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
-from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import \
+    CreateDashboardServiceEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import \
+    CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import \
+    CreateMessagingServiceEntityRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -37,17 +48,6 @@ from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
-
-import google.auth
-import google.auth.transport.requests
-from google.oauth2 import service_account
-import time
-import uuid
-import http.client
-import json
-
-from jose import jwt
-from okta.jwt import JWT
 
 logger = logging.getLogger(__name__)
 DatabaseServiceEntities = List[DatabaseService]
@@ -97,7 +97,8 @@ class GoogleAuthenticationProvider(AuthenticationProvider):
     def auth_token(self) -> str:
         credentials = service_account.IDTokenCredentials.from_service_account_file(
             self.config.secret_key,
-            target_audience=self.config.audience)
+            target_audience=self.config.audience
+        )
         request = google.auth.transport.requests.Request()
         credentials.refresh(request)
         return credentials.token
@@ -139,34 +140,48 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
         payload = f"grant_type=client_credentials&client_id={self.config.client_id}" \
                   f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
         headers = {'content-type': "application/x-www-form-urlencoded"}
-        conn.request("POST", f"/{self.config.domain}/oauth/token", payload,
-                     headers)
+        conn.request(
+            "POST", f"/{self.config.domain}/oauth/token", payload,
+            headers
+        )
         res = conn.getresponse()
         data = res.read()
         token = json.loads(data.decode("utf-8"))
         return token['access_token']
 
+
 class OpenMetadataAPIClient(object):
     client: REST
     _auth_provider: AuthenticationProvider
 
-    def __init__(self,
-                 config: MetadataServerConfig,
-                 raw_data: bool = False
-                 ):
+    def __init__(
+            self,
+            config: MetadataServerConfig,
+            raw_data: bool = False
+    ):
         self.config = config
         if self.config.auth_provider_type == "google":
-            self._auth_provider: AuthenticationProvider = GoogleAuthenticationProvider.create(self.config)
+            self._auth_provider: AuthenticationProvider = GoogleAuthenticationProvider.create(
+                self.config
+            )
         elif self.config.auth_provider_type == "okta":
-            self._auth_provider: AuthenticationProvider = OktaAuthenticationProvider.create(self.config)
+            self._auth_provider: AuthenticationProvider = OktaAuthenticationProvider.create(
+                self.config
+            )
         elif self.config.auth_provider_type == "auth0":
-            self._auth_provider: AuthenticationProvider = Auth0AuthenticationProvider.create(self.config)
+            self._auth_provider: AuthenticationProvider = Auth0AuthenticationProvider.create(
+                self.config
+            )
         else:
-            self._auth_provider: AuthenticationProvider = NoOpAuthenticationProvider.create(self.config)
-        client_config: ClientConfig = ClientConfig(base_url=self.config.api_endpoint,
-                                                   api_version=self.config.api_version,
-                                                   auth_header='X-Catalog-Source',
-                                                   auth_token=self._auth_provider.auth_token())
+            self._auth_provider: AuthenticationProvider = NoOpAuthenticationProvider.create(
+                self.config
+            )
+        client_config: ClientConfig = ClientConfig(
+            base_url=self.config.api_endpoint,
+            api_version=self.config.api_version,
+            auth_header='X-Catalog-Source',
+            auth_token=self._auth_provider.auth_token()
+        )
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
@@ -188,8 +203,10 @@ class OpenMetadataAPIClient(object):
         else:
             return [DatabaseService(**p) for p in resp['data']]
 
-    def create_database_service(self,
-                                database_service: CreateDatabaseServiceEntityRequest) -> DatabaseService:
+    def create_database_service(
+            self,
+            database_service: CreateDatabaseServiceEntityRequest
+    ) -> DatabaseService:
         """Create a new Database Service"""
         resp = self.client.post('/services/databaseServices', data=database_service.json())
         return DatabaseService(**resp)
@@ -213,8 +230,10 @@ class OpenMetadataAPIClient(object):
         else:
             return [Database(**d) for d in resp['data']]
 
-    def get_database_by_id(self, database_id: str,
-                           fields: [] = ['owner,service,tables,usageSummary']) -> Database:
+    def get_database_by_id(
+            self, database_id: str,
+            fields: [] = ['owner,service,tables,usageSummary']
+    ) -> Database:
         """ Get Database By ID """
         params = {'fields': ",".join(fields)}
         resp = self.client.get('/databases/{}'.format(database_id), data=params)
@@ -229,20 +248,26 @@ class OpenMetadataAPIClient(object):
         """ Delete Database using ID """
         self.client.delete('/databases/{}'.format(database_id))
 
-    def list_tables(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> TableEntities:
+    def list_tables(
+            self, fields: str = None, offset: int = 0, limit: int = 1000000
+    ) -> TableEntities:
         """ List all tables"""
 
         if fields is None:
             resp = self.client.get('/tables')
         else:
-            resp = self.client.get('/tables?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+            resp = self.client.get(
+                '/tables?fields={}&offset={}&limit={}'.format(fields, offset, limit)
+            )
         if self._use_raw_data:
             return resp
         else:
             return [Table(**t) for t in resp['data']]
 
-    def ingest_sample_data(self, table_id, sample_data):
-        resp = self.client.put('/tables/{}/sampleData'.format(table_id.__root__), data=sample_data.json())
+    def ingest_sample_data(self, id, sample_data):
+        resp = self.client.put(
+            '/tables/{}/sampleData'.format(id.__root__), data=sample_data.json()
+        )
         return TableData(**resp['sampleData'])
 
     def ingest_table_profile_data(self, table_id, table_profile):
@@ -268,16 +293,22 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get('/tables/name/{}'.format(table_name), data=params)
         return Table(**resp)
 
-    def publish_usage_for_a_table(self, table: Table, table_usage_request: TableUsageRequest) -> None:
+    def publish_usage_for_a_table(
+            self, table: Table, table_usage_request: TableUsageRequest
+    ) -> None:
         """publish usage details for a table"""
-        resp = self.client.post('/usage/table/{}'.format(table.id.__root__), data=table_usage_request.json())
+        resp = self.client.post(
+            '/usage/table/{}'.format(table.id.__root__), data=table_usage_request.json()
+        )
         logger.debug("published table usage {}".format(resp))
 
     def publish_frequently_joined_with(self, table: Table, table_join_request: TableJoins) -> None:
         """publish frequently joined with for a table"""
         logger.debug(table_join_request.json())
         logger.info("table join request {}".format(table_join_request.json()))
-        resp = self.client.put('/tables/{}/joins'.format(table.id.__root__), data=table_join_request.json())
+        resp = self.client.put(
+            '/tables/{}/joins'.format(table.id.__root__), data=table_join_request.json()
+        )
         logger.debug("published frequently joined with {}".format(resp))
 
     def list_tags_by_category(self, category: str) -> {}:
@@ -299,8 +330,10 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get('/services/messagingServices/{}'.format(service_id))
         return MessagingService(**resp)
 
-    def create_messaging_service(self,
-                                 messaging_service: CreateMessagingServiceEntityRequest) -> MessagingService:
+    def create_messaging_service(
+            self,
+            messaging_service: CreateMessagingServiceEntityRequest
+    ) -> MessagingService:
         """Create a new Database Service"""
         resp = self.client.post('/services/messagingServices', data=messaging_service.json())
         return MessagingService(**resp)
@@ -316,7 +349,9 @@ class OpenMetadataAPIClient(object):
         if fields is None:
             resp = self.client.get('/topics')
         else:
-            resp = self.client.get('/topics?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+            resp = self.client.get(
+                '/topics?fields={}&offset={}&limit={}'.format(fields, offset, limit)
+            )
         if self._use_raw_data:
             return resp
         else:
@@ -332,8 +367,10 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get('/services/dashboardServices/{}'.format(service_id))
         return DashboardService(**resp)
 
-    def create_dashboard_service(self,
-                                 dashboard_service: CreateDashboardServiceEntityRequest) -> DashboardService:
+    def create_dashboard_service(
+            self,
+            dashboard_service: CreateDashboardServiceEntityRequest
+    ) -> DashboardService:
         """Create a new Database Service"""
         resp = self.client.post('/services/dashboardServices', data=dashboard_service.json())
         return DashboardService(**resp)

@@ -32,7 +32,10 @@ class LdapRestUsersSink(Sink):
     config: LDAPSourceConfig
     status: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: LDAPSourceConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: LDAPSourceConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -50,9 +53,11 @@ class LdapRestUsersSink(Sink):
         self._create_user(record)
 
     def _create_user(self, record: MetadataUser) -> None:
-        metadata_user = MetadataUser(name=record.github_username[0],
-                                     display_name=record.name[0],
-                                     email=record.email[0])
+        metadata_user = MetadataUser(
+            name=record.github_username[0],
+            display_name=record.name[0],
+            email=record.email[0]
+            )
         self.rest.post(self.api_users, data=metadata_user.to_json())
         self.status.records_written(record.name[0])
 

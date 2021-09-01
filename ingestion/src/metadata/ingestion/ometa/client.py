@@ -15,12 +15,10 @@
 
 import logging
 from typing import Optional, List
-
-import requests
-from requests.exceptions import HTTPError
 import time
 from enum import Enum
-
+import requests
+from requests.exceptions import HTTPError
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
 
@@ -98,13 +96,14 @@ class REST(object):
         self._retry_codes = self.config.retry_codes
         self._auth_token = self.config.auth_token
 
-    def _request(self,
-                 method,
-                 path,
-                 data=None,
-                 base_url: URL = None,
-                 api_version: str = None
-                 ):
+    def _request(
+            self,
+            method,
+            path,
+            data=None,
+            base_url: URL = None,
+            api_version: str = None
+            ):
         base_url = base_url or self._base_url
         version = api_version if api_version else self._api_version
         url: URL = URL(base_url + '/' + version + path)
@@ -137,7 +136,9 @@ class REST(object):
                 logger.warning(
                     'sleep {} seconds and retrying {} '
                     '{} more time(s)...'.format(
-                        retry_wait, url, retry))
+                        retry_wait, url, retry
+                    )
+                )
                 time.sleep(retry_wait)
                 retry -= 1
                 continue

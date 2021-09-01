@@ -38,7 +38,6 @@ class SinkStatus(Status):
         self.failures.append(info)
 
 
-
 @dataclass  # type: ignore[misc]
 class Sink(Closeable, metaclass=ABCMeta):
     """All Sinks must inherit this base class."""

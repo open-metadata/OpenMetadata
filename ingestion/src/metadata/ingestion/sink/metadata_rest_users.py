@@ -34,7 +34,10 @@ class MetadataRestUsersSink(Sink):
     metadata_config: MetadataServerConfig
     status: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: MetadataUsersSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: MetadataUsersSinkConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -68,9 +71,10 @@ class MetadataRestUsersSink(Sink):
         team_name = record.team_name
         metadata_team = MetadataTeam(team_name, 'Team Name')
         try:
-            r = self.client.post(self.api_team_post,
-                                 data=metadata_team.to_json()
-                                 )
+            r = self.client.post(
+                self.api_team_post,
+                data=metadata_team.to_json()
+                )
             instance_id = r['id']
             self.team_entities[team_name] = instance_id
         except APIError:
@@ -81,10 +85,12 @@ class MetadataRestUsersSink(Sink):
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
         # Using github username for generating a login name
-        metadata_user = MetadataUser(name=record.github_username,
-                                     display_name=record.name,
-                                     email=record.email,
-                                     teams=teams)
+        metadata_user = MetadataUser(
+            name=record.github_username,
+            display_name=record.name,
+            email=record.email,
+            teams=teams
+            )
         try:
             self.client.post(self.api_users, data=metadata_user.to_json())
             self.status.records_written(record.github_username)

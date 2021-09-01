@@ -14,12 +14,11 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable
-
 from metadata.utils.helpers import get_start_and_end
 from metadata.ingestion.source.snowflake import SnowflakeConfig
 
@@ -52,7 +51,9 @@ class SnowflakeUsageSource(Source):
             start_date=start,
             end_date=end
         )
-        self.alchemy_helper = SQLAlchemyHelper(config, metadata_config, ctx, "Snowflake", self.sql_stmt)
+        self.alchemy_helper = SQLAlchemyHelper(
+            config, metadata_config, ctx, "Snowflake", self.sql_stmt
+        )
         self._extract_iter: Union[None, Iterator] = None
         self._database = 'Snowflake'
         self.report = SQLSourceStatus()
@@ -77,12 +78,15 @@ class SnowflakeUsageSource(Source):
 
     def next_record(self) -> Iterable[TableQuery]:
         """
-                Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
-                :return:
-                """
+            Using itertools.groupby and raw level iterator, it groups to table and yields
+            TableMetadata
+            :return:
+        """
         for row in self._get_raw_extract_iter():
-            tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
-                            str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
+            tq = TableQuery(
+                row['query'], row['label'], 0, 0, 0, str(row['starttime']),
+                str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql']
+            )
             if row['schema_name'] is not None:
                 self.report.scanned(f"{row['database']}.{row['schema_name']}")
             else:

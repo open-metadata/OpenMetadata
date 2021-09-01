@@ -58,8 +58,10 @@ class ElasticsearchSink(Sink):
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def __init__(self, ctx: WorkflowContext, config: ElasticSearchConfig,
-                 metadata_config: MetadataServerConfig) -> None:
+    def __init__(
+            self, ctx: WorkflowContext, config: ElasticSearchConfig,
+            metadata_config: MetadataServerConfig
+            ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
@@ -67,11 +69,15 @@ class ElasticsearchSink(Sink):
         self.status = SinkStatus()
         self.rest = OpenMetadataAPIClient(self.metadata_config)
         self.elasticsearch_doc_type = '_doc'
-        self.elasticsearch_client = Elasticsearch([
-            {'host': self.config.es_host_port},
-        ])
+        self.elasticsearch_client = Elasticsearch(
+            [
+                {'host': self.config.es_host_port},
+            ]
+        )
         if self.config.index_tables:
-            self._check_or_create_index(self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
+                )
         if self.config.index_topics:
             self._check_or_create_index(self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING)
         if self.config.index_dashboards:
@@ -142,29 +148,31 @@ class ElasticsearchSink(Sink):
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
-        table_doc = TableESDocument(table_id=str(table.id.__root__),
-                                    database=database,
-                                    service=service_entity.name,
-                                    service_type=service_entity.serviceType.name,
-                                    table_name=table.name.__root__,
-                                    suggest=suggest,
-                                    description=table.description,
-                                    table_type=table.tableType.name,
-                                    last_updated_timestamp=timestamp,
-                                    column_names=column_names,
-                                    column_descriptions=column_descriptions,
-                                    monthly_stats=table.usageSummary.monthlyStats.count,
-                                    monthly_percentile_rank=table.usageSummary.monthlyStats.percentileRank,
-                                    weekly_stats=table.usageSummary.weeklyStats.count,
-                                    weekly_percentile_rank=table.usageSummary.weeklyStats.percentileRank,
-                                    daily_stats=table.usageSummary.dailyStats.count,
-                                    daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
-                                    tier=tier,
-                                    tags=list(tags),
-                                    fqdn=fqdn,
-                                    schema_description=None,
-                                    owner=table_owner,
-                                    followers=table_followers)
+        table_doc = TableESDocument(
+            table_id=str(table.id.__root__),
+            database=database,
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            table_name=table.name.__root__,
+            suggest=suggest,
+            description=table.description,
+            table_type=table.tableType.name,
+            last_updated_timestamp=timestamp,
+            column_names=column_names,
+            column_descriptions=column_descriptions,
+            monthly_stats=table.usageSummary.monthlyStats.count,
+            monthly_percentile_rank=table.usageSummary.monthlyStats.percentileRank,
+            weekly_stats=table.usageSummary.weeklyStats.count,
+            weekly_percentile_rank=table.usageSummary.weeklyStats.percentileRank,
+            daily_stats=table.usageSummary.dailyStats.count,
+            daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            schema_description=None,
+            owner=table_owner,
+            followers=table_followers
+            )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
@@ -185,18 +193,20 @@ class ElasticsearchSink(Sink):
                 tier = topic_tag.tagFQN
             else:
                 tags.add(topic_tag.tagFQN)
-        topic_doc = TopicESDocument(topic_id=str(topic.id.__root__),
-                                    service=service_entity.name,
-                                    service_type=service_entity.serviceType.name,
-                                    topic_name=topic.name.__root__,
-                                    suggest=suggest,
-                                    description=topic.description,
-                                    last_updated_timestamp=timestamp,
-                                    tier=tier,
-                                    tags=list(tags),
-                                    fqdn=fqdn,
-                                    owner=topic_owner,
-                                    followers=topic_followers)
+        topic_doc = TopicESDocument(
+            topic_id=str(topic.id.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            topic_name=topic.name.__root__,
+            suggest=suggest,
+            description=topic.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=topic_owner,
+            followers=topic_followers
+            )
 
         return topic_doc
 

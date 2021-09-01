@@ -30,7 +30,3 @@ class AuthenticationProvider(metaclass=ABCMeta):
     @abstractmethod
     def auth_token(self) -> str:
         pass
-
-
-
-

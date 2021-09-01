@@ -32,7 +32,10 @@ class FileSink(Sink):
     config: FileSinkConfig
     report: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: FileSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: FileSinkConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -50,8 +53,8 @@ class FileSink(Sink):
         return cls(ctx, config, metadata_config)
 
     def write_record(
-        self,
-        record: Record
+            self,
+            record: Record
     ) -> None:
 
         if self.wrote_something:

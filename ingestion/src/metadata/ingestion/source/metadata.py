@@ -14,15 +14,14 @@
 #  limitations under the License.
 
 import logging
-from typing import Iterable, Optional
+from typing import Iterable, Optional,List
+from dataclasses import dataclass, field
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.source import SourceStatus, Source
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
-from typing import Iterable, List
-from dataclasses import dataclass, field
 
 from ...generated.schema.entity.data.dashboard import Dashboard
 from ...generated.schema.entity.data.table import Table
@@ -40,7 +39,6 @@ class MetadataTablesRestSourceConfig(ConfigModel):
 
 @dataclass
 class MetadataSourceStatus(SourceStatus):
-
     success: List[str] = field(default_factory=list)
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
@@ -61,12 +59,15 @@ class MetadataSourceStatus(SourceStatus):
         self.warnings.append(table_name)
         logger.warning("Dropped Entity {} due to {}".format(table_name, err))
 
+
 class MetadataSource(Source):
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 
-    def __init__(self, config: MetadataTablesRestSourceConfig, metadata_config: MetadataServerConfig,
-                 ctx: WorkflowContext):
+    def __init__(
+            self, config: MetadataTablesRestSourceConfig, metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config

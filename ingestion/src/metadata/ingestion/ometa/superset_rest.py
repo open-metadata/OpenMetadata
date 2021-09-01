@@ -63,9 +63,11 @@ class SupersetAPIClient(object):
     def __init__(self, config: SupersetConfig):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
-        client_config = ClientConfig(base_url=config.url, api_version="api/v1",
-                                     auth_token=f"Bearer {self._auth_provider.auth_token()}",
-                                     auth_header="Authorization", allow_redirects=True)
+        client_config = ClientConfig(
+            base_url=config.url, api_version="api/v1",
+            auth_token=f"Bearer {self._auth_provider.auth_token()}",
+            auth_header="Authorization", allow_redirects=True
+            )
         self.client = REST(client_config)
 
     def fetch_total_dashboards(self) -> int:
@@ -91,5 +93,3 @@ class SupersetAPIClient(object):
     def fetch_database(self, database_id: str):
         response = self.client.get(f"/database/{database_id}")
         return response
-
-

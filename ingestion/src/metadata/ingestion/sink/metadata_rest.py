@@ -151,10 +151,12 @@ class MetadataRestSink(Sink):
             logger.info(
                 'Successfully ingested chart {}'.format(created_chart.displayName))
             self.status.records_written(
-                '{}'.format(created_chart.displayName))
+                '{}'.format(created_chart.displayName)
+            )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest chart {}".format(chart.displayName))
+                "Failed to ingest chart {}".format(chart.displayName)
+            )
             logger.error(err)
             self.status.failure(chart.displayName)
 

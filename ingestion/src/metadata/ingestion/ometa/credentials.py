@@ -17,7 +17,6 @@ import os
 from typing import Tuple
 import dateutil.parser
 
-
 Credentials = Tuple[str, str, str]
 
 
@@ -32,8 +31,10 @@ class URL(str):
                 raise TypeError(f'Unexpected type for URL: "{type(v0)}"')
             if not (v0.startswith('http://') or v0.startswith('https://') or
                     v0.startswith('ws://') or v0.startswith('wss://')):
-                raise ValueError(f'Passed string value "{v0}" is not an'
-                                 f' "http*://" or "ws*://" URL')
+                raise ValueError(
+                    f'Passed string value "{v0}" is not an'
+                    f' "http*://" or "ws*://" URL'
+                    )
         return str.__new__(cls, *value)
 
 
@@ -48,8 +49,10 @@ class DATE(str):
         if not isinstance(value, str):
             raise TypeError(f'Unexpected type for DATE: "{type(value)}"')
         if value.count("-") != 2:
-            raise ValueError(f'Unexpected date structure. expected '
-                             f'"YYYY-MM-DD" got {value}')
+            raise ValueError(
+                f'Unexpected date structure. expected '
+                f'"YYYY-MM-DD" got {value}'
+                )
         try:
             dateutil.parser.parse(value)
         except Exception as e:
@@ -73,20 +76,26 @@ class FLOAT(str):
         raise ValueError(f'Unexpected float format "{value}"')
 
 
-def get_credentials(key_id: str = None,
-                    secret_key: str = None,
-                    oauth: str = None) -> Credentials:
+def get_credentials(
+        key_id: str = None,
+        secret_key: str = None,
+        oauth: str = None
+        ) -> Credentials:
     oauth = oauth or os.environ.get('OMETA_API_OAUTH_TOKEN')
 
     key_id = key_id or os.environ.get('OMETA_API_KEY_ID')
     if key_id is None and oauth is None:
-        raise ValueError('Key ID must be given to access Alpaca trade API',
-                         ' (env: OMETA_API_KEY_ID)')
+        raise ValueError(
+            'Key ID must be given to access Alpaca trade API',
+            ' (env: OMETA_API_KEY_ID)'
+            )
 
     secret_key = secret_key or os.environ.get('OMETA_API_SECRET_KEY')
     if secret_key is None and oauth is None:
-        raise ValueError('Secret key must be given to access Alpaca trade API'
-                         ' (env: OMETA_API_SECRET_KEY')
+        raise ValueError(
+            'Secret key must be given to access Alpaca trade API'
+            ' (env: OMETA_API_SECRET_KEY'
+            )
 
     return key_id, secret_key, oauth
 
@@ -97,5 +106,3 @@ def get_api_version(api_version: str) -> str:
         api_version = 'v1'
 
     return api_version
-
-

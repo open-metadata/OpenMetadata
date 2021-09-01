@@ -14,13 +14,13 @@
 #  limitations under the License.
 
 import csv
-import pandas as pd
 import uuid
 import os
 import json
 from faker import Faker
 from collections import namedtuple
 from dataclasses import dataclass, field
+import pandas as pd
 from typing import Iterable, List, Dict, Any, Union
 
 from pydantic import ValidationError
@@ -39,7 +39,8 @@ from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Dashboard, Chart
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import \
+    CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 import logging
@@ -61,7 +62,9 @@ def get_database_service_or_create(service_json, metadata_config) -> DatabaseSer
     if service is not None:
         return service
     else:
-        created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service_json))
+        created_service = client.create_database_service(
+            CreateDatabaseServiceEntityRequest(**service_json)
+            )
         return created_service
 
 def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
@@ -118,6 +121,7 @@ class SampleDataSourceStatus(SourceStatus):
         logger.warning("Dropped {} {} due to {}".format(entity_type, entity_name, err))
 
 
+
 class TableSchema:
     def __init__(self, filename):
         # error if the file is not csv file
@@ -163,7 +167,8 @@ class SampleTableMetadataGenerator:
         return data
 
     def generate_sample_table(self):
-        keys = ['database', 'cluster', 'schema', 'name', 'description', 'tags', 'is_view', 'description_source']
+        keys = ['database', 'cluster', 'schema', 'name', 'description', 'tags', 'is_view',
+                'description_source']
         data = self.get_empty_dict_with_cols(keys)
 
         for tname in self.table_to_df_dict.keys():
@@ -184,7 +189,8 @@ class SampleTableMetadataGenerator:
     def generate_sample_col(self):
         # name, description, col_type, sort_order, database, cluster, schema, table_name
         # col1, "col1 description", "string", 1, hive, gold, test_schema, test_table1
-        keys = ['name', 'description', 'col_type', 'sort_order', 'database', 'cluster', 'schema', 'table_name']
+        keys = ['name', 'description', 'col_type', 'sort_order', 'database', 'cluster', 'schema',
+                'table_name']
 
         data = self.get_empty_dict_with_cols(keys)
 

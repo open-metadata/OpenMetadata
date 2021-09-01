@@ -36,7 +36,10 @@ class LdapUsersSource(Source):
     config: LDAPUserConfig
     status: SourceStatus
 
-    def __init__(self, ctx: WorkflowContext, config: LDAPUserConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: LDAPUserConfig,
+            metadata_config: MetadataServerConfig
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -50,10 +53,12 @@ class LdapUsersSource(Source):
 
     def _load_users(self, c):
         if c is not False:
-            c.search(search_base='ou=users,dc=example,dc=com',
-                     search_filter='(objectClass=inetOrgPerson)',
-                     search_scope=LEVEL,
-                     attributes=['cn', 'givenName', 'uid', 'mail', 'sn'])
+            c.search(
+                search_base='ou=users,dc=example,dc=com',
+                search_filter='(objectClass=inetOrgPerson)',
+                search_scope=LEVEL,
+                attributes=['cn', 'givenName', 'uid', 'mail', 'sn']
+                )
             arr = []
             for entry in c.response:
                 arr.append(entry)
@@ -76,13 +81,15 @@ class LdapUsersSource(Source):
 
     def next_record(self) -> Iterable[MetadataUser]:
         for user in self.users:
-            user_metadata = User(user['attributes']['mail'],
-                                 user['attributes']['givenName'],
-                                 user['attributes']['sn'],
-                                 user['attributes']['cn'],
-                                 user['attributes']['uid'],
-                                 '', '', '', True,
-                                 0)
+            user_metadata = User(
+                user['attributes']['mail'],
+                user['attributes']['givenName'],
+                user['attributes']['sn'],
+                user['attributes']['cn'],
+                user['attributes']['uid'],
+                '', '', '', True,
+                0
+                )
             self.status.scanned(user_metadata.name)
             yield user_metadata
 

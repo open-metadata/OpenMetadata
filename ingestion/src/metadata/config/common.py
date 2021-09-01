@@ -64,4 +64,3 @@ def load_config_file(config_file: pathlib.Path) -> dict:
     config = json.load(config_fp)
 
     return config
-
