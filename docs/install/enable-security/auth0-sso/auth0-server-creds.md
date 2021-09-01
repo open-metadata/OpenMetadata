@@ -18,6 +18,7 @@
 ## Step 2: Create a new Application
 
 * Once you are on the Dashboard Page, click on `Application > Application` \
+
   available on the left-hand side panel.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130019122-2435ada0-3321-46a6-a17b-dfb6bb589182.png)
@@ -39,3 +40,4 @@
 * You will find you `Client ID`, `Client Secret` and `Domain`.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130020071-63828d70-a809-4869-b7c1-7284d648bd59.png)
+

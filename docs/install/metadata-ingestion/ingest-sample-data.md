@@ -23,6 +23,9 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 ```bash
 python3 -m pip install 'openmetadata-ingestion[sample-tables, elasticsearch]'
 python3 -m spacy download en_core_web_sm
+
+git clone https://github.com/open-metadata/OpenMetadata.git
+cd OpenMetadata/ingestion
 ```
 {% endtab %}
 
@@ -61,6 +64,7 @@ docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elas
 Index sample data in ElasticSearch:
 
 ```bash
+cd OpenMetadata/ingestion
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
 

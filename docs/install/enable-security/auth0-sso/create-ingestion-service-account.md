@@ -2,7 +2,7 @@
 description: This is a guide to create ingestion bot service account.
 ---
 
-# Create Service Account/Client-Credential Flow
+# Create Service Account
 
 ## Step 1: Enable Client-Credential
 
@@ -70,7 +70,9 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190090-b0458fc0-7642-46f1-9344-ad8706dd2625.png)
 
-* Select which permissions (scopes) should be granted to the client. \
-Click on `Update`.
+* Select which permissions \(scopes\) should be granted to the client. \
+
+  Click on `Update`.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190076-28e2e11a-273d-491e-b998-db81bf1fb813.png)
+
