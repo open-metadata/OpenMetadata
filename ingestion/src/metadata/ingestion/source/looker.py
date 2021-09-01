@@ -136,16 +136,16 @@ class LookerSource(Source):
             looker_dashboard_element = self._get_looker_charts(chart)
             if looker_dashboard_element is not None:
                 charts.append(looker_dashboard_element)
-        return Dashboard(
-            id=uuid.uuid4(),
-            name=dashboard.id,
-            displayName=dashboard.title,
-            description=dashboard.description,
-            charts=charts,
-            usageSummary=dashboard.view_count,
-            service=EntityReference(id=self.service.id, type="dashboardService"),
-            href=dashboard.slug
-        )
+            yield Dashboard(
+                id=uuid.uuid4(),
+                name=dashboard.id,
+                displayName=dashboard.title,
+                description=dashboard.description,
+                charts=charts,
+                usageSummary=dashboard.view_count,
+                service=EntityReference(id=self.service.id, type="dashboardService"),
+                href=dashboard.slug
+            )
 
     def _looker_dashboards(self):
         for child_dashboard in self.client.all_dashboards(fields="id"):
