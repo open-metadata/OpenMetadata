@@ -23,15 +23,19 @@ import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
+import { getTopics } from '../../axiosAPIs/topicsAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -78,9 +82,22 @@ const ServicePage: FunctionComponent = () => {
   };
 
   const fetchTopics = (paging?: string) => {
-    setIsloading(false);
-    // eslint-disable-next-line no-console
-    console.log(paging);
+    setIsloading(true);
+    getTopics(serviceFQN, paging, ['owner', 'service', 'tags'])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
   };
 
   const getOtherDetails = (paging?: string) => {
@@ -131,6 +148,80 @@ const ServicePage: FunctionComponent = () => {
       default: {
         return <></>;
       }
+    }
+  };
+
+  const getTableHeaders = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Database Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Usage</th>
+          </>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Topic Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
+      default:
+        return <></>;
+    }
+  };
+
+  const getOptionalTableCells = (data: Database | Topic) => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        const database = data as Database;
+
+        return (
+          <td className="tableBody-cell">
+            <p>
+              {getUsagePercentile(
+                database.usageSummary.weeklyStats.percentileRank
+              )}
+            </p>
+          </td>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        const topic = data as Topic;
+
+        return (
+          <td className="tableBody-cell">
+            {topic.tags && topic.tags?.length > 0
+              ? topic.tags.map((tag, tagIndex) => (
+                  <PopOver
+                    key={tagIndex}
+                    position="top"
+                    size="small"
+                    title={tag.labelType}
+                    trigger="mouseenter">
+                    <Tags
+                      className="tw-bg-gray-200"
+                      tag={`#${
+                        tag.tagFQN?.startsWith('Tier.Tier')
+                          ? tag.tagFQN.split('.')[1]
+                          : tag.tagFQN
+                      }`}
+                    />
+                  </PopOver>
+                ))
+              : '--'}
+          </td>
+        );
+      }
+      default:
+        return <></>;
     }
   };
 
@@ -218,7 +309,7 @@ const ServicePage: FunctionComponent = () => {
                     ? getFrequencyTime(
                         serviceDetails.ingestionSchedule.repeatFrequency
                       )
-                    : 'N/A'}
+                    : '--'}
                 </span>
                 <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
                   •
@@ -278,12 +369,7 @@ const ServicePage: FunctionComponent = () => {
                 className="tw-bg-white tw-w-full tw-mb-4"
                 data-testid="database-tables">
                 <thead>
-                  <tr className="tableHead-row">
-                    <th className="tableHead-cell">Database Name</th>
-                    <th className="tableHead-cell">Description</th>
-                    <th className="tableHead-cell">Owner</th>
-                    <th className="tableHead-cell">Usage</th>
-                  </tr>
+                  <tr className="tableHead-row">{getTableHeaders()}</tr>
                 </thead>
                 <tbody className="tableBody">
                   {data.length > 0 ? (
@@ -314,13 +400,7 @@ const ServicePage: FunctionComponent = () => {
                         <td className="tableBody-cell">
                           <p>{database?.owner?.name || '--'}</p>
                         </td>
-                        <td className="tableBody-cell">
-                          <p>
-                            {getUsagePercentile(
-                              database.usageSummary.weeklyStats.percentileRank
-                            )}
-                          </p>
-                        </td>
+                        {getOptionalTableCells(database)}
                       </tr>
                     ))
                   ) : (

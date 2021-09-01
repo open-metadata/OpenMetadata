@@ -322,7 +322,7 @@ const ServicesPage = () => {
                             ? getFrequencyTime(
                                 service.ingestionSchedule.repeatFrequency
                               )
-                            : 'N/A'}
+                            : '--'}
                         </span>
                       </div>
                       <div className="">
