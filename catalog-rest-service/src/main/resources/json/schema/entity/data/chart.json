@@ -66,6 +66,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this Chart. It could be title or label from the source services",
+      "type": "string"
+    },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.",
       "type": "string",
@@ -74,10 +78,6 @@
     },
     "description": {
       "description": "Description of the dashboard, what it is, and how to use it.",
-      "type": "string"
-    },
-    "chartId": {
-      "description": "Unique Identifier of the Chart from the Source Service.",
       "type": "string"
     },
     "chartType": {

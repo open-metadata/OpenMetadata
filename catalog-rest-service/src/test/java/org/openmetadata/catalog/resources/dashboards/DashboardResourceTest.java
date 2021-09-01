@@ -152,7 +152,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDashboard(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckDashboard(create(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), adminAuthHeaders());
   }
 
   @Test
@@ -333,8 +333,10 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     createAndCheckDashboard(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Dashboard db = updateAndCheckDashboard(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    Dashboard db = updateAndCheckDashboard(request.withDisplayName("dashboard1").
+            withDescription("newDescription"), OK, adminAuthHeaders());
     assertEquals("newDescription", db.getDescription());
+    assertEquals("dashboard1", db.getDisplayName());
   }
 
   @Test
@@ -530,7 +532,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public static Dashboard createAndCheckDashboard(CreateDashboard create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
     Dashboard dashboard = createDashboard(create, authHeaders);
-    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
+    validateDashboard(dashboard, create.getDisplayName(),
+            create.getDescription(), create.getOwner(), create.getService());
     return getAndValidate(dashboard.getId(), create, authHeaders);
   }
 
@@ -608,7 +611,14 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   }
 
-  private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription, 
+  private static Dashboard validateDashboard(Dashboard dashboard, String expectedDisplayName,
+                                             String expectedDescription,
+                                             EntityReference expectedOwner, EntityReference expectedService) {
+    Dashboard newDashboard = validateDashboard(dashboard, expectedDescription, expectedOwner, expectedService);
+    assertEquals(expectedDisplayName, newDashboard.getDisplayName());
+    return newDashboard;
+  }
+  private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription,
                                             EntityReference expectedOwner, EntityReference expectedService) {
     assertNotNull(dashboard.getId());
     assertNotNull(dashboard.getHref());

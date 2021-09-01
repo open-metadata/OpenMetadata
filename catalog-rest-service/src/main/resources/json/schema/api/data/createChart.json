@@ -11,12 +11,12 @@
       "minLength": 1,
       "maxLength": 64
     },
-    "description": {
-      "description": "Description of the database instance. What it has and how to use it.",
+    "displayName": {
+      "description": "Display Name that identifies this Chart. It could be title or label from the source services",
       "type": "string"
     },
-    "chartId": {
-      "description": "Unique Identifier of the Chart from the Source Service.",
+    "description": {
+      "description": "Description of the database instance. What it has and how to use it.",
       "type": "string"
     },
     "chartType": {
