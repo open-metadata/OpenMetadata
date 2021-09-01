@@ -13,12 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import pathlib
+import io
+import json
 from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
 from pydantic import BaseModel
 from expandvars import expandvars
-import io
-import json
 
 
 class ConfigModel(BaseModel):

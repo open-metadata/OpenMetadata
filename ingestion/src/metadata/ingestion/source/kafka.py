@@ -12,24 +12,22 @@
 
 # This import verifies that the dependencies are available.
 
-from dataclasses import field, dataclass, Field
+from dataclasses import field, dataclass
 from typing import List, Iterable, Optional
-
-from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createTopic import CreateTopic
-from metadata.generated.schema.entity.data.topic import Topic, SchemaType
-from metadata.generated.schema.entity.services.messagingService import MessagingServiceType
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, Record, logger, WorkflowContext
-from metadata.ingestion.api.source import SourceStatus, Source
-
+import concurrent.futures
 import confluent_kafka
 from confluent_kafka.admin import AdminClient, ConfigResource
 from confluent_kafka.schema_registry.schema_registry_client import (
     Schema,
     SchemaRegistryClient,
 )
-import concurrent.futures
+from metadata.config.common import ConfigModel
+from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.entity.data.topic import  SchemaType
+from metadata.generated.schema.entity.services.messagingService import MessagingServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import IncludeFilterPattern, logger, WorkflowContext
+from metadata.ingestion.api.source import SourceStatus, Source
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_messaging_service_or_create
 

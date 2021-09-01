@@ -15,13 +15,13 @@
 
 import logging
 from typing import List
-import google.auth
-import google.auth.transport.requests
-from google.oauth2 import service_account
 import time
 import uuid
 import http.client
 import json
+import google.auth
+import google.auth.transport.requests
+from google.oauth2 import service_account
 from jose import jwt
 from okta.jwt import JWT
 from metadata.config.common import ConfigModel

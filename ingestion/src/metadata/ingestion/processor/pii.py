@@ -15,14 +15,12 @@
 
 import logging
 from typing import Optional
-
-import spacy
-from commonregex import CommonRegex
 import re
 from abc import ABC, abstractmethod
 import json
 from enum import Enum, auto
-
+from commonregex import CommonRegex
+import spacy
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import WorkflowContext, Record

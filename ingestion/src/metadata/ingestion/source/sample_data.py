@@ -17,10 +17,9 @@ import csv
 import uuid
 import os
 import json
-from faker import Faker
+import logging
 from collections import namedtuple
 from dataclasses import dataclass, field
-import pandas as pd
 from typing import Iterable, List, Dict, Any, Union
 
 from pydantic import ValidationError
@@ -43,7 +42,6 @@ from metadata.generated.schema.api.services.createDatabaseService import \
     CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
-import logging
 
 from metadata.utils.helpers import get_database_service_or_create
 
