@@ -14,7 +14,7 @@ Look for issues under [github/issues tab](https://github.com/open-metadata/OpenM
 
 OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) .
 
-![./images/fork-github.png](../../.gitbook/assets/fork-github.png)
+![./images/fork-github.png](../../.gitbook/assets/fork-github%20%281%29.png)
 
 Create a local clone of your fork
 

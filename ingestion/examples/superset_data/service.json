@@ -1,0 +1,9 @@
+{
+	"id": "a6fb4f54-ba3d-4a16-97f0-766713199141",
+	"name": "sample_superset",
+	"serviceType": "Superset",
+	"description": "Supset Service",
+  "dashboardUrl": "http://localhost:8088",
+  "username": "admin",
+  "password": "admin"
+}

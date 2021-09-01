@@ -28,19 +28,21 @@ type Props = {
 const viewCap = 3;
 
 const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
-  return tableFQNs.reduce((resList, curr) => {
-    let duplicates = false;
-    for (const table of resList) {
-      if (table.fqn === curr.fqn) {
-        table.joinCount += curr.joinCount;
-        duplicates = true;
+  return tableFQNs
+    .reduce((resList, curr) => {
+      let duplicates = false;
+      for (const table of resList) {
+        if (table.fqn === curr.fqn) {
+          table.joinCount += curr.joinCount;
+          duplicates = true;
 
-        break;
+          break;
+        }
       }
-    }
 
-    return duplicates ? resList : [...resList, curr];
-  }, [] as Props['tableList']);
+      return duplicates ? resList : [...resList, curr];
+    }, [] as Props['tableList'])
+    .sort((a, b) => (a.joinCount < b.joinCount ? 1 : -1));
 };
 
 const FrequentlyJoinedTables: FunctionComponent<Props> = ({

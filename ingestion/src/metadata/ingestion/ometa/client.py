@@ -129,8 +129,8 @@ class REST(object):
             retry = 0
         while retry >= 0:
             try:
-                logger.info('URL {}, method {}'.format(url, method))
-                logger.info('Data {}'.format(opts))
+                logger.debug('URL {}, method {}'.format(url, method))
+                logger.debug('Data {}'.format(opts))
                 return self._one_request(method, url, opts, retry)
             except RetryException:
                 retry_wait = self._retry_wait

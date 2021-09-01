@@ -33,6 +33,7 @@ export const imageTypes = {
 export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
+const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
@@ -110,6 +111,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
+  TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   ONBOARDING: '/onboarding',
 };
@@ -150,6 +152,13 @@ export const getExplorePathWithSearch = (searchQuery = '') => {
 export const getDatabaseDetailsPath = (databaseFQN: string) => {
   let path = ROUTES.DATABASE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATABASE_FQN, databaseFQN);
+
+  return path;
+};
+
+export const getTopicDetailsPath = (topicFQN: string) => {
+  let path = ROUTES.TOPIC_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
 
   return path;
 };

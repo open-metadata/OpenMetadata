@@ -32,6 +32,33 @@ const SigninPage = () => {
     appState.authProvider.signingIn = true;
   };
 
+  const getSignInButton = (): JSX.Element => {
+    switch (appState.authProvider.provider) {
+      case AuthTypes.GOOGLE: {
+        return (
+          <button className="tw-signin-button">
+            <SVGIcons alt="Google Logo" icon={Icons.GOOGLE_ICON} width="22" />
+            <span className="tw-ml-3">Sign in with Google</span>
+          </button>
+        );
+      }
+      case AuthTypes.OKTA: {
+        return (
+          <button className="tw-signin-button tw-text-white tw-bg-blue-700 hover:tw-bg-blue-600">
+            Sign in with Okta
+          </button>
+        );
+      }
+      case AuthTypes.AUTH0: {
+        return <button className="tw-signin-button">Sign in with Auth0</button>;
+      }
+      // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
+      default: {
+        return <></>;
+      }
+    }
+  };
+
   if (appState.authDisabled || !isEmpty(appState.userDetails)) {
     history.push(ROUTES.HOME);
   }
@@ -57,26 +84,7 @@ const SigninPage = () => {
             <h6 className="tw-mb-px">Collaborate and get your Data Right</h6>
           </div>
           <div className="tw-mt-4" onClick={handleSignIn}>
-            {appState.authProvider.provider === AuthTypes.GOOGLE && (
-              <button className="tw-signin-button">
-                <SVGIcons
-                  alt="Google Logo"
-                  icon={Icons.GOOGLE_ICON}
-                  width="22"
-                />
-                <span className="tw-ml-3">Sign in with Google</span>
-              </button>
-            )}
-            {appState.authProvider.provider === AuthTypes.OKTA && (
-              <button className="tw-signin-button tw-text-white tw-bg-blue-700 hover:tw-bg-blue-600">
-                Sign in with Okta
-              </button>
-            )}
-            {appState.authProvider.provider === AuthTypes.GITHUB && (
-              <button className="tw-signin-button tw-text-white tw-bg-gray-800 hover:tw-bg-gray-700">
-                Sign in with Github
-              </button>
-            )}
+            {getSignInButton()}
           </div>
         </div>
       </div>

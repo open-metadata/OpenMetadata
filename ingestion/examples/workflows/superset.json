@@ -4,7 +4,14 @@
     "config": {
       "url": "http://localhost:8088",
       "username": "admin",
-      "password": "admin"
+      "password": "admin",
+      "service_name": "local_superset",
+      "service_type": "Superset"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest-dashboards",
+    "config": {
     }
   },
   "metadata_server": {
