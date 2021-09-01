@@ -29,13 +29,14 @@ DESCRIPTION_NODE_LABEL = DESCRIPTION_NODE_LABEL_VAL
 
 class ColumnMetadata:
 
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 column_data_type: str,
-                 ordinal_position: int,
-                 pii_tags: List[str] = None
-                 ) -> None:
+    def __init__(
+            self,
+            name: str,
+            documentation: Union[str, None],
+            column_data_type: str,
+            ordinal_position: int,
+            pii_tags: List[str] = None
+    ) -> None:
         """
         TODO: Add stats
         :param name:
@@ -51,24 +52,28 @@ class ColumnMetadata:
         self.pii_tags = pii_tags if pii_tags else []
 
     def __repr__(self) -> str:
-        return 'ColumnMetadata({!r}, {!r}, {!r}, {!r}, {!r})'.format(self.name,
-                                                                     self.documentation,
-                                                                     self.column_data_type,
-                                                                     self.ordinal_position,
-                                                                     self.pii_tags)
+        return 'ColumnMetadata({!r}, {!r}, {!r}, {!r}, {!r})'.format(
+            self.name,
+            self.documentation,
+            self.column_data_type,
+            self.ordinal_position,
+            self.pii_tags
+        )
 
 
 class TableMetadata:
     """
     Table metadata that contains columns.
-    This class can be used for both table and view metadata. If it is a View, is_view=True should be passed in.
+    This class can be used for both table and view metadata. If it is a View, is_view=True
+    should be passed in.
     """
 
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 columns: Iterable[ColumnMetadata] = None
-                 ) -> None:
+    def __init__(
+            self,
+            name: str,
+            documentation: Union[str, None],
+            columns: Iterable[ColumnMetadata] = None
+    ) -> None:
         """
         :param name:
         :param documentation:
@@ -85,9 +90,11 @@ class TableMetadata:
         return json.dumps(self, default=lambda o: o.__dict__)
 
     def __repr__(self) -> str:
-        return 'TableMetadata({!r}, {!r}, {!r} '.format(self.name,
-                                                        self.documentation,
-                                                        self.columns)
+        return 'TableMetadata({!r}, {!r}, {!r} '.format(
+            self.name,
+            self.documentation,
+            self.columns
+        )
 
 
 class DatabaseMetadata(JsonSerializable):
@@ -108,20 +115,23 @@ class DatabaseMetadata(JsonSerializable):
         for table in record.tables:
             table_metadata: TableMetadata = TableMetadata(table.name, table.documentation)
             for column in table.columns:
-                column: ColumnMetadata = ColumnMetadata(column.name, column.documentation,
-                                                        column.column_data_type, column.ordinal_position,
-                                                        column.pii_tags)
+                column: ColumnMetadata = ColumnMetadata(
+                    column.name, column.documentation,
+                    column.column_data_type, column.ordinal_position,
+                    column.pii_tags
+                )
                 table_metadata.add_column(column)
             tables.append(table_metadata)
         return cls(name, documentation, tables, service)
 
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 tables: Iterable[TableMetadata] = None,
-                 service: Dict[str, Any] = None,
-                 **kwargs: Any
-                 ) -> None:
+    def __init__(
+            self,
+            name: str,
+            documentation: Union[str, None],
+            tables: Iterable[TableMetadata] = None,
+            service: Dict[str, Any] = None,
+            **kwargs: Any
+    ) -> None:
         """
         :param name:
         :param service:
@@ -137,18 +147,22 @@ class DatabaseMetadata(JsonSerializable):
             self.attrs = copy.deepcopy(kwargs)
 
     def __repr__(self) -> str:
-        return 'DatabaseMetadata({!r}, {!r}, {!r})'.format(self.name,
-                                                           self.documentation,
-                                                           self.tables)
+        return 'DatabaseMetadata({!r}, {!r}, {!r})'.format(
+            self.name,
+            self.documentation,
+            self.tables
+        )
 
     def add_table(self, table: TableMetadata) -> None:
         self.tables.append(table)
 
 
 class JDBCMetadata(JsonSerializable):
-    def __init__(self,
-                 connection_url: str,
-                 driver_class: str):
+    def __init__(
+            self,
+            connection_url: str,
+            driver_class: str
+    ):
         self.connection_url = connection_url
         self.driver_class = driver_class
 
@@ -158,9 +172,11 @@ class ServiceMetadata(JsonSerializable):
     Service Metadata contains the configuration to connect to a database
     """
 
-    def __init__(self,
-                 name: str,
-                 jdbc: JDBCMetadata):
+    def __init__(
+            self,
+            name: str,
+            jdbc: JDBCMetadata
+    ):
         self.name = name
         self.jdbc = jdbc
 

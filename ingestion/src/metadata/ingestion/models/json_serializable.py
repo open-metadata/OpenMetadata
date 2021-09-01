@@ -39,4 +39,6 @@ class JsonSerializable(object, metaclass=abc.ABCMeta):
         return {JsonSerializable.snake_to_camel(k): v for k, v in obj.__dict__.items()}
 
     def to_json(self):
-        return json.dumps(JsonSerializable.serialize(self), indent=4, default=JsonSerializable.serialize)
+        return json.dumps(
+            JsonSerializable.serialize(self), indent=4, default=JsonSerializable.serialize
+            )

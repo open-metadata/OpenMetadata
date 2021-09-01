@@ -138,7 +138,8 @@ class Auth0AuthenticationProvider(AuthenticationProvider):
     def auth_token(self) -> str:
         conn = http.client.HTTPSConnection(self.config.domain)
         payload = f"grant_type=client_credentials&client_id={self.config.client_id}" \
-                  f"&client_secret={self.config.secret_key}&audience=https://{self.config.domain}/api/v2/"
+                  f"&client_secret={self.config.secret_key}&audience=https://" \
+                  f"{self.config.domain}/api/v2/"
         headers = {'content-type': "application/x-www-form-urlencoded"}
         conn.request(
             "POST", f"/{self.config.domain}/oauth/token", payload,

@@ -37,29 +37,32 @@ class User(JsonSerializable):
     USER_NODE_EMPLOYEE_TYPE = 'employee_type'
     USER_NODE_MANAGER_EMAIL = 'manager_email'
     USER_NODE_SLACK_ID = 'slack_id'
-    USER_NODE_IS_ACTIVE = 'is_active{}'.format(UNQUOTED_SUFFIX)  # bool value needs to be unquoted when publish to neo4j
+    USER_NODE_IS_ACTIVE = 'is_active{}'.format(
+        UNQUOTED_SUFFIX
+    )  # bool value needs to be unquoted when publish to neo4j
     USER_NODE_UPDATED_AT = 'updated_at'
     USER_NODE_ROLE_NAME = 'role_name'
 
     USER_MANAGER_RELATION_TYPE = 'MANAGE_BY'
     MANAGER_USER_RELATION_TYPE = 'MANAGE'
 
-    def __init__(self,
-                 email: str,
-                 first_name: str = '',
-                 last_name: str = '',
-                 name: str = '',
-                 github_username: str = '',
-                 team_name: str = '',
-                 employee_type: str = '',
-                 manager_email: str = '',
-                 slack_id: str = '',
-                 is_active: bool = True,
-                 updated_at: int = 0,
-                 role_name: str = '',
-                 do_not_update_empty_attribute: bool = False,
-                 **kwargs: Any
-                 ) -> None:
+    def __init__(
+            self,
+            email: str,
+            first_name: str = '',
+            last_name: str = '',
+            name: str = '',
+            github_username: str = '',
+            team_name: str = '',
+            employee_type: str = '',
+            manager_email: str = '',
+            slack_id: str = '',
+            is_active: bool = True,
+            updated_at: int = 0,
+            role_name: str = '',
+            do_not_update_empty_attribute: bool = False,
+            **kwargs: Any
+    ) -> None:
         """
         This class models user node for Amundsen people.
 
@@ -76,8 +79,8 @@ class User(JsonSerializable):
                            then we will have a cron job to update the ex-employee nodes based on
                            the case if this timestamp hasn't been updated for two weeks.
         :param role_name: the role_name of the user (e.g swe)
-        :param do_not_update_empty_attribute: If False, all empty or not defined params will be overwritten with
-        empty string.
+        :param do_not_update_empty_attribute: If False, all empty or not defined params will
+        be overwritten with empty string.
         :param kwargs: Any K/V attributes we want to update the
         """
         self.first_name = first_name
@@ -106,15 +109,16 @@ class MetadataUser(JsonSerializable):
     Catalog User model. This model doesn't define any relationship.
     """
 
-    def __init__(self,
-                 name: str,
-                 display_name: str,
-                 email: str,
-                 timezone: str = 'PST',
-                 isBot: bool = False,
-                 teams: [] = None,
-                 **kwargs: Any
-                 ) -> None:
+    def __init__(
+            self,
+            name: str,
+            display_name: str,
+            email: str,
+            timezone: str = 'PST',
+            isBot: bool = False,
+            teams: [] = None,
+            **kwargs: Any
+    ) -> None:
         """
         """
         self.name = name
@@ -132,9 +136,11 @@ class MetadataOrg(JsonSerializable):
     Catalog Org Model
     """
 
-    def __init__(self,
-                 name: str,
-                 documentation: str = '') -> None:
+    def __init__(
+            self,
+            name: str,
+            documentation: str = ''
+    ) -> None:
         """
         """
         self.name = name
@@ -146,10 +152,12 @@ class MetadataTeam(JsonSerializable):
     Catalog Team Model
     """
 
-    def __init__(self,
-                 name: str,
-                 display_name: str,
-                 description: str = '') -> None:
+    def __init__(
+            self,
+            name: str,
+            display_name: str,
+            description: str = ''
+    ) -> None:
         """
         """
         self.name = name.replace(' ', '_')
@@ -162,9 +170,11 @@ class MetadataRole(JsonSerializable):
     Catalog Role
     """
 
-    def __init__(self,
-                 name: str,
-                 documentation: str = ''):
+    def __init__(
+            self,
+            name: str,
+            documentation: str = ''
+    ):
         """
         """
         self.name = name
