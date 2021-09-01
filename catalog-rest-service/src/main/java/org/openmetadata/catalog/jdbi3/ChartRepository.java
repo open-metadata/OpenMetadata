@@ -147,6 +147,11 @@ public abstract class ChartRepository {
     if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
       storedDB.withDescription(updatedChart.getDescription());
     }
+
+    //update the display name from source
+    if (updatedChart.getDisplayName() != null && !updatedChart.getDisplayName().isEmpty()) {
+      storedDB.withDisplayName(updatedChart.getDisplayName());
+    }
     chartDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
 
     // Update owner relationship

@@ -138,6 +138,11 @@ public abstract class DashboardRepository {
     if (storedDashboard.getDescription() == null || storedDashboard.getDescription().isEmpty()) {
       storedDashboard.withDescription(updatedDashboard.getDescription());
     }
+    //update the display name from source
+    if (updatedDashboard.getDisplayName() != null && !updatedDashboard.getDisplayName().isEmpty()) {
+      storedDashboard.withDisplayName(updatedDashboard.getDisplayName());
+    }
+
     dashboardDAO().update(storedDashboard.getId().toString(), JsonUtils.pojoToJson(storedDashboard));
 
     // Update owner relationship
@@ -198,6 +203,7 @@ public abstract class DashboardRepository {
   }
 
   private Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+    dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
     dashboard.setService(fields.contains("service") ? getService(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);

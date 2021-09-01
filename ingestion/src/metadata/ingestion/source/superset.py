@@ -111,6 +111,7 @@ class SupersetSource(Source):
         yield from self._fetch_dashboards()
 
     def _build_dashboard(self, dashboard_json) -> Dashboard:
+        dashboard_id = dashboard_json['id']
         name = dashboard_json['dashboard_title']
         dashboard_url = f"{self.config.url[:-1]}{dashboard_json['url']}"
         last_modified = dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp() * 1000
@@ -125,7 +126,8 @@ class SupersetSource(Source):
                 chart_id = value.get('meta', {}).get('chartId', 'unknown')
                 charts.append(chart_id)
 
-        return Dashboard(name=name,
+        return Dashboard(name=dashboard_id,
+                         displayName=name,
                          description="",
                          url=dashboard_url,
                          owners=owners,
@@ -195,9 +197,9 @@ class SupersetSource(Source):
             "Dimensions": ", ".join(group_bys),
         }
 
-        chart = Chart(name=name,
+        chart = Chart(name=chart_id,
+                      displayName=name,
                       description="",
-                      chart_id=chart_id,
                       chart_type=chart_type,
                       url=chart_url,
                       owners=owners,

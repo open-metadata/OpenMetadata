@@ -86,11 +86,11 @@ class SampleDashboardsSource(Source):
         for chart in self.charts['charts']:
             try:
                 chart_ev = Chart(name=chart['name'],
-                             description=chart['description'],
-                             chart_id=chart['chartId'],
-                             chart_type=chart['chartType'],
-                             url=chart['chartUrl'],
-                             service=EntityReference(id=self.service.id, type="dashboardService"))
+                                displayName=chart['displayName'],
+                                description=chart['description'],
+                                chart_type=chart['chartType'],
+                                url=chart['chartUrl'],
+                                service=EntityReference(id=self.service.id, type="dashboardService"))
                 yield chart_ev
             except ValidationError as err:
                 logger.error(err)
@@ -98,6 +98,7 @@ class SampleDashboardsSource(Source):
 
         for dashboard in self.dashboards['dashboards']:
             dashboard_ev = Dashboard(name=dashboard['name'],
+                                     displayName=dashboard['displayName'],
                                      description=dashboard['description'],
                                      url=dashboard['dashboardUrl'],
                                      charts=dashboard['charts'],
