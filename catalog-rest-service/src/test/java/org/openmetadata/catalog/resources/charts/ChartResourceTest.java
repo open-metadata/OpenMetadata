@@ -145,7 +145,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_chartWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckChart(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckChart(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
@@ -330,8 +330,10 @@ public class ChartResourceTest extends CatalogApplicationTest {
     createAndCheckChart(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Chart chart = updateAndCheckChart(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    Chart chart = updateAndCheckChart(request.withDescription("newDescription").withDisplayName("newChart")
+            , OK, adminAuthHeaders());
     assertEquals("newDescription", chart.getDescription());
+    assertEquals("newChart", chart.getDisplayName());
   }
 
   @Test
@@ -531,7 +533,8 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public static Chart createAndCheckChart(CreateChart create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     Chart chart = createChart(create, authHeaders);
-    validateChart(chart, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateChart(chart, chart.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
+            create.getTags());
     return getAndValidate(chart.getId(), create, authHeaders);
   }
 
@@ -594,6 +597,14 @@ public class ChartResourceTest extends CatalogApplicationTest {
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
     assertNotNull(chart.getService());
+  }
+
+  private static Chart validateChart(Chart  chart, String expectedDisplayName, String expectedDescription,
+                                     EntityReference expectedOwner, EntityReference expectedService,
+                                     List<TagLabel> expectedTags) throws HttpResponseException {
+    Chart newChart = validateChart(chart, expectedDescription, expectedOwner, expectedService, expectedTags);
+    assertEquals(expectedDisplayName, newChart.getDisplayName());
+    return chart;
   }
 
   private static Chart validateChart(Chart chart, String expectedDescription, EntityReference expectedOwner,

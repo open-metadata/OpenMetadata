@@ -237,7 +237,8 @@ public class ChartResource {
                          @Valid CreateChart create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+                    .withDescription(create.getDescription())
                     .withService(create.getService()).withChartId(create.getChartId())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())
@@ -284,7 +285,8 @@ public class ChartResource {
                                  @Valid CreateChart create) throws IOException {
 
     Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+                    .withDescription(create.getDescription())
                     .withService(create.getService()).withChartId(create.getChartId())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())

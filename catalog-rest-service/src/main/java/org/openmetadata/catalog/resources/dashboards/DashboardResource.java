@@ -242,6 +242,7 @@ public class DashboardResource {
                          @Valid CreateDashboard create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
             .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
             .withOwner(create.getOwner());
@@ -287,6 +288,7 @@ public class DashboardResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDashboard create) throws IOException {
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
             .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
             .withOwner(create.getOwner());

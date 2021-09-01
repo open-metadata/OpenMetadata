@@ -87,23 +87,23 @@ class MetadataRestDashboardsSink(Sink):
 
             chart_request = CreateChartEntityRequest(
                 name=chart.name,
+                displayName=chart.displayName,
                 description=chart.description,
-                chartId=chart.chart_id,
                 chartType=om_chart_type,
                 chartUrl=chart.url,
                 service=chart.service
             )
             created_chart = self.client.create_or_update_chart(chart_request)
-            self.charts_dict[chart.chart_id] = EntityReference(id=created_chart.id, type='chart')
+            self.charts_dict[chart.name] = EntityReference(id=created_chart.id, type='chart')
             logger.info(
-                'Successfully ingested {}'.format(created_chart.name))
+                'Successfully ingested {}'.format(created_chart.displayName))
             self.status.records_written(
-                '{}'.format(created_chart.name))
+                '{}'.format(created_chart.displayName))
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest chart {}".format(chart.name))
+                "Failed to ingest chart {}".format(chart.displayName))
             logger.error(err)
-            self.status.failure(chart.name)
+            self.status.failure(chart.displayName)
 
     def _ingest_dashboards(self, dashboard: Dashboard):
         try:
@@ -111,14 +111,15 @@ class MetadataRestDashboardsSink(Sink):
 
             dashboard_request = CreateDashboardEntityRequest(
                 name=dashboard.name,
+                displayName=dashboard.displayName,
                 description=dashboard.description,
                 dashboardUrl=dashboard.url,
                 charts=charts,
                 service=dashboard.service
             )
             created_dashboard = self.client.create_or_update_dashboard(dashboard_request)
-            logger.info('Successfully ingested {}'.format(created_dashboard.name))
-            self.status.records_written('{}'.format(created_dashboard.name))
+            logger.info('Successfully ingested {}'.format(created_dashboard.displayName))
+            self.status.records_written('{}'.format(created_dashboard.displayName))
         except (APIError, ValidationError) as err:
             logger.error("Failed to ingest chart {}".format(dashboard.name))
             logger.error(err)

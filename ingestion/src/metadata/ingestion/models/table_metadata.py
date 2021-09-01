@@ -219,7 +219,7 @@ class DashboardOwner(BaseModel):
 class Chart(BaseModel):
     """Chart"""
     name: str
-    chart_id: str
+    displayName:str
     description: str
     chart_type: str
     url: str
@@ -233,9 +233,10 @@ class Chart(BaseModel):
 class Dashboard(BaseModel):
     """Dashboard"""
     name: str
+    displayName: str
     description: str
     url: str
-    owners: List = None
-    charts: List
+    owners: List[DashboardOwner] = None
+    charts: List[str]
     service: EntityReference
     lastModified: int = None

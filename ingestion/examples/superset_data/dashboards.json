@@ -2,7 +2,8 @@
   "dashboards": [
     {
       "id": "d4dc7baf-1b17-45f8-acd5-a15b78cc7c5f",
-      "name": "[ untitled dashboard ]",
+      "name": "8",
+      "displayName": "[ untitled dashboard ]",
       "fullyQualifiedName": "local_superset.[ untitled dashboard ]",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/1/",
@@ -11,7 +12,8 @@
     },
     {
       "id": "063cd787-8630-4809-9702-34d3992c7248",
-      "name": "COVID Vaccine Dashboard",
+      "name": "9",
+      "displayName": "COVID Vaccine Dashboard",
       "fullyQualifiedName": "local_superset.COVID Vaccine Dashboard",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/8/",
@@ -20,7 +22,8 @@
     },
     {
       "id": "df6c698e-066a-4440-be0a-121025573b73",
-      "name": "deck.gl Demo",
+      "name": "10",
+      "displayName": "deck.gl Demo",
       "fullyQualifiedName": "local_superset.deck.gl Demo",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/deck/",
@@ -29,7 +32,8 @@
     },
     {
       "id": "98b38a49-b5c6-431b-b61f-690e39f8ead2",
-      "name": "FCC New Coder Survey 2018",
+      "name": "11",
+      "displayName": "FCC New Coder Survey 2018",
       "fullyQualifiedName": "local_superset.FCC New Coder Survey 2018",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/7/",
@@ -38,7 +42,8 @@
     },
     {
       "id": "dffcf9b2-4f43-4881-a5f5-10109655bf50",
-      "name": "Misc Charts",
+      "name": "12",
+      "displayName": "Misc Charts",
       "fullyQualifiedName": "local_superset.Misc Charts",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/misc_charts/",
@@ -47,7 +52,8 @@
     },
     {
       "id": "2583737d-6236-421e-ba0f-cd0b79adb216",
-      "name": "Sales Dashboard",
+      "name": "31",
+      "displayName": "Sales Dashboard",
       "fullyQualifiedName": "local_superset.Sales Dashboard",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/6/",
@@ -56,7 +62,8 @@
     },
     {
       "id": "6bf9bfcb-4e80-4af0-9f0c-13e47bbc27a2",
-      "name": "Slack Dashboard",
+      "name": "33",
+      "displayName": "Slack Dashboard",
       "fullyQualifiedName": "local_superset.Slack Dashboard",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/10/",
@@ -65,7 +72,8 @@
     },
     {
       "id": "1f02caf2-c5e5-442d-bda3-b8ce3e757b45",
-      "name": "Unicode Test",
+      "name": "34",
+      "displayName": "Unicode Test",
       "fullyQualifiedName": "local_superset.Unicode Test",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/unicode-test/",
@@ -74,7 +82,8 @@
     },
     {
       "id": "a3ace318-ee37-4da1-974a-62eddbd77d20",
-      "name": "USA Births Names",
+      "name": "45",
+      "displayName": "USA Births Names",
       "fullyQualifiedName": "local_superset.USA Births Names",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/births/",
@@ -83,7 +92,8 @@
     },
     {
       "id": "e6e21717-1164-403f-8807-d12be277aec6",
-      "name": "Video Game Sales",
+      "name": "51",
+      "displayName": "Video Game Sales",
       "fullyQualifiedName": "local_superset.Video Game Sales",
       "description": "",
       "dashboardUrl": "http://localhost:808/superset/dashboard/11/",

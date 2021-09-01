@@ -11,6 +11,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this Dashboard. It could be title or label from the source services",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the database instance. What it has and how to use it.",
       "type": "string"

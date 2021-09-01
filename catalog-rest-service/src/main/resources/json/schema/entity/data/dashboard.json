@@ -16,6 +16,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this Dashboard. It could be title or label from the source services",
+      "type": "string"
+    },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.",
       "type": "string",
