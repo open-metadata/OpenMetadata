@@ -1,0 +1,30 @@
+{
+  "source": {
+    "type": "looker",
+    "config": {
+      "username": "username",
+      "password": "password",
+      "url": "http://localhost",
+      "service_name": "looker",
+      "service_type": "Looker",
+    }
+  },
+  "sink": {
+    "type": "metadata-rest-dashboards",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
