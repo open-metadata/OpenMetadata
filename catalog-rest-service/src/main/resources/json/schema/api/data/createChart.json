@@ -19,10 +19,6 @@
       "description": "Description of the database instance. What it has and how to use it.",
       "type": "string"
     },
-    "chartId": {
-      "description": "Unique Identifier of the Chart from the Source Service.",
-      "type": "string"
-    },
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },

@@ -239,7 +239,7 @@ public class ChartResource {
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
                     .withDescription(create.getDescription())
-                    .withService(create.getService()).withChartId(create.getChartId())
+                    .withService(create.getService())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())
                     .withOwner(create.getOwner());
@@ -287,7 +287,7 @@ public class ChartResource {
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
                     .withDescription(create.getDescription())
-                    .withService(create.getService()).withChartId(create.getChartId())
+                    .withService(create.getService())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())
                     .withOwner(create.getOwner());

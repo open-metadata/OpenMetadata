@@ -159,7 +159,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
   @Test
   public void post_chartWithoutRequiredFields_4xx(TestInfo test) {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create(test).withName(null).withChartId("0"), adminAuthHeaders()));
+            createChart(create(test).withName(null), adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name must not be null]");
 
     exception = assertThrows(HttpResponseException.class, () ->
