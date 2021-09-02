@@ -4,7 +4,6 @@
     "config": {
       "database": "warehouse",
       "service_name": "gcp_bigquery",
-      "service_type": "BigQuery",
       "sample_schema_folder": "./examples/shopify_schemas/"
     }
   },

@@ -10,6 +10,8 @@ from ..ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfi
 
 class SampleUsageSource(Source):
 
+    service_type = 'BigQuery'
+
     def __init__(self, config: SampleTableSourceConfig, metadata_config: MetadataServerConfig, ctx):
         super().__init__(ctx)
         self.status = SampleTableSourceStatus()

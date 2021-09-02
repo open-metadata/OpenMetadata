@@ -3,7 +3,6 @@
     "type": "kafka",
     "config": {
       "service_name": "local_kafka",
-      "service_type": "Kafka",
       "bootstrap_servers": "192.168.1.32:9092",
       "schema_registry_url": "http://192.168.1.32:8081",
       "filter_pattern": {

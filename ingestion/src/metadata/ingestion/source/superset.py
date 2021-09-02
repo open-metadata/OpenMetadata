@@ -82,6 +82,7 @@ class SupersetSource(Source):
     metadata_config: MetadataServerConfig
     status: SourceStatus
     platform = "superset"
+    service_type = "Superset"
 
     def __init__(self, config: SupersetConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
         super().__init__(ctx)

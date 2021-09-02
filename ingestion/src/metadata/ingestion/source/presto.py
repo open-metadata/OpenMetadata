@@ -21,6 +21,7 @@ from ..ometa.openmetadata_rest import MetadataServerConfig
 class PrestoConfig(SQLConnectionConfig):
     host_port = "localhost:8080"
     scheme = "presto"
+    service_type = "Presto"
 
     def get_connection_url(self):
         url = f"{self.scheme}://"

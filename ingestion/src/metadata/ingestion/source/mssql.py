@@ -23,6 +23,7 @@ from ..ometa.openmetadata_rest import MetadataServerConfig
 class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"
+    service_type = "MSSQL"
 
     def get_connection_url(self):
         return super().get_connection_url()

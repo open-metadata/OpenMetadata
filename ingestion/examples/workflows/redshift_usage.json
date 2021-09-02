@@ -8,7 +8,6 @@
       "database": "warehouse",
       "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
       "service_name": "aws_redshift",
-      "service_type": "Redshift",
       "duration": 2
     }
   },

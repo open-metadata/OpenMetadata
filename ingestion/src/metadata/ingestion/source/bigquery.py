@@ -27,6 +27,7 @@ class BigQueryConfig(SQLConnectionConfig, SQLSource):
     scheme = "bigquery"
     project_id: Optional[str] = None
     duration: int = 1
+    service_type = "BigQuery"
 
     def get_connection_url(self):
         if self.project_id:

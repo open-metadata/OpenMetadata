@@ -27,6 +27,7 @@ class RedshiftConfig(SQLConnectionConfig):
     scheme = "postgresql+psycopg2"
     where_clause: Optional[str] = None
     duration: int = 1
+    service_type = "Redshift"
 
     def get_identifier(self, schema: str, table: str) -> str:
         regular = f"{schema}.{table}"
