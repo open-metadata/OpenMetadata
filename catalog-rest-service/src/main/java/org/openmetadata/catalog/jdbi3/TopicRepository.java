@@ -210,6 +210,9 @@ public abstract class TopicRepository {
     updated.setHref(null);
     updated.setOwner(null);
     updated.setService(null);
+    // Remove previous tags.
+    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
+
     topicDAO().update(topicId, JsonUtils.pojoToJson(updated));
     updateOwner(updated, original.getOwner(), newOwner);
     updated.setService(newService);
