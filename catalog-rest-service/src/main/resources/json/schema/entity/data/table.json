@@ -234,16 +234,8 @@
           "description": "Data for multiple rows of the table.",
           "type": "array",
           "items": {
-            "description": "Data for a single row of the table in the same order as `columns` fields.",
-            "type": "array",
-            "items": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "number"
-              }
-            ]
+            "description": "Data for a single row of the table within the same order as columns fields.",
+            "type": "array"
           }
         }
       },
