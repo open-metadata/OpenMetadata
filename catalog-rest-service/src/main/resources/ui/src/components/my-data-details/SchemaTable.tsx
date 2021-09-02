@@ -287,7 +287,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                           <SVGIcons
                             alt="edit"
                             icon="icon-edit"
-                            title="edit"
+                            title="Edit"
                             width="10px"
                           />
                         </button>
@@ -386,7 +386,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                           <SVGIcons
                             alt="edit"
                             icon="icon-edit"
-                            title="edit"
+                            title="Edit"
                             width="10px"
                           />
                         </button>

@@ -213,7 +213,7 @@ const MyDataDetailsPage = () => {
         saveUpdatedTableData(updatedTableDetails)
           .then((res) => {
             setTableDetails(res.data);
-            setOwner(res.data.owner);
+            setOwner(getOwnerFromId(res.data.owner?.id));
             setTier(getTierFromTableTags(res.data.tags));
             resolve();
           })
