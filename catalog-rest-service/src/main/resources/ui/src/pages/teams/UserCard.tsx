@@ -60,6 +60,7 @@ const UserCard = ({
                 className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"
                 icon="icon-delete"
                 title="Remove"
+                width="12px"
               />
             </span>
           )}

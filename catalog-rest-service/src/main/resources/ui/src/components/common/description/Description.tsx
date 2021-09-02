@@ -43,7 +43,7 @@ const Description = ({
             <button
               className="focus:tw-outline-none"
               onClick={onDescriptionEdit}>
-              <SVGIcons alt="edit" icon="icon-edit" title="edit" />
+              <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
             </button>
           </NonAdminAction>
         </div>

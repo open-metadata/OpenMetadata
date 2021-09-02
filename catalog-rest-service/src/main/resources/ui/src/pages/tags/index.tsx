@@ -241,7 +241,12 @@ const TagsPage = () => {
                       <button
                         className="focus:tw-outline-none"
                         onClick={() => setIsEditCategory(true)}>
-                        <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
                       </button>
                     </NonAdminAction>
                   </div>
@@ -316,7 +321,7 @@ const TagsPage = () => {
                                   <SVGIcons
                                     alt="edit"
                                     icon="icon-edit"
-                                    title="edit"
+                                    title="Edit"
                                     width="10px"
                                   />
                                 </button>
@@ -364,7 +369,7 @@ const TagsPage = () => {
                                     <SVGIcons
                                       alt="edit"
                                       icon="icon-edit"
-                                      title="edit"
+                                      title="Edit"
                                       width="10px"
                                     />
                                   </button>
