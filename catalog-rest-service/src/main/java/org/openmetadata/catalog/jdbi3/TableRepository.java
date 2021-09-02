@@ -385,6 +385,7 @@ public abstract class TableRepository {
 
     // Remove previous tags. Merge tags from the update and the existing tags
     EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
+    updateColumns(original, updated);
 
     storeTable(updated, true);
     updateRelationships(original, updated);
@@ -452,8 +453,10 @@ public abstract class TableRepository {
       if (stored.getDescription() != null && !stored.getDescription().isEmpty()) {
         updated.setDescription(stored.getDescription()); // Carry forward non-empty description
       }
-      // Combine all the tags (duplicates will be deduped)
-      updated.setTags(EntityUtil.mergeTags(updated.getTags(), stored.getTags()));
+
+      EntityUtil.removeTagsByPrefix(tagDAO(), stored.getFullyQualifiedName());
+      //update tags
+      updated.setTags(updated.getTags());
     }
     storedTable.setColumns(updatedColumns);
   }
