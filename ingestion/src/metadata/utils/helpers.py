@@ -47,7 +47,7 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
     if service is not None:
         return service
     else:
-        service = {'jdbc': {'connectionUrl': config.get_connection_url(), 'driverClass': 'jdbc'},
+        service = {'jdbc': {'connectionUrl': f'jdbc://{config.host_port}', 'driverClass': 'jdbc'},
                    'name': config.service_name, 'description': '', 'serviceType': config.get_service_type()}
         created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
         return created_service
