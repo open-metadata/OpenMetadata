@@ -32,6 +32,7 @@ register_custom_type(HiveDecimal, "NUMBER")
 class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
     auth_options: Optional[str] = None
+    service_type = "Hive"
 
     def get_connection_url(self):
         url = super().get_connection_url()

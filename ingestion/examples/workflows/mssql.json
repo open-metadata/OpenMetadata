@@ -4,7 +4,6 @@
     "config": {
       "host_port": "localhost:1433",
       "service_name": "local_mssql",
-      "service_type": "MSSQL",
       "database":"catalog_test",
       "username": "sa",
       "password": "test!Password",

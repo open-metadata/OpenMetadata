@@ -9,8 +9,7 @@
       "duration": 2,
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
-      },
-      "service_type": "BigQuery"
+      }
     }
   },
   "processor": {

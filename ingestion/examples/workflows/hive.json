@@ -3,7 +3,6 @@
     "type": "hive",
     "config": {
       "service_name": "local_hive",
-      "service_type": "Hive",
       "host_port": "localhost:10000"
     }
   },

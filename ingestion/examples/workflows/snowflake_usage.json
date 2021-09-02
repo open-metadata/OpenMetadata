@@ -8,7 +8,6 @@
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "service_type": "Snowflake",
       "duration": 2
     }
   },
