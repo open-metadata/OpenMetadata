@@ -77,8 +77,7 @@ class LookerSource(Source):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
-        self.reporter = LookerDashboardSourceStatus()
-        self.client = self._get_looker_client()
+        self.client = self.looker_client()
         self.service = get_dashboard_service_or_create(config.service_name,
                                                        DashboardServiceType.Looker.name,
                                                        config.username,
@@ -86,7 +85,7 @@ class LookerSource(Source):
                                                        config.url,
                                                        metadata_config)
 
-    def _get_looker_client(self):
+    def looker_client(self):
         os.environ["LOOKERSDK_CLIENT_ID"] = self.config.username
         os.environ["LOOKERSDK_CLIENT_SECRET"] = self.config.password
         os.environ["LOOKERSDK_BASE_URL"] = self.config.url
@@ -105,15 +104,10 @@ class LookerSource(Source):
 
     def next_record(self) -> Iterable[Record]:
         yield from self._get_looker_charts()
-        yield from self._looker_dashboards()
+        yield from self._get_looker_dashboards()
 
-    def _get_looker_charts(self) -> Optional[Chart]:
-        for child_dashboard in self.client.all_dashboards(fields="id"):
-            fields = ["id", "title", "dashboard_elements", "dashboard_filters", "view_count"]
-            charts = self.client.dashboard_dashboard_elements(dashboard_id=child_dashboard.id, fields=",".join(fields))
-            for chart in charts:
-                chart: DashboardElement
-                yield Chart(
+    def _yield_charts(self, chart: DashboardElement):
+        yield Chart(
                     id=uuid.uuid4(),
                     name=chart.id,
                     displayName=chart.title,
@@ -122,32 +116,40 @@ class LookerSource(Source):
                     description=chart.subtitle_text,
                 )
 
-    def _get_looker_dashboard(self, dashboard: LookerDashboard) -> Dashboard:
-        charts: List[Chart] = []
-        chart_objects = []
-        if dashboard.dashboard_elements is not None:
-            chart_objects = dashboard.dashboard_elements
-        for chart in chart_objects:
-            if chart.id is not None:
-                if not self.config.chart_pattern.allowed(chart.id):
-                    self.status.charts_dropped_status(chart.id)
-                    continue
-            self.status.charts_scanned_status(chart.id)
-            looker_dashboard_element = self._get_looker_charts(chart)
-            if looker_dashboard_element is not None:
-                charts.append(looker_dashboard_element)
-            yield Dashboard(
-                id=uuid.uuid4(),
-                name=dashboard.id,
-                displayName=dashboard.title,
-                description=dashboard.description,
-                charts=charts,
-                usageSummary=dashboard.view_count,
-                service=EntityReference(id=self.service.id, type="dashboardService"),
-                href=dashboard.slug
-            )
+    def _get_looker_charts(self) -> Optional[Chart]:
+        for child_dashboard in self.client.all_dashboards(fields="id"):
+            fields = ["id", "title", "dashboard_elements", "dashboard_filters", "view_count"]
+            charts = self.client.dashboard_dashboard_elements(dashboard_id=child_dashboard.id, fields=",".join(fields))
+            for chart in charts:
+                self._yield_charts(chart)
 
-    def _looker_dashboards(self):
+    def looker_dashboard(self, dashboard: LookerDashboard) -> Dashboard:
+        charts: List[Chart] = []
+        if dashboard.dashboard_elements is not None:
+            for chart in dashboard.dashboard_elements:
+                if chart.id is not None:
+                    if not self.config.chart_pattern.allowed(chart.id):
+                        self.status.charts_dropped_status(chart.id)
+                        continue
+                self.status.charts_scanned_status(chart.id)
+                chart = self._yield_charts(chart)
+                if chart is not None:
+                    charts.append(chart)
+                yield Dashboard(
+                    id=uuid.uuid4(),
+                    name=dashboard.id,
+                    displayName=dashboard.title,
+                    description=dashboard.description,
+                    charts=charts,
+                    usageSummary=dashboard.view_count,
+                    service=EntityReference(id=self.service.id, type="dashboardService"),
+                    href=dashboard.slug
+                )
+        else:
+            logger.warning(f"No charts under Dashboard: {dashboard.title}")
+            return None
+
+    def _get_looker_dashboards(self):
         for child_dashboard in self.client.all_dashboards(fields="id"):
             if not self.config.dashboard_pattern.allowed(child_dashboard.id):
                 self.status.dashboards_dropped_status(child_dashboard.id)
@@ -160,7 +162,7 @@ class LookerSource(Source):
                 )
             except SDKError:
                 self.status.warning(child_dashboard, f"Error occurred while loading dashboard {child_dashboard}.",)
-            return self._get_looker_dashboard(dashboard)
+            return self.looker_dashboard(dashboard)
 
     def get_status(self) -> SourceStatus:
         return self.status
