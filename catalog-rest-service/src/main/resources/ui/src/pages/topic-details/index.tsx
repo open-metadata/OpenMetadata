@@ -13,12 +13,12 @@ import {
 } from '../../axiosAPIs/topicsAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
-import SchemaTreeStructure from '../../components/common/SchemaTreeStructure/SchemaTreeStructure';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/my-data-details/ManageTab';
+import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -310,10 +310,7 @@ const MyTopicDetailPage = () => {
                     { key: 'Partitions', value: partitions },
                   ])}
                   <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
-                    <SchemaTreeStructure
-                      positions={[0]}
-                      {...JSON.parse(schemaText)}
-                    />
+                    <SchemaEditor value={schemaText} />
                   </div>
                 </>
               )}
