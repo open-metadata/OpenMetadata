@@ -698,4 +698,8 @@ a:focus {
 .v-align-sub {
   vertical-align: sub;
 }
+
+.CodeMirror {
+  height: 100%;
+}
 /* popover css end */
