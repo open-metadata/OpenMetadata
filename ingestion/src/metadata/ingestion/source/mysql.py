@@ -20,6 +20,7 @@ from ..ometa.openmetadata_rest import MetadataServerConfig
 class MySQLConfig(SQLConnectionConfig):
     host_port = "localhost:3306"
     scheme = "mysql+pymysql"
+    service_type = "MySQL"
 
     def get_connection_url(self):
         return super().get_connection_url()
