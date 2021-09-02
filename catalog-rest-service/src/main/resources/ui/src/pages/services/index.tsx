@@ -292,7 +292,11 @@ const ServicesPage = () => {
                     className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                     key={index}>
                     <div className="tw-flex-auto">
-                      <Link to={getServiceDetailsPath(service.name)}>
+                      <Link
+                        to={getServiceDetailsPath(
+                          service.name,
+                          service.serviceType
+                        )}>
                         <button>
                           <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
                             {service.name}
@@ -318,7 +322,7 @@ const ServicesPage = () => {
                             ? getFrequencyTime(
                                 service.ingestionSchedule.repeatFrequency
                               )
-                            : 'N/A'}
+                            : '--'}
                         </span>
                       </div>
                       <div className="">
@@ -359,9 +363,9 @@ const ServicesPage = () => {
                   </div>
                 ))}
                 <div
-                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
+                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
                   onClick={() => handleAddService()}>
-                  <img alt="" src={PLUS} />
+                  <img alt="Add service" src={PLUS} />
                   <p className="tw-text-base tw-font-normal tw-mt-4">
                     Add new {servicesDisplayName[serviceName]}
                   </p>

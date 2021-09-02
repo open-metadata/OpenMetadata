@@ -1,5 +1,5 @@
 import { AxiosResponse } from 'axios';
-import { ServiceCollection, ServiceData } from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
@@ -12,6 +12,7 @@ import {
   POSTGRES,
   PULSAR,
   REDSHIFT,
+  serviceTypes,
   SERVICE_DEFAULT,
   SNOWFLAKE,
 } from '../constants/services.const';
@@ -136,4 +137,19 @@ export const getAllServices = (): Promise<Array<ServiceDataObj>> => {
         .catch((err) => reject(err));
     });
   });
+};
+
+export const getServiceCategoryFromType = (
+  type: string
+): ServiceTypes | undefined => {
+  let serviceCategory;
+  for (const category in serviceTypes) {
+    if (serviceTypes[category as ServiceTypes].includes(type)) {
+      serviceCategory = category as ServiceTypes;
+
+      break;
+    }
+  }
+
+  return serviceCategory;
 };

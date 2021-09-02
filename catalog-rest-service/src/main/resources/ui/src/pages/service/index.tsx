@@ -19,27 +19,38 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNull, isUndefined } from 'lodash';
 import { Database, Paging, ServiceOption } from 'Models';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
+import { getTopics } from '../../axiosAPIs/topicsAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
+import PopOver from '../../components/common/popover/PopOver';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
+import { ServiceCategory } from '../../enums/service.enum';
+import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
-import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
+import {
+  getFrequencyTime,
+  getServiceCategoryFromType,
+  serviceTypeLogo,
+} from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getUsagePercentile } from '../../utils/TableUtils';
 
 const ServicePage: FunctionComponent = () => {
-  const { serviceFQN } = useParams() as Record<string, string>;
-  const [serviceName] = useState('databaseServices');
+  const { serviceFQN, serviceType } = useParams() as Record<string, string>;
+  const [serviceName, setServiceName] = useState(
+    getServiceCategoryFromType(serviceType)
+  );
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -47,7 +58,7 @@ const ServicePage: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [serviceDetails, setServiceDetails] = useState<ServiceOption>();
   const [data, setData] = useState<Array<Database>>([]);
-  const [isLoading, setIsloading] = useState(false);
+  const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const showToast = useToastContext();
 
@@ -70,6 +81,179 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchTopics = (paging?: string) => {
+    setIsloading(true);
+    getTopics(serviceFQN, paging, ['owner', 'service', 'tags'])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
+  const getOtherDetails = (paging?: string) => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        fetchDatabases(paging);
+
+        break;
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        fetchTopics(paging);
+
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  const getOptionalFields = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">
+              Driver Class :
+            </span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.jdbc?.driverClass || '--'}
+            </span>
+            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+          </span>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">Brokers :</span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.brokers?.length ? (
+                <>
+                  {serviceDetails.brokers.slice(0, 3).join(', ')}
+                  {serviceDetails.brokers.length > 3 ? (
+                    <PopOver
+                      html={
+                        <div className="tw-text-left">
+                          {serviceDetails.brokers
+                            .slice(3)
+                            .map((broker, index) => (
+                              <Fragment key={index}>
+                                <span className="tw-block tw-py-1">
+                                  {broker}
+                                </span>
+                              </Fragment>
+                            ))}
+                        </div>
+                      }
+                      position="bottom"
+                      theme="light"
+                      trigger="click">
+                      <span className="show-more tw-ml-1">...</span>
+                    </PopOver>
+                  ) : null}
+                </>
+              ) : (
+                '--'
+              )}
+            </span>
+            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+          </span>
+        );
+      }
+      default: {
+        return <></>;
+      }
+    }
+  };
+
+  const getTableHeaders = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Database Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Usage</th>
+          </>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Topic Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
+      default:
+        return <></>;
+    }
+  };
+
+  const getOptionalTableCells = (data: Database | Topic) => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        const database = data as Database;
+
+        return (
+          <td className="tableBody-cell">
+            <p>
+              {getUsagePercentile(
+                database.usageSummary.weeklyStats.percentileRank
+              )}
+            </p>
+          </td>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        const topic = data as Topic;
+
+        return (
+          <td className="tableBody-cell">
+            {topic.tags && topic.tags?.length > 0
+              ? topic.tags.map((tag, tagIndex) => (
+                  <PopOver
+                    key={tagIndex}
+                    position="top"
+                    size="small"
+                    title={tag.labelType}
+                    trigger="mouseenter">
+                    <Tags
+                      className="tw-bg-gray-200"
+                      tag={`#${
+                        tag.tagFQN?.startsWith('Tier.Tier')
+                          ? tag.tagFQN.split('.')[1]
+                          : tag.tagFQN
+                      }`}
+                    />
+                  </PopOver>
+                ))
+              : '--'}
+          </td>
+        );
+      }
+      default:
+        return <></>;
+    }
+  };
+
+  useEffect(() => {
+    setServiceName(getServiceCategoryFromType(serviceType));
+  }, [serviceType]);
+
   useEffect(() => {
     getServiceByFQN(serviceName, serviceFQN).then(
       (resService: AxiosResponse) => {
@@ -84,13 +268,10 @@ const ServicePage: FunctionComponent = () => {
             activeTitle: true,
           },
         ]);
+        getOtherDetails();
       }
     );
-  }, []);
-
-  useEffect(() => {
-    fetchDatabases();
-  }, [serviceFQN]);
+  }, [serviceFQN, serviceName]);
 
   const onCancel = () => {
     setIsEdit(false);
@@ -129,7 +310,7 @@ const ServicePage: FunctionComponent = () => {
     const pagingString = `&${cursorType}=${
       paging[cursorType as keyof typeof paging]
     }`;
-    fetchDatabases(pagingString);
+    getOtherDetails(pagingString);
   };
 
   return (
@@ -142,17 +323,7 @@ const ServicePage: FunctionComponent = () => {
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Driver Class :
-                </span>{' '}
-                <span className="tw-pl-1tw-font-normal ">
-                  {serviceDetails?.jdbc.driverClass || '--'}
-                </span>
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
-                </span>
-              </span>
+              {getOptionalFields()}
               <span>
                 <span className="tw-text-grey-muted tw-font-normal">
                   Ingestion :
@@ -163,7 +334,7 @@ const ServicePage: FunctionComponent = () => {
                     ? getFrequencyTime(
                         serviceDetails.ingestionSchedule.repeatFrequency
                       )
-                    : 'N/A'}
+                    : '--'}
                 </span>
                 <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
                   •
@@ -223,12 +394,7 @@ const ServicePage: FunctionComponent = () => {
                 className="tw-bg-white tw-w-full tw-mb-4"
                 data-testid="database-tables">
                 <thead>
-                  <tr className="tableHead-row">
-                    <th className="tableHead-cell">Database Name</th>
-                    <th className="tableHead-cell">Description</th>
-                    <th className="tableHead-cell">Owner</th>
-                    <th className="tableHead-cell">Usage</th>
-                  </tr>
+                  <tr className="tableHead-row">{getTableHeaders()}</tr>
                 </thead>
                 <tbody className="tableBody">
                   {data.length > 0 ? (
@@ -259,13 +425,7 @@ const ServicePage: FunctionComponent = () => {
                         <td className="tableBody-cell">
                           <p>{database?.owner?.name || '--'}</p>
                         </td>
-                        <td className="tableBody-cell">
-                          <p>
-                            {getUsagePercentile(
-                              database.usageSummary.weeklyStats.percentileRank
-                            )}
-                          </p>
-                        </td>
+                        {getOptionalTableCells(database)}
                       </tr>
                     ))
                   ) : (

@@ -29,6 +29,7 @@ import redshift from '../assets/img/service-icon-redshift.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import plus from '../assets/svg/plus.svg';
+import { ServiceCategory } from '../enums/service.enum';
 
 export const MYSQL = mysql;
 export const MSSQL = mssql;
@@ -67,3 +68,14 @@ export const servicesDisplayName = {
   databaseServices: 'Database Service',
   messagingServices: 'Messaging Service',
 };
+
+export const routeServiceTypes = [
+  {
+    param: 'database',
+    type: ServiceCategory.DATABASE_SERVICES,
+  },
+  {
+    param: 'messaging',
+    type: ServiceCategory.MESSAGING_SERVICES,
+  },
+];
