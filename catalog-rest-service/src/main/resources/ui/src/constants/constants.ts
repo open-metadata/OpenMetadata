@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;

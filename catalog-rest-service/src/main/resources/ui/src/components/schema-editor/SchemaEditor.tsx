@@ -9,7 +9,8 @@ import 'codemirror/lib/codemirror.css';
 import 'codemirror/mode/javascript/javascript';
 import React, { useState } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
-import { getEditorValue, JSON_TAB_SIZE } from './SchemaEditor.utils';
+import { JSON_TAB_SIZE } from '../../constants/constants';
+import { getSchemaEditorValue } from './SchemaEditor.utils';
 
 const options = {
   tabSize: JSON_TAB_SIZE,
@@ -30,13 +31,15 @@ const options = {
 };
 
 const SchemaEditor = ({ value }: { value: string }) => {
-  const [internalValue, setInternalValue] = useState(getEditorValue(value));
+  const [internalValue, setInternalValue] = useState(
+    getSchemaEditorValue(value)
+  );
   const handleEditorInputBeforeChange = (
     _editor: Editor,
     _data: EditorChange,
     value: string
   ): void => {
-    setInternalValue(getEditorValue(value));
+    setInternalValue(getSchemaEditorValue(value));
   };
 
   return (

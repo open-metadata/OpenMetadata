@@ -1,8 +1,10 @@
+import { JSON_TAB_SIZE } from '../../constants/constants';
 import { getJSONFromString } from '../../utils/StringsUtils';
 
-export const JSON_TAB_SIZE = 2;
-
-export const getEditorValue = (value: string, autoFormat = true): string => {
+export const getSchemaEditorValue = (
+  value: string,
+  autoFormat = true
+): string => {
   if (typeof value === 'string') {
     if (autoFormat) {
       const parsedJson = getJSONFromString(value);

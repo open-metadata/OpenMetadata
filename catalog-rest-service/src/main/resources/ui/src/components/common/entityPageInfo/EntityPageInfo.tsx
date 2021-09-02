@@ -103,13 +103,13 @@ const EntityPageInfo = ({
               <i className="fas fa-tags tw-px-1 tw-mt-2 tw-text-grey-muted" />
             )}
             {tier && (
-              <Tags className="tw-bg-gray-200" tag={`#${tier.split('.')[1]}`} />
+              <Tags className="tw-bg-tag" tag={`#${tier.split('.')[1]}`} />
             )}
             {tags.length > 0 && (
               <>
                 {tags.slice(0, LIST_SIZE).map((tag, index) => (
                   <Tags
-                    className="tw-bg-gray-200"
+                    className="tw-bg-tag"
                     key={index}
                     tag={`#${tag.tagFQN}`}
                   />
@@ -121,7 +121,7 @@ const EntityPageInfo = ({
                       <>
                         {tags.slice(LIST_SIZE).map((tag, index) => (
                           <Tags
-                            className="tw-bg-gray-200 tw-px-2"
+                            className="tw-bg-tag tw-px-2"
                             key={index}
                             tag={`#${tag.tagFQN}`}
                           />
@@ -172,7 +172,7 @@ const EntityPageInfo = ({
                 <span className="">
                   <Tags
                     className="tw-border-main tw-text-primary"
-                    tag="+ Add new tag"
+                    tag="+ Add tag"
                     type="outlined"
                   />
                 </span>

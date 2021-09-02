@@ -1,6 +1,5 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { observer } from 'mobx-react';
 import { ColumnTags, TableDetail, Topic } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -330,4 +329,4 @@ const MyTopicDetailPage = () => {
   );
 };
 
-export default observer(MyTopicDetailPage);
+export default MyTopicDetailPage;
