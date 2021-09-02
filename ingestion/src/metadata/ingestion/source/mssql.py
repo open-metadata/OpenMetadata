@@ -14,11 +14,11 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from metadata.generated.schema.entity.data.table import TableData
 import sqlalchemy_pytds  # noqa: F401
 
 from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
-
 
 class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
@@ -28,12 +28,20 @@ class MssqlConfig(SQLConnectionConfig):
     def get_connection_url(self):
         return super().get_connection_url()
 
-    
-
 
 class MssqlSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
+
+    def fetch_sample_data(self, schema: str, table: str):
+        query = f"select top 50 * from {schema}.{table}"
+        results = self.connection.execute(query)
+        cols = list(results.keys())
+        rows = []
+        for r in results:
+            row = list(r)
+            rows.append(row)
+        return TableData(columns=cols, rows=rows)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
