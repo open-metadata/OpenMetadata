@@ -58,6 +58,7 @@ declare module 'Models' {
     };
     jdbc?: { connectionUrl: string; driverClass: string };
     name: string;
+    schemaRegistry?: string;
     serviceType: string;
   };
 

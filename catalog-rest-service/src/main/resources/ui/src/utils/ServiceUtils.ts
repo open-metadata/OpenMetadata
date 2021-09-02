@@ -3,6 +3,7 @@ import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
+  ATHENA,
   BIGQUERY,
   HIVE,
   KAFKA,
@@ -10,6 +11,7 @@ import {
   MYSQL,
   ORACLE,
   POSTGRES,
+  PRESTO,
   PULSAR,
   REDSHIFT,
   serviceTypes,
@@ -47,6 +49,12 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.MSSQL:
       return MSSQL;
+
+    case DatabaseServiceType.ATHENA:
+      return ATHENA;
+
+    case DatabaseServiceType.PRESTO:
+      return PRESTO;
 
     case MessagingServiceType.KAFKA:
       return KAFKA;
