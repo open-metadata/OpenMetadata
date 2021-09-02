@@ -194,8 +194,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
   const getBrokerUrlPlaceholder = (): string => {
     return selectService === MessagingServiceType.PULSAR
-      ? 'eg.: hostname:port'
-      : 'eg.: hostname1:port1, hostname2:port2';
+      ? 'hostname:port'
+      : 'hostname1:port1, hostname2:port2';
   };
 
   const handleChangeFrequency = (
@@ -367,7 +367,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               className="tw-form-inputs tw-px-3 tw-py-1"
               id="url"
               name="url"
-              placeholder="eg.: username:password@hostname:port"
+              placeholder="username:password@hostname:port"
               type="text"
               value={url}
               onChange={handleValidation}
@@ -430,7 +430,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             className="tw-form-inputs tw-px-3 tw-py-1"
             id="database"
             name="database"
-            placeholder="Enter database name"
+            placeholder="database name"
             type="text"
             value={database}
             onChange={(e) => setDatabase(e.target.value)}
@@ -490,7 +490,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             className="tw-form-inputs tw-px-3 tw-py-1"
             id="schema-registry"
             name="schema-registry"
-            placeholder="eg.: hostname:port"
+            placeholder="http(s)://hostname:port"
             type="text"
             value={schemaRegistry}
             onChange={(e) => setSchemaRegistry(e.target.value)}
@@ -563,7 +563,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   className="tw-form-inputs tw-px-3 tw-py-1"
                   id="name"
                   name="name"
-                  placeholder="Enter service name"
+                  placeholder="service name"
                   type="text"
                   value={name}
                   onChange={handleValidation}

@@ -128,46 +128,69 @@ const ServicePage: FunctionComponent = () => {
             <span className="tw-pl-1tw-font-normal ">
               {serviceDetails?.jdbc?.driverClass || '--'}
             </span>
-            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+            <span className="tw-mx-3 tw-text-grey-muted">•</span>
           </span>
         );
       }
       case ServiceCategory.MESSAGING_SERVICES: {
         return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">Brokers :</span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.brokers?.length ? (
-                <>
-                  {serviceDetails.brokers.slice(0, 3).join(', ')}
-                  {serviceDetails.brokers.length > 3 ? (
-                    <PopOver
-                      html={
-                        <div className="tw-text-left">
-                          {serviceDetails.brokers
-                            .slice(3)
-                            .map((broker, index) => (
-                              <Fragment key={index}>
-                                <span className="tw-block tw-py-1">
-                                  {broker}
-                                </span>
-                              </Fragment>
-                            ))}
-                        </div>
-                      }
-                      position="bottom"
-                      theme="light"
-                      trigger="click">
-                      <span className="show-more tw-ml-1">...</span>
-                    </PopOver>
-                  ) : null}
-                </>
-              ) : (
-                '--'
-              )}
+          <>
+            <span>
+              <span className="tw-text-grey-muted tw-font-normal">
+                Brokers :
+              </span>{' '}
+              <span className="tw-pl-1tw-font-normal ">
+                {serviceDetails?.brokers?.length ? (
+                  <>
+                    {serviceDetails.brokers.slice(0, 3).join(', ')}
+                    {serviceDetails.brokers.length > 3 ? (
+                      <PopOver
+                        html={
+                          <div className="tw-text-left">
+                            {serviceDetails.brokers
+                              .slice(3)
+                              .map((broker, index) => (
+                                <Fragment key={index}>
+                                  <span className="tw-block tw-py-1">
+                                    {broker}
+                                  </span>
+                                </Fragment>
+                              ))}
+                          </div>
+                        }
+                        position="bottom"
+                        theme="light"
+                        trigger="click">
+                        <span className="show-more tw-ml-1">...</span>
+                      </PopOver>
+                    ) : null}
+                  </>
+                ) : (
+                  '--'
+                )}
+              </span>
+              <span className="tw-mx-3 tw-text-grey-muted">•</span>
             </span>
-            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
-          </span>
+            <span>
+              <span className="tw-text-grey-muted tw-font-normal">
+                Schema registry :
+              </span>{' '}
+              <span className="tw-pl-1tw-font-normal ">
+                {serviceDetails?.schemaRegistry ? (
+                  <a
+                    className="link-text"
+                    href={serviceDetails.schemaRegistry}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    {serviceDetails.schemaRegistry}
+                  </a>
+                ) : (
+                  '--'
+                )}
+              </span>
+              <span className="tw-mx-3 tw-text-grey-muted">•</span>
+            </span>
+          </>
         );
       }
       default: {
@@ -335,17 +358,6 @@ const ServicePage: FunctionComponent = () => {
                         serviceDetails.ingestionSchedule.repeatFrequency
                       )
                     : '--'}
-                </span>
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
-                </span>
-              </span>
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Service Type :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">
-                  {serviceDetails?.serviceType}
                 </span>
               </span>
             </div>

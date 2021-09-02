@@ -29,6 +29,8 @@ export enum DatabaseServiceType {
   ORACLE = 'Oracle',
   SNOWFLAKE = 'Snowflake',
   MSSQL = 'MSSQL',
+  ATHENA = 'Athena',
+  PRESTO = 'Presto',
 }
 
 export enum MessagingServiceType {
