@@ -34,6 +34,7 @@ import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
@@ -44,7 +45,7 @@ import {
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getUsagePercentile } from '../../utils/TableUtils';
+import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType } = useParams() as Record<string, string>;
@@ -114,6 +115,17 @@ const ServicePage: FunctionComponent = () => {
       }
       default:
         break;
+    }
+  };
+
+  const getLinkForFqn = (fqn: string) => {
+    switch (serviceName) {
+      case ServiceCategory.MESSAGING_SERVICES:
+        return getEntityLink(SearchIndex.TOPIC, fqn);
+
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return `/database/${fqn}`;
     }
   };
 
@@ -424,7 +436,7 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
-                          <Link to={`/database/${database.fullyQualifiedName}`}>
+                          <Link to={getLinkForFqn(database.fullyQualifiedName)}>
                             {database.name}
                           </Link>
                         </td>
