@@ -68,6 +68,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -830,6 +831,39 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void patch_tableColumnTags_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    // Create table without description, table tags, tier, owner, tableType, and tableConstraints
+    Table table = createTable(create(test).withTableConstraints(null), adminAuthHeaders());
+    assertNull(table.getDescription());
+    assertNull(table.getOwner());
+    assertNull(table.getTableType());
+    assertNull(table.getTableConstraints());
+
+
+    Map<String, List<TagLabel>> columnTagMap = new HashMap<>();
+    columnTagMap.put("c1", singletonList(USER_ADDRESS_TAG_LABEL));
+    columnTagMap.put("c2", singletonList(USER_ADDRESS_TAG_LABEL));
+    columnTagMap.put("c3", singletonList(USER_BANK_ACCOUNT_TAG_LABEL));
+
+    validateColumnTags(table, columnTagMap);
+
+    List<Column> updatedColumns = Arrays.asList(
+            new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
+                    .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)),
+            new Column().withName("c2").withColumnDataType(ColumnDataType.BIGINT)
+                    .withTags(singletonList(USER_ADDRESS_TAG_LABEL)),
+            new Column().withName("c3").withColumnDataType(ColumnDataType.BIGINT)
+                    .withTags(new ArrayList<>()));
+
+    table = patchTableColumnAttributesAndCheck(table, updatedColumns, adminAuthHeaders());
+    table.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
+    columnTagMap.put("c1", List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
+    columnTagMap.put("c2", singletonList(USER_ADDRESS_TAG_LABEL));
+    columnTagMap.put("c3", new ArrayList<>());
+    validateColumnTags(table, columnTagMap);
+  }
+
+  @Test
   public void patch_tableIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Ensure table ID can't be changed using patch
     Table table = createTable(create(test), adminAuthHeaders());
@@ -928,8 +962,20 @@ public class TableResourceTest extends CatalogApplicationTest {
             tableConstraints, tags);
 
     // GET the table and Validate information returned
-    Table getTable = getTable(table.getId(), "owner,tableConstraints,tags", authHeaders);
+    Table getTable = getTable(table.getId(), "owner,tableConstraints,columns, tags", authHeaders);
     validateTable(getTable, table.getDescription(), owner, null, tableType, tableConstraints, tags);
+    return updatedTable;
+  }
+
+  private Table patchTableColumnAttributesAndCheck(Table table, List<Column> columns, Map<String, String> authHeaders)
+          throws JsonProcessingException, HttpResponseException {
+    String tableJson = JsonUtils.pojoToJson(table);
+
+    // Update the table attributes
+    table.setColumns(columns);
+
+    // Validate information returned in patch response has the updates
+    Table updatedTable = patchTable(tableJson, table, authHeaders);
     return updatedTable;
   }
 
@@ -1075,6 +1121,14 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(expectedTableConstraints, table.getTableConstraints());
     validateTags(expectedTags, table.getTags());
     TestUtils.validateEntityReference(table.getFollowers());
+  }
+
+  private static void validateColumnTags(Table table, Map<String, List<TagLabel>> columnTagMap)
+          throws HttpResponseException {
+    for (Column column: table.getColumns()) {
+      List<TagLabel> expectedTags = columnTagMap.get(column.getName());
+      validateTags(expectedTags, column.getTags());
+    }
   }
 
   public static Table getTable(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

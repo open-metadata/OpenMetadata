@@ -77,7 +77,7 @@ import java.util.UUID;
 @Collection(name = "users", repositoryClass = "org.openmetadata.catalog.jdbi3.UserRepository")
 public class UserResource {
   public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
-  public static final String USER_COLLECTION_PATH = "/v1/users/";
+  public static final String USER_COLLECTION_PATH = "v1/users/";
   private final UserRepository dao;
   private final CatalogAuthorizer authorizer;
 
