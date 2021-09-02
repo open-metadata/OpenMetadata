@@ -58,7 +58,14 @@
             <directory>${project.basedir}./bootstrap</directory>
             <outputDirectory>bootstrap</outputDirectory>
         </fileSet>
-
+        <fileSet>
+            <directory>${project.basedir}./ingestion/examples</directory>
+            <outputDirectory>ingestion/examples</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}./ingestion/pipelines</directory>
+            <outputDirectory>ingestion/pipelines</outputDirectory>
+        </fileSet>
 
     </fileSets>
 
