@@ -17,12 +17,14 @@
 
 import { ServiceTypes } from 'Models';
 import noService from '../assets/img/no-service.png';
+import athena from '../assets/img/service-icon-athena.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
+import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
 import redshift from '../assets/img/service-icon-redshift.png';
@@ -39,6 +41,8 @@ export const HIVE = hive;
 export const POSTGRES = postgres;
 export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
+export const ATHENA = athena;
+export const PRESTO = presto;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const SERVICE_DEFAULT = serviceDefault;
@@ -55,6 +59,9 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Postgres',
     'MSSQL',
     'Hive',
+    'Oracle',
+    'Athena',
+    'Presto',
   ],
   messagingServices: ['Kafka', 'Pulsar'],
 };
