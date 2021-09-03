@@ -3,7 +3,8 @@
     "type": "metadata",
     "config": {
       "include_tables": "true",
-      "include_topics": "true"
+      "include_topics": "true",
+      "include_dashboards": "true"
     }
   },
   "sink": {
@@ -11,6 +12,7 @@
     "config": {
       "index_tables": "true",
       "index_topics": "true",
+      "index_dashboards": "true",
       "es_host_port": "localhost"
     }
   },

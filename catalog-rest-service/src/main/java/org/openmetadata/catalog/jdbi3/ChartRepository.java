@@ -256,7 +256,7 @@ public abstract class ChartRepository {
 
   private EntityReference getService(Chart chart) throws IOException {
     return chart == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(relationshipDAO(),
-            chart.getId())));
+            chart.getId(), Entity.DASHBOARD_SERVICE)));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {

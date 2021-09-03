@@ -209,6 +209,24 @@ class TopicESDocument(BaseModel):
     followers: List[str]
 
 
+class DashboardESDocument(BaseModel):
+    """ Elastic Search Mapping doc for Dashboards """
+    dashboard_id: str
+    service: str
+    service_type: str
+    dashboard_name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    chart_names: List[str]
+    chart_descriptions: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    owner: str
+    followers: List[str]
+
+
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
     username: str
@@ -219,7 +237,7 @@ class DashboardOwner(BaseModel):
 class Chart(BaseModel):
     """Chart"""
     name: str
-    displayName:str
+    displayName: str
     description: str
     chart_type: str
     url: str
