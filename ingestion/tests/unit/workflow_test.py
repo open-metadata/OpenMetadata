@@ -57,17 +57,6 @@ class WorkflowTest(TestCase):
             ingestionData = ingestionFile.read()
         print(ingestionData)
         self.assertEqual(ingestionData is not None, True)
-        # if os.path.isfile(file_path):
-        #     with open(file_path) as ingestionFile:
-        #         ingestionData = str(ingestionFile.read())
-        #     if ingestionData is not None:
-        #         print(ingestionData)
-        #         self.assertEqual(ingestionData is not None, True)
-        #     else:
-        #         self.assertEqual(ingestionData is not None, False)
-        # else:
-        #     self.assertEqual(os.path.isfile(file_path), True, 'File Not Present')
-
 
     def test_execute_4xx(self):
         config_file = pathlib.Path('tests/unit/mysql_test.json')

@@ -13,9 +13,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import json
-from unittest import mock, TestCase
+from unittest import TestCase
 
-from requests import HTTPError
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
@@ -89,7 +88,6 @@ class RestTest(TestCase):
             brokers=['localhost:9092'],
             schemaRegistry='http://localhost:8081'
         )
-        print(create_messaging_service)
         messaging_service = self._client.create_messaging_service(create_messaging_service)
         self.assertEqual(create_messaging_service.name, messaging_service.name)
 
@@ -106,7 +104,6 @@ class RestTest(TestCase):
             dashboardUrl='http://localhost:8088'
         )
         dashboard_service = self._client.create_dashboard_service(create_dashboard_service)
-        print(create_dashboard_service)
         self.assertEqual(create_dashboard_service.name, dashboard_service.name)
 
     def test_10_get_dashboard_service(self):
