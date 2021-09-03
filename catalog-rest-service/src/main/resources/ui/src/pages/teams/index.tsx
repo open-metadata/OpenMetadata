@@ -37,7 +37,7 @@ import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ERROR404 } from '../../constants/constants';
-import { countBackground } from '../../utils/styleconstant';
+import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
@@ -143,16 +143,6 @@ const TeamsPage = () => {
     return tab === currentTab ? 'active' : '';
   };
 
-  const getCount = (count = 0) => {
-    return (
-      <span
-        className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
-        style={{ background: countBackground }}>
-        <span data-testid="filter-count">{count}</span>
-      </span>
-    );
-  };
-
   const getTabs = () => {
     return (
       <div className="tw-mb-3 ">
@@ -163,7 +153,7 @@ const TeamsPage = () => {
               setCurrentTab(1);
             }}>
             Users
-            {getCount(currentTeam?.users.length)}
+            {getCountBadge(currentTeam?.users.length)}
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -171,7 +161,7 @@ const TeamsPage = () => {
               setCurrentTab(2);
             }}>
             Assets
-            {getCount(currentTeam?.owns.length)}
+            {getCountBadge(currentTeam?.owns.length)}
           </button>
         </nav>
       </div>
