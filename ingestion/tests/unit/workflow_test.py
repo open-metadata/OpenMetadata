@@ -55,7 +55,6 @@ class WorkflowTest(TestCase):
         file_path = '/tmp/mysql_test'
         with open(file_path) as ingestionFile:
             ingestionData = ingestionFile.read()
-        print(ingestionData)
         self.assertEqual(ingestionData is not None, True)
 
     def test_execute_4xx(self):
