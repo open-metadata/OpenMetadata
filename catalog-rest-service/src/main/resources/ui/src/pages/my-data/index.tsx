@@ -22,7 +22,7 @@ import { FormatedTableData, SearchResponse } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
-import Error from '../../components/common/error/Error';
+import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -151,7 +151,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
       ) : (
         <>
           {error ? (
-            <Error error={error} />
+            <ErrorPlaceHolderES type="error" />
           ) : (
             <SearchedData
               showOnboardingTemplate
