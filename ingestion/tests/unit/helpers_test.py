@@ -53,7 +53,6 @@ class RestTest(TestCase):
 
     def test_3_get_service_by_id(self):
         mysql_service = self._client.get_database_service('local_mysql_test')
-        self.assertEqual(mysql_service.name, 'local_mysql_test')
         mysql_service_get_id = self._client.get_database_service_by_id(mysql_service.id.__root__)
         self.assertEqual(mysql_service.id, mysql_service_get_id.id)
 
@@ -62,7 +61,6 @@ class RestTest(TestCase):
         service_reference = EntityReference(id=mysql_service.id.__root__, type="databaseService")
         create_database_request = CreateDatabaseEntityRequest(name="dwh", service=service_reference)
         created_database = self._client.create_database(create_database_request)
-        self.assertEqual(create_database_request.name, created_database.name)
         created_database.description = "hello world"
         update_database_request = CreateDatabaseEntityRequest(name=created_database.name, description=created_database.description,
                                                               service=service_reference)
