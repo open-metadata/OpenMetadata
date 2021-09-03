@@ -28,7 +28,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
-import Error from '../../components/common/error/Error';
+import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -43,6 +43,7 @@ import { usePrevious } from '../../hooks/usePrevious';
 import useToastContext from '../../hooks/useToastContext';
 import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
+import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
@@ -91,10 +92,14 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [searchIndex, setSearchIndex] = useState<string>(SearchIndex.TABLE);
   const [currentTab, setCurrentTab] = useState<number>(1);
+  const [tableCount, setTableCount] = useState<number>(0);
+  const [topicCount, setTopicCount] = useState<number>(0);
+  const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const isMounting = useRef(true);
   const previsouIndex = usePrevious(searchIndex);
+
   const handleSelectedFilter = (
     checked: boolean,
     selectedFilter: string,
@@ -171,6 +176,50 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       setData([]);
       setTotalNumberOfValues(0);
     }
+  };
+
+  const fetchCounts = () => {
+    const emptyValue = '';
+    const tableCount = searchData(
+      searchText,
+      0,
+      0,
+      getFilterString(filters),
+      emptyValue,
+      emptyValue,
+      SearchIndex.TABLE
+    );
+    const topicCount = searchData(
+      searchText,
+      0,
+      0,
+      getFilterString(filters),
+      emptyValue,
+      emptyValue,
+      SearchIndex.TOPIC
+    );
+    const dashboardCount = searchData(
+      searchText,
+      0,
+      0,
+      getFilterString(filters),
+      emptyValue,
+      emptyValue,
+      SearchIndex.DASHBOARD
+    );
+    Promise.all([tableCount, topicCount, dashboardCount])
+      .then(([table, topic, dashboard]: Array<SearchResponse>) => {
+        setTableCount(table.data.hits.total.value);
+        setTopicCount(topic.data.hits.total.value);
+        setDashboardCount(dashboard.data.hits.total.value);
+      })
+      .catch((err: AxiosError) => {
+        setError(ERROR404);
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.responseMessage ?? ERROR500,
+        });
+      });
   };
 
   const fetchTableData = (forceSetAgg: boolean) => {
@@ -341,6 +390,19 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     });
   };
 
+  const getTabCount = (index: string) => {
+    switch (index) {
+      case SearchIndex.TABLE:
+        return getCountBadge(tableCount);
+      case SearchIndex.TOPIC:
+        return getCountBadge(topicCount);
+      case SearchIndex.DASHBOARD:
+        return getCountBadge(dashboardCount);
+      default:
+        return getCountBadge();
+    }
+  };
+
   const getTabs = () => {
     return (
       <div className="tw-mb-3 tw--mt-4">
@@ -361,6 +423,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
                   resetFilters();
                 }}>
                 {tab.label}
+                {getTabCount(tab.index)}
               </button>
             ))}
           </div>
@@ -392,6 +455,10 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     }
   }, [currentPage, filters, sortField, sortOrder]);
 
+  useEffect(() => {
+    fetchCounts();
+  }, [searchText, filters]);
+
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
     isMounting.current = false;
@@ -411,7 +478,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   return (
     <>
       {error ? (
-        <Error error={error} />
+        <ErrorPlaceHolderES type="error" />
       ) : (
         <SearchedData
           showResultCount

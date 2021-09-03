@@ -1,6 +1,8 @@
 import { isEmpty } from 'lodash';
 import { UserTeam } from 'Models';
+import React from 'react';
 import AppState from '../AppState';
+import { countBackground } from './styleconstant';
 
 export const arraySorterByKey = (
   key: string,
@@ -90,4 +92,14 @@ export const getTabClasses = (
   activeTab: number | string
 ) => {
   return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
+};
+
+export const getCountBadge = (count = 0) => {
+  return (
+    <span
+      className=" tw-py-0.5 tw-px-1 tw-ml-1 tw-border tw-rounded tw-text-xs"
+      style={{ background: countBackground }}>
+      <span data-testid="filter-count">{count}</span>
+    </span>
+  );
 };

@@ -110,11 +110,11 @@ const MyDashBoardPage = () => {
         id,
         description,
         followers,
-        name,
         service,
         tags,
         owner,
         usageSummary,
+        displayName,
       } = res.data;
       setDashboardDetails(res.data);
       setDashboardId(id);
@@ -151,7 +151,7 @@ const MyDashBoardPage = () => {
                 : undefined,
             },
             {
-              name: name,
+              name: displayName,
               url: '',
               activeTitle: true,
             },
