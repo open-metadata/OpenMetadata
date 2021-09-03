@@ -28,7 +28,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
-import Error from '../../components/common/error/Error';
+import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
@@ -419,7 +419,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   return (
     <>
       {error ? (
-        <Error error={error} />
+        <ErrorPlaceHolderES type="error" />
       ) : (
         <SearchedData
           showResultCount

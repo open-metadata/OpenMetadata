@@ -26,7 +26,7 @@ import {
   getOwnerFromId,
   getTierFromSearchTableTags,
 } from '../../utils/TableUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import PageContainer from '../containers/PageContainer';
 import Loader from '../Loader/Loader';
@@ -124,7 +124,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                   )}
                 </>
               ) : (
-                <ErrorPlaceHolder />
+                <ErrorPlaceHolderES type="noData" />
               )}
             </>
           )}
