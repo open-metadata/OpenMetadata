@@ -118,9 +118,12 @@ public class SearchResource {
     }
     if (index.equals("topic_search_index")) {
       searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
+    } else if (index.equals("dashboard_search_index")) {
+      searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
     } else {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
     }
+
     if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
       searchSourceBuilder.sort(sortFieldParam, sortOrder);
     }
@@ -186,7 +189,7 @@ public class SearchResource {
             .field("column_names")
             .field("column_descriptions")
             .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
             .aggregation(AggregationBuilders.terms("Tier").field("tier"))
             .aggregation(AggregationBuilders.terms("Tags").field("tags"))
             .highlighter(hb)
@@ -212,7 +215,35 @@ public class SearchResource {
             .field("topic_name", 5.0f)
             .field("description")
             .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("dashboard_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("dashboard_name", 5.0f)
+            .field("description")
+            .field("chart_names")
+            .field("chart_descriptions")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
             .aggregation(AggregationBuilders.terms("Tier").field("tier"))
             .aggregation(AggregationBuilders.terms("Tags").field("tags"))
             .highlighter(hb)

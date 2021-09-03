@@ -24,12 +24,17 @@ from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 from typing import Iterable, List
 from dataclasses import dataclass, field
 
+from ...generated.schema.entity.data.dashboard import Dashboard
+from ...generated.schema.entity.data.table import Table
+from ...generated.schema.entity.data.topic import Topic
+
 logger = logging.getLogger(__name__)
 
 
 class MetadataTablesRestSourceConfig(ConfigModel):
     include_tables: Optional[bool] = True
-    include_topics: Optional[bool] = False
+    include_topics: Optional[bool] = True
+    include_dashboards: Optional[bool] = True
     limit_records: int = 50000
 
 
@@ -48,9 +53,13 @@ class MetadataSourceStatus(SourceStatus):
         self.success.append(topic_name)
         logger.info('Topic Scanned: {}'.format(topic_name))
 
+    def scanned_dashboard(self, dashboard_name: str) -> None:
+        self.success.append(dashboard_name)
+        logger.info('Dashboard Scanned: {}'.format(dashboard_name))
+
     def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
         self.warnings.append(table_name)
-        logger.warning("Dropped Table {} due to {}".format(table_name, err))
+        logger.warning("Dropped Entity {} due to {}".format(table_name, err))
 
 class MetadataSource(Source):
     config: MetadataTablesRestSourceConfig
@@ -68,14 +77,7 @@ class MetadataSource(Source):
         self.topics = None
 
     def prepare(self):
-        if self.config.include_tables:
-            self.tables = self.client.list_tables(
-                fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
-                offset=0, limit=self.config.limit_records)
-
-        if self.config.include_topics:
-            self.topics = self.client.list_topics(
-                fields="owner,service,tags,followers", offset=0, limit=self.config.limit_records)
+        pass
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -84,12 +86,34 @@ class MetadataSource(Source):
         return cls(config, metadata_config, ctx)
 
     def next_record(self) -> Iterable[Record]:
-        for table in self.tables:
-            self.status.scanned_table(table.name.__root__)
-            yield table
-        for topic in self.topics:
-            self.status.scanned_topic(topic.name.__root__)
-            yield topic
+        yield from self.fetch_table()
+        yield from self.fetch_topic()
+        yield from self.fetch_dashboard()
+
+    def fetch_table(self) -> Table:
+        if self.config.include_tables:
+            tables = self.client.list_tables(
+                fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
+                offset=0, limit=self.config.limit_records)
+            for table in tables:
+                self.status.scanned_table(table.name.__root__)
+                yield table
+
+    def fetch_topic(self) -> Topic:
+        if self.config.include_topics:
+            topics = self.client.list_topics(
+                fields="owner,service,tags,followers", offset=0, limit=self.config.limit_records)
+            for topic in topics:
+                self.status.scanned_topic(topic.name.__root__)
+                yield topic
+
+    def fetch_dashboard(self) -> Dashboard:
+        if self.config.include_dashboards:
+            dashboards = self.client.list_dashboards(
+                fields="owner,service,tags,followers,charts", offset=0, limit=self.config.limit_records)
+            for dashboard in dashboards:
+                self.status.scanned_dashboard(dashboard.name)
+                yield dashboard
 
     def get_status(self) -> SourceStatus:
         return self.status

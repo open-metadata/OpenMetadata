@@ -55,6 +55,7 @@ DatabaseEntities = List[Database]
 TableEntities = List[Table]
 Tags = List[Tag]
 Topics = List[Topic]
+Dashboards = List[Dashboard]
 
 
 class MetadataServerConfig(ConfigModel):
@@ -337,10 +338,27 @@ class OpenMetadataAPIClient(object):
         resp = self.client.put('/charts', data=create_chart_request.json())
         return Chart(**resp)
 
+    def get_chart_by_id(self, chart_id: str, fields: [] = ['tags,service']) -> Chart:
+        """Get Chart By ID"""
+        params = {'fields': ",".join(fields)}
+        resp = self.client.get('/charts/{}'.format(chart_id), data=params)
+        return Chart(**resp)
+
     def create_or_update_dashboard(self, create_dashboard_request: CreateDashboardEntityRequest) -> Dashboard:
         """Create or Update a Dashboard """
         resp = self.client.put('/dashboards', data=create_dashboard_request.json())
         return Dashboard(**resp)
+
+    def list_dashboards(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Dashboards:
+        """ List all dashboards"""
+        if fields is None:
+            resp = self.client.get('/dashboards')
+        else:
+            resp = self.client.get('/dashboards?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+        if self._use_raw_data:
+            return resp
+        else:
+            return [Dashboard(**t) for t in resp['data']]
 
     def close(self):
         self.client.close()

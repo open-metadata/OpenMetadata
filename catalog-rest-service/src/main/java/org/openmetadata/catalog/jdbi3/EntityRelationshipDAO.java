@@ -53,6 +53,12 @@ public interface EntityRelationshipDAO {
   @RegisterMapper(FromEntityReferenceMapper.class)
   List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("relation") int relation);
 
+  @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship WHERE toId = :toId AND relation = :relation AND " +
+          "fromEntity = :fromEntity ORDER BY fromId")
+  @RegisterMapper(FromEntityReferenceMapper.class)
+  List<EntityReference> findFromEntity(@Bind("toId") String toId, @Bind("relation") int relation,
+                                       @Bind("fromEntity") String fromEntity);
+
   @SqlUpdate("DELETE from entity_relationship WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
   void delete(@Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("relation") int relation);
 
