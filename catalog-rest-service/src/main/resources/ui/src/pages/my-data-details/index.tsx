@@ -139,6 +139,7 @@ const MyDataDetailsPage = () => {
 
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
+    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
     { key: 'Usage', value: usage },
     { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];

@@ -37,7 +37,6 @@ import {
   ERROR500,
   PAGE_SIZE,
   tableSortingFields,
-  topicSortingFields,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
@@ -46,10 +45,10 @@ import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
-import { getAggrWithDefaultValue } from './explore.constants';
+import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
 import { Params } from './explore.interface';
 
-const visibleFilters = ['tags', 'service type', 'tier'];
+const visibleFilters = ['tags', 'service', 'tier'];
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
@@ -73,7 +72,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
 
   const filterObject: FilterObject = {
-    ...{ tags: [], 'service type': [], tier: [] },
+    ...{ tags: [], service: [], tier: [] },
     ...getQueryParam(location.search),
   };
   const showToast = useToastContext();
@@ -190,7 +189,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       currentPage,
       0,
-      getFilterString(filters, ['service type']),
+      getFilterString(filters, ['service']),
       sortField,
       sortOrder,
       searchIndex
@@ -232,7 +231,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           } else {
             const aggServiceType = getAggregationList(
               resAggServiceType.data.aggregations,
-              'service type'
+              'service'
             );
             const aggTier = getAggregationList(
               resAggTier.data.aggregations,
@@ -347,30 +346,23 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       <div className="tw-mb-3 tw--mt-4">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4 tw-justify-between">
           <div>
-            <button
-              className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
-              onClick={() => {
-                setCurrentTab(1);
-                setSearchIndex(SearchIndex.TABLE);
-                setFieldList(tableSortingFields);
-                setSortField(tableSortingFields[0].value);
-                setCurrentPage(1);
-                resetFilters();
-              }}>
-              Tables
-            </button>
-            <button
-              className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
-              onClick={() => {
-                setCurrentTab(2);
-                setSearchIndex(SearchIndex.TOPIC);
-                setFieldList(topicSortingFields);
-                setSortField(topicSortingFields[0].value);
-                setCurrentPage(1);
-                resetFilters();
-              }}>
-              Topics
-            </button>
+            {tabsInfo.map((tab, index) => (
+              <button
+                className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
+                  tab.tab
+                )}`}
+                key={index}
+                onClick={() => {
+                  setCurrentTab(tab.tab);
+                  setSearchIndex(tab.index);
+                  setFieldList(tab.sortingFields);
+                  setSortField(tab.sortField);
+                  setCurrentPage(1);
+                  resetFilters();
+                }}>
+                {tab.label}
+              </button>
+            ))}
           </div>
           {getSortingElements()}
         </nav>

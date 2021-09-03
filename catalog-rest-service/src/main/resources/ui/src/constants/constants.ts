@@ -35,6 +35,7 @@ export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
+const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
@@ -63,7 +64,7 @@ export const tableSortingFields = [
 
 export const topicSortingFields = [
   {
-    name: 'Last Updated Timestamp',
+    name: 'Last Updated',
     value: 'last_updated_timestamp',
   },
 ];
@@ -75,7 +76,7 @@ export const sortingOrder = [
 
 export const facetFilterPlaceholder = [
   {
-    name: 'Service Type',
+    name: 'Service',
     value: 'Service',
   },
   {
@@ -113,6 +114,7 @@ export const ROUTES = {
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
+  DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   ONBOARDING: '/onboarding',
 };
@@ -160,6 +162,12 @@ export const getDatabaseDetailsPath = (databaseFQN: string) => {
 export const getTopicDetailsPath = (topicFQN: string) => {
   let path = ROUTES.TOPIC_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
+
+  return path;
+};
+export const getDashboardDetailsPath = (dashboardFQN: string) => {
+  let path = ROUTES.DASHBOARD_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
 
   return path;
 };

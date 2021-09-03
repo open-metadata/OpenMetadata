@@ -3,6 +3,7 @@ import React from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
 import {
+  getDashboardDetailsPath,
   getDatasetDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
@@ -155,6 +156,9 @@ export const getEntityLink = (
   switch (indexType) {
     case SearchIndex.TOPIC:
       return getTopicDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.DASHBOARD:
+      return getDashboardDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     default:

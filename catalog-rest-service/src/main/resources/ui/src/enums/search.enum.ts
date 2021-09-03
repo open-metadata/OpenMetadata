@@ -24,4 +24,5 @@ export enum FilterType {
 export enum SearchIndex {
   TABLE = 'table_search_index',
   TOPIC = 'topic_search_index',
+  DASHBOARD = 'dashboard_search_index',
 }
