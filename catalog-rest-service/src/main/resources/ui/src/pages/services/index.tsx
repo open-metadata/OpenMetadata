@@ -49,7 +49,7 @@ import {
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
-import { getTabClasses } from '../../utils/CommonUtils';
+import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 
@@ -281,6 +281,7 @@ const ServicesPage = () => {
                       setServiceList(services[tab.name]);
                     }}>
                     {tab.displayName}
+                    {getCountBadge(services[tab.name].length)}
                   </button>
                 ))}
               </nav>
