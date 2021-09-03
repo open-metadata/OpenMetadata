@@ -1,0 +1,98 @@
+{
+	"charts": [
+    {
+		"id": "2841fdb1-e378-4a2c-94f8-27c9f5d6ef8e",
+		"name": "101",
+		"displayName": "# of Games That Hit 100k in Sales By Release Year",
+		"fullyQualifiedName": "local_superset.# of Games That Hit 100k in Sales By Release Year",
+		"description": "",
+		"chartId": "114",
+		"chartType": "Area",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20114%7D",
+		"href": "http://localhost:8585/api/v1/charts/2841fdb1-e378-4a2c-94f8-27c9f5d6ef8e"
+	}, {
+		"id": "3bcba490-9e5c-4946-a0e3-41e8ff8f4aa4",
+		"name":"110",
+		"displayName": "% Rural",
+		"fullyQualifiedName": "local_superset.% Rural",
+		"description": "",
+		"chartId": "166",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20166%7D",
+		"href": "http://localhost:8585/api/v1/charts/3bcba490-9e5c-4946-a0e3-41e8ff8f4aa4"
+	}, {
+		"id": "22b95748-4a7b-48ad-859e-cf7c66a7f343",
+		"name": "92",
+		"displayName": "✈️ Relocation ability",
+		"description": "",
+		"chartId": "92",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%2092%7D",
+		"href": "http://localhost:8585/api/v1/charts/22b95748-4a7b-48ad-859e-cf7c66a7f343"
+	}, {
+		"id": "62b31dcc-4619-46a0-99b1-0fa7cd6f93da",
+		"name": "11y",
+		"displayName": "Age distribution of respondents",
+		"fullyQualifiedName": "local_superset.Age distribution of respondents",
+		"description": "",
+		"chartId": "117",
+		"chartType": "Histogram",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20117%7D",
+		"href": "http://localhost:8585/api/v1/charts/62b31dcc-4619-46a0-99b1-0fa7cd6f93da"
+	}, {
+		"id": "57944482-e187-439a-aaae-0e8aabd2f455",
+		"displayName": "Arcs",
+		"fullyQualifiedName": "local_superset.Arcs",
+		"description": "",
+		"name": "197",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20197%7D",
+		"href": "http://localhost:8585/api/v1/charts/57944482-e187-439a-aaae-0e8aabd2f455"
+	}, {
+		"id": "d88e2056-c74a-410d-829e-eb31b040c132",
+		"displayName": "Are you an ethnic minority in your city?",
+		"fullyQualifiedName": "local_superset.Are you an ethnic minority in your city?",
+		"description": "",
+		"name": "127",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D",
+		"href": "http://localhost:8585/api/v1/charts/d88e2056-c74a-410d-829e-eb31b040c132"
+	}, {
+		"id": "c1d3e156-4628-414e-8d6e-a6bdd486128f",
+		"displayName": "Average and Sum Trends",
+		"fullyQualifiedName": "local_superset.Average and Sum Trends",
+		"description": "",
+		"name": "183",
+		"chartType": "Line",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20183%7D",
+		"href": "http://localhost:8585/api/v1/charts/c1d3e156-4628-414e-8d6e-a6bdd486128f"
+	}, {
+		"id": "bfc57519-8cef-47e6-a423-375d5b89a6a4",
+		"displayName": "Birth in France by department in 2016",
+		"fullyQualifiedName": "local_superset.Birth in France by department in 2016",
+		"description": "",
+		"name": "161",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20161%7D",
+		"href": "http://localhost:8585/api/v1/charts/bfc57519-8cef-47e6-a423-375d5b89a6a4"
+	}, {
+		"id": "bf2eeac4-7226-46c6-bbef-918569c137a0",
+		"displayName": "Box plot",
+		"fullyQualifiedName": "local_superset.Box plot",
+		"description": "",
+		"name": "170",
+		"chartType": "Bar",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20170%7D",
+		"href": "http://localhost:8585/api/v1/charts/bf2eeac4-7226-46c6-bbef-918569c137a0"
+	}, {
+		"id": "167fd63b-42f1-4d7e-a37d-893fd8173b44",
+		"displayName": "Boy Name Cloud",
+		"fullyQualifiedName": "local_superset.Boy Name Cloud",
+		"description": "",
+		"name": "180",
+		"chartType": "Other",
+		"chartUrl": "http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20180%7D",
+		"href": "http://localhost:8585/api/v1/charts/167fd63b-42f1-4d7e-a37d-893fd8173b44"
+	}
+]
+}

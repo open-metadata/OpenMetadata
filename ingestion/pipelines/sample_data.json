@@ -1,9 +1,8 @@
 {
   "source": {
-    "type": "sample-dashboards",
+    "type": "sample-data",
     "config": {
-      "service_name": "sample_superset",
-      "sample_dashboard_folder": "./examples/superset_data/"
+      "sample_data_folder": "./examples/sample_data/"
     }
   },
   "sink": {
