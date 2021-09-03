@@ -6,7 +6,7 @@
       "service_name": "local_mssql",
       "database":"catalog_test",
       "username": "sa",
-      "password": "test!Password",
+      "password": "test!Password`[",
       "filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
