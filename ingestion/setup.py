@@ -81,6 +81,7 @@ plugins: Dict[str, Set[str]] = {
     "hive": {"pyhive~=0.6.3", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
+    "looker": {"looker-sdk==21.12.2"},
     "mssql": {"sqlalchemy-pytds>=0.3"},
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},

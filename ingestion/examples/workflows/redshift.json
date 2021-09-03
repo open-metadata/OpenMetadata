@@ -7,7 +7,6 @@
       "password": "strong_password",
       "database": "warehouse",
       "service_name": "aws_redshift",
-      "service_type": "Redshift",
       "filter_pattern": {
         "excludes": ["information_schema.*","[\\w]*event_vw.*"]
       }

@@ -64,7 +64,7 @@ We ❤️ all contributions, big and small!
 
 Read [Build Code and Run Tests](https://docs.open-metadata.org/open-source-community/developer/build-code-run-tests) for how to setup your local development environment.
 
-If you want to, you can reach out via [Slack](https://join.slack.com/t/openmetadata/shared_invite/) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
+If you want to, you can reach out via [Slack](https://openmetadata.slack.com/) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
 
 ## License
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

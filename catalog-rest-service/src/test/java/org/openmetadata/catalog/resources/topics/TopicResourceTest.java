@@ -86,6 +86,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+  public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
+  public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
 
   @BeforeAll
@@ -404,7 +406,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
     assertNull(topic.getDescription());
     assertNull(topic.getOwner());
     assertNotNull(topic.getService());
-    List<TagLabel> topicTags = singletonList(USER_ADDRESS_TAG_LABEL);
+    List<TagLabel> topicTags = List.of(TIER1_TAG_LABEL);
 
     topic = getTopic(topic.getId(), "service,owner,tags", adminAuthHeaders());
     topic.getService().setHref(null); // href is readonly and not patchable
@@ -413,8 +415,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
     topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags, adminAuthHeaders());
     topic.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(KAFKA_REFERENCE); // Get rid of href and name returned in the response for service
-    topic.setTags(singletonList(USER_ADDRESS_TAG_LABEL));
-
+    topic.setTags(topicTags);
+    topicTags = List.of(TIER2_TAG_LABEL);
     // Replace description, tier, owner
     topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, topicTags,
             adminAuthHeaders());
@@ -715,7 +717,8 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateTopic create(TestInfo test) {
-    return new CreateTopic().withName(getTopicName(test)).withService(KAFKA_REFERENCE).withPartitions(1);
+    return new CreateTopic().withName(getTopicName(test)).withService(KAFKA_REFERENCE).
+            withPartitions(1);
   }
 
   public static CreateTopic create(TestInfo test, int index) {

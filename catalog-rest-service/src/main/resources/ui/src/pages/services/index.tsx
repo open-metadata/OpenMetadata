@@ -335,9 +335,14 @@ const ServicesPage = () => {
                     <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                       <div className="tw-flex tw-justify-end">
                         <button
-                          className="tw-pr-2 focus:tw-outline-none"
+                          className="tw-pr-3 focus:tw-outline-none"
                           onClick={() => handleEdit(service)}>
-                          <SVGIcons alt="edit" icon="icon-edit" title="edit" />
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="12px"
+                          />
                         </button>
                         <button
                           className="focus:tw-outline-none"
@@ -345,7 +350,8 @@ const ServicesPage = () => {
                           <SVGIcons
                             alt="delete"
                             icon="icon-delete"
-                            title="delete"
+                            title="Delete"
+                            width="12px"
                           />
                         </button>
                       </div>

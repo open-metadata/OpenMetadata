@@ -40,9 +40,13 @@ class MetadataSourceStatus(SourceStatus):
     failures: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
 
-    def scanned(self, table_name: str) -> None:
+    def scanned_table(self, table_name: str) -> None:
         self.success.append(table_name)
         logger.info('Table Scanned: {}'.format(table_name))
+
+    def scanned_topic(self, topic_name: str) -> None:
+        self.success.append(topic_name)
+        logger.info('Topic Scanned: {}'.format(topic_name))
 
     def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
         self.warnings.append(table_name)
@@ -81,9 +85,10 @@ class MetadataSource(Source):
 
     def next_record(self) -> Iterable[Record]:
         for table in self.tables:
-            self.status.scanned(table.name.__root__)
+            self.status.scanned_table(table.name.__root__)
             yield table
         for topic in self.topics:
+            self.status.scanned_topic(topic.name.__root__)
             yield topic
 
     def get_status(self) -> SourceStatus:

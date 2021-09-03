@@ -5,8 +5,7 @@
       "url": "http://localhost:8088",
       "username": "admin",
       "password": "admin",
-      "service_name": "local_superset",
-      "service_type": "Superset"
+      "service_name": "local_superset"
     }
   },
   "sink": {

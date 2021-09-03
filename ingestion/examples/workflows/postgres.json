@@ -6,8 +6,7 @@
       "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
-      "service_name": "local_postgres",
-      "service_type": "Postgres"
+      "service_name": "local_postgres"
     }
   },
   "processor": {

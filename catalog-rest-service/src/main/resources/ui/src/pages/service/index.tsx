@@ -34,6 +34,7 @@ import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
@@ -44,7 +45,7 @@ import {
   serviceTypeLogo,
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getUsagePercentile } from '../../utils/TableUtils';
+import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType } = useParams() as Record<string, string>;
@@ -117,6 +118,17 @@ const ServicePage: FunctionComponent = () => {
     }
   };
 
+  const getLinkForFqn = (fqn: string) => {
+    switch (serviceName) {
+      case ServiceCategory.MESSAGING_SERVICES:
+        return getEntityLink(SearchIndex.TOPIC, fqn);
+
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return `/database/${fqn}`;
+    }
+  };
+
   const getOptionalFields = (): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -128,46 +140,69 @@ const ServicePage: FunctionComponent = () => {
             <span className="tw-pl-1tw-font-normal ">
               {serviceDetails?.jdbc?.driverClass || '--'}
             </span>
-            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
+            <span className="tw-mx-3 tw-text-grey-muted">•</span>
           </span>
         );
       }
       case ServiceCategory.MESSAGING_SERVICES: {
         return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">Brokers :</span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
-              {serviceDetails?.brokers?.length ? (
-                <>
-                  {serviceDetails.brokers.slice(0, 3).join(', ')}
-                  {serviceDetails.brokers.length > 3 ? (
-                    <PopOver
-                      html={
-                        <div className="tw-text-left">
-                          {serviceDetails.brokers
-                            .slice(3)
-                            .map((broker, index) => (
-                              <Fragment key={index}>
-                                <span className="tw-block tw-py-1">
-                                  {broker}
-                                </span>
-                              </Fragment>
-                            ))}
-                        </div>
-                      }
-                      position="bottom"
-                      theme="light"
-                      trigger="click">
-                      <span className="show-more tw-ml-1">...</span>
-                    </PopOver>
-                  ) : null}
-                </>
-              ) : (
-                '--'
-              )}
+          <>
+            <span>
+              <span className="tw-text-grey-muted tw-font-normal">
+                Brokers :
+              </span>{' '}
+              <span className="tw-pl-1tw-font-normal ">
+                {serviceDetails?.brokers?.length ? (
+                  <>
+                    {serviceDetails.brokers.slice(0, 3).join(', ')}
+                    {serviceDetails.brokers.length > 3 ? (
+                      <PopOver
+                        html={
+                          <div className="tw-text-left">
+                            {serviceDetails.brokers
+                              .slice(3)
+                              .map((broker, index) => (
+                                <Fragment key={index}>
+                                  <span className="tw-block tw-py-1">
+                                    {broker}
+                                  </span>
+                                </Fragment>
+                              ))}
+                          </div>
+                        }
+                        position="bottom"
+                        theme="light"
+                        trigger="click">
+                        <span className="show-more tw-ml-1">...</span>
+                      </PopOver>
+                    ) : null}
+                  </>
+                ) : (
+                  '--'
+                )}
+              </span>
+              <span className="tw-mx-3 tw-text-grey-muted">•</span>
             </span>
-            <span className="tw-mx-3 tw-inline-block tw-text-gray-400">•</span>
-          </span>
+            <span>
+              <span className="tw-text-grey-muted tw-font-normal">
+                Schema registry :
+              </span>{' '}
+              <span className="tw-pl-1tw-font-normal ">
+                {serviceDetails?.schemaRegistry ? (
+                  <a
+                    className="link-text"
+                    href={serviceDetails.schemaRegistry}
+                    rel="noopener noreferrer"
+                    target="_blank">
+                    {serviceDetails.schemaRegistry}
+                  </a>
+                ) : (
+                  '--'
+                )}
+              </span>
+              <span className="tw-mx-3 tw-text-grey-muted">•</span>
+            </span>
+          </>
         );
       }
       default: {
@@ -336,17 +371,6 @@ const ServicePage: FunctionComponent = () => {
                       )
                     : '--'}
                 </span>
-                <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                  •
-                </span>
-              </span>
-              <span>
-                <span className="tw-text-grey-muted tw-font-normal">
-                  Service Type :
-                </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">
-                  {serviceDetails?.serviceType}
-                </span>
               </span>
             </div>
 
@@ -361,7 +385,12 @@ const ServicePage: FunctionComponent = () => {
                       <button
                         className="focus:tw-outline-none"
                         onClick={onDescriptionEdit}>
-                        <SVGIcons alt="edit" icon="icon-edit" title="edit" />
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
                       </button>
                     </div>
                   </div>
@@ -407,7 +436,7 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
-                          <Link to={`/database/${database.fullyQualifiedName}`}>
+                          <Link to={getLinkForFqn(database.fullyQualifiedName)}>
                             {database.name}
                           </Link>
                         </td>

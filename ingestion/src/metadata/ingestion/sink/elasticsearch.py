@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import logging
 import time
 from typing import Optional
@@ -82,11 +82,16 @@ class ElasticsearchSink(Sink):
         Retrieve all indices that currently have {elasticsearch_alias} alias
         :return: list of elasticsearch indices
         """
-        try:
-            indices = self.elasticsearch_client.indices.get_alias(index_name).keys()
-        except NotFoundError:
-            logger.warn("Received index not found error from Elasticsearch. "
-                        + "The index doesn't exist for a newly created ES. It's OK on first run.")
+        if self.elasticsearch_client.indices.exists(index_name):
+            mapping = self.elasticsearch_client.indices.get_mapping()
+            if not mapping[index_name]['mappings']:
+                logger.debug(f'There are no mappings for index {index_name}. Updating the mapping')
+                es_mapping_dict = json.loads(es_mapping)
+                es_mapping_update_dict =  {'properties': es_mapping_dict['mappings']['properties']}
+                self.elasticsearch_client.indices.put_mapping(index=index_name, body=json.dumps(es_mapping_update_dict))
+        else:
+            logger.warning("Received index not found error from Elasticsearch. "
+                    + "The index doesn't exist for a newly created ES. It's OK on first run.")
             # create new index with mapping
             self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
 

@@ -9,7 +9,6 @@
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
-      "service_type": "BigQuery",
       "filter_pattern": {
         "excludes": [
           "[\\w]*cloudaudit.*",

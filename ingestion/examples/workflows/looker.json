@@ -1,17 +1,16 @@
 {
   "source": {
-    "type": "hive",
+    "type": "looker",
     "config": {
-      "service_name": "local_hive",
-      "host_port": "localhost:10000"
+      "username": "username",
+      "password": "password",
+      "url": "http://localhost",
+      "service_name": "looker",
+      "service_type": "Looker",
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {}
-  },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest-dashboards",
     "config": {}
   },
   "metadata_server": {

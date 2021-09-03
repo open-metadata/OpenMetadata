@@ -5,7 +5,6 @@
       "username": "openmetadata_user",
       "password": "openmetadata_password",
       "service_name": "local_mysql",
-      "service_type": "MySQL",
       "filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*"]
       }

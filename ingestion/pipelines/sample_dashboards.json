@@ -3,7 +3,6 @@
     "type": "sample-dashboards",
     "config": {
       "service_name": "sample_superset",
-      "service_type": "Superset",
       "sample_dashboard_folder": "./examples/superset_data/"
     }
   },

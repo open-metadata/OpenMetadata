@@ -150,7 +150,8 @@ const ManageTab: FunctionComponent<Props> = ({
               alt="edit"
               className="tw-ml-1"
               icon="icon-edit"
-              title="edit"
+              title="Edit"
+              width="12px"
             />
           </Button>
           {listVisible && (
