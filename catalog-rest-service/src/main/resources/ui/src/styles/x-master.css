@@ -695,4 +695,8 @@ a:focus {
 .tippy-popper {
   pointer-events: auto !important;
 }
+.v-align-sub {
+  vertical-align: sub;
+}
+
 /* popover css end */

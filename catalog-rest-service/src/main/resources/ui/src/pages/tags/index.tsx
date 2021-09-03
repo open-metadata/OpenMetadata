@@ -377,7 +377,7 @@ const TagsPage = () => {
                                   <span className="tw-opacity-0 group-hover:tw-opacity-100">
                                     <Tags
                                       className="tw-border-main"
-                                      tag="+ Add new tag"
+                                      tag="+ Add tag"
                                       type="outlined"
                                     />
                                   </span>

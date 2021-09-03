@@ -29,6 +29,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
           tab.isProtected ? (
             <NonAdminAction
               isOwner={tab.protectedState}
+              key={tab.position}
               title="You need to be owner to perform this action">
               <button
                 className={getTabClasses(tab.position, activeTab)}
@@ -46,6 +47,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
             <button
               className={getTabClasses(tab.position, activeTab)}
               data-testid="tab"
+              key={tab.position}
               onClick={() => setActiveTab(tab.position)}>
               <SVGIcons
                 alt={tab.icon.alt}

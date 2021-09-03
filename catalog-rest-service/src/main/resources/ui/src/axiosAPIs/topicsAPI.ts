@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { Topic } from 'Models';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
@@ -30,4 +31,49 @@ export const getTopics: Function = (
   )}&service=${serviceName}${paging ? paging : ''}`;
 
   return APIClient.get(url);
+};
+
+export const getTopicByFqn: Function = (
+  fqn: string,
+  arrQueryFields: string
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/topics/name/${fqn}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
+export const addFollower: Function = (
+  topicId: string,
+  userId: string
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.put(`/topics/${topicId}/followers`, userId, configOptions);
+};
+
+export const removeFollower: Function = (
+  topicId: string,
+  userId: string
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json' },
+  };
+
+  return APIClient.delete(
+    `/topics/${topicId}/followers/${userId}`,
+    configOptions
+  );
+};
+
+export const patchTopicDetails: Function = (
+  id: string,
+  data: Topic
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/topics/${id}`, data, configOptions);
 };

@@ -23,6 +23,7 @@ export type TagsContainerProps = {
   editable?: boolean;
   selectedTags: Array<ColumnTags>;
   tagList: Array<string>;
+  showTags?: boolean;
   onSelectionChange: (selectedTags: Array<ColumnTags>) => void;
   onCancel: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
 };

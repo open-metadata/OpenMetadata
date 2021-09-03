@@ -26,6 +26,7 @@ const Tags: FunctionComponent<TagProps> = ({
   tag,
   type = 'contained',
   removeTag,
+  isRemovable = true,
 }: TagProps) => {
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
@@ -37,7 +38,7 @@ const Tags: FunctionComponent<TagProps> = ({
   return (
     <span className={classNames(baseStyle, layoutStyles, className)}>
       <span className={classNames(textBaseStyle, textLayoutStyles)}>{tag}</span>
-      {editable && (
+      {editable && isRemovable && (
         <span
           className="tw-py-1 tw-px-2 tw-rounded tw-cursor-pointer"
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {

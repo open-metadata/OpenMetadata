@@ -36,6 +36,7 @@ import StorePage from '../pages/store';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
+import MyTopicDetailPage from '../pages/topic-details';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -62,7 +63,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route component={MyDataDetailsPage} path={ROUTES.DATASET_DETAILS} />
-      <Route component={MyDataDetailsPage} path={ROUTES.TOPIC_DETAILS} />
+      <Route component={MyTopicDetailPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

@@ -20,6 +20,7 @@ export type TagProps = {
   editable?: boolean;
   tag: string;
   type?: 'contained' | 'outlined';
+  isRemovable?: boolean;
   removeTag?: (
     event: React.MouseEvent<HTMLElement, MouseEvent>,
     removedTag: string

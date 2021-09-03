@@ -75,6 +75,7 @@ declare module 'Models' {
     tagFQN: string;
     labelType?: 'Manual' | 'Propagated' | 'Automated' | 'Derived';
     state?: 'Suggested' | 'Confirmed';
+    isRemovable?: boolean;
   };
 
   export type TableColumn = {
@@ -323,4 +324,51 @@ declare module 'Models' {
     columns: Array<string>;
     rows: Array<Array<string>>;
   };
+
+  // topic interface start
+  export interface Topic {
+    cleanupPolicies: string[];
+    description: string;
+    followers: Follower[];
+    fullyQualifiedName: string;
+    href: string;
+    id: string;
+    maximumMessageSize: number;
+    minimumInSyncReplicas: number;
+    name: string;
+    owner: Owner;
+    partitions: number;
+    retentionSize: number;
+    retentionTime: number;
+    schemaText: string;
+    schemaType: string;
+    service: Service;
+    tags: ColumnTags[];
+  }
+
+  export interface Follower {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  export interface Owner {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  export interface Service {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  // topic interface end
 }

@@ -36,6 +36,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   tagList,
   onCancel,
   onSelectionChange,
+  showTags = true,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<ColumnTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
@@ -124,6 +125,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       <Tags
         className="tw-bg-gray-200"
         editable={editable}
+        isRemovable={tag.isRemovable}
         key={index}
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
@@ -169,7 +171,9 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         }
       }}>
       <div className="tw-flex tw-flex-wrap">
-        {tags.map((tag, index) => getTagsElement(tag, index))}
+        {(showTags || editable) && (
+          <>{tags.map((tag, index) => getTagsElement(tag, index))}</>
+        )}
         {editable ? (
           <span className="tw-relative">
             <input
