@@ -3,7 +3,7 @@
     "type": "sample-topics",
     "config": {
       "service_name": "sample_kafka",
-      "sample_schema_folder": "./examples/kafka_schemas/"
+      "sample_schema_folder": "./examples/sample_data/topics"
     }
   },
   "sink": {
