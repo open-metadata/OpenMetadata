@@ -4,7 +4,7 @@
     "config": {
       "database": "warehouse",
       "service_name": "gcp_bigquery",
-      "sample_schema_folder": "./examples/shopify_schemas/"
+      "sample_schema_folder": "./examples/sample_data/datasets"
     }
   },
   "processor": {

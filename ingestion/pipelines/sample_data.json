@@ -1,15 +1,9 @@
 {
   "source": {
-    "type": "sample-tables",
+    "type": "sample-data",
     "config": {
-      "database": "warehouse",
-      "service_name": "gcp_bigquery",
-      "sample_schema_folder": "./examples/sample_data/datasets"
+      "sample_data_folder": "./examples/sample_data"
     }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",

@@ -95,6 +95,7 @@ plugins: Dict[str, Set[str]] = {
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-tables": {"faker~=8.1.1", },
     "sample-topics": {},
+    "sample-data": {"faker~=8.1.1",},
     "superset": {}
 }
 
