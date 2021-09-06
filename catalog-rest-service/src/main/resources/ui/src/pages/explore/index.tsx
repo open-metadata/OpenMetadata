@@ -33,7 +33,6 @@ import FacetFilter from '../../components/common/facetfilter/FacetFilter';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
-  ERROR404,
   ERROR500,
   PAGE_SIZE,
   tableSortingFields,
@@ -214,7 +213,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         setDashboardCount(dashboard.data.hits.total.value);
       })
       .catch((err: AxiosError) => {
-        setError(ERROR404);
+        setError(err.response?.data?.responseMessage);
         showToast({
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
@@ -297,7 +296,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         }
       )
       .catch((err: AxiosError) => {
-        setError(ERROR404);
+        setError(err.response?.data?.responseMessage);
         showToast({
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
@@ -478,7 +477,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   return (
     <>
       {error ? (
-        <ErrorPlaceHolderES type="error" />
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <SearchedData
           showResultCount

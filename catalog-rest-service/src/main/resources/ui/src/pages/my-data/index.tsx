@@ -26,7 +26,7 @@ import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/E
 import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
 import SearchedData from '../../components/searched-data/SearchedData';
-import { ERROR404, ERROR500, PAGE_SIZE } from '../../constants/constants';
+import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
@@ -42,6 +42,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
+  const [searchIndex] = useState<string>(
+    'dashboard_search_index,topic_search_index,table_search_index'
+  );
   const [countServices, setCountServices] = useState<number>(0);
   const [countAssets, setCountAssets] = useState<number>(0);
   const isMounted = useRef<boolean>(false);
@@ -65,7 +68,15 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   const fetchTableData = (setAssetCount = false) => {
     setIsLoading(true);
-    searchData('', currentPage, PAGE_SIZE, filter ? getFilters() : '')
+    searchData(
+      '',
+      currentPage,
+      PAGE_SIZE,
+      filter ? getFilters() : '',
+      '',
+      '',
+      searchIndex
+    )
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
         const total = res.data.hits.total.value;
@@ -83,12 +94,11 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         }
       })
       .catch((err: AxiosError) => {
-        setError(ERROR404);
+        setError(err.response?.data?.responseMessage);
         showToast({
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
-
         setIsLoading(false);
       });
   };
@@ -151,7 +161,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
       ) : (
         <>
           {error ? (
-            <ErrorPlaceHolderES type="error" />
+            <ErrorPlaceHolderES errorMessage={error} type="error" />
           ) : (
             <SearchedData
               showOnboardingTemplate

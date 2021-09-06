@@ -4,9 +4,10 @@ import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png'
 
 type Props = {
   type: 'error' | 'noData';
+  errorMessage?: string;
 };
 
-const ErrorPlaceHolderES = ({ type }: Props) => {
+const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
   const noRecordForES = () => {
     return (
       <>
@@ -36,6 +37,30 @@ const ErrorPlaceHolderES = ({ type }: Props) => {
     );
   };
 
+  const elasticSearchError = () => {
+    const index = errorMessage?.split('[')[3]?.split(']')[0];
+
+    return errorMessage && index ? (
+      <p className="tw-max-w-sm tw-text-center">
+        OpenMetadata requires index
+        <span className="tw-text-primary tw-font-medium tw-mx-1">
+          {index}
+        </span>{' '}
+        to exist while running Elasticsearch. Please check your Elasticsearch
+        indexes
+      </p>
+    ) : (
+      <p className="tw-max-w-sm tw-text-center">
+        OpenMetadata requires Elasticsearch 7+ running and configured in
+        <span className="tw-text-primary tw-font-medium tw-mx-1">
+          openmetadata.yaml.
+        </span>
+        Please check the configuration and make sure the Elasticsearch is
+        running.
+      </p>
+    );
+  };
+
   return (
     <>
       <div className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center">
@@ -49,16 +74,7 @@ const ErrorPlaceHolderES = ({ type }: Props) => {
           }!`}
         </p>
         {type === 'noData' && noRecordForES()}
-        {type === 'error' && (
-          <p className="tw-max-w-sm tw-text-center">
-            OpenMetadata requires Elasticsearch 7+ running and configured in
-            <span className="tw-text-primary tw-font-medium tw-mx-1">
-              openmetadata.yaml.
-            </span>
-            Please check the configuration and make sure the Elasticsearch is
-            running.
-          </p>
-        )}
+        {type === 'error' && elasticSearchError()}
       </div>
     </>
   );
