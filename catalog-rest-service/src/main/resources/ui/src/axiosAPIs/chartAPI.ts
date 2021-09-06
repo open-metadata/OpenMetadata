@@ -12,6 +12,13 @@ export const getChartById: Function = (
   return APIClient.get(url);
 };
 
-export const updateChart: Function = (data: Chart): Promise<AxiosResponse> => {
-  return APIClient.put('/charts/', data);
+export const updateChart: Function = (
+  id: string,
+  data: Chart
+): Promise<AxiosResponse> => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  return APIClient.patch(`/charts/${id}`, data, configOptions);
 };

@@ -304,7 +304,8 @@ const MyDashBoardPage = () => {
         ...editChart.chart,
         description: chartDescription,
       };
-      updateChart(updatedChart).then((res: AxiosResponse) => {
+      const jsonPatch = compare(charts[editChart.index], updatedChart);
+      updateChart(editChart.chart.id, jsonPatch).then((res: AxiosResponse) => {
         if (res.data) {
           setCharts((prevCharts) => {
             const charts = [...prevCharts];
