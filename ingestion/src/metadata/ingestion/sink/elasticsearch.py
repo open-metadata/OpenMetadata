@@ -203,7 +203,7 @@ class ElasticsearchSink(Sink):
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
         fqdn = dashboard.fullyQualifiedName
         dashboard_name = dashboard.name
-        suggest = [{'input': [fqdn], 'weight': 5}, {'input': [dashboard_name], 'weight': 10}]
+        suggest = [{'input': [dashboard.displayName], 'weight': 10}]
         tags = set()
         timestamp = time.time()
         service_entity = self.rest.get_dashboard_service_by_id(str(dashboard.service.id.__root__))
