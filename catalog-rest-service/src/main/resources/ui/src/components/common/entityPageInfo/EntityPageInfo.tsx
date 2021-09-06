@@ -46,6 +46,23 @@ const EntityPageInfo = ({
     setIsEditable(false);
   };
 
+  const getSelectedTags = () => {
+    return tier
+      ? [
+          ...tags.map((tag) => ({
+            tagFQN: tag.tagFQN,
+            isRemovable: true,
+          })),
+          { tagFQN: tier, isRemovable: false },
+        ]
+      : [
+          ...tags.map((tag) => ({
+            tagFQN: tag.tagFQN,
+            isRemovable: true,
+          })),
+        ];
+  };
+
   return (
     <div>
       <div className="tw-flex tw-flex-col">
@@ -144,13 +161,7 @@ const EntityPageInfo = ({
           <div onClick={() => setIsEditable(true)}>
             <TagsContainer
               editable={isEditable}
-              selectedTags={[
-                ...tags.map((tag) => ({
-                  tagFQN: tag.tagFQN,
-                  isRemovable: true,
-                })),
-                { tagFQN: tier, isRemovable: false },
-              ]}
+              selectedTags={getSelectedTags()}
               showTags={!isTagEditable}
               tagList={tagList}
               onCancel={() => {
