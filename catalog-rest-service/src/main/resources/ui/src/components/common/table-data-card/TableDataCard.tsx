@@ -18,7 +18,11 @@
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getEntityLink, getUsagePercentile } from '../../../utils/TableUtils';
+import {
+  getEntityIcon,
+  getEntityLink,
+  getUsagePercentile,
+} from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -58,13 +62,16 @@ const TableDataCard: FunctionComponent<Props> = ({
   return (
     <div className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md">
       <div>
-        <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-          <Link to={getEntityLink(indexType, fullyQualifiedName)}>
-            <button className="tw-text-grey-body tw-font-medium">
-              {stringToHTML(name)}
-            </button>
-          </Link>
-        </h6>
+        <div className="tw-flex tw-gap-2">
+          {getEntityIcon(indexType)}
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
+            <Link to={getEntityLink(indexType, fullyQualifiedName)}>
+              <button className="tw-text-grey-body tw-font-medium">
+                {stringToHTML(name)}
+              </button>
+            </Link>
+          </h6>
+        </div>
       </div>
       <div className="tw-pt-2">
         <TableDataCardBody
