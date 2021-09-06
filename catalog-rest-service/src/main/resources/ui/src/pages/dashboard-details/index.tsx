@@ -1,9 +1,11 @@
-import { AxiosResponse } from 'axios';
+import { AxiosPromise, AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { ColumnTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
+import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
 import {
   addFollower,
   getDashboardByFqn,
@@ -13,15 +15,23 @@ import {
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
+import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import { getServiceDetailsPath } from '../../constants/constants';
+import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import {
+  getCurrentUserId,
+  getUserTeams,
+  isEven,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import SVGIcons from '../../utils/SvgUtils';
 import {
   getOwnerFromId,
   getTagsWithoutTier,
@@ -29,7 +39,9 @@ import {
   getUsagePercentile,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-
+type ChartType = {
+  displayName: string;
+} & Chart;
 const MyDashBoardPage = () => {
   const USERId = getCurrentUserId();
   const [tagList, setTagList] = useState<Array<string>>([]);
@@ -48,10 +60,16 @@ const MyDashBoardPage = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [usage, setUsage] = useState('');
+  const [charts, setCharts] = useState<ChartType[]>([]);
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
+
+  const [editChart, setEditChart] = useState<{
+    chart: ChartType;
+    index: number;
+  }>();
 
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
@@ -97,6 +115,22 @@ const MyDashBoardPage = () => {
       }
     });
   };
+
+  const fetchCharts = async (charts: Dashboard['charts']) => {
+    let chartsData: ChartType[] = [];
+    let promiseArr: Array<AxiosPromise> = [];
+    if (charts?.length) {
+      promiseArr = charts.map((chart) => getChartById(chart.id, 'service'));
+      await Promise.all(promiseArr).then((res: Array<AxiosResponse>) => {
+        if (res.length) {
+          chartsData = res.map((chart) => chart.data);
+        }
+      });
+    }
+
+    return chartsData;
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, [
@@ -105,6 +139,7 @@ const MyDashBoardPage = () => {
       'followers',
       'tags',
       'usageSummary',
+      'charts',
     ]).then((res: AxiosResponse) => {
       const {
         id,
@@ -115,6 +150,7 @@ const MyDashBoardPage = () => {
         owner,
         usageSummary,
         displayName,
+        charts,
       } = res.data;
       setDashboardDetails(res.data);
       setDashboardId(id);
@@ -158,6 +194,8 @@ const MyDashBoardPage = () => {
           ]);
         }
       );
+      fetchCharts(charts).then((charts) => setCharts(charts));
+
       setLoading(false);
     });
   };
@@ -252,6 +290,37 @@ const MyDashBoardPage = () => {
     }
   };
 
+  const handleUpdateChart = (chart: ChartType, index: number) => {
+    setEditChart({ chart, index });
+  };
+
+  const closeEditChartModal = (): void => {
+    setEditChart(undefined);
+  };
+
+  const onChartUpdate = (chartDescription: string) => {
+    if (editChart) {
+      const updatedChart = {
+        ...editChart.chart,
+        description: chartDescription,
+      };
+      const jsonPatch = compare(charts[editChart.index], updatedChart);
+      updateChart(editChart.chart.id, jsonPatch).then((res: AxiosResponse) => {
+        if (res.data) {
+          setCharts((prevCharts) => {
+            const charts = [...prevCharts];
+            charts[editChart.index] = res.data;
+
+            return charts;
+          });
+        }
+      });
+      setEditChart(undefined);
+    } else {
+      setEditChart(undefined);
+    }
+  };
+
   useEffect(() => {
     fetchDashboardDetail(dashboardFQN);
   }, [dashboardFQN]);
@@ -301,6 +370,64 @@ const MyDashBoardPage = () => {
                       />
                     </div>
                   </div>
+                  <div className="tw-table-responsive tw-my-6">
+                    <table className="tw-w-full" data-testid="schema-table">
+                      <thead>
+                        <tr className="tableHead-row">
+                          <th className="tableHead-cell">Name</th>
+                          <th className="tableHead-cell">Description</th>
+                          <th className="tableHead-cell">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="tableBody">
+                        {charts.map((chart, index) => (
+                          <tr
+                            className={classNames(
+                              'tableBody-row',
+                              !isEven(index + 1) ? 'odd-row' : null
+                            )}
+                            key={index}>
+                            <td className="tableBody-cell">
+                              <Link
+                                target="_blank"
+                                to={{ pathname: chart.chartUrl }}>
+                                {chart.displayName}
+                              </Link>
+                            </td>
+                            <td className="tw-group tableBody-cell tw-relative">
+                              <div
+                                className="tw-cursor-pointer hover:tw-underline tw-flex"
+                                data-testid="description"
+                                onClick={() => handleUpdateChart(chart, index)}>
+                                <div>
+                                  {chart.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={chart.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description added
+                                    </span>
+                                  )}
+                                </div>
+                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                  <SVGIcons
+                                    alt="edit"
+                                    icon="icon-edit"
+                                    title="Edit"
+                                    width="10px"
+                                  />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="tableBody-cell">
+                              {chart.chartType}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </>
               )}
               {activeTab === 2 && (
@@ -314,6 +441,15 @@ const MyDashBoardPage = () => {
             </div>
           </div>
         </div>
+      )}
+      {editChart && (
+        <ModalWithMarkdownEditor
+          header={`Edit Chart: "${editChart.chart.displayName}"`}
+          placeholder="Enter Chart Description"
+          value={editChart.chart.description || ''}
+          onCancel={closeEditChartModal}
+          onSave={onChartUpdate}
+        />
       )}
     </PageContainer>
   );
