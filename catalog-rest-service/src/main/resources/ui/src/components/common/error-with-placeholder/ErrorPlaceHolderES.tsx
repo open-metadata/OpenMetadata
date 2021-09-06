@@ -44,7 +44,9 @@ const ErrorPlaceHolderES = ({ type }: Props) => {
       </div>
       <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
         <p className="tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-          {`Hi, ${AppState.userDetails.displayName}!`}
+          {`Hi, ${
+            AppState.userDetails.displayName || AppState.users[0].displayName
+          }!`}
         </p>
         {type === 'noData' && noRecordForES()}
         {type === 'error' && (

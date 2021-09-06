@@ -33,7 +33,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
 }: FacetProp) => {
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
-  const [showAllClusters, setShowAllClusters] = useState<boolean>(false);
   const [showAllTier, setShowAllTier] = useState<boolean>(false);
   const sortAggregations = () => {
     return aggregations.sort((a, b) =>
@@ -74,8 +73,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getLinkText(bucketLength, showAllServices, setShowAllServices);
       case 'Tags':
         return getLinkText(bucketLength, showAllTags, setShowAllTags);
-      case 'Service Type':
-        return getLinkText(bucketLength, showAllClusters, setShowAllClusters);
       case 'Tier':
         return getLinkText(bucketLength, showAllTier, setShowAllTier);
       default:
@@ -89,8 +86,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
         return getBuckets(buckets, showAllServices);
       case 'Tags':
         return getBuckets(buckets, showAllTags);
-      case 'Service Type':
-        return getBuckets(buckets, showAllClusters);
       case 'Tier':
         return getBuckets(buckets, showAllTier);
       default:
@@ -176,7 +171,7 @@ FacetFilter.propTypes = {
   onSelectHandler: PropTypes.func.isRequired,
   filters: PropTypes.shape({
     tags: PropTypes.array.isRequired,
-    'service type': PropTypes.array.isRequired,
+    service: PropTypes.array.isRequired,
     tier: PropTypes.array.isRequired,
   }).isRequired,
 };

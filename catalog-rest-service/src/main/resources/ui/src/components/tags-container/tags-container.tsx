@@ -121,7 +121,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   };
 
   const getTagsContainer = (tag: ColumnTags, index: number) => {
-    return (
+    return tag.tagFQN ? (
       <Tags
         className="tw-bg-gray-200"
         editable={editable}
@@ -132,7 +132,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         }}
         tag={`#${tag.tagFQN}`}
       />
-    );
+    ) : null;
   };
 
   const getTagsElement = (tag: ColumnTags, index: number) => {
