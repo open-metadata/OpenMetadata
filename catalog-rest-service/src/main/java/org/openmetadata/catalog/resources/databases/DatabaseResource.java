@@ -111,12 +111,12 @@ public class DatabaseResource {
     this.authorizer = authorizer;
   }
 
-  static class DatabaseList extends ResultList<Database> {
+  public static class DatabaseList extends ResultList<Database> {
     @SuppressWarnings("unused") // Empty constructor needed for deserialization
     DatabaseList() {}
-    DatabaseList(List<Database> data, int limitParam, String beforeCursor,
-                     String afterCursor) throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+    public DatabaseList(List<Database> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -158,29 +158,18 @@ public class DatabaseResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Database> databases;
-    String beforeCursor = null, afterCursor = null;
+    DatabaseList databases;
 
     // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
     // beforeCursor is not null. Remove the extra entry before returning results.
     if (before != null) { // Reverse paging
-      databases = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
-      if (databases.size() > limitParam) {
-        databases.remove(0);
-        beforeCursor = databases.get(0).getFullyQualifiedName();
-      }
-      afterCursor = databases.get(databases.size() - 1).getFullyQualifiedName();
+      databases = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      databases = dao.listAfter(fields, serviceParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : databases.get(0).getFullyQualifiedName();
-      if (databases.size() > limitParam) {
-        databases.remove(limitParam);
-        afterCursor = databases.get(limitParam - 1).getFullyQualifiedName();
-      }
+      databases = dao.listAfter(fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, databases);
-    return new DatabaseList(databases, limitParam, beforeCursor, afterCursor);
+    addHref(uriInfo, databases.getData());
+    return databases;
   }
 
   @GET
