@@ -109,9 +109,9 @@ public class TableResource {
     @SuppressWarnings("unused") /* Required for tests */
     public TableList() {}
 
-    public TableList(List<Table> data, int limitParam, String beforeCursor, String afterCursor)
+    public TableList(List<Table> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -153,29 +153,14 @@ public class TableResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Table> tables;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    TableList tables;
     if (before != null) { // Reverse paging
-      tables = dao.listBefore(fields, databaseParam, limitParam + 1, before); // Ask for one extra entry
-      if (tables.size() > limitParam) {
-        tables.remove(0);
-        beforeCursor = tables.get(0).getFullyQualifiedName();
-      }
-      afterCursor = tables.get(tables.size() - 1).getFullyQualifiedName();
+      tables = dao.listBefore(fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
-      tables = dao.listAfter(fields, databaseParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : tables.get(0).getFullyQualifiedName();
-      if (tables.size() > limitParam) {
-        tables.remove(limitParam);
-        afterCursor = tables.get(limitParam - 1).getFullyQualifiedName();
-      }
+      tables = dao.listAfter(fields, databaseParam, limitParam, after);
     }
-    tables.forEach(t -> addHref(uriInfo, t));
-    return new TableList(tables, limitParam, beforeCursor, afterCursor);
+    tables.getData().forEach(t -> addHref(uriInfo, t));
+    return tables;
   }
 
   @GET

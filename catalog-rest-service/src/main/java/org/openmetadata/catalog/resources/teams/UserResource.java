@@ -100,13 +100,13 @@ public class UserResource {
     this.authorizer = authorizer;
   }
 
-  static class UserList extends ResultList<User> {
+  public static class UserList extends ResultList<User> {
     @SuppressWarnings("unused")  // Used for deserialization
-    UserList() {}
+    public UserList() {}
 
-    UserList(List<User> users, int limitParam, String beforeCursor, String afterCursor)
+    public UserList(List<User> users, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
-      super(users, limitParam, beforeCursor, afterCursor);
+      super(users, beforeCursor, afterCursor, total);
     }
   }
 
@@ -144,29 +144,14 @@ public class UserResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<User> users;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    UserList users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(fields, limitParam + 1, before); // Ask for one extra entry
-      if (users.size() > limitParam) {
-        users.remove(0);
-        beforeCursor = users.get(0).getName();
-      }
-      afterCursor = users.get(users.size() - 1).getName();
+      users = dao.listBefore(fields, limitParam, before);
     } else { // Forward paging or first page
-      users = dao.listAfter(fields, limitParam + 1, after);
-      beforeCursor = after == null ? null : users.get(0).getName();
-      if (users.size() > limitParam) {
-        users.remove(limitParam);
-        afterCursor = users.get(limitParam - 1).getName();
-      }
+      users = dao.listAfter(fields, limitParam, after);
     }
-    Optional.ofNullable(users).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
-    return new UserList(users, limitParam, beforeCursor, afterCursor);
+    Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
+    return users;
   }
 
   @GET

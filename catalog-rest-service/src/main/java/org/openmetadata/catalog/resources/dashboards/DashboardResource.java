@@ -112,15 +112,15 @@ public class DashboardResource {
     this.authorizer = authorizer;
   }
 
-  static class DashboardList extends ResultList<Dashboard> {
+  public static class DashboardList extends ResultList<Dashboard> {
     @SuppressWarnings("unused")
     DashboardList() {
       // Empty constructor needed for deserialization
     }
 
-    DashboardList(List<Dashboard> data, int limitParam, String beforeCursor,
-              String afterCursor) throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+    public DashboardList(List<Dashboard> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -163,29 +163,14 @@ public class DashboardResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Dashboard> dashboards;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    DashboardList dashboards;
     if (before != null) { // Reverse paging
-      dashboards = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
-      if (dashboards.size() > limitParam) {
-        dashboards.remove(0);
-        beforeCursor = dashboards.get(0).getFullyQualifiedName();
-      }
-      afterCursor = dashboards.get(dashboards.size() - 1).getFullyQualifiedName();
+      dashboards = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      dashboards = dao.listAfter(fields, serviceParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : dashboards.get(0).getFullyQualifiedName();
-      if (dashboards.size() > limitParam) {
-        dashboards.remove(limitParam);
-        afterCursor = dashboards.get(limitParam - 1).getFullyQualifiedName();
-      }
+      dashboards = dao.listAfter(fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, dashboards);
-    return new DashboardList(dashboards, limitParam, beforeCursor, afterCursor);
+    addHref(uriInfo, dashboards.getData());
+    return dashboards;
   }
 
   @GET

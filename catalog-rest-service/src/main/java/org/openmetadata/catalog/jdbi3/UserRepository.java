@@ -28,6 +28,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.resources.teams.UserResource;
+import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -101,30 +102,46 @@ public abstract class UserRepository {
   abstract ChartDAO chartDAO();
 
   @Transaction
-  public List<User> listAfter(Fields fields, int limitParam, String after) throws IOException,
+  public UserList listAfter(Fields fields, int limitParam, String after) throws IOException,
           ParseException, GeneralSecurityException {
-    // Forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = userDAO().listAfter(limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = userDAO().listAfter(limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<User> users = new ArrayList<>();
     for (String json : jsons) {
       users.add(setFields(JsonUtils.readValue(json, User.class), fields));
     }
-    return users;
+    int total = userDAO().listCount();
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : users.get(0).getName();
+    if (users.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      users.remove(limitParam);
+      afterCursor = users.get(limitParam - 1).getName();
+    }
+    return new UserList(users, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<User> listBefore(Fields fields, int limitParam, String before) throws IOException,
+  public UserList listBefore(Fields fields, int limitParam, String before) throws IOException,
           ParseException, GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = userDAO().listBefore(limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = userDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
 
     List<User> users = new ArrayList<>();
     for (String json : jsons) {
       users.add(setFields(JsonUtils.readValue(json, User.class), fields));
     }
-    return users;
+    int total = userDAO().listCount();
+
+    String beforeCursor = null, afterCursor;
+    if (users.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      users.remove(0);
+      beforeCursor = users.get(0).getName();
+    }
+    afterCursor = users.get(users.size() - 1).getName();
+    return new UserList(users, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -308,6 +325,9 @@ public abstract class UserRepository {
 
     @SqlQuery("SELECT json FROM user_entity")
     List<String> list();
+
+    @SqlQuery("SELECT count(*) FROM user_entity")
+    int listCount();
 
     @SqlQuery(
             "SELECT json FROM (" +

@@ -17,16 +17,15 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.topics.TopicResource;
+import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -79,33 +78,46 @@ public abstract class TopicRepository {
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
 
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
-
   @Transaction
-  public List<Topic> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+  public TopicList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
           GeneralSecurityException {
-    // forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = topicDAO().listAfter(serviceName, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = topicDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Topic> topics = new ArrayList<>();
     for (String json : jsons) {
       topics.add(setFields(JsonUtils.readValue(json, Topic.class), fields));
     }
-    return topics;
+    int total = topicDAO().listCount(serviceName);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : topics.get(0).getFullyQualifiedName();
+    if (topics.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      topics.remove(limitParam);
+      afterCursor = topics.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new TopicList(topics, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Topic> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
+  public TopicList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
           GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = topicDAO().listBefore(serviceName, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = topicDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
     List<Topic> topics = new ArrayList<>();
     for (String json : jsons) {
       topics.add(setFields(JsonUtils.readValue(json, Topic.class), fields));
     }
-    return topics;
+    int total = topicDAO().listCount(serviceName);
+
+    String beforeCursor = null, afterCursor;
+    if (topics.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      topics.remove(0);
+      beforeCursor = topics.get(0).getFullyQualifiedName();
+    }
+    afterCursor = topics.get(topics.size() - 1).getFullyQualifiedName();
+    return new TopicList(topics, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -308,6 +320,10 @@ public abstract class TopicRepository {
 
     @SqlQuery("SELECT json FROM topic_entity WHERE id = :id")
     String findById(@Bind("id") String id);
+
+    @SqlQuery("SELECT count(*) FROM topic_entity WHERE " +
+              "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)") // Filter by service name
+    int listCount(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery(
             "SELECT json FROM (" +
