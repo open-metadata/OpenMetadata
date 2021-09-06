@@ -11,7 +11,7 @@
     }
   },
   "sink": {
-    "type": "metadata-rest-topics",
+    "type": "metadata-rest",
     "config": {
     }
   },

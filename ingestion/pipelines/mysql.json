@@ -17,15 +17,14 @@
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
-    "config": {
-    }
+    "type": "metadata-rest",
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",
-  	  "auth_provider_type": "no-auth"
+      "auth_provider_type": "no-auth"
     }
   },
   "cron": {

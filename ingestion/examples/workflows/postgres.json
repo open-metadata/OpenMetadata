@@ -14,7 +14,7 @@
     "config": {}
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {}
   },
   "metadata_server": {

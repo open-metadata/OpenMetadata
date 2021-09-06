@@ -67,6 +67,7 @@ class SQLConnectionConfig(ConfigModel):
     scheme: str
     service_name: str
     service_type: str
+    query: Optional[str] = 'select * from {}.{} limit 50'
     options: dict = {}
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
@@ -174,13 +175,12 @@ class SQLSource(Source):
     def standardize_schema_table_names(
             self, schema: str, table: str
     ) -> Tuple[str, str]:
-        print("IN SQL SOURCE")
         return schema, table
 
     def fetch_sample_data(self, schema: str, table: str):
         try:
-            query = f"select * from {schema}.{table} limit 50"
-            logger.info("Fetching sample data, this may take a while {}".format(query))
+            query = self.config.query.format(schema,table)
+            logger.info(query)
             results = self.connection.execute(query)
             cols = list(results.keys())
             rows = []

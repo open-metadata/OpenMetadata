@@ -8,7 +8,7 @@
       "database": "warehouse",
       "service_name": "aws_redshift",
       "filter_pattern": {
-        "excludes": ["information_schema.*","[\\w]*event_vw.*"]
+        "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
       }
     }
   },
@@ -17,7 +17,7 @@
     "config": {}
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {}
   },
   "metadata_server": {

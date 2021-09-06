@@ -33,16 +33,6 @@ class MssqlSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
 
-    def fetch_sample_data(self, schema: str, table: str):
-        query = f"select top 50 * from {schema}.{table}"
-        results = self.connection.execute(query)
-        cols = list(results.keys())
-        rows = []
-        for r in results:
-            row = list(r)
-            rows.append(row)
-        return TableData(columns=cols, rows=rows)
-
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
         config = MssqlConfig.parse_obj(config_dict)

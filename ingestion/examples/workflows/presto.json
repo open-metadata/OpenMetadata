@@ -14,7 +14,7 @@
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {
     }
   },
