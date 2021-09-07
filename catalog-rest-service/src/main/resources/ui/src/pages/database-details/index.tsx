@@ -18,7 +18,7 @@
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isNull } from 'lodash';
+import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { Database, Paging, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
@@ -366,7 +366,7 @@ const DatabaseDetails: FunctionComponent = () => {
                 )}
               </tbody>
             </table>
-            {Boolean(!isNull(paging.after) || !isNull(paging.before)) && (
+            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious paging={paging} pagingHandler={pagingHandler} />
             )}
           </div>

@@ -44,6 +44,9 @@ export type DataObj = {
   };
   brokers?: Array<string>;
   schemaRegistry?: string;
+  dashboardUrl?: string;
+  username?: string;
+  password?: string;
 };
 
 type DatabaseService = {
@@ -57,6 +60,12 @@ type MessagingService = {
   schemaRegistry: string;
 };
 
+type DashboardService = {
+  dashboardUrl: string;
+  username: string;
+  password: string;
+};
+
 export type ServiceDataObj = {
   description: string;
   href: string;
@@ -65,7 +74,8 @@ export type ServiceDataObj = {
   serviceType: string;
   ingestionSchedule?: { repeatFrequency: string; startDate: string };
 } & Partial<DatabaseService> &
-  Partial<MessagingService>;
+  Partial<MessagingService> &
+  Partial<DashboardService>;
 
 export type EditObj = {
   edit: boolean;
@@ -86,10 +96,11 @@ type ErrorMsg = {
   name: boolean;
   url?: boolean;
   // port: boolean;
-  // userName: boolean;
-  // password: boolean;
   driverClass?: boolean;
   broker?: boolean;
+  dashboardUrl?: boolean;
+  username?: boolean;
+  password?: boolean;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -176,6 +187,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [schemaRegistry, setSchemaRegistry] = useState(
     data?.schemaRegistry || ''
   );
+  const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
+  const [username, setUsername] = useState(data?.username || '');
+  const [password, setPassword] = useState(data?.password || '');
   const [frequency, setFrequency] = useState(
     fromISOString(data?.ingestionSchedule?.repeatFrequency)
   );
@@ -261,18 +275,27 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const onSaveHelper = (value: ErrorMsg) => {
-    const { selectService, name, url, driverClass, broker } = value;
+    const {
+      selectService,
+      name,
+      url,
+      driverClass,
+      broker,
+      dashboardUrl,
+      username,
+      password,
+    } = value;
 
     return (
       !sameNameError &&
       !selectService &&
       !name &&
       !url &&
-      // !port &&
-      // !userName &&
-      // !password &&
       !driverClass &&
-      !broker
+      !broker &&
+      !dashboardUrl &&
+      !username &&
+      !password
     );
   };
 
@@ -287,9 +310,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           setMsg = {
             ...setMsg,
             url: !url,
-            // port: !port,
-            // userName: !userName,
-            // password: !password,
             driverClass: !driverClass,
           };
         }
@@ -300,6 +320,17 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           setMsg = {
             ...setMsg,
             broker: !brokers,
+          };
+        }
+
+        break;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            dashboardUrl: !dashboardUrl,
+            username: !username,
+            password: !password,
           };
         }
 
@@ -348,6 +379,17 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           }
 
           break;
+        case ServiceCategory.DASHBOARD_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              dashboardUrl: dashboardUrl,
+              username: username,
+              password: password,
+            };
+          }
+
+          break;
         default:
           break;
       }
@@ -374,54 +416,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             />
             {showErrorMsg.url && errorMsg('Connection url is required')}
           </div>
-
-          {/* didn't removed below code as it will be need in future relase */}
-
-          {/* <div>
-                <label className="tw-block tw-form-label" htmlFor="port">
-                  {requiredField('Connection Port:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="port"
-                  name="port"
-                  type="number"
-                  value={port}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.port && errorMsg('Port is required')}
-              </div> */}
         </div>
-        {/* <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="userName">
-                  {requiredField('Username:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="userName"
-                  name="userName"
-                  type="text"
-                  value={userName}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.userName && errorMsg('Username is required')}
-              </div>
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="password">
-                  {requiredField('Password:')}
-                </label>
-                <input
-                  className="tw-form-inputs tw-px-3 tw-py-1"
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.password && errorMsg('Password is required')}
-              </div>
-            </div> */}
         <div className="tw-mt-4">
           <label className="tw-block tw-form-label" htmlFor="database">
             Database:
@@ -500,12 +495,66 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     );
   };
 
+  const getDashboardFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="dashboard-url">
+            {requiredField('Dashboard Url:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="dashboard-url"
+            name="dashboard-url"
+            placeholder="http(s)://hostname:port"
+            type="text"
+            value={dashboardUrl}
+            onChange={(e) => setDashboardUrl(e.target.value)}
+          />
+          {showErrorMsg.dashboardUrl && errorMsg('Dashboard url is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="username">
+            {requiredField('Username:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="username"
+            name="username"
+            placeholder="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          {showErrorMsg.username && errorMsg('Username is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="password">
+            {requiredField('Password:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="password"
+            name="password"
+            placeholder="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {showErrorMsg.password && errorMsg('Password is required')}
+        </div>
+      </>
+    );
+  };
+
   const getOptionalFields = (): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
         return getDatabaseFields();
       case ServiceCategory.MESSAGING_SERVICES:
         return getMessagingFields();
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return getDashboardFields();
       default:
         return <></>;
     }
