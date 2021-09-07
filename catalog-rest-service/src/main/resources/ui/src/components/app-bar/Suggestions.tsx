@@ -19,31 +19,185 @@ import { AxiosResponse } from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
-import { getDatasetDetailsPath } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { getEntityLink } from '../../utils/TableUtils';
 
 type SuggestionProp = {
   searchText: string;
   isOpen: boolean;
   setIsOpen: (value: boolean) => void;
 };
-type Option = {
-  _source: {
-    table_id: string;
-    fqdn: string;
-    table_name: string;
-    service_type: string;
-  };
+
+type CommonSource = {
+  fqdn: string;
+  service_type: string;
 };
+
+type TableSource = {
+  table_id: string;
+  table_name: string;
+} & CommonSource;
+
+type DashboardSource = {
+  dashboard_id: string;
+  dashboard_name: string;
+} & CommonSource;
+
+type TopicSource = {
+  topic_id: string;
+  topic_name: string;
+} & CommonSource;
+
+type Option = {
+  _index: string;
+  _source: TableSource & DashboardSource & TopicSource;
+};
+
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [options, setOptions] = useState<Array<Option>>([]);
+  const [tableSuggestions, setTableSuggestions] = useState<TableSource[]>([]);
+  const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
+  const [dashboardSuggestions, setDashboardSuggestions] = useState<
+    DashboardSource[]
+  >([]);
+
   const isMounting = useRef(true);
+
+  const setSuggestions = (options: Array<Option>) => {
+    setTableSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.TABLE)
+        .map((option) => option._source)
+    );
+    setTopicSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.TOPIC)
+        .map((option) => option._source)
+    );
+    setDashboardSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.DASHBOARD)
+        .map((option) => option._source)
+    );
+  };
+
+  const getGroupLabel = (index: string) => {
+    let label = '';
+    switch (index) {
+      case SearchIndex.TOPIC:
+        label = 'Topics';
+
+        break;
+      case SearchIndex.DASHBOARD:
+        label = 'Dashboards';
+
+        break;
+      case SearchIndex.TABLE:
+      default:
+        label = 'Tables';
+
+        break;
+    }
+
+    return (
+      <p className="tw-px-2 tw-py-2 tw-text-grey-muted tw-text-xs">{label}</p>
+    );
+  };
+
+  const getSuggestionElement = (
+    fqdn: string,
+    serviceType: string,
+    name: string,
+    index: string
+  ) => {
+    return (
+      <div
+        className="tw-flex tw-items-center hover:tw-bg-body-hover"
+        key={fqdn}>
+        <img
+          alt={serviceType}
+          className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
+          src={serviceTypeLogo(serviceType)}
+        />
+        <Link
+          className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm"
+          data-testid="data-name"
+          to={getEntityLink(index, fqdn)}
+          onClick={() => setIsOpen(false)}>
+          {name}
+        </Link>
+      </div>
+    );
+  };
+
+  const getEntitiesSuggestions = () => {
+    return (
+      <div className="py-1" role="none">
+        {tableSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.TABLE)}
+
+            {tableSuggestions.map((suggestion: TableSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.table_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.TABLE
+              );
+            })}
+          </>
+        )}
+        {topicSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.TOPIC)}
+
+            {topicSuggestions.map((suggestion: TopicSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.topic_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.TOPIC
+              );
+            })}
+          </>
+        )}
+        {dashboardSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.DASHBOARD)}
+
+            {dashboardSuggestions.map((suggestion: DashboardSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.dashboard_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.DASHBOARD
+              );
+            })}
+          </>
+        )}
+      </div>
+    );
+  };
 
   useEffect(() => {
     if (!isMounting.current) {
       getSuggestions(searchText).then((res: AxiosResponse) => {
         if (res.data) {
           setOptions(res.data.suggest['table-suggest'][0].options);
+          setSuggestions(res.data.suggest['table-suggest'][0].options);
           setIsOpen(true);
         }
       });
@@ -70,32 +224,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           tw-w-60 tw-mt-1 tw-rounded-md tw-shadow-lg 
         tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
             role="menu">
-            <div className="py-1" role="none">
-              {options.map((item: Option) => {
-                const fqdn = item['_source'].fqdn;
-                const name = item['_source'].table_name;
-                const serviceType = item['_source']['service_type'];
-
-                return (
-                  <div
-                    className="tw-flex tw-items-center hover:tw-bg-body-hover"
-                    key={fqdn}>
-                    <img
-                      alt={serviceType}
-                      className="tw-inline tw-h-4 tw-w-4 tw-ml-2"
-                      src={serviceTypeLogo(serviceType)}
-                    />
-                    <Link
-                      className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm"
-                      data-testid="data-name"
-                      to={getDatasetDetailsPath(fqdn)}
-                      onClick={() => setIsOpen(false)}>
-                      {name}
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
+            {getEntitiesSuggestions()}
           </div>
         </>
       ) : null}

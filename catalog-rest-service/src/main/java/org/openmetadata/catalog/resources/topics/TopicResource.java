@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -109,15 +108,15 @@ public class TopicResource {
     this.authorizer = authorizer;
   }
 
-  static class TopicList extends ResultList<Topic> {
+  public static class TopicList extends ResultList<Topic> {
     @SuppressWarnings("unused")
-    TopicList() {
+    public TopicList() {
       // Empty constructor needed for deserialization
     }
 
-    TopicList(List<Topic> data, int limitParam, String beforeCursor,
-              String afterCursor) throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+    public TopicList(List<Topic> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -159,29 +158,14 @@ public class TopicResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Topic> topics;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    TopicList topics;
     if (before != null) { // Reverse paging
-      topics = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
-      if (topics.size() > limitParam) {
-        topics.remove(0);
-        beforeCursor = topics.get(0).getFullyQualifiedName();
-      }
-      afterCursor = topics.get(topics.size() - 1).getFullyQualifiedName();
+      topics = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      topics = dao.listAfter(fields, serviceParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : topics.get(0).getFullyQualifiedName();
-      if (topics.size() > limitParam) {
-        topics.remove(limitParam);
-        afterCursor = topics.get(limitParam - 1).getFullyQualifiedName();
-      }
+      topics = dao.listAfter(fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, topics);
-    return new TopicList(topics, limitParam, beforeCursor, afterCursor);
+    addHref(uriInfo, topics.getData());
+    return topics;
   }
 
   @GET

@@ -17,10 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.type.ColumnJoin;
-import org.openmetadata.catalog.type.JoinedWith;
-import org.openmetadata.catalog.type.TableData;
-import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
@@ -32,9 +28,14 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -109,31 +110,47 @@ public abstract class TableRepository {
   @CreateSqlObject
   abstract TagDAO tagDAO();
 
- @Transaction
-  public List<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after) throws IOException,
+  @Transaction
+  public TableList listAfter(Fields fields, String databaseFQN, int limitParam, String after) throws IOException,
           ParseException, GeneralSecurityException {
-    // Forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = tableDAO().listAfter(databaseFQN, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = tableDAO().listAfter(databaseFQN, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Table> tables = new ArrayList<>();
     for (String json : jsons) {
       tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
     }
-    return tables;
+    int total = tableDAO().listCount(databaseFQN);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : tables.get(0).getFullyQualifiedName();
+    if (tables.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      tables.remove(limitParam);
+      afterCursor = tables.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new TableList(tables, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Table> listBefore(Fields fields, String databaseFQN, int limitParam, String before) throws IOException,
+  public TableList listBefore(Fields fields, String databaseFQN, int limitParam, String before) throws IOException,
           ParseException, GeneralSecurityException {
-      // Reverse scrolling
-    List<String> jsons = tableDAO().listBefore(databaseFQN, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = tableDAO().listBefore(databaseFQN, limitParam + 1, CipherText.instance().decrypt(before));
 
     List<Table> tables = new ArrayList<>();
     for (String json : jsons) {
       tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
     }
-    return tables;
+    int total = tableDAO().listCount(databaseFQN);
+
+    String beforeCursor = null, afterCursor;
+    if (tables.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      tables.remove(0);
+      beforeCursor = tables.get(0).getFullyQualifiedName();
+    }
+    afterCursor = tables.get(tables.size() - 1).getFullyQualifiedName();
+    return new TableList(tables, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -646,6 +663,10 @@ public abstract class TableRepository {
 
     @SqlQuery("SELECT json FROM table_entity WHERE fullyQualifiedName = :tableFQN")
     String findByFQN(@Bind("tableFQN") String tableFQN);
+
+    @SqlQuery("SELECT count(*) FROM table_entity WHERE " +
+            "(fullyQualifiedName LIKE CONCAT(:databaseFQN, '.%') OR :databaseFQN IS NULL)")
+    int listCount(@Bind("databaseFQN") String databseFQN);
 
     @SqlQuery(
             "SELECT json FROM (" +

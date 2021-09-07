@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import APIClient from './index';
 
@@ -55,5 +56,8 @@ export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
 export const getSuggestions: Function = (
   queryString: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/search/suggest?q=${queryString}`);
+  return APIClient.get(
+    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC}
+    `
+  );
 };

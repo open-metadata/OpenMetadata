@@ -121,6 +121,8 @@ public final class TestUtils {
     for (int i = 0; i < actual.getData().size(); i++) {
       assertEquals(allEntities.get(offset + i), actual.getData().get(i));
     }
+    // Ensure total count returned in paging is correct
+    assertEquals(allEntities.size(), actual.getPaging().getTotal());
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {

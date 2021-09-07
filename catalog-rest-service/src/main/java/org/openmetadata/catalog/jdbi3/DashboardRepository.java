@@ -28,6 +28,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
+import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -87,29 +88,45 @@ public abstract class DashboardRepository {
 
 
   @Transaction
-  public List<Dashboard> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+  public DashboardList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
           GeneralSecurityException {
-    // forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = dashboardDAO().listAfter(serviceName, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = dashboardDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Dashboard> dashboards = new ArrayList<>();
     for (String json : jsons) {
       dashboards.add(setFields(JsonUtils.readValue(json, Dashboard.class), fields));
     }
-    return dashboards;
+    int total = dashboardDAO().listCount(serviceName);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : dashboards.get(0).getFullyQualifiedName();
+    if (dashboards.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      dashboards.remove(limitParam);
+      afterCursor = dashboards.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new DashboardList(dashboards, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Dashboard> listBefore(Fields fields, String serviceName, int limitParam, String before)
+  public DashboardList listBefore(Fields fields, String serviceName, int limitParam, String before)
           throws IOException, GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = dashboardDAO().listBefore(serviceName, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = dashboardDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
     List<Dashboard> dashboards = new ArrayList<>();
     for (String json : jsons) {
       dashboards.add(setFields(JsonUtils.readValue(json, Dashboard.class), fields));
     }
-    return dashboards;
+    int total = dashboardDAO().listCount(serviceName);
+
+    String beforeCursor = null, afterCursor;
+    if (dashboards.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      dashboards.remove(0);
+      beforeCursor = dashboards.get(0).getFullyQualifiedName();
+    }
+    afterCursor = dashboards.get(dashboards.size() - 1).getFullyQualifiedName();
+    return new DashboardList(dashboards, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -377,6 +394,10 @@ public abstract class DashboardRepository {
     @SqlQuery("SELECT json FROM dashboard_entity WHERE fullyQualifiedName = :name")
     String findByFQN(@Bind("name") String name);
 
+    @SqlQuery("SELECT count(*) FROM dashboard_entity WHERE " +
+            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+    int listCount(@Bind("fqnPrefix") String fqnPrefix);
+
     @SqlQuery(
             "SELECT json FROM (" +
                     "SELECT fullyQualifiedName, json FROM dashboard_entity WHERE " +
@@ -396,7 +417,6 @@ public abstract class DashboardRepository {
             "LIMIT :limit")
     List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
                            @Bind("after") String after);
-
 
     @SqlUpdate("DELETE FROM dashboard_entity WHERE id = :id")
     int delete(@Bind("id") String id);

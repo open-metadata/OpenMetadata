@@ -109,15 +109,15 @@ public class ChartResource {
     this.authorizer = authorizer;
   }
 
-  static class ChartList extends ResultList<Chart> {
+  public static class ChartList extends ResultList<Chart> {
     @SuppressWarnings("unused")
     ChartList() {
       // Empty constructor needed for deserialization
     }
 
-    ChartList(List<Chart> data, int limitParam, String beforeCursor,
-              String afterCursor) throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+    public ChartList(List<Chart> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
@@ -159,29 +159,14 @@ public class ChartResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Chart> charts;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    ChartList charts;
     if (before != null) { // Reverse paging
-      charts = dao.listBefore(fields, serviceParam, limitParam + 1, before); // Ask for one extra entry
-      if (charts.size() > limitParam) {
-        charts.remove(0);
-        beforeCursor = charts.get(0).getFullyQualifiedName();
-      }
-      afterCursor = charts.get(charts.size() - 1).getFullyQualifiedName();
+      charts = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      charts = dao.listAfter(fields, serviceParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : charts.get(0).getFullyQualifiedName();
-      if (charts.size() > limitParam) {
-        charts.remove(limitParam);
-        afterCursor = charts.get(limitParam - 1).getFullyQualifiedName();
-      }
+      charts = dao.listAfter(fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, charts);
-    return new ChartList(charts, limitParam, beforeCursor, afterCursor);
+    addHref(uriInfo, charts.getData());
+    return charts;
   }
 
   @GET
