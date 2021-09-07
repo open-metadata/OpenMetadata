@@ -29,6 +29,7 @@ from ...generated.schema.entity.data.database import Database
 from ...generated.schema.entity.data.table import Column, ColumnConstraint, Table
 from ...generated.schema.type.entityReference import EntityReference
 from metadata.utils.helpers import get_database_service_or_create
+from pydantic import ValidationError
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class SalesforceSourceStatus(SourceStatus):
     filtered: List[str] = field(default_factory=list)
 
     def scanned(self, table_name: str) -> None:
-        self.success.append(table_name)
+        self.status.scanned.append(table_name)
         logger.info('Table Scanned: {}'.format(table_name))
 
     def filter(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
@@ -85,30 +86,34 @@ class SalesforceSource(Source):
         yield from self.salesforce_client()
 
     def salesforce_client(self) -> Iterable[OMetaDatabaseAndTable]:
-        sf = Salesforce(username=self.config.username, password=self.config.password,
-                        security_token=self.config.security_token)
-        row_order = 1
-        table_columns = []
-        md = sf.restful("sobjects/{}/describe/".format(self.config.table_name), params=None)
-        for column in md['fields']:
-            table_columns.append(Column(name=column['name'],
-                                        description=column['label'],
-                                        columnDataType=self.column_type(column['type'].upper()),
-                                        columnConstraint=ColumnConstraint.UNIQUE if column['unique'] else None,
-                                        ordinalPosition=row_order))
-            row_order += 1
-        description = None
-        table_entity = Table(id=uuid.uuid4(),
-                             name=self.config.table_name,
-                             tableType='Regular',
-                             description=description if description is not None else ' ',
-                             columns=table_columns)
+        try:
+            sf = Salesforce(username=self.config.username, password=self.config.password,
+                            security_token=self.config.security_token)
+            row_order = 1
+            table_columns = []
+            md = sf.restful("sobjects/{}/describe/".format(self.config.table_name), params=None)
+            for column in md['fields']:
+                table_columns.append(Column(name=column['name'],
+                                            description=column['label'],
+                                            columnDataType=self.column_type(column['type'].upper()),
+                                            columnConstraint=ColumnConstraint.UNIQUE if column['unique'] else None,
+                                            ordinalPosition=row_order))
+                row_order += 1
+            table_entity = Table(id=uuid.uuid4(),
+                                 name=self.config.table_name,
+                                 tableType='Regular',
+                                 description=" ",
+                                 columns=table_columns)
+            self.status.scanned('{}'.format(self.config.table_name))
 
-        database_entity = Database(name=self.config.scheme,
-                                   service=EntityReference(id=self.service.id, type=self.config.service_type))
+            database_entity = Database(name=self.config.scheme,
+                                       service=EntityReference(id=self.service.id, type=self.config.service_type))
 
-        table_and_db = OMetaDatabaseAndTable(table=table_entity, database=database_entity)
-        yield table_and_db
+            table_and_db = OMetaDatabaseAndTable(table=table_entity, database=database_entity)
+            yield table_and_db
+        except ValidationError as err:
+            logger.error(err)
+            self.status.failure.append('{}'.format(self.config.table_name))
 
     def column_type(self, column_type: str):
         if column_type in ["ID", "PHONE", "CURRENCY"]:
