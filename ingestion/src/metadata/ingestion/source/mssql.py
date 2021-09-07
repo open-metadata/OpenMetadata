@@ -14,11 +14,11 @@
 #  limitations under the License.
 
 # This import verifies that the dependencies are available.
+from metadata.generated.schema.entity.data.table import TableData
 import sqlalchemy_pytds  # noqa: F401
 
 from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
-
 
 class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
@@ -27,8 +27,6 @@ class MssqlConfig(SQLConnectionConfig):
 
     def get_connection_url(self):
         return super().get_connection_url()
-
-    
 
 
 class MssqlSource(SQLSource):

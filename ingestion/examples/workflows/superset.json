@@ -9,7 +9,7 @@
     }
   },
   "sink": {
-    "type": "metadata-rest-dashboards",
+    "type": "metadata-rest",
     "config": {
     }
   },

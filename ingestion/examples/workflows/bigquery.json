@@ -3,7 +3,7 @@
     "type": "bigquery",
     "config": {
       "project_id": "project_id",
-      "host_port": "https://bigquery.googleapis.com",
+      "host_port": "bigquery.googleapis.com",
       "username": "gcpuser@project_id.iam.gserviceaccount.com",
       "service_name": "gcp_bigquery",
       "options": {
@@ -25,7 +25,7 @@
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {
       "api_endpoint": "http://localhost:8585/api"
     }
