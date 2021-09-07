@@ -6,6 +6,7 @@ import { getRelativeTime } from './TimeUtils';
 export const formatDataResponse = (hits) => {
   const formattedData = hits.map((hit) => {
     const newData = {};
+    newData.index = hit._index;
     newData.id =
       hit._source.table_id || hit._source.topic_id || hit._source.dashboard_id;
     newData.name =
