@@ -228,6 +228,7 @@ public class TopicResource {
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+                    .withReplicationFactor(create.getReplicationFactor())
                     .withTags(create.getTags());
     topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
     return Response.created(topic.getHref()).entity(topic).build();
@@ -278,6 +279,7 @@ public class TopicResource {
                     .withMaximumMessageSize(create.getMaximumMessageSize())
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+                    .withReplicationFactor(create.getReplicationFactor())
                     .withTags(create.getTags());
     PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
     topic = addHref(uriInfo, response.getEntity());

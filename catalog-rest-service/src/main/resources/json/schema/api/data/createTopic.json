@@ -37,6 +37,10 @@
         "$ref" : "../../entity/data/topic.json#/definitions/cleanupPolicy"
       }
     },
+    "replicationFactor": {
+      "description": "Replication Factor in integer (more than 1).",
+      "type" : "integer"
+    },
     "retentionTime": {
       "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
       "type" : "number"
