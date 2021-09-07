@@ -108,7 +108,7 @@ class ElasticsearchSink(Sink):
             dashboard_doc = self._create_dashboard_es_doc(record)
             self.elasticsearch_client.index(index=self.config.dashboard_index_name, id=str(dashboard_doc.dashboard_id),
                                             body=dashboard_doc.json())
-        self.status.records_written(record.name)
+        self.status.records_written(record.name.__root__)
 
     def _create_table_es_doc(self, table: Table):
         fqdn = table.fullyQualifiedName
