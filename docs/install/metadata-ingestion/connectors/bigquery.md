@@ -109,7 +109,7 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {
       "api_endpoint": "http://localhost:8585/api"
     }
