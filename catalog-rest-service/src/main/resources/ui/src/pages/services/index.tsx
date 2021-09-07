@@ -70,6 +70,7 @@ const ServicesPage = () => {
   const [services, setServices] = useState<ServiceRecord>({
     databaseServices: [],
     messagingServices: [],
+    dashboardServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
@@ -233,6 +234,18 @@ const ServicesPage = () => {
               <label className="tw-mb-0">Brokers:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {service.brokers?.join(', ')}
+              </span>
+            </div>
+          </>
+        );
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Dashboard URL:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.dashboardUrl}
               </span>
             </div>
           </>

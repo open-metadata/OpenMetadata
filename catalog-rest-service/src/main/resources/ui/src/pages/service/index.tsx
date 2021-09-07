@@ -17,10 +17,11 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNull, isUndefined } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { Database, Paging, ServiceOption } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
@@ -36,6 +37,7 @@ import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
@@ -101,6 +103,30 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchDashboards = (paging?: string) => {
+    setIsloading(true);
+    getDashboards(serviceFQN, paging, [
+      'owner',
+      'service',
+      'usageSummary',
+      'tags',
+    ])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -110,6 +136,11 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.MESSAGING_SERVICES: {
         fetchTopics(paging);
+
+        break;
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        fetchDashboards(paging);
 
         break;
       }
@@ -123,9 +154,12 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.MESSAGING_SERVICES:
         return getEntityLink(SearchIndex.TOPIC, fqn);
 
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return getEntityLink(SearchIndex.DASHBOARD, fqn);
+
       case ServiceCategory.DATABASE_SERVICES:
       default:
-        return `/database/${fqn}`;
+        return getEntityLink(SearchIndex.TABLE, fqn);
     }
   };
 
@@ -205,6 +239,29 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">
+              Dashboard Url :
+            </span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.dashboardUrl ? (
+                <a
+                  className="link-text"
+                  href={serviceDetails.dashboardUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  {serviceDetails.dashboardUrl}
+                </a>
+              ) : (
+                '--'
+              )}
+            </span>
+            <span className="tw-mx-3 tw-text-grey-muted">•</span>
+          </span>
+        );
+      }
       default: {
         return <></>;
       }
@@ -227,6 +284,16 @@ const ServicePage: FunctionComponent = () => {
         return (
           <>
             <th className="tableHead-cell">Topic Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Dashboard Name</th>
             <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Owner</th>
             <th className="tableHead-cell">Tags</th>
@@ -260,6 +327,33 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {topic.tags && topic.tags?.length > 0
               ? topic.tags.map((tag, tagIndex) => (
+                  <PopOver
+                    key={tagIndex}
+                    position="top"
+                    size="small"
+                    title={tag.labelType}
+                    trigger="mouseenter">
+                    <Tags
+                      className="tw-bg-gray-200"
+                      tag={`#${
+                        tag.tagFQN?.startsWith('Tier.Tier')
+                          ? tag.tagFQN.split('.')[1]
+                          : tag.tagFQN
+                      }`}
+                    />
+                  </PopOver>
+                ))
+              : '--'}
+          </td>
+        );
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        const dashboard = data as Dashboard;
+
+        return (
+          <td className="tableBody-cell">
+            {dashboard.tags && dashboard.tags?.length > 0
+              ? dashboard.tags.map((tag, tagIndex) => (
                   <PopOver
                     key={tagIndex}
                     position="top"
@@ -427,7 +521,7 @@ const ServicePage: FunctionComponent = () => {
                 </thead>
                 <tbody className="tableBody">
                   {data.length > 0 ? (
-                    data.map((database, index) => (
+                    data.map((dataObj, index) => (
                       <tr
                         className={classNames(
                           'tableBody-row',
@@ -436,14 +530,18 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
-                          <Link to={getLinkForFqn(database.fullyQualifiedName)}>
-                            {database.name}
+                          <Link to={getLinkForFqn(dataObj.fullyQualifiedName)}>
+                            {serviceName ===
+                              ServiceCategory.DASHBOARD_SERVICES &&
+                            dataObj.displayName
+                              ? dataObj.displayName
+                              : dataObj.name}
                           </Link>
                         </td>
                         <td className="tableBody-cell">
-                          {database.description ? (
+                          {dataObj.description ? (
                             <RichTextEditorPreviewer
-                              markdown={database.description}
+                              markdown={dataObj.description}
                             />
                           ) : (
                             <span className="tw-no-description">
@@ -452,9 +550,9 @@ const ServicePage: FunctionComponent = () => {
                           )}
                         </td>
                         <td className="tableBody-cell">
-                          <p>{database?.owner?.name || '--'}</p>
+                          <p>{dataObj?.owner?.name || '--'}</p>
                         </td>
-                        {getOptionalTableCells(database)}
+                        {getOptionalTableCells(dataObj)}
                       </tr>
                     ))
                   ) : (
@@ -467,7 +565,7 @@ const ServicePage: FunctionComponent = () => {
                 </tbody>
               </table>
             </div>
-            {Boolean(!isNull(paging.after) || !isNull(paging.before)) && (
+            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
               <NextPrevious paging={paging} pagingHandler={pagingHandler} />
             )}
           </div>
