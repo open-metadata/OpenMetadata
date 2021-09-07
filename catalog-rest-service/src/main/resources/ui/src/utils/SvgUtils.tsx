@@ -3,6 +3,7 @@ import IconGoogle from '../assets/img/google-icon.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
@@ -45,7 +46,9 @@ import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconTable from '../assets/svg/table.svg';
 import IconTerns from '../assets/svg/terms.svg';
+import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
@@ -106,6 +109,9 @@ export const Icons = {
   TERMS: 'terms',
   DOC: 'doc',
   API: 'api',
+  TABLE: 'table',
+  TOPIC: 'topic',
+  DASHBOARD: 'dashboard',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -314,6 +320,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.API:
       IconComponent = IconAPI;
+
+      break;
+    case Icons.TABLE:
+      IconComponent = IconTable;
+
+      break;
+    case Icons.TOPIC:
+      IconComponent = IconTopic;
+
+      break;
+    case Icons.DASHBOARD:
+      IconComponent = IconDashboard;
 
       break;
 
