@@ -2,13 +2,12 @@
   "source": {
     "type": "salesforce",
     "config": {
-      "username": "parth.panchal@deuexsolutions.com",
-      "password": "parth123",
-      "security_token": "cYftK8H43ooOu0YJdVikI7A7",
+      "username": "username",
+      "password": "password",
+      "security_token": "secuirty_token",
       "service_name": "local_salesforce",
       "scheme": "salesforce",
-      "query": "SELECT Id FROM Account",
-      "table_name": "Account"
+      "sobject_name": "Salesforce Object Name"
     }
   },
   "processor": {
