@@ -40,6 +40,7 @@ const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
+const PLACEHOLDER_ROUTE_TAB = ':tab';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -96,7 +97,8 @@ export const ROUTES = {
   MY_DATA: '/my-data',
   REPORTS: '/reports',
   EXPLORE: '/explore',
-  EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
+  EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
+  EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   TEAMS: '/teams',
@@ -145,9 +147,11 @@ export const getServiceDetailsPath = (
   return path;
 };
 
-export const getExplorePathWithSearch = (searchQuery = '') => {
+export const getExplorePathWithSearch = (searchQuery = '', tab = 'tables') => {
   let path = ROUTES.EXPLORE_WITH_SEARCH;
-  path = path.replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery);
+  path = path
+    .replace(PLACEHOLDER_ROUTE_SEARCHQUERY, searchQuery)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };

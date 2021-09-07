@@ -66,6 +66,7 @@ export const tabsInfo = [
     sortingFields: tableSortingFields,
     sortField: tableSortingFields[0].value,
     tab: 1,
+    path: 'tables',
   },
   {
     label: 'Topics',
@@ -73,6 +74,7 @@ export const tabsInfo = [
     sortingFields: topicSortingFields,
     sortField: topicSortingFields[0].value,
     tab: 2,
+    path: 'topics',
   },
   {
     label: 'Dashboards',
@@ -80,5 +82,6 @@ export const tabsInfo = [
     sortingFields: topicSortingFields,
     sortField: topicSortingFields[0].value,
     tab: 3,
+    path: 'dashboards',
   },
 ];

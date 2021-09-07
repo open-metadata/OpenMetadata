@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useHistory } from 'react-router-dom';
+import { Link, useHistory } from 'react-router-dom';
 import AppState from '../../AppState';
 import { ROUTES } from '../../constants/constants';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
@@ -9,6 +9,16 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 type Props = {
   countServices: number;
   countAssets: number;
+  entityCounts: {
+    tableCount: number;
+    topicCount: number;
+    dashboardCount: number;
+  };
+};
+type Summary = {
+  icon: string;
+  data: string;
+  link?: string;
 };
 
 const LANDING_STATES = [
@@ -29,13 +39,25 @@ const LANDING_STATES = [
 const MyDataHeader: FunctionComponent<Props> = ({
   countAssets,
   countServices,
+  entityCounts,
 }: Props) => {
   const history = useHistory();
   const { users, userTeams } = AppState;
-  const [dataSummary, setdataSummary] = useState({
-    asstes: {
-      icon: Icons.ASSETS,
-      data: `${countAssets} of Assets`,
+  const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({
+    tables: {
+      icon: Icons.TABLE,
+      data: `${entityCounts.tableCount} Tables`,
+      link: `/explore/tables`,
+    },
+    topics: {
+      icon: Icons.TOPIC,
+      data: `${entityCounts.topicCount} Topics`,
+      link: `/explore/topics`,
+    },
+    dashboards: {
+      icon: Icons.DASHBOARD,
+      data: `${entityCounts.dashboardCount} Dashboards`,
+      link: `/explore/dashboards`,
     },
     service: {
       icon: Icons.SERVICE,
@@ -63,9 +85,20 @@ const MyDataHeader: FunctionComponent<Props> = ({
 
   useEffect(() => {
     setdataSummary({
-      asstes: {
-        icon: Icons.ASSETS,
-        data: `${countAssets} Assets`,
+      tables: {
+        icon: Icons.TABLE,
+        data: `${entityCounts.tableCount} Tables`,
+        link: `/explore/tables`,
+      },
+      topics: {
+        icon: Icons.TOPIC,
+        data: `${entityCounts.topicCount} Topics`,
+        link: `/explore/topics`,
+      },
+      dashboards: {
+        icon: Icons.DASHBOARD,
+        data: `${entityCounts.dashboardCount} Dashboards`,
+        link: `/explore/dashboards`,
       },
       service: {
         icon: Icons.SERVICE,
@@ -80,22 +113,45 @@ const MyDataHeader: FunctionComponent<Props> = ({
         data: `${userTeams.length} Teams`,
       },
     });
-  }, [userTeams, users, countAssets, countServices]);
+  }, [userTeams, users, countServices]);
 
   return (
     <section className="tw-flex tw-flex-col tw-items-center tw-py-7">
-      <h3 className="tw-mb-3 tw-font-semibold">
+      <h3 className="tw-mb-7 tw-font-semibold ">
         <span style={{ color: '#8D6AF1' }}>Open</span>
         <span style={{ color: '#7147E8' }}>Metadata</span>
       </h3>
       <div className="tw-flex tw-gap-5 tw-mb-7">
-        {Object.values(dataSummary).map((data, index) => (
-          <div className="tw-flex tw-items-center tw-gap-2" key={index}>
-            <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
-
-            <p className="tw-font-medium">{data.data}</p>
-          </div>
-        ))}
+        {Object.values(dataSummary)
+          .slice(0, 3)
+          .map((data, index) => (
+            <div className="tw-flex tw-items-center tw-gap-2" key={index}>
+              <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
+              {data.link ? (
+                <Link className="tw-font-medium" to={data.link}>
+                  {data.data}
+                </Link>
+              ) : (
+                <p className="tw-font-medium">{data.data}</p>
+              )}
+            </div>
+          ))}
+      </div>
+      <div className="tw-flex tw-gap-5 tw-mb-7">
+        {Object.values(dataSummary)
+          .slice(3)
+          .map((data, index) => (
+            <div className="tw-flex tw-items-center tw-gap-2" key={index}>
+              <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
+              {data.link ? (
+                <Link className="tw-font-medium" to={data.link}>
+                  {data.data}
+                </Link>
+              ) : (
+                <p className="tw-font-medium">{data.data}</p>
+              )}
+            </div>
+          ))}
       </div>
       <div className="tw-flex tw-gap-10">
         {LANDING_STATES.map((d, i) => (

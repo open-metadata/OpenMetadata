@@ -17,6 +17,7 @@
 
 export type Params = {
   searchQuery: string;
+  tab: string;
 };
 
 export type Service = {

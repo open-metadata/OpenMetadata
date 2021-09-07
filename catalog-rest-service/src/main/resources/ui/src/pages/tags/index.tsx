@@ -155,6 +155,14 @@ const TagsPage = () => {
     setEditTag(undefined);
   };
 
+  const getUsageCountLink = (tagFQN: string) => {
+    if (tagFQN.startsWith('Tier')) {
+      return `/explore?tier=${tagFQN}`;
+    } else {
+      return `/explore?tags=${tagFQN}`;
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
   }, []);
@@ -333,7 +341,9 @@ const TagsPage = () => {
                                 {tag.usageCount ? (
                                   <Link
                                     className="link-text tw-align-middle"
-                                    to={`/explore?tags=${tag.fullyQualifiedName}`}>
+                                    to={getUsageCountLink(
+                                      tag.fullyQualifiedName
+                                    )}>
                                     {tag.usageCount}
                                   </Link>
                                 ) : (
