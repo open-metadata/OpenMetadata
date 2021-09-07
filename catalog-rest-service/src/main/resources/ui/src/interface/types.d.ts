@@ -212,6 +212,7 @@ declare module 'Models' {
       description: string[];
       table_name: string[];
     };
+    index: string;
   };
 
   export type NewUser = {
