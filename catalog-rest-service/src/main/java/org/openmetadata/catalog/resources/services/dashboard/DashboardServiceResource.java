@@ -179,7 +179,8 @@ public class DashboardServiceResource {
                          @Valid UpdateDashboardService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getIngestionSchedule()));
+            dao.update(id, update.getDescription(), update.getDashboardUrl(), update.getUsername(),
+                    update.getPassword(), update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
 
