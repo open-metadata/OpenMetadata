@@ -37,6 +37,10 @@ class CreateTopic(BaseModel):
         None,
         description='Topic clean up policy. For Kafka - `cleanup.policy` configuration.',
     )
+    replicationFactor: Optional[int] = Field(
+        None,
+        description='Replication Factor in integer (more than 1).',
+    )
     retentionTime: Optional[float] = Field(
         None,
         description='Retention time in milliseconds. For Kafka - `retention.ms` configuration.',
