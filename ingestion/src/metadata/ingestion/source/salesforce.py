@@ -12,47 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-# from typing import Optional
-#
-# from simple_salesforce import Salesforce, SalesforceMalformedRequest
-#
-# from .sql_source import SQLSource, SQLConnectionConfig
-# from ..ometa.openmetadata_rest import MetadataServerConfig
-#
-#
-# class SalesforceConfig(SQLConnectionConfig):
-#     host_port: Optional[str]
-#     schema = "salesforce"
-#     service_type = "MySQL"
-#     security_token: str
-#     query: str
-#
-#     def get_connection_url(self):
-#         return super().get_connection_url()
-#
-#
-# class SalesforceSource(SQLSource):
-#     def __init__(self, config, metadata_config, ctx):
-#         xyz = self.salesforce_client()
-#         # super().__init__(config, metadata_config, ctx)
-#
-#     @classmethod
-#     def create(cls, config_dict, metadata_config_dict, ctx):
-#         config = SalesforceConfig.parse_obj(config_dict)
-#         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-#         return cls(config, metadata_config, ctx)
-#
-#     def salesforce_client(self):
-#         sf = Salesforce(username="parth.panchal@deuexsolutions.com",
-#         password="parth123", security_token="cYftK8H43ooOu0YJdVikI7A7")
-#         print(sf)
-#         sf.query("SELECT Name FROM OpenMetadata__c")
-#         try:
-#             print(sf.query("SELECT Name FROM OpenMetadata__c"))
-#         except SalesforceMalformedRequest as e:
-#             print(type(e.content))
-#             print(e.content)
-#             print(e.content[0]['message'])
+
 import logging
 import uuid
 from dataclasses import field
@@ -106,6 +66,7 @@ class SalesforceSource(Source):
     def __init__(self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx):
         self.config = config
         self.service = get_database_service_or_create(config, metadata_config)
+        self.status = SalesforceSourceStatus()
         super().__init__(ctx)
 
     @classmethod
@@ -115,7 +76,7 @@ class SalesforceSource(Source):
         return cls(config, metadata_config, ctx)
 
     def get_status(self) -> SourceStatus:
-        return super().get_status()
+        return self.status
 
     def prepare(self):
         pass
@@ -129,12 +90,7 @@ class SalesforceSource(Source):
         row_order = 1
         table_columns = []
         md = sf.restful("sobjects/{}/describe/".format(self.config.table_name), params=None)
-        print(md.keys())
-        print(md['name'])
-        print(md['label'])
-        print(md['fields'])
         for column in md['fields']:
-            print(column['type'].upper())
             table_columns.append(Column(name=column['name'],
                                         description=column['label'],
                                         columnDataType=self.column_type(column['type'].upper()),
