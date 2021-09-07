@@ -11,7 +11,7 @@ our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/
 
 ## 0.4 Release - Sep 20th, 2021
 
-####Theme:  Topics, Dashboards, and Data Profiler
+#### Theme:  Topics, Dashboards, and Data Profiler
 
 ### Support for Kafka (and Pulsar WIP)
 * Support for Message Service and Topic entities in schemas, APIs, and UI
