@@ -22,7 +22,7 @@
 #
 # class SalesforceConfig(SQLConnectionConfig):
 #     host_port: Optional[str]
-#     scheme = "salesforce"
+#     schema = "salesforce"
 #     service_type = "MySQL"
 #     security_token: str
 #     query: str
@@ -89,10 +89,12 @@ class SalesforceSourceStatus(SourceStatus):
 
 
 class SalesforceConfig(SQLConnectionConfig):
-    host_port: Optional[str]
-    schema: str
-    service_type = "MySQL"
+    username: str
+    password: str
     security_token: str
+    host_port: Optional[str]
+    scheme: str
+    service_type = "MySQL"
     query: str
     table_name: str
 
@@ -131,7 +133,6 @@ class SalesforceSource(Source):
         print(md['name'])
         print(md['label'])
         print(md['fields'])
-        flat_table = []
         for column in md['fields']:
             print(column['type'].upper())
             table_columns.append(Column(name=column['name'],
@@ -147,7 +148,7 @@ class SalesforceSource(Source):
                              description=description if description is not None else ' ',
                              columns=table_columns)
 
-        database_entity = Database(name="salesforce",
+        database_entity = Database(name=self.config.scheme,
                                    service=EntityReference(id=self.service.id, type=self.config.service_type))
 
         table_and_db = OMetaDatabaseAndTable(table=table_entity, database=database_entity)

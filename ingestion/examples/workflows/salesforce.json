@@ -6,7 +6,7 @@
       "password": "parth123",
       "security_token": "cYftK8H43ooOu0YJdVikI7A7",
       "service_name": "local_salesforce",
-      "schema": "salesforce",
+      "scheme": "salesforce",
       "query": "SELECT Id FROM Account",
       "table_name": "Account"
     }
