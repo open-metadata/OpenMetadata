@@ -1,0 +1,37 @@
+{
+  "source": {
+    "type": "salesforce",
+    "config": {
+      "username": "parth.panchal@deuexsolutions.com",
+      "password": "parth123",
+      "security_token": "cYftK8H43ooOu0YJdVikI7A7",
+      "service_name": "local_salesforce",
+      "schema": "salesforce",
+      "query": "SELECT Id FROM Account",
+      "table_name": "Account"
+    }
+  },
+  "processor": {
+    "type": "pii",
+    "config": {
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
