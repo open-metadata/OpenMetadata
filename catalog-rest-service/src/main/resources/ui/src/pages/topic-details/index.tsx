@@ -304,7 +304,6 @@ const MyTopicDetailPage = () => {
             extraInfo={[
               { key: 'Owner', value: owner?.name || '' },
               { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
-              // ...getConfigDetails(),
             ]}
             followers={followers}
             followHandler={followTopic}
