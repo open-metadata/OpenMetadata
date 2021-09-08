@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { getSuggestions } from '../../axiosAPIs/miscAPI';
 import { SearchIndex } from '../../enums/search.enum';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import { getEntityLink } from '../../utils/TableUtils';
 
 type SuggestionProp = {
@@ -84,24 +85,31 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
 
   const getGroupLabel = (index: string) => {
     let label = '';
+    let icon = '';
     switch (index) {
       case SearchIndex.TOPIC:
         label = 'Topics';
+        icon = Icons.TOPIC_GREY;
 
         break;
       case SearchIndex.DASHBOARD:
         label = 'Dashboards';
+        icon = Icons.DASHBOARD_GREY;
 
         break;
       case SearchIndex.TABLE:
       default:
         label = 'Tables';
+        icon = Icons.TABLE_GREY;
 
         break;
     }
 
     return (
-      <p className="tw-px-2 tw-py-2 tw-text-grey-muted tw-text-xs">{label}</p>
+      <div className="tw-flex tw-gap-2 tw-px-2 tw-py-2">
+        <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={icon} />
+        <p className="tw-text-grey-muted tw-text-xs">{label}</p>
+      </div>
     );
   };
 
