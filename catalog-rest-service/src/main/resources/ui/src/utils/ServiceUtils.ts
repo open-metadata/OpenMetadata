@@ -189,6 +189,10 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
         entityCounts.topicCount += bucket.doc_count;
 
         break;
+      case DashboardServiceType.SUPERSET:
+        entityCounts.dashboardCount += bucket.doc_count;
+
+        break;
       default:
         break;
     }

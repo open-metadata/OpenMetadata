@@ -200,13 +200,32 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     }
   };
 
+  const setCount = (count = 0) => {
+    switch (searchIndex) {
+      case SearchIndex.TABLE:
+        setTableCount(count);
+
+        break;
+      case SearchIndex.DASHBOARD:
+        setDashboardCount(count);
+
+        break;
+      case SearchIndex.TOPIC:
+        setTopicCount(count);
+
+        break;
+      default:
+        break;
+    }
+  };
+
   const fetchCounts = () => {
     const emptyValue = '';
     const tableCount = searchData(
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.TABLE
@@ -215,7 +234,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.TOPIC
@@ -224,7 +243,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.DASHBOARD
@@ -293,6 +312,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           resAggTag,
         ]: Array<SearchResponse>) => {
           updateSearchResults(resSearchResults);
+          setCount(resSearchResults.data.hits.total.value);
           if (forceSetAgg) {
             setAggregations(
               resSearchResults.data.hits.hits.length > 0
@@ -492,7 +512,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText, filters]);
+  }, [searchText]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {

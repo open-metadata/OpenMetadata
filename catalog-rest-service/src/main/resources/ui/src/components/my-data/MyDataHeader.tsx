@@ -62,14 +62,17 @@ const MyDataHeader: FunctionComponent<Props> = ({
     service: {
       icon: Icons.SERVICE,
       data: `${countServices} of Services`,
+      link: `/services`,
     },
     user: {
       icon: Icons.USERS,
       data: `${users.length} of Users`,
+      link: `/teams`,
     },
     terms: {
       icon: Icons.TERMS,
       data: `${userTeams.length} of Teams`,
+      link: `/teams`,
     },
   });
 
@@ -103,14 +106,17 @@ const MyDataHeader: FunctionComponent<Props> = ({
       service: {
         icon: Icons.SERVICE,
         data: `${countServices} Services`,
+        link: `/services`,
       },
       user: {
         icon: Icons.USERS,
         data: `${users.length} Users`,
+        link: `/teams`,
       },
       terms: {
         icon: Icons.TERMS,
         data: `${userTeams.length} Teams`,
+        link: `/teams`,
       },
     });
   }, [userTeams, users, countServices]);
@@ -122,37 +128,20 @@ const MyDataHeader: FunctionComponent<Props> = ({
         <span style={{ color: '#7147E8' }}>Metadata</span>
       </h3>
       <div className="tw-flex tw-gap-5 tw-mb-7">
-        {Object.values(dataSummary)
-          .slice(0, 3)
-          .map((data, index) => (
-            <div className="tw-flex tw-items-center tw-gap-2" key={index}>
-              <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
-              {data.link ? (
-                <Link className="tw-font-medium" to={data.link}>
-                  {data.data}
-                </Link>
-              ) : (
-                <p className="tw-font-medium">{data.data}</p>
-              )}
-            </div>
-          ))}
+        {Object.values(dataSummary).map((data, index) => (
+          <div className="tw-flex tw-items-center tw-gap-2" key={index}>
+            <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
+            {data.link ? (
+              <Link className="tw-font-medium" to={data.link}>
+                {data.data}
+              </Link>
+            ) : (
+              <p className="tw-font-medium">{data.data}</p>
+            )}
+          </div>
+        ))}
       </div>
-      <div className="tw-flex tw-gap-5 tw-mb-7">
-        {Object.values(dataSummary)
-          .slice(3)
-          .map((data, index) => (
-            <div className="tw-flex tw-items-center tw-gap-2" key={index}>
-              <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
-              {data.link ? (
-                <Link className="tw-font-medium" to={data.link}>
-                  {data.data}
-                </Link>
-              ) : (
-                <p className="tw-font-medium">{data.data}</p>
-              )}
-            </div>
-          ))}
-      </div>
+
       <div className="tw-flex tw-gap-10">
         {LANDING_STATES.map((d, i) => (
           <div
