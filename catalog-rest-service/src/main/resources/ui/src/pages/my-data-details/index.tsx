@@ -51,8 +51,10 @@ import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import useToastContext from '../../hooks/useToastContext';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
@@ -312,6 +314,7 @@ const MyDataDetailsPage = () => {
         tags,
         sampleData,
       } = res.data;
+      addToRecentViewed({ id, timestamp: 0, entityType: EntityType.DATASET });
       setTableDetails(res.data);
       setTableId(id);
       setTier(getTierFromTableTags(tags));

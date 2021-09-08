@@ -19,7 +19,12 @@ import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -103,6 +108,7 @@ const MyTopicDetailPage = () => {
           tags,
           owner,
         } = res.data;
+        addToRecentViewed({ id, timestamp: 0, entityType: EntityType.TOPIC });
         setTopicDetails(res.data);
         setTopicId(id);
         setDescription(description ?? '');

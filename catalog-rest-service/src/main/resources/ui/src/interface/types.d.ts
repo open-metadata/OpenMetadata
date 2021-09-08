@@ -201,11 +201,10 @@ declare module 'Models' {
     owner: string;
     tableType?: string;
     tags: string[];
-    tableEntity: TableEntity;
-    dailyStats: number;
-    dailyPercentileRank: number;
-    weeklyStats: number;
-    weeklyPercentileRank: number;
+    dailyStats?: number;
+    dailyPercentileRank?: number;
+    weeklyStats?: number;
+    weeklyPercentileRank?: number;
     service?: string;
     serviceType?: string;
     tier: string;
@@ -377,4 +376,13 @@ declare module 'Models' {
   }
 
   // topic interface end
+
+  interface RecentlyViewedData {
+    id: string;
+    timestamp: number;
+    entityType: 'dataset' | 'topic' | 'dashboard';
+  }
+  export interface RecentlyViewed {
+    data: Array<RecentlyViewedData>;
+  }
 }

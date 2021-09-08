@@ -24,9 +24,11 @@ import ManageTab from '../../components/my-data-details/ManageTab';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
 import { getServiceDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getUserTeams,
   isEven,
@@ -153,6 +155,7 @@ const MyDashBoardPage = () => {
         displayName,
         charts,
       } = res.data;
+      addToRecentViewed({ id, timestamp: 0, entityType: EntityType.DASHBOARD });
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');

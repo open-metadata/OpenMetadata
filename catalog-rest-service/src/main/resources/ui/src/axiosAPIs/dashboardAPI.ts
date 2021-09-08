@@ -33,6 +33,15 @@ export const getDashboards: Function = (
   return APIClient.get(url);
 };
 
+export const getDashboardDetails: Function = (
+  id: string,
+  arrQueryFields: string
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/dashboards/${id}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
 export const getDashboardByFqn: Function = (
   fqn: string,
   arrQueryFields: string

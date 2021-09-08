@@ -25,6 +25,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
+import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
 import SearchedData from '../../components/searched-data/SearchedData';
 import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
@@ -41,7 +42,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
@@ -119,7 +120,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               setFilter('');
               setCurrentPage(1);
             }}>
-            All
+            Recently Viewed
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -174,6 +175,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               data={data}
               paginate={paginate}
               searchText="*"
+              showOnlyChildren={currentTab === 1}
               showResultCount={filter && data.length > 0 ? true : false}
               totalValue={totalNumberOfValue}>
               <>
@@ -185,6 +187,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
                   )}
                 />
                 {getTabs()}
+                {currentTab === 1 ? <RecentlyViewed /> : null}
               </>
             </SearchedData>
           )}
