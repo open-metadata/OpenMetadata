@@ -100,6 +100,7 @@ const MyTopicDetailPage = () => {
           id,
           description,
           followers,
+          fullyQualifiedName,
           name,
           partitions,
           schemaType,
@@ -108,7 +109,11 @@ const MyTopicDetailPage = () => {
           tags,
           owner,
         } = res.data;
-        addToRecentViewed({ id, timestamp: 0, entityType: EntityType.TOPIC });
+        addToRecentViewed({
+          fqn: fullyQualifiedName,
+          timestamp: 0,
+          entityType: EntityType.TOPIC,
+        });
         setTopicDetails(res.data);
         setTopicId(id);
         setDescription(description ?? '');

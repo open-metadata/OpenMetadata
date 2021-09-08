@@ -378,7 +378,7 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
-    id: string;
+    fqn: string;
     timestamp: number;
     entityType: 'dataset' | 'topic' | 'dashboard';
   }

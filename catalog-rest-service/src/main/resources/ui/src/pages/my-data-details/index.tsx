@@ -310,11 +310,16 @@ const MyDataDetailsPage = () => {
         owner,
         usageSummary,
         followers,
+        fullyQualifiedName,
         joins,
         tags,
         sampleData,
       } = res.data;
-      addToRecentViewed({ id, timestamp: 0, entityType: EntityType.DATASET });
+      addToRecentViewed({
+        fqn: fullyQualifiedName,
+        timestamp: 0,
+        entityType: EntityType.DATASET,
+      });
       setTableDetails(res.data);
       setTableId(id);
       setTier(getTierFromTableTags(tags));

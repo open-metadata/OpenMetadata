@@ -113,7 +113,7 @@ export const addToRecentViewed = (eData: RecentlyViewedData): void => {
   ) as RecentlyViewed;
   if (recentlyViewed?.data) {
     const arrData = recentlyViewed.data
-      .filter((item) => item.id !== entityData.id)
+      .filter((item) => item.fqn !== entityData.fqn)
       .sort(
         arraySorterByKey('timestamp', true) as (
           a: RecentlyViewedData,

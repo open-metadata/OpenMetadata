@@ -17,9 +17,9 @@
 
 import { ColumnTags, FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { getDashboardDetails } from '../../axiosAPIs/dashboardAPI';
-import { getTableDetails } from '../../axiosAPIs/tableAPI';
-import { getTopicDetails } from '../../axiosAPIs/topicsAPI';
+import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
+import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { getRecentlyViewedData } from '../../utils/CommonUtils';
@@ -40,8 +40,8 @@ const RecentlyViewed: FunctionComponent = () => {
       // const oData = recentlyViewedData[i];
       switch (oData.entityType) {
         case EntityType.DATASET: {
-          const res = await getTableDetails(
-            oData.id,
+          const res = await getTableDetailsByFQN(
+            oData.fqn,
             'database, usageSummary, tags, owner'
           );
 
@@ -70,7 +70,7 @@ const RecentlyViewed: FunctionComponent = () => {
           break;
         }
         case EntityType.TOPIC: {
-          const res = await getTopicDetails(oData.id, 'owner, service, tags');
+          const res = await getTopicByFqn(oData.fqn, 'owner, service, tags');
 
           const { description, id, name, tags, owner, fullyQualifiedName } =
             res.data;
@@ -88,19 +88,25 @@ const RecentlyViewed: FunctionComponent = () => {
           break;
         }
         case EntityType.DASHBOARD: {
-          const res = await getDashboardDetails(
-            oData.id,
+          const res = await getDashboardByFqn(
+            oData.fqn,
             'owner, service, tags, usageSummary'
           );
 
-          const { description, id, name, tags, owner, fullyQualifiedName } =
-            res.data;
+          const {
+            description,
+            id,
+            displayName,
+            tags,
+            owner,
+            fullyQualifiedName,
+          } = res.data;
           arrData.push({
             description,
             fullyQualifiedName,
             id,
             index: SearchIndex.DASHBOARD,
-            name,
+            name: displayName,
             owner: getOwnerFromId(owner?.id)?.name || '--',
             tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
             tier: getTierFromTableTags(tags as Array<ColumnTags>),

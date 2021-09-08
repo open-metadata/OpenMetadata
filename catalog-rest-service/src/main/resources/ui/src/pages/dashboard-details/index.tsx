@@ -149,13 +149,18 @@ const MyDashBoardPage = () => {
         id,
         description,
         followers,
+        fullyQualifiedName,
         service,
         tags,
         owner,
         displayName,
         charts,
       } = res.data;
-      addToRecentViewed({ id, timestamp: 0, entityType: EntityType.DASHBOARD });
+      addToRecentViewed({
+        fqn: fullyQualifiedName,
+        timestamp: 0,
+        entityType: EntityType.DASHBOARD,
+      });
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');
