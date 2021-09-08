@@ -63,7 +63,6 @@ module.exports = {
       borderColor: {
         'orange-400': '#F9826C',
         main: mainBorder,
-        separator: mainSeparator,
         text: textBody,
         hover: textBody,
         focus: primary,
@@ -92,6 +91,7 @@ module.exports = {
         warning: warning,
         'warning-lite': warningBG,
         info: info,
+        separator: mainSeparator,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],

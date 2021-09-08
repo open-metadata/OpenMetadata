@@ -47,7 +47,7 @@ module.exports = {
       // .js and .jsx files to be handled by babel-loader
       {
         test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
+        // exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
@@ -80,7 +80,7 @@ module.exports = {
       },
       //
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
+        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff)$/i,
         use: [
           {
             loader: 'url-loader',
@@ -89,7 +89,7 @@ module.exports = {
             },
           },
         ],
-        exclude: /node_modules/, // Just the source code
+        // exclude: /node_modules/, // Just the source code
       },
       // Font files to be handled by file-loader
       {
@@ -103,7 +103,7 @@ module.exports = {
             },
           },
         ],
-        exclude: /node_modules/, // Just the source code
+        // exclude: /node_modules/, // Just the source code
       },
     ],
   },

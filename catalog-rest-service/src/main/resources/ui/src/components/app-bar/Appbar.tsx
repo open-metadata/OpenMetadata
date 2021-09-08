@@ -40,6 +40,7 @@ import {
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
+import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
@@ -54,6 +55,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -131,6 +133,12 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </div>
             </div>
+            <button
+              className="tw-nav focus:tw-no-underline"
+              style={navStyle(location.pathname.startsWith('/documents'))}
+              onClick={() => setIsModalOpen(true)}>
+              <span>What&#39;s new</span>
+            </button>
             <NavLink
               className="tw-nav focus:tw-no-underline"
               data-testid="appbar-item"
@@ -178,6 +186,12 @@ const Appbar: React.FC = (): JSX.Element => {
               />
             </div>
           </div>
+          {isModalOpen && (
+            <WhatsNewModal
+              header="What’s new!"
+              onCancel={() => setIsModalOpen(false)}
+            />
+          )}
         </div>
       ) : null}
     </>

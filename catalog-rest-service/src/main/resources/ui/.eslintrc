@@ -65,7 +65,7 @@
     // Maximum line length for comments
     // Trailing comments allowed beyond maximum line length
     "max-len": [
-      "error",
+      "warn",
       { "code": 200, "comments": 100, "ignoreTrailingComments": true }
     ],
 

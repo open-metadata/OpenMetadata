@@ -299,4 +299,18 @@
   .text-highlighter {
     @apply tw-bg-warning-lite tw-p-1;
   }
+
+  /* react-slick */
+
+  .slick-dots li button:before {
+    @apply tw-text-base;
+  }
+
+  .slick-dots li button:before {
+    @apply tw-text-separator tw-opacity-100;
+  }
+
+  .slick-dots li.slick-active button:before {
+    @apply tw-text-primary tw-opacity-100 !important;
+  }
 }
