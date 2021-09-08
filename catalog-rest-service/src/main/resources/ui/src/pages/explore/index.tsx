@@ -46,6 +46,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
+import SVGIcons from '../../utils/SvgUtils';
 import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
 import { Params } from './explore.interface';
 
@@ -469,6 +470,11 @@ const ExplorePage: React.FC = (): React.ReactElement => {
                 onClick={() => {
                   onTabChange(tab.tab);
                 }}>
+                <SVGIcons
+                  alt="icon"
+                  className="tw-h-4 tw-w-4 tw-mr-2"
+                  icon={tab.icon}
+                />
                 {tab.label}
                 {getTabCount(tab.index)}
               </button>
