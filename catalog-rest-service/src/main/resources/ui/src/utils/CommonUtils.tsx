@@ -1,7 +1,9 @@
 import { isEmpty } from 'lodash';
-import { UserTeam } from 'Models';
+import { RecentlyViewed, RecentlyViewedData, UserTeam } from 'Models';
 import React from 'react';
+import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
+import { LOCALSTORAGE_RECENTLY_VIEWED } from '../constants/constants';
 import { countBackground } from './styleconstant';
 
 export const arraySorterByKey = (
@@ -102,4 +104,44 @@ export const getCountBadge = (count = 0) => {
       <span data-testid="filter-count">{count}</span>
     </span>
   );
+};
+
+export const addToRecentViewed = (eData: RecentlyViewedData): void => {
+  const entityData = { ...eData, timestamp: Date.now() };
+  let recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_VIEWED
+  ) as RecentlyViewed;
+  if (recentlyViewed?.data) {
+    const arrData = recentlyViewed.data
+      .filter((item) => item.fqn !== entityData.fqn)
+      .sort(
+        arraySorterByKey('timestamp', true) as (
+          a: RecentlyViewedData,
+          b: RecentlyViewedData
+        ) => number
+      );
+    arrData.unshift(entityData);
+
+    if (arrData.length > 5) {
+      arrData.pop();
+    }
+    recentlyViewed.data = arrData;
+  } else {
+    recentlyViewed = {
+      data: [entityData],
+    };
+  }
+  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, recentlyViewed);
+};
+
+export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
+  const recentlyViewed: RecentlyViewed = reactLocalStorage.getObject(
+    LOCALSTORAGE_RECENTLY_VIEWED
+  ) as RecentlyViewed;
+
+  if (recentlyViewed?.data) {
+    return recentlyViewed.data;
+  }
+
+  return [];
 };

@@ -165,3 +165,26 @@ export const getEntityLink = (
       return getDatasetDetailsPath(fullyQualifiedName);
   }
 };
+
+export const getEntityIcon = (indexType: string) => {
+  let icon = '';
+  switch (indexType) {
+    case SearchIndex.TOPIC:
+      icon = 'topic';
+
+      break;
+
+    case SearchIndex.DASHBOARD:
+      icon = 'dashboard';
+
+      break;
+
+    case SearchIndex.TABLE:
+    default:
+      icon = 'table';
+
+      break;
+  }
+
+  return <SVGIcons alt={icon} icon={icon} width="14" />;
+};

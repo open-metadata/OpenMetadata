@@ -127,7 +127,7 @@ cd openmetadata-0.3.0-SNAPSHOT
      GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
      commit;
      ```
-2. Run bootstrap scripts to initiate the database and tables
+2. Run bootstrap scripts to initialize the database and tables
 
    ```text
       cd openmetadata-0.3.0
@@ -143,7 +143,7 @@ cd openmetadata-0.3.0-SNAPSHOT
 
 ### Ingest Sample Data
 
-Previous steps start OpenMetadata server. To start using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide
+Previous steps start OpenMetadata server. To start using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide:
 
 [Ingest Sample Data](metadata-ingestion/ingest-sample-data.md)
 

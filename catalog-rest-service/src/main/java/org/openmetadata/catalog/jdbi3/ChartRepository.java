@@ -25,6 +25,7 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
+import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -79,29 +80,45 @@ public abstract class ChartRepository {
 
 
   @Transaction
-  public List<Chart> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+  public ChartList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
           GeneralSecurityException {
-    // forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = chartDAO().listAfter(serviceName, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = chartDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Chart> charts = new ArrayList<>();
     for (String json : jsons) {
       charts.add(setFields(JsonUtils.readValue(json, Chart.class), fields));
     }
-    return charts;
+    int total = chartDAO().listCount(serviceName);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : charts.get(0).getFullyQualifiedName();
+    if (charts.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      charts.remove(limitParam);
+      afterCursor = charts.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new ChartList(charts, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Chart> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
+  public ChartList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
           GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = chartDAO().listBefore(serviceName, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = chartDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
     List<Chart> charts = new ArrayList<>();
     for (String json : jsons) {
       charts.add(setFields(JsonUtils.readValue(json, Chart.class), fields));
     }
-    return charts;
+    int total = chartDAO().listCount(serviceName);
+
+    String beforeCursor = null, afterCursor;
+    if (charts.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      charts.remove(0);
+      beforeCursor = charts.get(0).getFullyQualifiedName();
+    }
+    afterCursor = charts.get(charts.size() - 1).getFullyQualifiedName();
+    return new ChartList(charts, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -140,7 +157,7 @@ public abstract class ChartRepository {
     String fqn = getFQN(service, updatedChart);
     Chart storedDB = JsonUtils.readValue(chartDAO().findByFQN(fqn), Chart.class);
     if (storedDB == null) {  // Chart does not exist. Create a new one
-      return new PutResponse<Chart>(Status.CREATED, createInternal(updatedChart, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updatedChart, service, newOwner));
     }
     // Update the existing chart
     EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
@@ -306,6 +323,10 @@ public abstract class ChartRepository {
 
     @SqlQuery("SELECT json FROM chart_entity WHERE id = :id")
     String findById(@Bind("id") String id);
+
+    @SqlQuery("SELECT count(*) FROM chart_entity WHERE " +
+            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+    int listCount(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery(
             "SELECT json FROM (" +

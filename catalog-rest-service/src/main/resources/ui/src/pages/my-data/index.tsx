@@ -18,30 +18,38 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData, SearchResponse } from 'Models';
+import { Bucket, FormatedTableData, SearchResponse, Sterm } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
+import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
 import SearchedData from '../../components/searched-data/SearchedData';
-import { ERROR404, ERROR500, PAGE_SIZE } from '../../constants/constants';
+import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getAllServices } from '../../utils/ServiceUtils';
+import {
+  getAllServices,
+  getEntityCountByService,
+} from '../../utils/ServiceUtils';
 
 const MyDataPage: React.FC = (): React.ReactElement => {
   const showToast = useToastContext();
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
+  const [aggregations, setAggregations] = useState<Record<string, Sterm>>();
+  const [searchIndex] = useState<string>(
+    'dashboard_search_index,topic_search_index,table_search_index'
+  );
   const [countServices, setCountServices] = useState<number>(0);
   const [countAssets, setCountAssets] = useState<number>(0);
   const isMounted = useRef<boolean>(false);
@@ -65,7 +73,15 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   const fetchTableData = (setAssetCount = false) => {
     setIsLoading(true);
-    searchData('', currentPage, PAGE_SIZE, filter ? getFilters() : '')
+    searchData(
+      '',
+      currentPage,
+      PAGE_SIZE,
+      filter ? getFilters() : '',
+      '',
+      '',
+      searchIndex
+    )
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
         const total = res.data.hits.total.value;
@@ -74,6 +90,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           setData(formatDataResponse(hits));
           if (setAssetCount) {
             setCountAssets(total);
+            setAggregations(res.data.aggregations);
           }
           setIsLoading(false);
         } else {
@@ -83,12 +100,11 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         }
       })
       .catch((err: AxiosError) => {
-        setError(ERROR404);
+        setError(err.response?.data?.responseMessage);
         showToast({
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
-
         setIsLoading(false);
       });
   };
@@ -104,7 +120,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               setFilter('');
               setCurrentPage(1);
             }}>
-            All
+            Recently Viewed
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -151,7 +167,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
       ) : (
         <>
           {error ? (
-            <ErrorPlaceHolderES type="error" />
+            <ErrorPlaceHolderES errorMessage={error} type="error" />
           ) : (
             <SearchedData
               showOnboardingTemplate
@@ -159,14 +175,19 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               data={data}
               paginate={paginate}
               searchText="*"
+              showOnlyChildren={currentTab === 1}
               showResultCount={filter && data.length > 0 ? true : false}
               totalValue={totalNumberOfValue}>
               <>
                 <MyDataHeader
                   countAssets={countAssets}
                   countServices={countServices}
+                  entityCounts={getEntityCountByService(
+                    aggregations?.['sterms#Service']?.buckets as Bucket[]
+                  )}
                 />
                 {getTabs()}
+                {currentTab === 1 ? <RecentlyViewed /> : null}
               </>
             </SearchedData>
           )}

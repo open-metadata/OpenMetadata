@@ -11,7 +11,7 @@ import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.inter
 
 type ExtraInfo = {
   key: string;
-  value: string;
+  value: string | number;
 };
 
 type Props = {
@@ -44,6 +44,23 @@ const EntityPageInfo = ({
   const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
     tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsEditable(false);
+  };
+
+  const getSelectedTags = () => {
+    return tier
+      ? [
+          ...tags.map((tag) => ({
+            tagFQN: tag.tagFQN,
+            isRemovable: true,
+          })),
+          { tagFQN: tier, isRemovable: false },
+        ]
+      : [
+          ...tags.map((tag) => ({
+            tagFQN: tag.tagFQN,
+            isRemovable: true,
+          })),
+        ];
   };
 
   return (
@@ -144,13 +161,7 @@ const EntityPageInfo = ({
           <div onClick={() => setIsEditable(true)}>
             <TagsContainer
               editable={isEditable}
-              selectedTags={[
-                ...tags.map((tag) => ({
-                  tagFQN: tag.tagFQN,
-                  isRemovable: true,
-                })),
-                { tagFQN: tier, isRemovable: false },
-              ]}
+              selectedTags={getSelectedTags()}
               showTags={!isTagEditable}
               tagList={tagList}
               onCancel={() => {

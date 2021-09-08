@@ -91,6 +91,10 @@
       "description": "Retention time in milliseconds. For Kafka - `retention.ms` configuration.",
       "type" : "number"
     },
+    "replicationFactor": {
+      "description": "Replication Factor in integer (more than 1).",
+      "type" : "integer"
+    },
     "maximumMessageSize" : {
       "description": "Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.",
       "type" : "integer"

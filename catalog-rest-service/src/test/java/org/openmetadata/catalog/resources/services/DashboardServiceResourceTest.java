@@ -191,7 +191,8 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
     String id = dbService.getId().toString();
 
     // Update dashboard description and ingestion service that are null
-    UpdateDashboardService update = new UpdateDashboardService().withDescription("description1");
+    UpdateDashboardService update = new UpdateDashboardService().withDescription("description1")
+            .withDashboardUrl(new URI("http://localhost:8080")).withUsername("user").withPassword("password");
     updateAndCheckService(id, update, OK, adminAuthHeaders());
     // Update ingestion schedule
     Schedule schedule = new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D");

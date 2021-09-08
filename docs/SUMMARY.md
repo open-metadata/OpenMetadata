@@ -2,6 +2,7 @@
 
 * [Introduction](README.md)
 * [Try OpenMetadata](take-it-for-a-spin.md)
+* [Roadmap](roadmap.md)
 
 ## OpenMetadata APIs
 
@@ -38,6 +39,7 @@
   * [Overview](openmetadata-apis/apis/overview.md)
   * [API Organization](openmetadata-apis/apis/api-organization.md)
   * [Implementation notes](openmetadata-apis/apis/implementation-notes.md)
+  
 
 ## Install
 

@@ -21,6 +21,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
+import looker from '../assets/img/service-icon-looker.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -30,6 +31,7 @@ import query from '../assets/img/service-icon-query.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
+import superset from '../assets/img/service-icon-superset.png';
 import plus from '../assets/svg/plus.svg';
 import { ServiceCategory } from '../enums/service.enum';
 
@@ -45,6 +47,8 @@ export const ATHENA = athena;
 export const PRESTO = presto;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
+export const SUPERSET = superset;
+export const LOOKER = looker;
 export const SERVICE_DEFAULT = serviceDefault;
 
 export const PLUS = plus;
@@ -64,16 +68,19 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Presto',
   ],
   messagingServices: ['Kafka', 'Pulsar'],
+  dashboardServices: ['Superset', 'Looker'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
   'databaseServices',
   'messagingServices',
+  'dashboardServices',
 ];
 
 export const servicesDisplayName = {
   databaseServices: 'Database Service',
   messagingServices: 'Messaging Service',
+  dashboardServices: 'Dashboard Service',
 };
 
 export const routeServiceTypes = [

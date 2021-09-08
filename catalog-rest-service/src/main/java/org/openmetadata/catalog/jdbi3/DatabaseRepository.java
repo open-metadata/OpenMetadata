@@ -28,6 +28,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
+import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -93,29 +94,45 @@ public abstract class DatabaseRepository {
   abstract UsageDAO usageDAO();
 
   @Transaction
-  public List<Database> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+  public DatabaseList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
           GeneralSecurityException {
-    // forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = databaseDAO().listAfter(serviceName, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = databaseDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Database> databases = new ArrayList<>();
     for (String json : jsons) {
       databases.add(setFields(JsonUtils.readValue(json, Database.class), fields));
     }
-    return databases;
+    int total = databaseDAO().listCount(serviceName);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : databases.get(0).getFullyQualifiedName();
+    if (databases.size() > limitParam) {
+      databases.remove(limitParam);
+      afterCursor = databases.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new DatabaseList(databases, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Database> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
+  public DatabaseList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
           GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = databaseDAO().listBefore(serviceName, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = databaseDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
     List<Database> databases = new ArrayList<>();
     for (String json : jsons) {
       databases.add(setFields(JsonUtils.readValue(json, Database.class), fields));
     }
-    return databases;
+    int total = databaseDAO().listCount(serviceName);
+
+    String beforeCursor = null, afterCursor;
+    if (databases.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      databases.remove(0);
+      beforeCursor = databases.get(0).getFullyQualifiedName();
+    }
+    afterCursor = databases.get(databases.size() - 1).getFullyQualifiedName();
+    return new DatabaseList(databases, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -309,6 +326,10 @@ public abstract class DatabaseRepository {
 
     @SqlQuery("SELECT json FROM database_entity WHERE id = :id")
     String findById(@Bind("id") String id);
+
+    @SqlQuery("SELECT count(*) FROM database_entity WHERE " +
+            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+    int listCount(@Bind("fqnPrefix") String fqnPrefix);
 
     @SqlQuery(
             "SELECT json FROM (" +

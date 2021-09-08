@@ -2,6 +2,7 @@
   "source": {
     "type": "snowflake",
     "config": {
+      
       "host_port": "account.region.service.snowflakecomputing.com",
       "username": "username",
       "password": "strong_password",
@@ -20,7 +21,7 @@
     "config": {}
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {}
   },
   "metadata_server": {

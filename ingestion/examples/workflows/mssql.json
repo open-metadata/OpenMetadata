@@ -4,9 +4,10 @@
     "config": {
       "host_port": "localhost:1433",
       "service_name": "local_mssql",
-      "database":"catalog_test",
+      "database": "catalog_test",
+      "query": "select top 50 * from {}.{}",
       "username": "sa",
-      "password": "test!Password`[",
+      "password": "test!Password",
       "filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
@@ -14,13 +15,11 @@
   },
   "processor": {
     "type": "pii",
-    "config": {
-    }
+    "config": {}
   },
   "sink": {
-    "type": "metadata-rest-tables",
-    "config": {
-    }
+    "type": "metadata-rest",
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",

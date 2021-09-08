@@ -33,6 +33,15 @@ export const getTopics: Function = (
   return APIClient.get(url);
 };
 
+export const getTopicDetails: Function = (
+  id: string,
+  arrQueryFields: string
+): Promise<AxiosResponse> => {
+  const url = getURLWithQueryFields(`/topics/${id}`, arrQueryFields);
+
+  return APIClient.get(url);
+};
+
 export const getTopicByFqn: Function = (
   fqn: string,
   arrQueryFields: string

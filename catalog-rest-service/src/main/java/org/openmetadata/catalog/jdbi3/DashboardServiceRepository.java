@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -71,13 +72,15 @@ public abstract class DashboardServiceRepository {
     return dashboardService;
   }
 
-  public DashboardService update(String id, String description, Schedule ingestionSchedule)
+  public DashboardService update(String id, String description, URI dashboardUrl, String username, String password,
+                                 Schedule ingestionSchedule)
           throws IOException {
     validateIngestionSchedule(ingestionSchedule);
     DashboardService dashboardService = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
             DashboardService.class);
     // Update fields
-    dashboardService.withDescription(description).withIngestionSchedule(ingestionSchedule);
+    dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
+            .withPassword(password).withIngestionSchedule(ingestionSchedule);
     dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }

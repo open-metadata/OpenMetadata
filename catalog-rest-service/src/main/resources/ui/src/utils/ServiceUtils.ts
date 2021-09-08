@@ -1,5 +1,5 @@
 import { AxiosResponse } from 'axios';
-import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
+import { Bucket, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
@@ -7,6 +7,7 @@ import {
   BIGQUERY,
   HIVE,
   KAFKA,
+  LOOKER,
   MSSQL,
   MYSQL,
   ORACLE,
@@ -17,8 +18,10 @@ import {
   serviceTypes,
   SERVICE_DEFAULT,
   SNOWFLAKE,
+  SUPERSET,
 } from '../constants/services.const';
 import {
+  DashboardServiceType,
   DatabaseServiceType,
   MessagingServiceType,
 } from '../enums/service.enum';
@@ -61,6 +64,12 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.PULSAR:
       return PULSAR;
+
+    case DashboardServiceType.SUPERSET:
+      return SUPERSET;
+
+    case DashboardServiceType.LOOKER:
+      return LOOKER;
 
     default:
       return SERVICE_DEFAULT;
@@ -160,4 +169,39 @@ export const getServiceCategoryFromType = (
   }
 
   return serviceCategory;
+};
+
+export const getEntityCountByService = (buckets: Array<Bucket>) => {
+  const entityCounts = { tableCount: 0, topicCount: 0, dashboardCount: 0 };
+  buckets?.forEach((bucket) => {
+    switch (bucket.key) {
+      case DatabaseServiceType.ATHENA:
+      case DatabaseServiceType.BIGQUERY:
+      case DatabaseServiceType.HIVE:
+      case DatabaseServiceType.MSSQL:
+      case DatabaseServiceType.MYSQL:
+      case DatabaseServiceType.ORACLE:
+      case DatabaseServiceType.POSTGRES:
+      case DatabaseServiceType.PRESTO:
+      case DatabaseServiceType.REDSHIFT:
+      case DatabaseServiceType.SNOWFLAKE:
+        entityCounts.tableCount += bucket.doc_count;
+
+        break;
+      case MessagingServiceType.KAFKA:
+      case MessagingServiceType.PULSAR:
+        entityCounts.topicCount += bucket.doc_count;
+
+        break;
+      case DashboardServiceType.SUPERSET:
+      case DashboardServiceType.LOOKER:
+        entityCounts.dashboardCount += bucket.doc_count;
+
+        break;
+      default:
+        break;
+    }
+  });
+
+  return entityCounts;
 };

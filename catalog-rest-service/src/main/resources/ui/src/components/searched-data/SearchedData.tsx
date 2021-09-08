@@ -20,7 +20,6 @@ import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
 import { pluralize } from '../../utils/CommonUtils';
 import {
   getOwnerFromId,
@@ -43,7 +42,7 @@ type SearchedDataProp = {
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
-  indexType?: string;
+  showOnlyChildren?: boolean;
 };
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
@@ -53,10 +52,10 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   paginate,
   showResultCount = false,
   showOnboardingTemplate = false,
+  showOnlyChildren = false,
   searchText,
   totalValue,
   fetchLeftPanel,
-  indexType = SearchIndex.TABLE,
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
@@ -73,7 +72,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
           <TableDataCard
             description={description}
             fullyQualifiedName={table.fullyQualifiedName}
-            indexType={indexType}
+            indexType={table.index}
             name={name}
             owner={getOwnerFromId(table.owner)?.name}
             serviceType={table.serviceType || '--'}
@@ -99,29 +98,33 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             <Loader />
           ) : (
             <>
-              {totalValue > 0 || showOnboardingTemplate ? (
+              {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
                 <>
                   {children}
-                  {showResultCount && searchText ? (
-                    <div className="tw-mb-1">
-                      {pluralize(totalValue, 'result')}
-                    </div>
-                  ) : null}
-                  {data.length > 0 ? (
-                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                      {highlightSearchResult()}
-                      {totalValue > PAGE_SIZE && data.length > 0 && (
-                        <Pagination
-                          currentPage={currentPage}
-                          paginate={paginate}
-                          sizePerPage={PAGE_SIZE}
-                          totalNumberOfValues={totalValue}
-                        />
+                  {!showOnlyChildren ? (
+                    <>
+                      {showResultCount && searchText ? (
+                        <div className="tw-mb-1">
+                          {pluralize(totalValue, 'result')}
+                        </div>
+                      ) : null}
+                      {data.length > 0 ? (
+                        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                          {highlightSearchResult()}
+                          {totalValue > PAGE_SIZE && data.length > 0 && (
+                            <Pagination
+                              currentPage={currentPage}
+                              paginate={paginate}
+                              sizePerPage={PAGE_SIZE}
+                              totalNumberOfValues={totalValue}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <Onboarding />
                       )}
-                    </div>
-                  ) : (
-                    <Onboarding />
-                  )}
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <ErrorPlaceHolderES type="noData" />

@@ -23,6 +23,7 @@ import {
   topicSortingFields,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { Icons } from '../../utils/SvgUtils';
 
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];
@@ -66,6 +67,8 @@ export const tabsInfo = [
     sortingFields: tableSortingFields,
     sortField: tableSortingFields[0].value,
     tab: 1,
+    path: 'tables',
+    icon: Icons.TABLE_GREY,
   },
   {
     label: 'Topics',
@@ -73,6 +76,8 @@ export const tabsInfo = [
     sortingFields: topicSortingFields,
     sortField: topicSortingFields[0].value,
     tab: 2,
+    path: 'topics',
+    icon: Icons.TOPIC_GREY,
   },
   {
     label: 'Dashboards',
@@ -80,5 +85,7 @@ export const tabsInfo = [
     sortingFields: topicSortingFields,
     sortField: topicSortingFields[0].value,
     tab: 3,
+    path: 'dashboards',
+    icon: Icons.DASHBOARD_GREY,
   },
 ];

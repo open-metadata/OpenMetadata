@@ -52,6 +52,7 @@ declare module 'Models' {
     id: string;
     brokers?: Array<string>;
     description: string;
+    dashboardUrl?: string;
     ingestionSchedule?: {
       repeatFrequency: string;
       startDate: string;
@@ -200,11 +201,10 @@ declare module 'Models' {
     owner: string;
     tableType?: string;
     tags: string[];
-    tableEntity: TableEntity;
-    dailyStats: number;
-    dailyPercentileRank: number;
-    weeklyStats: number;
-    weeklyPercentileRank: number;
+    dailyStats?: number;
+    dailyPercentileRank?: number;
+    weeklyStats?: number;
+    weeklyPercentileRank?: number;
     service?: string;
     serviceType?: string;
     tier: string;
@@ -212,6 +212,7 @@ declare module 'Models' {
       description: string[];
       table_name: string[];
     };
+    index: string;
   };
 
   export type NewUser = {
@@ -252,6 +253,7 @@ declare module 'Models' {
 
   export type Database = {
     description: string;
+    displayName?: string;
     fullyQualifiedName: string;
     href: string;
     id: string;
@@ -316,7 +318,10 @@ declare module 'Models' {
     };
   };
 
-  export type ServiceTypes = 'databaseServices' | 'messagingServices';
+  export type ServiceTypes =
+    | 'databaseServices'
+    | 'messagingServices'
+    | 'dashboardServices';
 
   export type ServiceRecord = Record<ServiceTypes, Array<ServiceDataObj>>;
 
@@ -371,4 +376,14 @@ declare module 'Models' {
   }
 
   // topic interface end
+
+  interface RecentlyViewedData {
+    entityType: 'dataset' | 'topic' | 'dashboard';
+    fqn: string;
+    serviceType?: string;
+    timestamp: number;
+  }
+  export interface RecentlyViewed {
+    data: Array<RecentlyViewedData>;
+  }
 }

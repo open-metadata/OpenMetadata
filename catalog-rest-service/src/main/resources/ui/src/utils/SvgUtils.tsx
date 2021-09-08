@@ -3,6 +3,9 @@ import IconGoogle from '../assets/img/google-icon.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconConfig from '../assets/svg/config.svg';
+import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
+import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
@@ -46,7 +49,11 @@ import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconTableGrey from '../assets/svg/table-grey.svg';
+import IconTable from '../assets/svg/table.svg';
 import IconTerns from '../assets/svg/terms.svg';
+import IconTopicGrey from '../assets/svg/topic-grey.svg';
+import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
@@ -108,6 +115,13 @@ export const Icons = {
   DOC: 'doc',
   API: 'api',
   WHATS_NEW: 'whats-new',
+  TABLE: 'table',
+  TOPIC: 'topic',
+  DASHBOARD: 'dashboard',
+  TABLE_GREY: 'table-grey',
+  TOPIC_GREY: 'topic-grey',
+  DASHBOARD_GREY: 'dashboard-grey',
+  CONFIG: 'icon-config',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -320,6 +334,34 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.WHATS_NEW:
       IconComponent = IconWhatsNew;
+
+      break;
+    case Icons.TABLE:
+      IconComponent = IconTable;
+
+      break;
+    case Icons.TOPIC:
+      IconComponent = IconTopic;
+
+      break;
+    case Icons.DASHBOARD:
+      IconComponent = IconDashboard;
+
+      break;
+    case Icons.TABLE_GREY:
+      IconComponent = IconTableGrey;
+
+      break;
+    case Icons.TOPIC_GREY:
+      IconComponent = IconTopicGrey;
+
+      break;
+    case Icons.DASHBOARD_GREY:
+      IconComponent = IconDashboardGrey;
+
+      break;
+    case Icons.CONFIG:
+      IconComponent = IconConfig;
 
       break;
 

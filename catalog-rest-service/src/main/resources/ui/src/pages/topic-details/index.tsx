@@ -19,7 +19,12 @@ import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -44,6 +49,11 @@ const MyTopicDetailPage = () => {
   const [tags, setTags] = useState<Array<ColumnTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [partitions, setPartitions] = useState<number>(0);
+  const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
+  const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
+  const [replicationFactor, setReplicationFactor] = useState<number>(0);
+  const [retentionSize, setRetentionSize] = useState<number>(0);
+
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [schemaText, setSchemaText] = useState<string>('{}');
   const [slashedTopicName, setSlashedTopicName] = useState<
@@ -79,6 +89,16 @@ const MyTopicDetailPage = () => {
       protectedState: !owner || hasEditAccess(),
       position: 2,
     },
+    {
+      name: 'Config',
+      icon: {
+        alt: 'config',
+        name: 'icon-config',
+        title: 'Config',
+      },
+      isProtected: false,
+      position: 3,
+    },
   ];
   const fetchTags = () => {
     getTagCategories().then((res) => {
@@ -95,24 +115,33 @@ const MyTopicDetailPage = () => {
           id,
           description,
           followers,
+          fullyQualifiedName,
           name,
-          partitions,
           schemaType,
           schemaText,
           service,
           tags,
           owner,
+          partitions,
+          cleanupPolicies,
+          maximumMessageSize,
+          replicationFactor,
+          retentionSize,
         } = res.data;
         setTopicDetails(res.data);
         setTopicId(id);
         setDescription(description ?? '');
         setSchemaType(schemaType);
-        setPartitions(partitions);
         setFollowers(followers?.length);
         setOwner(getOwnerFromId(owner?.id));
         setTier(getTierFromTableTags(tags));
         setTags(getTagsWithoutTier(tags));
         setSchemaText(schemaText);
+        setPartitions(partitions);
+        setCleanupPolicies(cleanupPolicies);
+        setMaximumMessageSize(maximumMessageSize);
+        setReplicationFactor(replicationFactor);
+        setRetentionSize(retentionSize);
         setIsFollowing(
           followers.some(({ id }: { id: string }) => id === USERId)
         );
@@ -137,6 +166,13 @@ const MyTopicDetailPage = () => {
                 activeTitle: true,
               },
             ]);
+
+            addToRecentViewed({
+              entityType: EntityType.TOPIC,
+              fqn: fullyQualifiedName,
+              serviceType: serviceRes.data.serviceType,
+              timestamp: 0,
+            });
           }
         );
         setLoading(false);
@@ -252,6 +288,16 @@ const MyTopicDetailPage = () => {
     );
   };
 
+  const getConfigDetails = () => {
+    return [
+      { key: 'Partitions', value: partitions },
+      { key: 'Replication Factor', value: replicationFactor },
+      { key: 'Retention Size', value: retentionSize.toLocaleString() },
+      { key: 'CleanUp Policies', value: cleanupPolicies.join() },
+      { key: 'Max Message Size', value: maximumMessageSize },
+    ];
+  };
+
   useEffect(() => {
     fetchTopicDetail(topicFQN);
   }, [topicFQN]);
@@ -288,7 +334,7 @@ const MyTopicDetailPage = () => {
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw--mx-4 tw-p-4">
+            <div className="tw-bg-white tw--mx-4 tw-p-4 tw-min-h-tab">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
@@ -304,10 +350,7 @@ const MyTopicDetailPage = () => {
                       />
                     </div>
                   </div>
-                  {getInfoBadge([
-                    { key: 'Schema', value: schemaType },
-                    { key: 'Partitions', value: partitions },
-                  ])}
+                  {getInfoBadge([{ key: 'Schema', value: schemaType }])}
                   <div className="tw-my-4 tw-border tw-border-main tw-rounded-md tw-py-4">
                     <SchemaEditor value={schemaText} />
                   </div>
@@ -320,6 +363,18 @@ const MyTopicDetailPage = () => {
                   hasEditAccess={hasEditAccess()}
                   onSave={onSettingsUpdate}
                 />
+              )}
+              {activeTab === 3 && (
+                <div className="tw-grid tw-grid-cols-5 tw-gap-2 ">
+                  {getConfigDetails().map((config, index) => (
+                    <div
+                      className="tw-card tw-py-2 tw-px-3 tw-group"
+                      key={index}>
+                      <p className="tw-text-grey-muted">{config.key}</p>
+                      <p className="tw-text-lg">{config.value}</p>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
