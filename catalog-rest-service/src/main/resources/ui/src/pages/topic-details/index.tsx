@@ -19,7 +19,12 @@ import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { getCurrentUserId, getUserTeams } from '../../utils/CommonUtils';
+import { EntityType } from '../../enums/entity.enum';
+import {
+  addToRecentViewed,
+  getCurrentUserId,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -95,6 +100,7 @@ const MyTopicDetailPage = () => {
           id,
           description,
           followers,
+          fullyQualifiedName,
           name,
           partitions,
           schemaType,
@@ -137,6 +143,13 @@ const MyTopicDetailPage = () => {
                 activeTitle: true,
               },
             ]);
+
+            addToRecentViewed({
+              entityType: EntityType.TOPIC,
+              fqn: fullyQualifiedName,
+              serviceType: serviceRes.data.serviceType,
+              timestamp: 0,
+            });
           }
         );
         setLoading(false);

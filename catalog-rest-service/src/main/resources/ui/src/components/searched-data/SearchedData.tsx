@@ -42,6 +42,7 @@ type SearchedDataProp = {
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
+  showOnlyChildren?: boolean;
 };
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
@@ -51,6 +52,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   paginate,
   showResultCount = false,
   showOnboardingTemplate = false,
+  showOnlyChildren = false,
   searchText,
   totalValue,
   fetchLeftPanel,
@@ -96,29 +98,33 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             <Loader />
           ) : (
             <>
-              {totalValue > 0 || showOnboardingTemplate ? (
+              {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
                 <>
                   {children}
-                  {showResultCount && searchText ? (
-                    <div className="tw-mb-1">
-                      {pluralize(totalValue, 'result')}
-                    </div>
-                  ) : null}
-                  {data.length > 0 ? (
-                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                      {highlightSearchResult()}
-                      {totalValue > PAGE_SIZE && data.length > 0 && (
-                        <Pagination
-                          currentPage={currentPage}
-                          paginate={paginate}
-                          sizePerPage={PAGE_SIZE}
-                          totalNumberOfValues={totalValue}
-                        />
+                  {!showOnlyChildren ? (
+                    <>
+                      {showResultCount && searchText ? (
+                        <div className="tw-mb-1">
+                          {pluralize(totalValue, 'result')}
+                        </div>
+                      ) : null}
+                      {data.length > 0 ? (
+                        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                          {highlightSearchResult()}
+                          {totalValue > PAGE_SIZE && data.length > 0 && (
+                            <Pagination
+                              currentPage={currentPage}
+                              paginate={paginate}
+                              sizePerPage={PAGE_SIZE}
+                              totalNumberOfValues={totalValue}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <Onboarding />
                       )}
-                    </div>
-                  ) : (
-                    <Onboarding />
-                  )}
+                    </>
+                  ) : null}
                 </>
               ) : (
                 <ErrorPlaceHolderES type="noData" />

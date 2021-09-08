@@ -24,9 +24,11 @@ import ManageTab from '../../components/my-data-details/ManageTab';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
 import { getServiceDetailsPath } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getUserTeams,
   isEven,
@@ -147,6 +149,7 @@ const MyDashBoardPage = () => {
         id,
         description,
         followers,
+        fullyQualifiedName,
         service,
         tags,
         owner,
@@ -182,6 +185,13 @@ const MyDashBoardPage = () => {
               activeTitle: true,
             },
           ]);
+
+          addToRecentViewed({
+            entityType: EntityType.DASHBOARD,
+            fqn: fullyQualifiedName,
+            serviceType: serviceRes.data.serviceType,
+            timestamp: 0,
+          });
         }
       );
       fetchCharts(charts).then((charts) => setCharts(charts));

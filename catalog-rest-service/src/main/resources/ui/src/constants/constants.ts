@@ -21,6 +21,7 @@ export const API_RES_MAX_SIZE = 100000;
 export const LIST_SIZE = 5;
 export const SIDEBAR_WIDTH_COLLAPSED = 290;
 export const SIDEBAR_WIDTH_EXPANDED = 290;
+export const LOCALSTORAGE_RECENTLY_VIEWED = 'recentlyViewedData';
 export const oidcTokenKey = 'oidcIdToken';
 export const imageTypes = {
   image: 's96-c',

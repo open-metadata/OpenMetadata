@@ -51,8 +51,10 @@ import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
 import useToastContext from '../../hooks/useToastContext';
 import {
+  addToRecentViewed,
   getCurrentUserId,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
@@ -308,6 +310,7 @@ const MyDataDetailsPage = () => {
         owner,
         usageSummary,
         followers,
+        fullyQualifiedName,
         joins,
         tags,
         sampleData,
@@ -347,6 +350,13 @@ const MyDataDetailsPage = () => {
                 activeTitle: true,
               },
             ]);
+
+            addToRecentViewed({
+              entityType: EntityType.DATASET,
+              fqn: fullyQualifiedName,
+              serviceType: resService.data.serviceType,
+              timestamp: 0,
+            });
           }
         );
       });
