@@ -378,9 +378,10 @@ declare module 'Models' {
   // topic interface end
 
   interface RecentlyViewedData {
-    fqn: string;
-    timestamp: number;
     entityType: 'dataset' | 'topic' | 'dashboard';
+    fqn: string;
+    serviceType?: string;
+    timestamp: number;
   }
   export interface RecentlyViewed {
     data: Array<RecentlyViewedData>;

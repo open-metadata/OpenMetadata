@@ -156,11 +156,6 @@ const MyDashBoardPage = () => {
         displayName,
         charts,
       } = res.data;
-      addToRecentViewed({
-        fqn: fullyQualifiedName,
-        timestamp: 0,
-        entityType: EntityType.DASHBOARD,
-      });
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');
@@ -190,6 +185,13 @@ const MyDashBoardPage = () => {
               activeTitle: true,
             },
           ]);
+
+          addToRecentViewed({
+            entityType: EntityType.DASHBOARD,
+            fqn: fullyQualifiedName,
+            serviceType: serviceRes.data.serviceType,
+            timestamp: 0,
+          });
         }
       );
       fetchCharts(charts).then((charts) => setCharts(charts));

@@ -109,11 +109,6 @@ const MyTopicDetailPage = () => {
           tags,
           owner,
         } = res.data;
-        addToRecentViewed({
-          fqn: fullyQualifiedName,
-          timestamp: 0,
-          entityType: EntityType.TOPIC,
-        });
         setTopicDetails(res.data);
         setTopicId(id);
         setDescription(description ?? '');
@@ -148,6 +143,13 @@ const MyTopicDetailPage = () => {
                 activeTitle: true,
               },
             ]);
+
+            addToRecentViewed({
+              entityType: EntityType.TOPIC,
+              fqn: fullyQualifiedName,
+              serviceType: serviceRes.data.serviceType,
+              timestamp: 0,
+            });
           }
         );
         setLoading(false);

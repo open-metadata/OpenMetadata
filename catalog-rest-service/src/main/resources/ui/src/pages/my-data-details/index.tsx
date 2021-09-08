@@ -315,11 +315,6 @@ const MyDataDetailsPage = () => {
         tags,
         sampleData,
       } = res.data;
-      addToRecentViewed({
-        fqn: fullyQualifiedName,
-        timestamp: 0,
-        entityType: EntityType.DATASET,
-      });
       setTableDetails(res.data);
       setTableId(id);
       setTier(getTierFromTableTags(tags));
@@ -355,6 +350,13 @@ const MyDataDetailsPage = () => {
                 activeTitle: true,
               },
             ]);
+
+            addToRecentViewed({
+              entityType: EntityType.DATASET,
+              fqn: fullyQualifiedName,
+              serviceType: resService.data.serviceType,
+              timestamp: 0,
+            });
           }
         );
       });

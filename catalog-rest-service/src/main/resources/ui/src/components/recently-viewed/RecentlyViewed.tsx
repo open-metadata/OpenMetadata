@@ -62,6 +62,7 @@ const RecentlyViewed: FunctionComponent = () => {
             index: SearchIndex.TABLE,
             name,
             owner: getOwnerFromId(owner?.id)?.name || '--',
+            serviceType: oData.serviceType,
             tags: tableTags.map((tag) => tag.tagFQN),
             tier: getTierFromTableTags(tableTags),
             weeklyPercentileRank: usageSummary?.weeklyStats.percentileRank || 0,
@@ -81,6 +82,7 @@ const RecentlyViewed: FunctionComponent = () => {
             index: SearchIndex.TOPIC,
             name,
             owner: getOwnerFromId(owner?.id)?.name || '--',
+            serviceType: oData.serviceType,
             tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
             tier: getTierFromTableTags(tags as Array<ColumnTags>),
           });
@@ -108,6 +110,7 @@ const RecentlyViewed: FunctionComponent = () => {
             index: SearchIndex.DASHBOARD,
             name: displayName,
             owner: getOwnerFromId(owner?.id)?.name || '--',
+            serviceType: oData.serviceType,
             tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
             tier: getTierFromTableTags(tags as Array<ColumnTags>),
           });
