@@ -45,17 +45,17 @@ const MyDataHeader: FunctionComponent<Props> = ({
   const { users, userTeams } = AppState;
   const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({
     tables: {
-      icon: Icons.TABLE,
+      icon: Icons.TABLE_GREY,
       data: `${entityCounts.tableCount} Tables`,
       link: `/explore/tables`,
     },
     topics: {
-      icon: Icons.TOPIC,
+      icon: Icons.TOPIC_GREY,
       data: `${entityCounts.topicCount} Topics`,
       link: `/explore/topics`,
     },
     dashboards: {
-      icon: Icons.DASHBOARD,
+      icon: Icons.DASHBOARD_GREY,
       data: `${entityCounts.dashboardCount} Dashboards`,
       link: `/explore/dashboards`,
     },
@@ -89,17 +89,17 @@ const MyDataHeader: FunctionComponent<Props> = ({
   useEffect(() => {
     setdataSummary({
       tables: {
-        icon: Icons.TABLE,
+        icon: Icons.TABLE_GREY,
         data: `${entityCounts.tableCount} Tables`,
         link: `/explore/tables`,
       },
       topics: {
-        icon: Icons.TOPIC,
+        icon: Icons.TOPIC_GREY,
         data: `${entityCounts.topicCount} Topics`,
         link: `/explore/topics`,
       },
       dashboards: {
-        icon: Icons.DASHBOARD,
+        icon: Icons.DASHBOARD_GREY,
         data: `${entityCounts.dashboardCount} Dashboards`,
         link: `/explore/dashboards`,
       },
@@ -133,7 +133,9 @@ const MyDataHeader: FunctionComponent<Props> = ({
             <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
             {data.link ? (
               <Link className="tw-font-medium" to={data.link}>
-                {data.data}
+                <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
+                  {data.data}
+                </button>
               </Link>
             ) : (
               <p className="tw-font-medium">{data.data}</p>
