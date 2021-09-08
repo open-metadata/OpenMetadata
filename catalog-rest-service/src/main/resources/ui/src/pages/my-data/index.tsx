@@ -87,9 +87,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         if (hits.length > 0) {
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
-          setAggregations(res.data.aggregations);
           if (setAssetCount) {
             setCountAssets(total);
+            setAggregations(res.data.aggregations);
           }
           setIsLoading(false);
         } else {
