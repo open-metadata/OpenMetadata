@@ -21,6 +21,7 @@ import athena from '../assets/img/service-icon-athena.png';
 import serviceDefault from '../assets/img/service-icon-generic.png';
 import hive from '../assets/img/service-icon-hive.png';
 import kafka from '../assets/img/service-icon-kafka.png';
+import looker from '../assets/img/service-icon-looker.png';
 import mssql from '../assets/img/service-icon-mssql.png';
 import oracle from '../assets/img/service-icon-oracle.png';
 import postgres from '../assets/img/service-icon-post.png';
@@ -47,6 +48,7 @@ export const PRESTO = presto;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const SUPERSET = superset;
+export const LOOKER = looker;
 export const SERVICE_DEFAULT = serviceDefault;
 
 export const PLUS = plus;
@@ -66,7 +68,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Presto',
   ],
   messagingServices: ['Kafka', 'Pulsar'],
-  dashboardServices: ['Superset'],
+  dashboardServices: ['Superset', 'Looker'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
