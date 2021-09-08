@@ -18,7 +18,7 @@
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
-import { FormatedTableData, SearchResponse } from 'Models';
+import { Bucket, FormatedTableData, SearchResponse, Sterm } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
@@ -31,7 +31,10 @@ import { Ownership } from '../../enums/mydata.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getAllServices } from '../../utils/ServiceUtils';
+import {
+  getAllServices,
+  getEntityCountByService,
+} from '../../utils/ServiceUtils';
 
 const MyDataPage: React.FC = (): React.ReactElement => {
   const showToast = useToastContext();
@@ -42,6 +45,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
+  const [aggregations, setAggregations] = useState<Record<string, Sterm>>();
   const [searchIndex] = useState<string>(
     'dashboard_search_index,topic_search_index,table_search_index'
   );
@@ -85,6 +89,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           setData(formatDataResponse(hits));
           if (setAssetCount) {
             setCountAssets(total);
+            setAggregations(res.data.aggregations);
           }
           setIsLoading(false);
         } else {
@@ -175,6 +180,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
                 <MyDataHeader
                   countAssets={countAssets}
                   countServices={countServices}
+                  entityCounts={getEntityCountByService(
+                    aggregations?.['sterms#Service']?.buckets as Bucket[]
+                  )}
                 />
                 {getTabs()}
               </>

@@ -25,7 +25,7 @@ import {
   SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -34,6 +34,7 @@ import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
   ERROR500,
+  getExplorePathWithSearch,
   PAGE_SIZE,
   tableSortingFields,
 } from '../../constants/constants';
@@ -68,15 +69,37 @@ const getQueryParam = (urlSearchQuery = ''): FilterObject => {
     }, {}) as FilterObject;
 };
 
+const getCurrentTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'topics':
+      currentTab = 2;
+
+      break;
+    case 'dashboards':
+      currentTab = 3;
+
+      break;
+
+    case 'tables':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
+};
+
 const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
-
+  const history = useHistory();
   const filterObject: FilterObject = {
     ...{ tags: [], service: [], tier: [] },
     ...getQueryParam(location.search),
   };
   const showToast = useToastContext();
-  const { searchQuery } = useParams<Params>();
+  const { searchQuery, tab } = useParams<Params>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [filters, setFilters] = useState<FilterObject>(filterObject);
@@ -90,7 +113,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [sortField, setSortField] = useState<string>('last_updated_timestamp');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [searchIndex, setSearchIndex] = useState<string>(SearchIndex.TABLE);
-  const [currentTab, setCurrentTab] = useState<number>(1);
+  const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
   const [dashboardCount, setDashboardCount] = useState<number>(0);
@@ -177,13 +200,32 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     }
   };
 
+  const setCount = (count = 0) => {
+    switch (searchIndex) {
+      case SearchIndex.TABLE:
+        setTableCount(count);
+
+        break;
+      case SearchIndex.DASHBOARD:
+        setDashboardCount(count);
+
+        break;
+      case SearchIndex.TOPIC:
+        setTopicCount(count);
+
+        break;
+      default:
+        break;
+    }
+  };
+
   const fetchCounts = () => {
     const emptyValue = '';
     const tableCount = searchData(
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.TABLE
@@ -192,7 +234,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.TOPIC
@@ -201,7 +243,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       searchText,
       0,
       0,
-      getFilterString(filters),
+      emptyValue,
       emptyValue,
       emptyValue,
       SearchIndex.DASHBOARD
@@ -270,6 +312,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           resAggTag,
         ]: Array<SearchResponse>) => {
           updateSearchResults(resSearchResults);
+          setCount(resSearchResults.data.hits.total.value);
           if (forceSetAgg) {
             setAggregations(
               resSearchResults.data.hits.hits.length > 0
@@ -379,8 +422,8 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     );
   };
 
-  const getActiveTabClass = (tab: number) => {
-    return tab === currentTab ? 'active' : '';
+  const getActiveTabClass = (selectedTab: number) => {
+    return selectedTab === currentTab ? 'active' : '';
   };
 
   const resetFilters = () => {
@@ -401,7 +444,17 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         return getCountBadge();
     }
   };
-
+  const onTabChange = (selectedTab: number) => {
+    if (tabsInfo[selectedTab - 1].path !== tab) {
+      resetFilters();
+      history.push({
+        pathname: getExplorePathWithSearch(
+          searchQuery,
+          tabsInfo[selectedTab - 1].path
+        ),
+      });
+    }
+  };
   const getTabs = () => {
     return (
       <div className="tw-mb-3 tw--mt-4">
@@ -414,12 +467,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
                 )}`}
                 key={index}
                 onClick={() => {
-                  setCurrentTab(tab.tab);
-                  setSearchIndex(tab.index);
-                  setFieldList(tab.sortingFields);
-                  setSortField(tab.sortField);
-                  setCurrentPage(1);
-                  resetFilters();
+                  onTabChange(tab.tab);
                 }}>
                 {tab.label}
                 {getTabCount(tab.index)}
@@ -433,10 +481,14 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
+    setFilters(filterObject);
     setSearchText(searchQuery || '');
     setCurrentPage(1);
-    setFilters(filterObject);
-  }, [searchQuery]);
+    setCurrentTab(getCurrentTab(tab));
+    setSearchIndex(tabsInfo[getCurrentTab(tab) - 1].index);
+    setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
+    setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
+  }, [searchQuery, tab]);
 
   useEffect(() => {
     if (getFilterString(filters)) {
@@ -456,7 +508,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   useEffect(() => {
     fetchCounts();
-  }, [searchText, filters]);
+  }, [searchText]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {

@@ -35,6 +35,7 @@ import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
+import { getExplorePathWithSearch } from '../../constants/constants';
 import { isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -153,6 +154,14 @@ const TagsPage = () => {
     }
 
     setEditTag(undefined);
+  };
+
+  const getUsageCountLink = (tagFQN: string) => {
+    if (tagFQN.startsWith('Tier')) {
+      return `${getExplorePathWithSearch()}?tier=${tagFQN}`;
+    } else {
+      return `${getExplorePathWithSearch()}?tags=${tagFQN}`;
+    }
   };
 
   useEffect(() => {
@@ -333,7 +342,9 @@ const TagsPage = () => {
                                 {tag.usageCount ? (
                                   <Link
                                     className="link-text tw-align-middle"
-                                    to={`/explore?tags=${tag.fullyQualifiedName}`}>
+                                    to={getUsageCountLink(
+                                      tag.fullyQualifiedName
+                                    )}>
                                     {tag.usageCount}
                                   </Link>
                                 ) : (
