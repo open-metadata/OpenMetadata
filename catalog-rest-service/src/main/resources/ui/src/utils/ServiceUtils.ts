@@ -7,6 +7,7 @@ import {
   BIGQUERY,
   HIVE,
   KAFKA,
+  LOOKER,
   MSSQL,
   MYSQL,
   ORACLE,
@@ -66,6 +67,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.SUPERSET:
       return SUPERSET;
+
+    case DashboardServiceType.LOOKER:
+      return LOOKER;
 
     default:
       return SERVICE_DEFAULT;
@@ -190,6 +194,7 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
 
         break;
       case DashboardServiceType.SUPERSET:
+      case DashboardServiceType.LOOKER:
         entityCounts.dashboardCount += bucket.doc_count;
 
         break;
