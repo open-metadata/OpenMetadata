@@ -3,6 +3,7 @@ import IconGoogle from '../assets/img/google-icon.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconConfig from '../assets/svg/config.svg';
 import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
 import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
@@ -118,6 +119,7 @@ export const Icons = {
   TABLE_GREY: 'table-grey',
   TOPIC_GREY: 'topic-grey',
   DASHBOARD_GREY: 'dashboard-grey',
+  CONFIG: 'icon-config',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -350,6 +352,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.DASHBOARD_GREY:
       IconComponent = IconDashboardGrey;
+
+      break;
+    case Icons.CONFIG:
+      IconComponent = IconConfig;
 
       break;
 

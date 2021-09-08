@@ -39,6 +39,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
                   alt={tab.icon.alt}
                   icon={tab.icon.name}
                   title={tab.icon.title}
+                  width="16"
                 />{' '}
                 {tab.name}
               </button>
@@ -53,6 +54,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
                 alt={tab.icon.alt}
                 icon={tab.icon.name}
                 title={tab.icon.title}
+                width="16"
               />{' '}
               {tab.name}
             </button>

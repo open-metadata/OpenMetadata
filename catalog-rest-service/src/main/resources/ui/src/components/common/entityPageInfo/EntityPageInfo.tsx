@@ -11,7 +11,7 @@ import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.inter
 
 type ExtraInfo = {
   key: string;
-  value: string;
+  value: string | number;
 };
 
 type Props = {
