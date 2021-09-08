@@ -134,9 +134,14 @@ const Appbar: React.FC = (): JSX.Element => {
               </div>
             </div>
             <button
-              className="tw-nav focus:tw-no-underline"
-              style={navStyle(location.pathname.startsWith('/documents'))}
+              className="tw-nav focus:tw-no-underline hover:tw-underline"
               onClick={() => setIsModalOpen(true)}>
+              <SVGIcons
+                alt="Doc icon"
+                className="tw-align-middle tw--mt-0.5 tw-mr-1"
+                icon={Icons.WHATS_NEW}
+                width="12"
+              />
               <span>What&#39;s new</span>
             </button>
             <NavLink

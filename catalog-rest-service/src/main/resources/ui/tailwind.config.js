@@ -26,7 +26,7 @@ const secondary = '#B02AAC';
 const secondaryBG = '#B02AAC40';
 
 // state colors
-const success = '#51C41A';
+const success = '#008376';
 const error = '#FF4C3B';
 const info = '#1890FF';
 const warning = '#FFC34E';
@@ -37,6 +37,7 @@ const bodyBG = '#FCFBFE';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
+const greyBG = '#302E36';
 
 // Borders and Separators
 const mainBorder = '#E2DCE4';
@@ -76,6 +77,7 @@ module.exports = {
         'grey-muted': textMuted,
         'grey-muted-lite': textMutedLite,
         'grey-dark': textDark,
+        'grey-lite': greyBG,
         'primary-lite': primaryBG,
         primary: primary,
         'primary-hover': primaryHover,

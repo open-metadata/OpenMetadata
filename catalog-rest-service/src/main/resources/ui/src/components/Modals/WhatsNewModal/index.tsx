@@ -29,17 +29,22 @@ type Props = {
 
 type ToggleType = 'features' | 'change-log';
 
+const iconString = `M7.878 3.002a1.876 1.876 0 11-3.751 0 1.876 1.876 0 013.751 0zm1.073.562a3.003
+ 3.003 0 01-5.897 0H.563a.563.563 0 010-1.125h2.49a3.002 3.002 0 015.898 0h2.491a.563.563 0 010 1.125H8.951z`;
+
 export const WhatsNewModal: FunctionComponent<Props> = ({
   header,
   onCancel,
 }: Props) => {
-  const [activeKey, setActiveKey] = useState(LATEST_VERSION_ID);
+  const [activeData, setActiveData] = useState(WHATS_NEW[LATEST_VERSION_ID]);
   const [checkedValue, setCheckedValue] = useState<ToggleType>('features');
 
   const getToggleButtonClasses = (type: string): string => {
     return (
-      'tw-flex-1 tw-text-primary tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none' +
-      (type === checkedValue ? ' tw-bg-primary-hover-lite tw-border-main' : '')
+      'tw-flex-1 tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none' +
+      (type === checkedValue
+        ? ' tw-bg-primary tw-border-primary tw-text-white'
+        : ' tw-text-primary ')
     );
   };
 
@@ -50,7 +55,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
   return (
     <dialog className="tw-modal">
       <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container">
+      <div className="tw-modal-container tw-pb-0">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
 
@@ -72,23 +77,25 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
           </div>
         </div>
         <div
-          className="tw-modal-body tw-pt-0 tw-pb-1 tw-overflow-x-hidden"
+          className="tw-modal-body tw-p-0 tw-overflow-hidden"
           style={{ height: '550px' }}>
           {/* body */}
           <div className="tw-flex tw-w-auto tw-h-full">
-            <div className="tw-w-2/12 tw-border-r-2 tw-pr-6 tw-py-4">
+            <div
+              className="tw-border-r-2 tw-px-4 tw-py-4 tw-border-separate"
+              style={{ width: '14%' }}>
               <div className="tw-mb-2.5 tw-flex tw-justify-end">
                 <button
                   className="tw-border tw-rounded-md tw-border-success tw-text-success tw-px-1.5 tw-py-1 tw-text-xs"
-                  onClick={() => setActiveKey(LATEST_VERSION_ID)}>
+                  onClick={() => setActiveData(WHATS_NEW[LATEST_VERSION_ID])}>
                   Latest Release
                 </button>
               </div>
               <div className="tw-flex tw-flex-col-reverse">
-                {WHATS_NEW.map(({ version, id }) => (
+                {WHATS_NEW.map((d) => (
                   <div
                     className="tw-flex tw-items-center tw-justify-end tw-mb-2.5"
-                    key={id}>
+                    key={d.id}>
                     <svg
                       fill="none"
                       height="1em"
@@ -97,57 +104,61 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                       xmlns="http://www.w3.org/2000/svg">
                       <path
                         clipRule="evenodd"
-                        d="M7.878 3.002a1.876 1.876 0 11-3.751 0 1.876 1.876 0 013.751 0zm1.073.562a3.003 3.003 0 01-5.897 0H.563a.563.563 0 010-1.125h2.49a3.002 3.002 0 015.898 0h2.491a.563.563 0 010 1.125H8.951z"
-                        fill={activeKey === id ? '#7147E8' : '#6B7280'}
+                        d={iconString}
+                        fill={activeData.id === d.id ? '#7147E8' : '#6B7280'}
                         fillRule="evenodd"
                       />
                     </svg>
                     <button
                       className={classNames(
                         'tw-ml-1',
-                        activeKey === id ? 'tw-text-primary' : null
+                        activeData.id === d.id ? 'tw-text-primary' : null
                       )}
-                      onClick={() => setActiveKey(id)}>
-                      {version}
+                      onClick={() => setActiveData(d)}>
+                      {d.version}
                     </button>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="tw-pt-4 tw-pl-10 tw-w-10/12">
-              <div className="tw-flex tw-justify-between tw-items-center tw-pb-3">
-                <div>
-                  <p className="tw-text-base tw-font-medium">
-                    {WHATS_NEW[activeKey].version}
-                  </p>
-                  <p className="tw-text-grey-muted tw-text-xs">
-                    {WHATS_NEW[activeKey].description}
-                  </p>
-                </div>
-                <div>
-                  <div
-                    className="tw-w-60 tw-inline-flex tw-border tw-border-main
+            <div className="tw-overflow-y-auto" style={{ width: '86%' }}>
+              <div className="tw-pt-4 tw-px-10 ">
+                <div className="tw-flex tw-justify-between tw-items-center tw-pb-3">
+                  <div>
+                    <p className="tw-text-base tw-font-medium">
+                      {activeData.version}
+                    </p>
+                    <p className="tw-text-grey-muted tw-text-xs">
+                      {activeData.description}
+                    </p>
+                  </div>
+                  <div>
+                    <div
+                      className="tw-w-60 tw-inline-flex tw-border tw-border-primary
             tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
-                    <button
-                      className={getToggleButtonClasses('features')}
-                      onClick={() => handleToggleChange('features')}>
-                      Features
-                    </button>
-                    <button
-                      className={getToggleButtonClasses('change-log')}
-                      onClick={() => {
-                        handleToggleChange('change-log');
-                      }}>
-                      Change Logs
-                    </button>
+                      <button
+                        className={getToggleButtonClasses('features')}
+                        onClick={() => handleToggleChange('features')}>
+                        Features
+                      </button>
+                      <button
+                        className={getToggleButtonClasses('change-log')}
+                        onClick={() => {
+                          handleToggleChange('change-log');
+                        }}>
+                        Change Logs
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div>
-                {checkedValue === 'features' && (
-                  <FeaturesCarousel data={WHATS_NEW[activeKey].features} />
-                )}
-                {checkedValue === 'change-log' && <ChangeLogs />}
+                <div>
+                  {checkedValue === 'features' && (
+                    <FeaturesCarousel data={activeData.features} />
+                  )}
+                  {checkedValue === 'change-log' && (
+                    <ChangeLogs data={activeData.changeLogs} />
+                  )}
+                </div>
               </div>
             </div>
           </div>

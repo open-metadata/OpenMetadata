@@ -37,6 +37,7 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
+import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
@@ -106,6 +107,7 @@ export const Icons = {
   TERMS: 'terms',
   DOC: 'doc',
   API: 'api',
+  WHATS_NEW: 'whats-new',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -314,6 +316,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.API:
       IconComponent = IconAPI;
+
+      break;
+    case Icons.WHATS_NEW:
+      IconComponent = IconWhatsNew;
 
       break;
 
