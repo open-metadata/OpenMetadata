@@ -43,51 +43,14 @@ const MyDataHeader: FunctionComponent<Props> = ({
 }: Props) => {
   const history = useHistory();
   const { users, userTeams } = AppState;
-  const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({
-    tables: {
-      icon: Icons.TABLE_GREY,
-      data: `${entityCounts.tableCount} Tables`,
-      link: `/explore/tables`,
-    },
-    topics: {
-      icon: Icons.TOPIC_GREY,
-      data: `${entityCounts.topicCount} Topics`,
-      link: `/explore/topics`,
-    },
-    dashboards: {
-      icon: Icons.DASHBOARD_GREY,
-      data: `${entityCounts.dashboardCount} Dashboards`,
-      link: `/explore/dashboards`,
-    },
-    service: {
-      icon: Icons.SERVICE,
-      data: `${countServices} of Services`,
-      link: `/services`,
-    },
-    user: {
-      icon: Icons.USERS,
-      data: `${users.length} of Users`,
-      link: `/teams`,
-    },
-    terms: {
-      icon: Icons.TERMS,
-      data: `${userTeams.length} of Teams`,
-      link: `/teams`,
-    },
-  });
+  const [dataSummary, setdataSummary] = useState<Record<string, Summary>>({});
 
   const getFormattedDescription = (description: string) => {
     return description.replaceAll('{countAssets}', countAssets.toString());
   };
 
-  const handleRouting = (url = '') => {
-    if (url) {
-      history.push(url);
-    }
-  };
-
-  useEffect(() => {
-    setdataSummary({
+  const getSummarydata = () => {
+    return {
       tables: {
         icon: Icons.TABLE_GREY,
         data: `${entityCounts.tableCount} Tables`,
@@ -105,20 +68,30 @@ const MyDataHeader: FunctionComponent<Props> = ({
       },
       service: {
         icon: Icons.SERVICE,
-        data: `${countServices} Services`,
+        data: `${countServices} of Services`,
         link: `/services`,
       },
       user: {
         icon: Icons.USERS,
-        data: `${users.length} Users`,
+        data: `${users.length} of Users`,
         link: `/teams`,
       },
       terms: {
         icon: Icons.TERMS,
-        data: `${userTeams.length} Teams`,
+        data: `${userTeams.length} of Teams`,
         link: `/teams`,
       },
-    });
+    };
+  };
+
+  const handleRouting = (url = '') => {
+    if (url) {
+      history.push(url);
+    }
+  };
+
+  useEffect(() => {
+    setdataSummary(getSummarydata());
   }, [userTeams, users, countServices]);
 
   return (
