@@ -453,16 +453,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           tabsInfo[selectedTab - 1].path
         ),
       });
-      // if (selectedTab === 1) {
-      //   history.push('/explore');
-      // } else {
-      //   history.push({
-      //     pathname: getExplorePathWithSearch(
-      //       searchQuery,
-      //       tabsInfo[selectedTab - 1].path
-      //     ),
-      //   });
-      // }
     }
   };
   const getTabs = () => {
