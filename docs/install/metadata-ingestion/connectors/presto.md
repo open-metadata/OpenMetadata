@@ -81,7 +81,7 @@ add `metadata-rest-tables` sink along with `metadata-server` config
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {
     }
   },

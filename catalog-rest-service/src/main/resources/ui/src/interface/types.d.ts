@@ -52,6 +52,7 @@ declare module 'Models' {
     id: string;
     brokers?: Array<string>;
     description: string;
+    dashboardUrl?: string;
     ingestionSchedule?: {
       repeatFrequency: string;
       startDate: string;
@@ -253,6 +254,7 @@ declare module 'Models' {
 
   export type Database = {
     description: string;
+    displayName?: string;
     fullyQualifiedName: string;
     href: string;
     id: string;
@@ -317,7 +319,10 @@ declare module 'Models' {
     };
   };
 
-  export type ServiceTypes = 'databaseServices' | 'messagingServices';
+  export type ServiceTypes =
+    | 'databaseServices'
+    | 'messagingServices'
+    | 'dashboardServices';
 
   export type ServiceRecord = Record<ServiceTypes, Array<ServiceDataObj>>;
 

@@ -99,7 +99,7 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     }
   },
   "sink": {
-    "type": "metadata-rest-tables",
+    "type": "metadata-rest",
     "config": {
     }
   },

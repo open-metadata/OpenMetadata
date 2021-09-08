@@ -36,17 +36,22 @@ git clone https://github.com/open-metadata/OpenMetadata.git
 cd OpenMetadata/ingestion
 python3 -m venv env
 source env/bin/activate
-pip install '.[sample-tables, elasticsearch]'
+pip install '.[sample-data, elasticsearch]'
 ```
 {% endtab %}
 {% endtabs %}
 
-### Ingest sample tables, usage, and users
+### Ingest using Sample Pipelines consisting of
+
+Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
 metadata ingest -c ./pipelines/sample_tables.json
 metadata ingest -c ./pipelines/sample_usage.json
 metadata ingest -c ./pipelines/sample_users.json
+metadata ingest -c ./pipelines/sample_topics.json
+metadata ingest -c ./pipelines/sample_dashboards.json
+metadata ingest -c ./pipelines/sample_data.json
 ```
 
 ### Index Sample Data into ElasticSearch
@@ -54,7 +59,7 @@ metadata ingest -c ./pipelines/sample_users.json
 Start Elastic Search Docker:
 
 {% hint style="warning" %}
-Below command to run elastic search docker that stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata\_to\_es workflow again to index the data upon starting the container.
+The below command starts Elasticsearch docker that stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata\_to\_es workflow again to index the data upon starting the container.
 {% endhint %}
 
 ```bash

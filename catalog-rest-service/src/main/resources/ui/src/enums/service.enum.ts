@@ -18,6 +18,7 @@
 export enum ServiceCategory {
   DATABASE_SERVICES = 'databaseServices',
   MESSAGING_SERVICES = 'messagingServices',
+  DASHBOARD_SERVICES = 'dashboardServices',
 }
 
 export enum DatabaseServiceType {
@@ -36,4 +37,8 @@ export enum DatabaseServiceType {
 export enum MessagingServiceType {
   KAFKA = 'Kafka',
   PULSAR = 'Pulsar',
+}
+
+export enum DashboardServiceType {
+  SUPERSET = 'Superset',
 }

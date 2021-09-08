@@ -17,8 +17,10 @@ import {
   serviceTypes,
   SERVICE_DEFAULT,
   SNOWFLAKE,
+  SUPERSET,
 } from '../constants/services.const';
 import {
+  DashboardServiceType,
   DatabaseServiceType,
   MessagingServiceType,
 } from '../enums/service.enum';
@@ -61,6 +63,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case MessagingServiceType.PULSAR:
       return PULSAR;
+
+    case DashboardServiceType.SUPERSET:
+      return SUPERSET;
 
     default:
       return SERVICE_DEFAULT;

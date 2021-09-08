@@ -13,6 +13,7 @@
 - [What is OpenMetadata?](#what-is-openmetadata )
 - [Try our Sandbox](#try-our-sandbox)
 - [Install & Run](#install-and-run-openmetadata)
+- [Roadmap](docs/roadmap.md)
 - [Documentation and support](#documentation-and-support)
 - [Contributors](#contributors)
 - [License](#license)

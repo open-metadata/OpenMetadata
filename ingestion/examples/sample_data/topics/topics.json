@@ -31,7 +31,7 @@
 			"description": "Kafka topic to get products in a shop. This is constantly updating",
 			"partitions": 128,
 			"retentionSize": 3222122382273,
-			"cleanupPolicies": ["delete"],
+			"cleanupPolicies": ["compact,delete"],
 			"schemaType": "Avro",
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Shop Products\",\"fields\":[{\"name\":\"prodcut_id\",\"type\":\"int\"},{\"name\":\"product_variant_id\",\"type\":\"int\"},{\"name\":\"shop_id\",\"type\":\"int\"},{\"name\":\"name\",\"type\":\"string\"},{\"name\":\"product_title\",\"type\":\"string\"},{\"name\":\"price\",\"type\":\"double\"},{\"name\":\"quantity\",\"type\":\"int\"},{\"name\":\"product_vendor\",\"type\":\"int\"},{\"name\":\"fulfillable_quantity\",\"type\":\"int\"},{\"name\":\"fulfilment_service\",\"type\":\"string\"}]}"
 		},
@@ -40,7 +40,7 @@
 			"description": "All the order events on our online store",
 			"partitions": 128,
 			"retentionSize": 3222122382273,
-			"cleanupPolicies": ["delete"],
+			"cleanupPolicies": ["compact"],
 			"schemaType": "Avro",
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"order_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"shipping_address_id\",\"type\":\"int\"},{\"name\":\"user_id\",\"type\":\"int\"},{\"name\":\"total_price\",\"type\":\"double\"},{\"name\":\"discount_code\",\"type\":\"string\"},{\"name\":\"processed_at\",\"type\":\"int\"}]}"
 		},
@@ -49,7 +49,7 @@
 			"description": "All sales related events gets captured in this topic",
 			"partitions": 128,
 			"retentionSize": 3222122382273,
-			"cleanupPolicies": ["delete"],
+			"cleanupPolicies": ["compact,delete"],
 			"schemaType": "Avro",
 			"schemaText": "{\"namespace\":\"org.open-metadata.kafka\",\"type\":\"record\",\"name\":\"Order\",\"fields\":[{\"name\":\"sale_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"billing_address_id\",\"type\":\"int\"},{\"name\":\"api_client_id\",\"type\":\"int\"},{\"name\":\"customer_id\",\"type\":\"int\"},{\"name\":\"product_id\",\"type\":\"int\"},{\"name\":\"location_id\",\"type\":\"int\"},{\"name\":\"order_id\",\"type\":\"double\"}]}"
 		}
