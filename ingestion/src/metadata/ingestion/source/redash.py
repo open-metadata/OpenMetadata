@@ -69,7 +69,6 @@ class RedashSource(Source):
         self.config.uri = self.config.uri.strip("/")
 
         self.client = Redash(self.config.uri, self.config.api_key)
-        print(self.client.dashboards())
         self.client.session.headers.update(
             {
                 "Content-Type": "application/json",
@@ -87,10 +86,10 @@ class RedashSource(Source):
         pass
 
     def next_record(self) -> Iterable[Record]:
-        yield self._get_redash_charts()
+        yield self.get_redash_charts()
         yield self.get_redash_dashboard()
 
-    def _get_redash_charts(self) -> Optional[Chart]:
+    def get_redash_charts(self) -> Optional[Chart]:
         query_response = self.client.queries()
         for query_response in query_response["results"]:
             query_id = query_response["id"]
