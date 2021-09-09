@@ -117,7 +117,7 @@
     background-position-x: center;
   }
   .tw-modal-backdrop {
-    @apply tw-opacity-60 tw-bg-body-hover tw-absolute tw-inset-0;
+    @apply tw-opacity-60 tw-bg-grey-backdrop tw-absolute tw-inset-0;
   }
   .tw-modal-container {
     @apply tw-flex tw-flex-col tw-absolute tw-py-5 tw-bg-white tw-w-11/12 tw-max-w-screen-lg tw-max-h-screen tw-mx-auto tw-rounded-lg tw-border tw-border-main tw-shadow-modal;
@@ -298,5 +298,19 @@
 
   .text-highlighter {
     @apply tw-bg-warning-lite tw-p-1;
+  }
+
+  /* react-slick */
+
+  .slick-dots {
+    @apply tw--bottom-10 !important;
+  }
+
+  .slick-dots li button:before {
+    @apply tw-text-sm tw-text-separator tw-opacity-100 !important;
+  }
+
+  .slick-dots li.slick-active button:before {
+    @apply tw-text-primary tw-opacity-100 !important;
   }
 }
