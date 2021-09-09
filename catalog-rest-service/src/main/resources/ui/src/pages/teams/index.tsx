@@ -240,7 +240,9 @@ const TeamsPage = () => {
           {currentTeam?.owns.map((dataset, index) => {
             const Dataset = { description: dataset.name, name: dataset.type };
 
-            return <UserCard isDataset item={Dataset} key={index} />;
+            return (
+              <UserCard isDataset isIconVisible item={Dataset} key={index} />
+            );
           })}
         </div>
       </>
