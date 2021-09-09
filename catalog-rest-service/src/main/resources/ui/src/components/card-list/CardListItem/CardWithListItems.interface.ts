@@ -16,10 +16,10 @@
 */
 
 export type CardWithListItems = {
-  title: string;
   id: string;
   description: string;
-  contents: Array<Record<string, string>>;
+  data: string;
+  title: string;
 };
 
 export type Props = {
