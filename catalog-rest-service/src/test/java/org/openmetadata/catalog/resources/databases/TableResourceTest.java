@@ -616,7 +616,8 @@ public class TableResourceTest extends CatalogApplicationTest {
   public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
     Table table = createAndCheckTable(create(test), adminAuthHeaders());
     List<String> columns = Arrays.asList("c1", "c2", "c3");
-    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0").withMin("10.0").withUniqueCount(100.0);
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0")
+            .withMin("10.0").withUniqueCount(100.0);
     ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
     ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax("75.0").withMin("25.0").withUniqueCount(77.0);
    // Add column profiles
