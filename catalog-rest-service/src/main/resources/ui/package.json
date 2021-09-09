@@ -150,6 +150,8 @@
     "postcss-loader": "^6.1.0",
     "prettier": "^2.1.2",
     "react-test-renderer": "^16.14.0",
+    "sass": "^1.39.0",
+    "sass-loader": "^12.1.0",
     "style-loader": "0.23.1",
     "ts-jest": "^26.4.4",
     "ts-loader": "^8.0.14",
