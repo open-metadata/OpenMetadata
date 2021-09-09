@@ -28,7 +28,7 @@ from metadata.generated.schema.api.services.createMessagingService import Create
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table, TableData, TableJoins
+from metadata.generated.schema.entity.data.table import Table, TableData, TableJoins, TableProfile
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -56,7 +56,7 @@ TableEntities = List[Table]
 Tags = List[Tag]
 Topics = List[Topic]
 Dashboards = List[Dashboard]
-
+TableProfiles = List[TableProfile]
 
 class MetadataServerConfig(ConfigModel):
     api_endpoint: str
@@ -241,9 +241,14 @@ class OpenMetadataAPIClient(object):
         else:
             return [Table(**t) for t in resp['data']]
 
-    def ingest_sample_data(self, id, sample_data):
-        resp = self.client.put('/tables/{}/sampleData'.format(id.__root__), data=sample_data.json())
+    def ingest_sample_data(self, table_id, sample_data):
+        resp = self.client.put('/tables/{}/sampleData'.format(table_id.__root__), data=sample_data.json())
         return TableData(**resp['sampleData'])
+
+    def ingest_table_profile_data(self, table_id, table_profile):
+        print(table_profile.json())
+        resp = self.client.put('/tables/{}/tableProfile'.format(table_id.__root__), data=table_profile.json())
+        return [TableProfile(**t) for t in resp['tableProfile']]
 
     def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> Table:
         """Get Table By ID"""

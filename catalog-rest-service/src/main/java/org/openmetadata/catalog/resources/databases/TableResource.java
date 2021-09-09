@@ -117,7 +117,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "database,tags,followers,joins,sampleData,viewDefinition";
+          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -357,10 +357,10 @@ public class TableResource {
   public Table addDataProfiler(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
-                             @PathParam("id") String id, List<TableProfile> tableProfiles) throws IOException, ParseException {
+                             @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "tableProfile");
-    dao.addTableProfileData(id, tableProfiles);
+    dao.addTableProfileData(id, tableProfile);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }

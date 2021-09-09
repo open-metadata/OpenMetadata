@@ -28,7 +28,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType, TableData
+from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType, TableData, \
+    TableProfile
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes as types
@@ -248,7 +249,7 @@ class SQLSource(Source):
 
                 if self.config.data_profiler_enabled:
                     profile = self.run_data_profiler(table_name, schema)
-                    logger.info(profile.json())
+                    table_entity.tableProfile = profile
 
                 table_and_db = OMetaDatabaseAndTable(table=table_entity, database=self._get_database(schema))
                 yield table_and_db
@@ -341,7 +342,7 @@ class SQLSource(Source):
             self,
             table: str,
             schema: str
-    ) -> DatasetProfile:
+    ) -> TableProfile:
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
         logger.info(f"Running Profiling for {dataset_name}. "

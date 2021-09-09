@@ -267,16 +267,20 @@
           "type": "number"
         },
         "min": {
-          "description": "Minimum value in a column. Applies to column with number values. It will be 0 for any other types",
-          "type": "number"
+          "description": "Minimum value in a column.",
+          "type": "string"
         },
         "max": {
-          "description": "Maximum value in a column. Applies to column with number values. It will be 0 for any other types",
-          "type": "number"
+          "description": "Maximum value in a column.",
+          "type": "string"
         },
         "mean": {
-          "description": "Avg value in a column. Applies to column with number values. It will be 0 for any other types",
-          "type": "number"
+          "description": "Avg value in a column.",
+          "type": "string"
+        },
+        "median": {
+          "description": "Median value in a column.",
+          "type": "string"
         },
         "stddev": {
           "description": "Standard deviation of a column.",

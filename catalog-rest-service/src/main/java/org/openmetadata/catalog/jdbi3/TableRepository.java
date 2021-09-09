@@ -31,6 +31,7 @@ import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
+import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
@@ -275,19 +276,23 @@ public abstract class TableRepository {
   }
 
   @Transaction
-  public void addTableProfileData(String tableId, List<TableProfile> tableProfiles) throws IOException {
+  public void addTableProfileData(String tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
     Table table = EntityUtil.validate(tableId, tableDAO().findById(tableId), Table.class);
+
     List<TableProfile> storedTableProfiles = getTableProfile(table);
     Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
-    for (TableProfile profile: storedTableProfiles) {
-      storedMapTableProfiles.put(profile.getProfileDate(), profile);
+    if (storedTableProfiles != null) {
+      for (TableProfile profile : storedTableProfiles) {
+        storedMapTableProfiles.put(profile.getProfileDate(), profile);
+      }
     }
-
-    for (TableProfile profile: tableProfiles) {
-      storedMapTableProfiles.put(profile.getProfileDate(), profile);
+    //validate all the columns
+    for (ColumnProfile columnProfile: tableProfile.getColumnProfile()) {
+      validateColumn(table, columnProfile.getName());
     }
-    List<TableProfile> updatedProfiles = new ArrayList<TableProfile>(storedMapTableProfiles.values());
+    storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
+    List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
 
     entityExtensionDAO().insert(tableId, "table.tableProfile", "tableProfile",
             JsonUtils.pojoToJson(updatedProfiles));

@@ -15,6 +15,7 @@
 
 import logging
 import time
+from datetime import datetime
 from typing import Any, Iterable, Optional
 
 from great_expectations.core.expectation_validation_result import (
@@ -27,6 +28,8 @@ from great_expectations.data_context.types.base import (
     DatasourceConfig,
     InMemoryStoreBackendDefaults,
 )
+
+from metadata.generated.schema.entity.data.table import TableProfile, ColumnProfile
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile, DatasetColumnProfile,  ValueFrequency
 from metadata.profiler.util import group_by
@@ -67,7 +70,7 @@ class DataProfiler:
             limit: int = None,
             offset: int = None,
             **kwargs: Any,
-    ) -> DatasetProfile:
+    ) -> TableProfile:
         profile_test_results = self._profile_data_asset(
             {
                 "schema": schema,
@@ -104,7 +107,7 @@ class DataProfiler:
 
     def _parse_test_results_to_table_profile(
             self, profile_test_results: ExpectationSuiteValidationResult, dataset_name: str
-    ) -> DatasetProfile:
+    ) -> TableProfile:
         profile = None
         column_profiles = []
         for col, col_test_result in group_by(
@@ -117,23 +120,23 @@ class DataProfiler:
                 column_profiles.append(column_profile)
 
         if profile is not None:
-            profile.col_profiles = column_profiles
+            profile.columnProfile = column_profiles
         return profile
 
     def _parse_table_test_results(
             self,
             table_test_results: Iterable[ExpectationValidationResult],
             dataset_name: str,
-    ) -> DatasetProfile:
+    ) -> TableProfile:
         logger.info("generating table stats")
-        profile = DatasetProfile(timestamp=round(time.time() * 1000), table_name=dataset_name)
+        profile = TableProfile(profileDate=datetime.now(). strftime("%Y-%m-%d"))
         for table_result in table_test_results:
             expectation: str = table_result.expectation_config.expectation_type
             result: dict = table_result.result
             if expectation == "expect_table_row_count_to_be_between":
-                profile.row_count = result["observed_value"]
+                profile.rowCount = result['observed_value']
             elif expectation == "expect_table_columns_to_match_ordered_list":
-                profile.col_count = len(result["observed_value"])
+                profile.columnCount = len(result["observed_value"])
             else:
                 self.status.warning(
                     f"profile of {dataset_name}", f"unknown table mapper {expectation}"
@@ -145,9 +148,9 @@ class DataProfiler:
             column: str,
             col_test_results: Iterable[ExpectationValidationResult],
             dataset_name: str,
-    ) -> DatasetColumnProfile:
+    ) -> ColumnProfile:
         logger.info(f"Generating Column Stats for {column}")
-        column_profile = DatasetColumnProfile(fqdn=column)
+        column_profile = ColumnProfile(name=column)
         for col_result in col_test_results:
             expectation: str = col_result.expectation_config.expectation_type
             result: dict = col_result.result
@@ -158,16 +161,16 @@ class DataProfiler:
                 continue
 
             if expectation == "expect_column_unique_value_count_to_be_between":
-                column_profile.unique_count = result["observed_value"]
+                column_profile.uniqueCount = result["observed_value"]
             elif expectation == "expect_column_proportion_of_unique_values_to_be_between":
-                column_profile.unique_proportion = result["observed_value"]
+                column_profile.uniqueProportion = result["observed_value"]
             elif expectation == "expect_column_values_to_not_be_null":
-                column_profile.null_count = result["unexpected_count"]
+                column_profile.nullCount = result["unexpected_count"]
                 if (
                         "unexpected_percent" in result
                         and result["unexpected_percent"] is not None
                 ):
-                    column_profile.null_proportion = result["unexpected_percent"] / 100
+                    column_profile.nullProportion = result["unexpected_percent"] / 100
             elif expectation == "expect_column_values_to_not_match_regex":
                 pass
             elif expectation == "expect_column_mean_to_be_between":
@@ -190,11 +193,7 @@ class DataProfiler:
             elif expectation == "expect_column_kl_divergence_to_be_less_than":
                 pass
             elif expectation == "expect_column_distinct_values_to_be_in_set":
-                if "details" in result and "value_counts" in result["details"]:
-                    column_profile.distinct_value_frequencies = [
-                        ValueFrequency(value=str(value), frequency=count)
-                        for value, count in result["details"]["value_counts"].items()
-                    ]
+                pass
             elif expectation == "expect_column_values_to_be_in_type_list":
                 pass
             elif expectation == "expect_column_values_to_be_unique":
