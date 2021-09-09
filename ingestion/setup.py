@@ -88,6 +88,7 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
+    "redash": {"redash-toolbelt"},
     "redshift": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
