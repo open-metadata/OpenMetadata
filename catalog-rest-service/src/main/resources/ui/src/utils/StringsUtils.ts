@@ -63,3 +63,20 @@ export const isValidJSONString = (data?: string): boolean => {
 
   return false;
 };
+
+export const bytesToSize = (bytes: number) => {
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  if (bytes === 0) {
+    return `${bytes} ${sizes[0]}`;
+  } else {
+    const i = parseInt(
+      Math.floor(Math.log(bytes) / Math.log(1024)).toString(),
+      10
+    );
+    if (i === 0) {
+      return `${bytes} ${sizes[i]}`;
+    } else {
+      return `${(bytes / 1024 ** i).toFixed(2)} ${sizes[i]}`;
+    }
+  }
+};
