@@ -133,7 +133,7 @@ export const getDatasetDetailsPath = (
   let path = ROUTES.DATASET_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN);
 
-  return `${path}${columnName ? `#${columnName}` : ''}`;
+  return `${path}${columnName ? `.${columnName}` : ''}`;
 };
 
 export const getServiceDetailsPath = (

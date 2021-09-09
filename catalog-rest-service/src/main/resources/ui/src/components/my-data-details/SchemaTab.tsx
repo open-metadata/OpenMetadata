@@ -27,6 +27,7 @@ type Props = {
   joins: Array<ColumnJoins>;
   onUpdate: (columns: Array<TableColumn>) => void;
   sampleData: SampleData;
+  columnName: string;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -34,6 +35,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   joins,
   onUpdate,
   sampleData,
+  columnName,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
   const [checkedValue, setCheckedValue] = useState('schema');
@@ -111,6 +113,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         <div className="col-sm-12">
           {checkedValue === 'schema' ? (
             <SchemaTable
+              columnName={columnName}
               columns={columns}
               joins={joins}
               searchText={lowerCase(searchText)}

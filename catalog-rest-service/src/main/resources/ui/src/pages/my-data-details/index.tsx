@@ -297,7 +297,7 @@ const MyDataDetailsPage = () => {
 
   useEffect(() => {
     getTableDetailsByFQN(
-      tableFQN,
+      getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
       'columns, database, usageSummary, followers, joins, tags, owner,sampleData'
     ).then((res: AxiosResponse) => {
       const {
@@ -426,6 +426,11 @@ const MyDataDetailsPage = () => {
                 </div>
                 <div className="tw-col-span-full">
                   <SchemaTab
+                    columnName={getPartialNameFromFQN(
+                      tableFQN,
+                      ['column'],
+                      '.'
+                    )}
                     columns={columns}
                     joins={tableJoinData.columnJoins}
                     sampleData={sampleData}
