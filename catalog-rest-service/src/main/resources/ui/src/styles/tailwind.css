@@ -302,16 +302,12 @@
 
   /* react-slick */
 
-  .slick-dots li button:before {
-    @apply tw-text-base;
-  }
-
   .slick-dots {
-    @apply tw--bottom-10;
+    @apply tw--bottom-10 !important;
   }
 
   .slick-dots li button:before {
-    @apply tw-text-separator tw-opacity-100;
+    @apply tw-text-sm tw-text-separator tw-opacity-100 !important;
   }
 
   .slick-dots li.slick-active button:before {

@@ -20,8 +20,6 @@
 import { uniqueId } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import Slider from 'react-slick';
-import 'slick-carousel/slick/slick-theme.css';
-import 'slick-carousel/slick/slick.css';
 
 type Props = {
   data: { title: string; description: string; image: string }[];
