@@ -55,7 +55,7 @@ const Appbar: React.FC = (): JSX.Element => {
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -135,7 +135,7 @@ const Appbar: React.FC = (): JSX.Element => {
             </div>
             <button
               className="tw-nav focus:tw-no-underline hover:tw-underline"
-              onClick={() => setIsModalOpen(true)}>
+              onClick={() => setIsFeatureModalOpen(true)}>
               <SVGIcons
                 alt="Doc icon"
                 className="tw-align-middle tw--mt-0.5 tw-mr-1"
@@ -191,10 +191,10 @@ const Appbar: React.FC = (): JSX.Element => {
               />
             </div>
           </div>
-          {isModalOpen && (
+          {isFeatureModalOpen && (
             <WhatsNewModal
               header="What’s new!"
-              onCancel={() => setIsModalOpen(false)}
+              onCancel={() => setIsFeatureModalOpen(false)}
             />
           )}
         </div>

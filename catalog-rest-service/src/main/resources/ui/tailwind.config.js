@@ -37,7 +37,7 @@ const bodyBG = '#FCFBFE';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
-const greyBG = '#302E36';
+const backdropBG = '#302E36';
 
 // Borders and Separators
 const mainBorder = '#E2DCE4';
@@ -77,7 +77,7 @@ module.exports = {
         'grey-muted': textMuted,
         'grey-muted-lite': textMutedLite,
         'grey-dark': textDark,
-        'grey-lite': greyBG,
+        'grey-backdrop': backdropBG,
         'primary-lite': primaryBG,
         primary: primary,
         'primary-hover': primaryHover,

@@ -44,7 +44,6 @@
     "immutable": "^4.0.0-rc.14",
     "jquery": "^3.5.0",
     "markdown-draft-js": "^2.3.0",
-    "markdown-loader": "^6.0.0",
     "mobx": "6.0.1",
     "mobx-react": "6.1.4",
     "oidc-client": "^1.11.5",
