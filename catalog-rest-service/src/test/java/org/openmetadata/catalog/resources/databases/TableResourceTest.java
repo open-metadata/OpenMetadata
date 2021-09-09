@@ -44,12 +44,14 @@ import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
+import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -608,6 +610,55 @@ public class TableResourceTest extends CatalogApplicationTest {
             -> createAndCheckTable(createTable, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "ViewDefinition can only be set on " +
             "TableType View, SecureView or MaterializedView");
+  }
+
+  @Test
+  public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
+    Table table = createAndCheckTable(create(test), adminAuthHeaders());
+    List<String> columns = Arrays.asList("c1", "c2", "c3");
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0")
+            .withMin("10.0").withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
+    ColumnProfile c3Profile = new ColumnProfile().withName("c3").withMax("75.0").withMin("25.0").withUniqueCount(77.0);
+   // Add column profiles
+    List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0)
+            .withColumnProfile(columnProfiles).withProfileDate("2021-09-09");
+    putTableProfileData(table.getId(), tableProfile, adminAuthHeaders());
+
+    table = getTable(table.getId(), "tableProfile", adminAuthHeaders());
+    verifyTableProfileData(table.getTableProfile(), List.of(tableProfile));
+
+    // Add new date for TableProfile
+    TableProfile newTableProfile = new TableProfile().withRowCount(7.0).withColumnCount(3.0)
+            .withColumnProfile(columnProfiles).withProfileDate("2021-09-08");
+    putTableProfileData(table.getId(), newTableProfile, adminAuthHeaders());
+    table = getTable(table.getId(), "tableProfile", adminAuthHeaders());
+    verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile, tableProfile));
+
+    // Replace table profile for a date
+    TableProfile newTableProfile1 = new TableProfile().withRowCount(21.0).withColumnCount(3.0)
+            .withColumnProfile(columnProfiles).withProfileDate("2021-09-08");
+    putTableProfileData(table.getId(), newTableProfile1, adminAuthHeaders());
+    table = getTable(table.getId(), "tableProfile", adminAuthHeaders());
+    verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile1, tableProfile));
+  }
+
+  @Test
+  public void put_tableInvalidTableProfileData_4xx(TestInfo test) throws HttpResponseException {
+    Table table = createAndCheckTable(create(test), adminAuthHeaders());
+
+    ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100").withMin("10.0")
+            .withUniqueCount(100.0);
+    ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
+    ColumnProfile c3Profile = new ColumnProfile().withName("invalidColumn").withMax("75")
+            .withMin("25").withUniqueCount(77.0);
+    List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    TableProfile tableProfile = new TableProfile().withRowCount(6.0).withColumnCount(3.0)
+            .withColumnProfile(columnProfiles).withProfileDate("2021-09-09");
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> putTableProfileData(table.getId(), tableProfile, adminAuthHeaders()));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, "Invalid column name invalidColumn");
   }
 
   @Test
@@ -1225,6 +1276,13 @@ public class TableResourceTest extends CatalogApplicationTest {
     TestUtils.put(target, data, OK, authHeaders);
   }
 
+  public static void putTableProfileData(UUID tableId, TableProfile data, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableProfile");
+    TestUtils.put(target, data, OK, authHeaders);
+  }
+
+
   private void deleteTable(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(CatalogApplicationTest.getResource("tables/" + id), authHeaders);
 
@@ -1354,5 +1412,18 @@ public class TableResourceTest extends CatalogApplicationTest {
 
   public static String getTableName(TestInfo test, int index) {
     return String.format("table%d_%s", index, test.getDisplayName());
+  }
+
+  private void verifyTableProfileData(List<TableProfile> actualProfiles, List<TableProfile> expectedProfiles) {
+    assertEquals(actualProfiles.size(), expectedProfiles.size());
+    Map<String, TableProfile> tableProfileMap = new HashMap<>();
+    for(TableProfile profile: actualProfiles) {
+      tableProfileMap.put(profile.getProfileDate(), profile);
+    }
+    for(TableProfile tableProfile: expectedProfiles) {
+      TableProfile storedProfile = tableProfileMap.get(tableProfile.getProfileDate());
+      assertNotNull(storedProfile);
+      assertEquals(tableProfile, storedProfile);
+    }
   }
 }

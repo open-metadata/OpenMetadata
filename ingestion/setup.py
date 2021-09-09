@@ -58,12 +58,12 @@ base_requirements = {
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "okta==1.7.0",
-    "pandas~=1.3.1",
+    "okta>=1.7.0",
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "spacy==3.0.5",
     "requests~=2.25.1",
+    "great-expectations>=0.13.31",
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web"
 }
 base_plugins = {

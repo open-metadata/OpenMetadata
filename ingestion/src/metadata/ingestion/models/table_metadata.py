@@ -258,3 +258,50 @@ class Dashboard(BaseModel):
     charts: List[str]
     service: EntityReference
     lastModified: int = None
+
+
+class ValueFrequency(BaseModel):
+    """Profiler ValueFrequency"""
+    value: str
+    frequency: int
+
+
+class Histogram(BaseModel):
+    """Histogram"""
+    boundaries: List[str]
+    heights: List[str]
+
+
+class Quantile(BaseModel):
+    """Quantile"""
+    quantile: str
+    value: str
+
+
+class DatasetColumnProfile(BaseModel):
+    """Dataset Column Profile stats """
+    fqdn: str
+    unique_count: int = None
+    unique_proportion: int = None
+    null_count: int = None
+    null_proportion: int = None
+    min: str = None
+    max: str = None
+    mean: str = None
+    median: str = None
+    stddev: str = None
+    quantiles: List[Quantile] = None
+    distinct_value_frequencies: List[ValueFrequency] = None
+    histogram: List[Histogram] = None
+    sample_values: List[str] = None
+
+
+class DatasetProfile(BaseModel):
+    """Dataset(table) stats"""
+    timestamp: int
+    table_name: str
+    row_count: int = None
+    col_count: int = None
+    col_profiles: List[DatasetColumnProfile] = None
+
+
