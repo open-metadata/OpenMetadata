@@ -61,9 +61,57 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return { color: normalLink };
   };
+
+  const openModal = () => {
+    setIsFeatureModalOpen(true);
+  };
   useEffect(() => {
     setSearchValue(searchQuery);
   }, [searchQuery]);
+
+  const supportLinks = [
+    {
+      name: `What's new`,
+      to: '',
+      disabled: false,
+      method: openModal,
+      icon: (
+        <SVGIcons
+          alt="Doc icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-1"
+          icon={Icons.WHATS_NEW}
+          width="12"
+        />
+      ),
+    },
+    {
+      name: `Docs`,
+      to: 'https://docs.open-metadata.org/',
+      isOpenNewTab: true,
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="Doc icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          icon="doc"
+          width="12"
+        />
+      ),
+    },
+    {
+      name: `API`,
+      to: '/docs',
+      disabled: false,
+      icon: (
+        <SVGIcons
+          alt="API icon"
+          className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
+          icon="api"
+          width="12"
+        />
+      ),
+    },
+  ];
 
   return (
     <>
@@ -133,48 +181,13 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </div>
             </div>
-            <button
-              className="tw-nav focus:tw-no-underline hover:tw-underline"
-              onClick={() => setIsFeatureModalOpen(true)}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-1"
-                icon={Icons.WHATS_NEW}
-                width="12"
+            <div>
+              <DropDown
+                dropDownList={supportLinks}
+                label="Support"
+                type="link"
               />
-              <span>What&#39;s new</span>
-            </button>
-            <NavLink
-              className="tw-nav focus:tw-no-underline"
-              data-testid="appbar-item"
-              style={navStyle(location.pathname.startsWith('/documents'))}
-              target="_blank"
-              to={{
-                pathname: 'https://docs.open-metadata.org/',
-              }}>
-              <SVGIcons
-                alt="Doc icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-                icon="doc"
-                width="12"
-              />
-              <span>Docs</span>
-            </NavLink>
-            <NavLink
-              className="tw-nav focus:tw-no-underline"
-              data-testid="appbar-item"
-              style={navStyle(location.pathname.startsWith('/docs'))}
-              to={{
-                pathname: '/docs',
-              }}>
-              <SVGIcons
-                alt="API icon"
-                className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-                icon="api"
-                width="12"
-              />
-              <span>API</span>
-            </NavLink>
+            </div>
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
