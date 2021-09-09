@@ -71,6 +71,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [instanceCount, setInstanceCount] = useState<number>(0);
 
   const history = useHistory();
   const showToast = useToastContext();
@@ -88,6 +89,7 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data.data) {
           setData(res.data.data);
           setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -228,8 +230,15 @@ const DatabaseDetails: FunctionComponent = () => {
       ) : (
         <PageContainer>
           <div className="tw-px-4">
-            <div className="tw-mb-4">
-              <TitleBreadcrumb titleLinks={slashedTableName} />
+            <TitleBreadcrumb titleLinks={slashedTableName} />
+
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Tables :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
+              </span>
             </div>
             <div className="tw-bg-white tw-mb-4">
               <div className="tw-col-span-3">
