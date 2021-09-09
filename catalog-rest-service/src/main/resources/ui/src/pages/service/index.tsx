@@ -163,7 +163,7 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
-        return getEntityLink(SearchIndex.TABLE, fqn);
+        return `/database/${fqn}`;
     }
   };
 
