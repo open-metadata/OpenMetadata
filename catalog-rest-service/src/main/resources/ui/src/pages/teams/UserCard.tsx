@@ -46,43 +46,59 @@ const UserCard = ({
     }
   };
 
-  const getDatasetTitle = (type: string, fqn: string) => {
+  const getDatasetIcon = (type: string) => {
     let icon = '';
-    let link = '';
     switch (type) {
       case DatasetType.TOPIC:
         icon = Icons.TOPIC;
-        link = getEntityLink(SearchIndex.TOPIC, fqn);
 
         break;
       case DatasetType.DASHBOARD:
         icon = Icons.DASHBOARD;
-        link = getEntityLink(SearchIndex.DASHBOARD, fqn);
 
         break;
       case DatasetType.TABLE:
       default:
         icon = Icons.TABLE;
+
+        break;
+    }
+
+    return (
+      <SVGIcons
+        alt="icon"
+        className={classNames('tw-h-4 tw-w-4', {
+          'tw-mt-0.5': type !== DatasetType.DASHBOARD,
+        })}
+        icon={icon}
+      />
+    );
+  };
+
+  const getDatasetTitle = (type: string, fqn: string) => {
+    let link = '';
+    switch (type) {
+      case DatasetType.TOPIC:
+        link = getEntityLink(SearchIndex.TOPIC, fqn);
+
+        break;
+      case DatasetType.DASHBOARD:
+        link = getEntityLink(SearchIndex.DASHBOARD, fqn);
+
+        break;
+      case DatasetType.TABLE:
+      default:
         link = getEntityLink(SearchIndex.TABLE, fqn);
 
         break;
     }
 
     return (
-      <div className="tw-flex tw-gap-1">
-        <SVGIcons
-          alt="icon"
-          className={classNames('tw-h-4 tw-w-4', {
-            'tw-mt-0.5': type !== DatasetType.DASHBOARD,
-          })}
-          icon={icon}
-        />
-        <Link to={link}>
-          <button className="tw-font-normal tw-text-grey-body">
-            {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
-          </button>
-        </Link>
-      </div>
+      <Link to={link}>
+        <button className="tw-font-normal tw-text-grey-body">
+          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
+        </button>
+      </Link>
     );
   };
 
@@ -91,7 +107,9 @@ const UserCard = ({
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
           <Avatar name={item.description} />
-        ) : null}
+        ) : (
+          <>{getDatasetIcon(item.name)}</>
+        )}
 
         <div
           className={classNames('tw-flex tw-flex-col', {
