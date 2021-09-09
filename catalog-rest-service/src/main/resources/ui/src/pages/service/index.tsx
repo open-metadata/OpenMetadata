@@ -63,6 +63,7 @@ const ServicePage: FunctionComponent = () => {
   const [data, setData] = useState<Array<Database>>([]);
   const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [instanceCount, setInstanceCount] = useState<number>(0);
   const showToast = useToastContext();
 
   const fetchDatabases = (paging?: string) => {
@@ -72,6 +73,7 @@ const ServicePage: FunctionComponent = () => {
         if (res.data.data) {
           setData(res.data.data);
           setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
           setIsloading(false);
         } else {
           setData([]);
@@ -91,6 +93,7 @@ const ServicePage: FunctionComponent = () => {
         if (res.data.data) {
           setData(res.data.data);
           setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
           setIsloading(false);
         } else {
           setData([]);
@@ -115,6 +118,7 @@ const ServicePage: FunctionComponent = () => {
         if (res.data.data) {
           setData(res.data.data);
           setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
           setIsloading(false);
         } else {
           setData([]);
@@ -159,7 +163,7 @@ const ServicePage: FunctionComponent = () => {
 
       case ServiceCategory.DATABASE_SERVICES:
       default:
-        return getEntityLink(SearchIndex.TABLE, fqn);
+        return `/database/${fqn}`;
     }
   };
 
@@ -442,6 +446,18 @@ const ServicePage: FunctionComponent = () => {
     getOtherDetails(pagingString);
   };
 
+  const getCountLabel = () => {
+    switch (serviceName) {
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return 'Dashboards';
+      case ServiceCategory.MESSAGING_SERVICES:
+        return 'Topics';
+      case ServiceCategory.DATABASE_SERVICES:
+      default:
+        return 'Databases';
+    }
+  };
+
   return (
     <>
       {isLoading ? (
@@ -465,6 +481,13 @@ const ServicePage: FunctionComponent = () => {
                       )
                     : '--'}
                 </span>
+              </span>
+              <span className="tw-mx-3 tw-text-grey-muted">•</span>
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  {getCountLabel()} :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
               </span>
             </div>
 

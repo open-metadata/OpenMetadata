@@ -61,13 +61,13 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
                 )}
                 data-testid="row"
                 key={rowIndex}>
-                {row.map((data) => {
+                {row.map((data, index) => {
                   return (
                     <td
                       className="tableBody-cell"
                       data-testid="cell"
-                      key={data}>
-                      {data}
+                      key={index}>
+                      {data ? data.toString() : '--'}
                     </td>
                   );
                 })}
