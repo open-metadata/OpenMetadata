@@ -47,7 +47,7 @@ module.exports = {
       // .js and .jsx files to be handled by babel-loader
       {
         test: /\.(js|jsx)$/,
-        // exclude: /node_modules/,
+        exclude: /node_modules/,
         use: {
           loader: 'babel-loader',
           options: {
