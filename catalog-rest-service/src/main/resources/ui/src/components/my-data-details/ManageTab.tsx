@@ -15,15 +15,17 @@
   * limitations under the License.
 */
 
+import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
-import cardData from '../../jsons/tiersData.json';
+import { getCategory } from '../../axiosAPIs/tagAPI';
 import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
+import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
 import Loader from '../Loader/Loader';
@@ -44,13 +46,14 @@ const ManageTab: FunctionComponent<Props> = ({
   onSave,
   hasEditAccess,
 }: Props) => {
-  const { data } = cardData;
   const [loading, setLoading] = useState<boolean>(false);
   const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
     'initial'
   );
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
+
+  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [listOwners] = useState(() => {
     const user = !isEmpty(appState.userDetails)
       ? appState.userDetails
@@ -113,6 +116,34 @@ const ManageTab: FunctionComponent<Props> = ({
     setOwner(currentUser);
   };
 
+  const getTierData = () => {
+    getCategory('Tier').then((res: AxiosResponse) => {
+      if (res.data) {
+        const tierData = res.data.children.map(
+          (tier: { name: string; description: string }) => ({
+            id: `Tier.${tier.name}`,
+            title: tier.name,
+            description: tier.description.substring(
+              0,
+              tier.description.indexOf('\n\n')
+            ),
+            data: tier.description.substring(
+              tier.description.indexOf('\n\n') + 1
+            ),
+          })
+        );
+
+        setTierData(tierData);
+      } else {
+        setTierData([]);
+      }
+    });
+  };
+
+  useEffect(() => {
+    getTierData();
+  }, []);
+
   useEffect(() => {
     setActiveTier(currentTier);
   }, [currentTier]);
@@ -165,7 +196,7 @@ const ManageTab: FunctionComponent<Props> = ({
         </span>
       </div>
       <div className="tw-flex tw-flex-col">
-        {data.map((card, i) => (
+        {tierData.map((card, i) => (
           <NonAdminAction
             html={
               <>
