@@ -611,6 +611,24 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
+    Table table = createAndCheckTable(create(test), adminAuthHeaders());
+    List<String> columns = Arrays.asList("c1", "c2", "c3");
+
+    // Add 3 rows of sample data for 3 columns
+    List<List<Object>> rows = Arrays.asList(Arrays.asList("c1Value1", 1, true),
+            Arrays.asList("c1Value2", null, false),
+            Arrays.asList("c1Value3", 3, true));
+
+    TableData tableData = new TableData().withColumns(columns).withRows(rows);
+    putSampleData(table.getId(), tableData, adminAuthHeaders());
+
+    table = getTable(table.getId(), "sampleData", adminAuthHeaders());
+    assertEquals(tableData, table.getSampleData());
+  }
+
+
+  @Test
   public void get_nonExistentTable_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTable(NON_EXISTENT_ENTITY, adminAuthHeaders()));

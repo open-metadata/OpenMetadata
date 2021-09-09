@@ -36,6 +36,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -274,6 +275,25 @@ public abstract class TableRepository {
   }
 
   @Transaction
+  public void addTableProfileData(String tableId, List<TableProfile> tableProfiles) throws IOException {
+    // Validate the request content
+    Table table = EntityUtil.validate(tableId, tableDAO().findById(tableId), Table.class);
+    List<TableProfile> storedTableProfiles = getTableProfile(table);
+    Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
+    for (TableProfile profile: storedTableProfiles) {
+      storedMapTableProfiles.put(profile.getProfileDate(), profile);
+    }
+
+    for (TableProfile profile: tableProfiles) {
+      storedMapTableProfiles.put(profile.getProfileDate(), profile);
+    }
+    List<TableProfile> updatedProfiles = new ArrayList<TableProfile>(storedMapTableProfiles.values());
+
+    entityExtensionDAO().insert(tableId, "table.tableProfile", "tableProfile",
+            JsonUtils.pojoToJson(updatedProfiles));
+  }
+
+  @Transaction
   public void deleteFollower(String tableId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
     EntityUtil.removeFollower(relationshipDAO(), tableId, userId);
@@ -436,6 +456,7 @@ public abstract class TableRepository {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
     return table;
   }
 
@@ -650,6 +671,11 @@ public abstract class TableRepository {
             TableData.class);
   }
 
+  private List<TableProfile> getTableProfile(Table table) throws IOException {
+    return JsonUtils.readObjects(entityExtensionDAO().getExtension(table.getId().toString(),
+            "table.tableProfile"),
+            TableProfile.class);
+  }
 
   public interface TableDAO {
     @SqlUpdate("INSERT INTO table_entity (json) VALUES (:json)")

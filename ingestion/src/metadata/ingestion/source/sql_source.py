@@ -40,7 +40,7 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_database_service_or_create
-from metadata.utils.dataprofiler import DataProfiler
+from metadata.profiler.dataprofiler import DataProfiler
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -75,6 +75,8 @@ class SQLConnectionConfig(ConfigModel):
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
     data_profiler_enabled: Optional[bool] = True
+    data_profiler_offset: Optional[int] = 0
+    data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
 
     @abstractmethod
@@ -155,7 +157,15 @@ def get_column_type(status: SQLSourceStatus, dataset_name: str, column_type: Any
     return type_class
 
 
-
+def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
+    description = None
+    try:
+        table_info: dict = inspector.get_table_comment(table, schema)
+    except Exception as err:
+        logger.error(f"Table Description Error : {err}")
+    else:
+        description = table_info["text"]
+    return description
 
 
 class SQLSource(Source):
@@ -167,8 +177,12 @@ class SQLSource(Source):
         self.service = get_database_service_or_create(config, metadata_config)
         self.status = SQLSourceStatus()
         self.sql_config = self.config
-        self.engine = create_engine(self.sql_config.get_connection_url(), **self.sql_config.options)
+        self.connection_string = self.sql_config.get_connection_url()
+        self.engine = create_engine(self.connection_string, **self.sql_config.options)
         self.connection = self.engine.connect()
+        if self.config.data_profiler_enabled:
+            self.data_profiler = DataProfiler(status=self.status,
+                                              connection_str=self.connection_string)
 
     def prepare(self):
         pass
@@ -177,9 +191,6 @@ class SQLSource(Source):
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
         pass
 
-    def _get_profiler_instance(self, inspector: Inspector) -> DataProfiler:
-        return DataProfiler(conn=inspector.bind, status=self.status)
-
     def standardize_schema_table_names(
             self, schema: str, table: str
     ) -> Tuple[str, str]:
@@ -187,7 +198,7 @@ class SQLSource(Source):
 
     def fetch_sample_data(self, schema: str, table: str):
         try:
-            query = self.config.query.format(schema,table)
+            query = self.config.query.format(schema, table)
             logger.info(query)
             results = self.connection.execute(query)
             cols = list(results.keys())
@@ -223,7 +234,7 @@ class SQLSource(Source):
                     continue
                 self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
 
-                description = self._get_table_description(schema, table_name, inspector)
+                description = _get_table_description(schema, table_name, inspector)
 
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(id=uuid.uuid4(),
@@ -236,8 +247,7 @@ class SQLSource(Source):
                     table_entity.sampleData = table_data
 
                 if self.config.data_profiler_enabled:
-                    data_profiler = self._get_profiler_instance(inspector)
-                    profile = self.run_data_profiler(data_profiler, table_name, schema)
+                    profile = self.run_data_profiler(table_name, schema)
                     logger.info(profile.json())
 
                 table_and_db = OMetaDatabaseAndTable(table=table_entity, database=self._get_database(schema))
@@ -262,7 +272,7 @@ class SQLSource(Source):
                 except NotImplementedError:
                     view_definition = ""
 
-                description = self._get_table_description(schema, view_name, inspector)
+                description = _get_table_description(schema, view_name, inspector)
                 table_columns = self._get_columns(schema, view_name, inspector)
                 table = Table(id=uuid.uuid4(),
                               name=view_name,
@@ -327,31 +337,21 @@ class SQLSource(Source):
 
         return table_columns
 
-    def _get_table_description(self, schema: str, table: str, inspector: Inspector) -> str:
-        description = None
-        try:
-            table_info: dict = inspector.get_table_comment(table, schema)
-        except Exception as err:
-            logger.error(f"Table Description Error : {err}")
-        else:
-            description = table_info["text"]
-        return description
-
     def run_data_profiler(
             self,
-            profiler: DataProfiler,
             table: str,
             schema: str
     ) -> DatasetProfile:
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
-        logger.info(f"Profiling {dataset_name} (this may take a while)")
-        profile = profiler.generate_profile(
-                    pretty_name=dataset_name,
-                    schema=schema,
-                    table=table,
-                    limit=50000,
-                    offset=0)
+        logger.info(f"Running Profiling for {dataset_name}. "
+                    f"If you haven't configured offset and limit this process can take longer")
+        profile = self.data_profiler.run_profiler(
+            dataset_name=dataset_name,
+            schema=schema,
+            table=table,
+            limit=self.sql_config.data_profiler_limit,
+            offset=self.sql_config.data_profiler_offset)
         logger.debug(f"Finished profiling {dataset_name}")
         return profile
 

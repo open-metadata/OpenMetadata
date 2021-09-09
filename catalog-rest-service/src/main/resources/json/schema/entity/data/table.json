@@ -240,6 +240,76 @@
         }
       },
       "additionalProperties": false
+    },
+    "columnProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.ColumnProfile",
+      "description": "This schema defines the type to capture the table's column profile.",
+      "properties": {
+        "name": {
+          "description": "Column Name.",
+          "type": "string"
+        },
+        "uniqueCount": {
+          "description": "No. of unique values in the column",
+          "type": "number"
+        },
+        "uniqueProportion": {
+          "description": "Proportion of number of unique values in a column",
+          "type": "number"
+        },
+        "nullCount": {
+          "description": "No.of null values in a column",
+          "type": "number"
+        },
+        "nullProportion": {
+          "description": "No.of null value proportion in columns",
+          "type": "number"
+        },
+        "min": {
+          "description": "Minimum value in a column. Applies to column with number values. It will be 0 for any other types",
+          "type": "number"
+        },
+        "max": {
+          "description": "Maximum value in a column. Applies to column with number values. It will be 0 for any other types",
+          "type": "number"
+        },
+        "mean": {
+          "description": "Avg value in a column. Applies to column with number values. It will be 0 for any other types",
+          "type": "number"
+        },
+        "stddev": {
+          "description": "Standard deviation of a column.",
+          "type": "number"
+        }
+      }
+    },
+    "tableProfile": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TableProfile",
+      "description": "This schema defines the type to capture the table's data profile.",
+      "properties": {
+        "profileDate": {
+          "description": "Data one which profile is taken.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "columnCount": {
+          "description": "No.of columns in the table.",
+          "type": "number"
+        },
+        "rowCount": {
+          "description": "No.of rows in the table.",
+          "type": "number"
+        },
+        "columnProfile": {
+          "description": "List of local column profiles of the table.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnProfile"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -320,6 +390,14 @@
     "sampleData": {
       "description": "Sample data for a table.",
       "$ref": "#/definitions/tableData",
+      "default": null
+    },
+    "tableProfile": {
+      "description": "Data profile for a table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/tableProfile"
+      },
       "default": null
     }
   },
