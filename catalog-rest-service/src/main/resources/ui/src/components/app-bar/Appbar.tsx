@@ -71,20 +71,6 @@ const Appbar: React.FC = (): JSX.Element => {
 
   const supportLinks = [
     {
-      name: `What's new`,
-      to: '',
-      disabled: false,
-      method: openModal,
-      icon: (
-        <SVGIcons
-          alt="Doc icon"
-          className="tw-align-middle tw--mt-0.5 tw-mr-1"
-          icon={Icons.WHATS_NEW}
-          width="12"
-        />
-      ),
-    },
-    {
       name: `Docs`,
       to: 'https://docs.open-metadata.org/',
       isOpenNewTab: true,
@@ -107,6 +93,20 @@ const Appbar: React.FC = (): JSX.Element => {
           alt="API icon"
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
           icon="api"
+          width="12"
+        />
+      ),
+    },
+    {
+      name: `Slack Channel`,
+      to: 'https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email',
+      disabled: false,
+      isOpenNewTab: true,
+      icon: (
+        <SVGIcons
+          alt="slack icon"
+          className="tw-align-middle  tw-mr-0.5"
+          icon="slack"
           width="12"
         />
       ),
@@ -181,10 +181,21 @@ const Appbar: React.FC = (): JSX.Element => {
                 />
               </div>
             </div>
+            <button
+              className="tw-nav focus:tw-no-underline hover:tw-underline"
+              onClick={openModal}>
+              <SVGIcons
+                alt="Doc icon"
+                className="tw-align-middle tw--mt-0.5 tw-mr-1"
+                icon={Icons.WHATS_NEW}
+                width="12"
+              />
+              <span>What&#39;s new</span>
+            </button>
             <div>
               <DropDown
                 dropDownList={supportLinks}
-                label="Support"
+                label="Need Help?"
                 type="link"
               />
             </div>

@@ -49,6 +49,7 @@ import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTerns from '../assets/svg/terms.svg';
@@ -122,6 +123,7 @@ export const Icons = {
   TOPIC_GREY: 'topic-grey',
   DASHBOARD_GREY: 'dashboard-grey',
   CONFIG: 'icon-config',
+  SLACK: 'slack',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -362,6 +364,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.CONFIG:
       IconComponent = IconConfig;
+
+      break;
+    case Icons.SLACK:
+      IconComponent = IconSlack;
 
       break;
 
