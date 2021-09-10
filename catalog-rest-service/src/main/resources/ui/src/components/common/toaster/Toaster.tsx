@@ -33,6 +33,7 @@ const Toaster = ({ toastList }: { toastList: Array<ToastProp> }) => {
           <Toast
             autoDelete={toast.variant !== 'error'}
             body={toast.body}
+            data-testid="toast"
             dismissTime={TIMEOUT.TOAST_DELAY}
             key={id}
             position="top-right"

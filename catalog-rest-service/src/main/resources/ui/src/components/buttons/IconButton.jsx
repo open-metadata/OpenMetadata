@@ -20,7 +20,11 @@ import React from 'react';
 
 const IconButton = ({ icon, onClick, title }) => {
   return (
-    <div className="icon-button" title={title} onClick={onClick}>
+    <div
+      className="icon-button"
+      data-testid="icon-button"
+      title={title}
+      onClick={onClick}>
       {icon}
     </div>
   );

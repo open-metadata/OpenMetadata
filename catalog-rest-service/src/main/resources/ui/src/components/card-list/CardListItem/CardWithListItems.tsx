@@ -32,6 +32,7 @@ const CardListItem: FunctionComponent<Props> = ({
         cardStyle.base,
         isActive ? cardStyle.active : cardStyle.default
       )}
+      data-testid="card-list"
       onClick={() => onSelect(card.id)}>
       <div
         className={classNames(
@@ -44,7 +45,7 @@ const CardListItem: FunctionComponent<Props> = ({
             {card.description.replaceAll('*', '')}
           </p>
         </div>
-        <div>
+        <div data-testid="icon">
           {isActive && <i className="fas fa-check-circle tw-text-h2" />}
         </div>
       </div>

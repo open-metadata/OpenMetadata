@@ -165,12 +165,13 @@ const ManageTab: FunctionComponent<Props> = ({
   }, [currentTier, currentUser]);
 
   return (
-    <div className="tw-max-w-3xl tw-mx-auto">
+    <div className="tw-max-w-3xl tw-mx-auto" data-testid="manage-tab">
       <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
         <span className="tw-mr-2">Owner:</span>
         <span className="tw-relative">
           <Button
             className="tw-underline"
+            data-testid="owner-dropdown"
             disabled={!listOwners.length}
             size="custom"
             theme="primary"
@@ -195,7 +196,7 @@ const ManageTab: FunctionComponent<Props> = ({
           )}
         </span>
       </div>
-      <div className="tw-flex tw-flex-col">
+      <div className="tw-flex tw-flex-col" data-testid="cards">
         {tierData.map((card, i) => (
           <NonAdminAction
             html={
@@ -215,7 +216,7 @@ const ManageTab: FunctionComponent<Props> = ({
           </NonAdminAction>
         ))}
       </div>
-      <div className="tw-mt-6 tw-text-right">
+      <div className="tw-mt-6 tw-text-right" data-testid="buttons">
         <Button
           size="regular"
           theme="primary"

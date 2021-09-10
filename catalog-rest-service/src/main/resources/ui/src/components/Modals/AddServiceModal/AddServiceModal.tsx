@@ -407,6 +407,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             </label>
             <input
               className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="url"
               id="url"
               name="url"
               placeholder="username:password@hostname:port"
@@ -423,6 +424,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </label>
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="database"
             id="database"
             name="database"
             placeholder="database name"
@@ -438,6 +440,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           {!editData.edit ? (
             <select
               className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="driverClass"
               id="driverClass"
               name="driverClass"
               value={driverClass}
@@ -565,14 +568,14 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   }, [serviceName]);
 
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="service-modal">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-w-lg">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
         </div>
         <div className="tw-modal-body">
-          <form className="tw-min-w-full">
+          <form className="tw-min-w-full" data-testid="form">
             <div>
               <label className="tw-block tw-form-label" htmlFor="selectService">
                 {requiredField('Select Service:')}
@@ -580,6 +583,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {!editData.edit ? (
                 <select
                   className="tw-form-inputs tw-px-3 tw-py-1"
+                  data-testid="selectService"
                   id="selectService"
                   name="selectService"
                   value={selectService}
@@ -610,6 +614,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {!editData.edit ? (
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
+                  data-testid="name"
                   id="name"
                   name="name"
                   placeholder="service name"
@@ -635,6 +640,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 Description:
               </label>
               <MarkdownWithPreview
+                data-testid="description"
                 ref={markdownRef}
                 value={data?.description || ''}
               />
@@ -646,6 +652,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   'toggle-switch',
                   ingestion ? 'open' : null
                 )}
+                data-testid="ingestion-switch"
                 onClick={() => setIngestion(!ingestion)}>
                 <div className="switch" />
               </div>
@@ -665,6 +672,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   </label>
                   <select
                     className="tw-form-inputs tw-px-3 tw-py-1 flex-auto"
+                    data-testid="frequency"
                     id="frequency"
                     name="day"
                     value={frequency.day}
@@ -680,6 +688,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   </label>
                   <select
                     className="tw-form-inputs tw-px-3 tw-py-1"
+                    data-testid="hour"
                     id="hour"
                     name="hour"
                     value={frequency.hour}
@@ -695,6 +704,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   </label>
                   <select
                     className="tw-form-inputs tw-px-3 tw-py-1 "
+                    data-testid="minute"
                     id="minute"
                     name="minute"
                     value={frequency.minute}
@@ -709,6 +719,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         <div className="tw-modal-footer tw-justify-end">
           <Button
             className="tw-mr-2"
+            data-testid="cancel"
             size="regular"
             theme="primary"
             variant="text"
@@ -716,6 +727,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
             Discard
           </Button>
           <Button
+            data-testid="save-button"
             size="regular"
             theme="primary"
             type="submit"

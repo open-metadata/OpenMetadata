@@ -163,6 +163,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-primary tw-cursor-text'
           : 'tw-cursor-pointer'
       )}
+      data-testid="tag-conatiner"
       onClick={(event) => {
         if (editable) {
           event.preventDefault();
@@ -210,7 +211,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         )}
       </div>
       {editable && (
-        <div className="tw-flex tw-justify-end tw-mt-2">
+        <div className="tw-flex tw-justify-end tw-mt-2" data-testid="buttons">
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
             size="custom"
