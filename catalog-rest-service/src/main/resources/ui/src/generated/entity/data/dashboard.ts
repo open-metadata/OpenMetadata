@@ -17,6 +17,11 @@ export interface Dashboard {
    */
   description?: string;
   /**
+   * Display Name that identifies this Dashboard. It could be title or label from the source
+   * services
+   */
+  displayName?: string;
+  /**
    * Followers of this dashboard.
    */
   followers?: EntityReference[];
