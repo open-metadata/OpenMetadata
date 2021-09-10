@@ -18,12 +18,6 @@
       }
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
-    }
-  },
   "sink": {
     "type": "metadata-rest",
     "config": {

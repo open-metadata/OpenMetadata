@@ -13,10 +13,6 @@
       }
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {}
-  },
   "sink": {
     "type": "metadata-rest",
     "config": {}
