@@ -39,4 +39,5 @@ jobs:
           
       - name: Analysing the code with pylint
         run: |
+          source env/bin/activate
           pylint $(find ./ingestion/src -path ./ingestion/src/metadata/generated -prune -false -o  -type f -name "*.py")
