@@ -641,6 +641,8 @@ public class TableResourceTest extends CatalogApplicationTest {
             .withColumnProfile(columnProfiles).withProfileDate("2021-09-08");
     putTableProfileData(table.getId(), newTableProfile1, adminAuthHeaders());
     table = getTable(table.getId(), "tableProfile", adminAuthHeaders());
+    // first result should be the latest date
+    assertEquals(tableProfile.getProfileDate(), table.getTableProfile().get(0).getProfileDate());
     verifyTableProfileData(table.getTableProfile(), List.of(newTableProfile1, tableProfile));
   }
 

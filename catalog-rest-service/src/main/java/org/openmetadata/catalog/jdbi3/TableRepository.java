@@ -60,12 +60,15 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -75,6 +78,7 @@ import java.util.stream.Collectors;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
+import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 public abstract class TableRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
@@ -676,11 +680,17 @@ public abstract class TableRepository {
             TableData.class);
   }
 
-  private List<TableProfile> getTableProfile(Table table) throws IOException {
-    return JsonUtils.readObjects(entityExtensionDAO().getExtension(table.getId().toString(),
+  private List<TableProfile> getTableProfile(Table table) throws IOException  {
+    List<TableProfile> tableProfiles = JsonUtils.readObjects(entityExtensionDAO().getExtension(table.getId().toString(),
             "table.tableProfile"),
             TableProfile.class);
+    if (tableProfiles != null) {
+      tableProfiles.sort(Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT),
+              Comparator.reverseOrder()));
+    }
+    return tableProfiles;
   }
+
 
   public interface TableDAO {
     @SqlUpdate("INSERT INTO table_entity (json) VALUES (:json)")

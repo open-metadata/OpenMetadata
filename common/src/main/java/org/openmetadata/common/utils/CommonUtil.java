@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
@@ -117,4 +118,13 @@ public final class CommonUtil {
     Date givenDate = dateFormat.parse(date);
     return givenDate.after(startDate) && givenDate.before(endDate);
   }
+
+  public static Date parseDate(String date, DateFormat dateFormat) {
+    try {
+      return dateFormat.parse(date);
+    } catch(ParseException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
 }
