@@ -67,7 +67,6 @@ base_requirements = {
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web"
 }
 base_plugins = {
-    "pii-processor",
     "query-parser",
     "metadata-usage",
     "file-stage",
@@ -88,13 +87,14 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
-    "redshift": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift": {"sqlalchemy-redshift",  "GeoAlchemy2", "psycopg2-binary"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-data": {"faker~=8.1.1"},
-    "superset": {}
+    "superset": {},
+    "pii-processor": {"pandas~=1.3.1"}
 }
 
 build_options = {"includes": ["_cffi_backend"]}
