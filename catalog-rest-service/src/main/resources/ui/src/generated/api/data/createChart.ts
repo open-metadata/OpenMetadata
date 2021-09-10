@@ -2,10 +2,6 @@
  * Create Chart entity request
  */
 export interface CreateChart {
-  /**
-   * Unique Identifier of the Chart from the Source Service.
-   */
-  chartId?: string;
   chartType?: ChartType;
   /**
    * Chart URL, pointing to its own Service URL
@@ -15,6 +11,11 @@ export interface CreateChart {
    * Description of the database instance. What it has and how to use it.
    */
   description?: string;
+  /**
+   * Display Name that identifies this Chart. It could be title or label from the source
+   * services
+   */
+  displayName?: string;
   /**
    * Name that identifies this dashboard.
    */

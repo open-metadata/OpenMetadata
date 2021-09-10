@@ -52,6 +52,10 @@ export interface Table {
    * Table constraints.
    */
   tableConstraints?: TableConstraint[];
+  /**
+   * Data profile for a table.
+   */
+  tableProfile?: TableProfile[];
   tableType?: TableType;
   /**
    * Tags for this table.
@@ -277,7 +281,8 @@ export interface TableData {
   /**
    * Data for multiple rows of the table.
    */
-  rows?: Array<Array<number | string>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  rows?: Array<any[]>;
 }
 
 /**
@@ -295,6 +300,74 @@ export enum ConstraintType {
   ForeignKey = 'FOREIGN_KEY',
   PrimaryKey = 'PRIMARY_KEY',
   Unique = 'UNIQUE',
+}
+
+/**
+ * This schema defines the type to capture the table's data profile.
+ */
+export interface TableProfile {
+  /**
+   * No.of columns in the table.
+   */
+  columnCount?: number;
+  /**
+   * List of local column profiles of the table.
+   */
+  columnProfile?: ColumnProfile[];
+  /**
+   * Data one which profile is taken.
+   */
+  profileDate?: Date;
+  /**
+   * No.of rows in the table.
+   */
+  rowCount?: number;
+}
+
+/**
+ * This schema defines the type to capture the table's column profile.
+ */
+export interface ColumnProfile {
+  /**
+   * Maximum value in a column.
+   */
+  max?: string;
+  /**
+   * Avg value in a column.
+   */
+  mean?: string;
+  /**
+   * Median value in a column.
+   */
+  median?: string;
+  /**
+   * Minimum value in a column.
+   */
+  min?: string;
+  /**
+   * Column Name.
+   */
+  name?: string;
+  /**
+   * No.of null values in a column
+   */
+  nullCount?: number;
+  /**
+   * No.of null value proportion in columns
+   */
+  nullProportion?: number;
+  /**
+   * Standard deviation of a column.
+   */
+  stddev?: number;
+  /**
+   * No. of unique values in the column
+   */
+  uniqueCount?: number;
+  /**
+   * Proportion of number of unique values in a column
+   */
+  uniqueProportion?: number;
 }
 
 /**
