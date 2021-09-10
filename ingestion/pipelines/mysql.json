@@ -4,9 +4,10 @@
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
+      "database": "openmetadata_db",
       "service_name": "local_mysql",
       "filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*"]
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },

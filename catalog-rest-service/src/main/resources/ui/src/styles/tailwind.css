@@ -313,4 +313,17 @@
   .slick-dots li.slick-active button:before {
     @apply tw-text-primary tw-opacity-100 !important;
   }
+
+  .column-highlight {
+    animation: highlight 3000ms ease-out;
+  }
+
+  @keyframes highlight {
+    0% {
+      @apply tw-bg-warning-lite;
+    }
+    100% {
+      @apply tw-bg-white;
+    }
+  }
 }

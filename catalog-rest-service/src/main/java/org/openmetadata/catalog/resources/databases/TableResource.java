@@ -35,6 +35,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -116,7 +117,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "database,tags,followers,joins,sampleData,viewDefinition";
+          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -345,6 +346,21 @@ public class TableResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "sampleData");
     dao.addSampleData(id, tableData);
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
+  }
+
+  @PUT
+  @Path("/{id}/tableProfile")
+  @Operation(summary = "Add table profile data", tags = "tables",
+          description = "Add table profile data to the table.")
+  public Table addDataProfiler(@Context UriInfo uriInfo,
+                             @Context SecurityContext securityContext,
+                             @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                             @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(FIELD_LIST, "tableProfile");
+    dao.addTableProfileData(id, tableProfile);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }

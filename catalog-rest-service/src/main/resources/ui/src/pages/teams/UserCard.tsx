@@ -1,9 +1,12 @@
+import classNames from 'classnames';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../../components/common/avatar/Avatar';
+import { SearchIndex } from '../../enums/search.enum';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
-import SVGIcons from '../../utils/SvgUtils';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
+import { getEntityLink } from '../../utils/TableUtils';
 
 type Props = {
   item: { description: string; name: string; id?: string };
@@ -15,6 +18,12 @@ type Props = {
   onRemove?: (value: string) => void;
 };
 
+enum DatasetType {
+  TABLE = 'table',
+  TOPIC = 'topic',
+  DASHBOARD = 'dashboard',
+}
+
 const UserCard = ({
   item,
   isActionVisible = false,
@@ -24,18 +33,90 @@ const UserCard = ({
   onSelect,
   onRemove,
 }: Props) => {
+  const getArrForPartialName = (
+    type: string
+  ): Array<'service' | 'database' | 'table' | 'column'> => {
+    switch (type) {
+      case DatasetType.TABLE:
+        return ['database', 'table'];
+      case DatasetType.TOPIC:
+      case DatasetType.DASHBOARD:
+      default:
+        return ['service', 'database', 'table'];
+    }
+  };
+
+  const getDatasetIcon = (type: string) => {
+    let icon = '';
+    switch (type) {
+      case DatasetType.TOPIC:
+        icon = Icons.TOPIC;
+
+        break;
+      case DatasetType.DASHBOARD:
+        icon = Icons.DASHBOARD;
+
+        break;
+      case DatasetType.TABLE:
+      default:
+        icon = Icons.TABLE;
+
+        break;
+    }
+
+    return (
+      <SVGIcons
+        alt="icon"
+        className={classNames('tw-h-4 tw-w-4', {
+          'tw-mt-0.5': type !== DatasetType.DASHBOARD,
+        })}
+        icon={icon}
+      />
+    );
+  };
+
+  const getDatasetTitle = (type: string, fqn: string) => {
+    let link = '';
+    switch (type) {
+      case DatasetType.TOPIC:
+        link = getEntityLink(SearchIndex.TOPIC, fqn);
+
+        break;
+      case DatasetType.DASHBOARD:
+        link = getEntityLink(SearchIndex.DASHBOARD, fqn);
+
+        break;
+      case DatasetType.TABLE:
+      default:
+        link = getEntityLink(SearchIndex.TABLE, fqn);
+
+        break;
+    }
+
+    return (
+      <Link to={link}>
+        <button className="tw-font-normal tw-text-grey-body">
+          {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
+        </button>
+      </Link>
+    );
+  };
+
   return (
     <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
-        {isIconVisible ? <Avatar name={item.description} /> : null}
+        {isIconVisible && !isDataset ? (
+          <Avatar name={item.description} />
+        ) : (
+          <>{getDatasetIcon(item.name)}</>
+        )}
 
-        <div className="tw-flex tw-flex-col tw-pl-2">
+        <div
+          className={classNames('tw-flex tw-flex-col', {
+            'tw-pl-2': !isDataset,
+          })}>
           {isDataset ? (
-            <Link to={`/dataset/${item.description}`}>
-              <button className="tw-font-normal tw-text-grey-body">
-                {getPartialNameFromFQN(item.description, ['database', 'table'])}
-              </button>
-            </Link>
+            <>{getDatasetTitle(item.name, item.description)}</>
           ) : (
             <p className="tw-font-normal">{item.description}</p>
           )}
