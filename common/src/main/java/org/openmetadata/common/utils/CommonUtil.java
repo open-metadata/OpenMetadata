@@ -117,4 +117,13 @@ public final class CommonUtil {
     Date givenDate = dateFormat.parse(date);
     return givenDate.after(startDate) && givenDate.before(endDate);
   }
+
+  public static Date parseDate(String date, DateFormat dateFormat) {
+    try {
+      return dateFormat.parse(date);
+    } catch(ParseException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
 }

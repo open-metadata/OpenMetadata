@@ -10,11 +10,6 @@
       "sobject_name": "Salesforce Object Name"
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {
-    }
-  },
   "sink": {
     "type": "metadata-rest",
     "config": {}

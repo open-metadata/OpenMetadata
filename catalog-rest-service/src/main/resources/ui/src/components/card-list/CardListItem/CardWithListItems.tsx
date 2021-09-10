@@ -17,6 +17,7 @@
 
 import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 import { Props } from './CardWithListItems.interface';
 import { cardStyle } from './CardWithListItems.style';
 
@@ -39,7 +40,9 @@ const CardListItem: FunctionComponent<Props> = ({
         )}>
         <div className="tw-flex tw-flex-col">
           <h4 className={cardStyle.header.title}>{card.title}</h4>
-          <p className={cardStyle.header.description}>{card.description}</p>
+          <p className={cardStyle.header.description}>
+            {card.description.replaceAll('*', '')}
+          </p>
         </div>
         <div>
           {isActive && <i className="fas fa-check-circle tw-text-h2" />}
@@ -50,11 +53,7 @@ const CardListItem: FunctionComponent<Props> = ({
           cardStyle.body.base,
           isActive ? cardStyle.body.active : cardStyle.body.default
         )}>
-        <ol className="tw-list-decimal">
-          {card.contents.map(({ text }, i) => (
-            <li key={i}>{text}</li>
-          ))}
-        </ol>
+        <RichTextEditorPreviewer markdown={card.data} />
       </div>
     </div>
   );

@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import classNames from 'classnames';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { DropDownListItem, DropDownListProp } from './types';
@@ -35,19 +36,30 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
         role="menu">
         <div className="py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) => (
-            <Link
-              aria-disabled={item.disabled}
-              className="link-text tw-block tw-px-4 tw-py-2 hover:tw-bg-body-hover"
-              id={`menu-item-${index}`}
-              key={index}
-              role="menuitem"
-              to={item.to as string}
-              onClick={() => {
-                item.method && item.method();
-                setIsOpen && setIsOpen(false);
-              }}>
-              {item.name}
-            </Link>
+            <div
+              className="tw-flex tw-gap-1 hover:tw-bg-body-hover tw-px-2"
+              key={index}>
+              {item.icon && item.icon}
+              <Link
+                aria-disabled={item.disabled}
+                className={classNames('tw-block tw-py-2 ', {
+                  'link-text': !item.icon,
+                })}
+                id={`menu-item-${index}`}
+                role="menuitem"
+                target={item.isOpenNewTab ? '_blank' : '_self'}
+                to={{ pathname: item.to }}
+                onClick={() => {
+                  item.method && item.method();
+                  setIsOpen && setIsOpen(false);
+                }}>
+                {item.icon ? (
+                  <button className="tw-text-grey-body">{item.name}</button>
+                ) : (
+                  item.name
+                )}
+              </Link>
+            </div>
           ))}
         </div>
       </div>

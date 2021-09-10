@@ -3,10 +3,6 @@
  * analyzing the data. Charts can be part of Dashboard
  */
 export interface Chart {
-  /**
-   * Unique Identifier of the Chart from the Source Service.
-   */
-  chartId?: string;
   chartType?: ChartType;
   /**
    * Chart URL, pointing to its own Service URL
@@ -16,6 +12,11 @@ export interface Chart {
    * Description of the dashboard, what it is, and how to use it.
    */
   description?: string;
+  /**
+   * Display Name that identifies this Chart. It could be title or label from the source
+   * services
+   */
+  displayName?: string;
   /**
    * Followers of this chart.
    */

@@ -17,3 +17,4 @@ fastavro>=1.2.0
 google~=3.0.0
 okta~=2.0.0
 PyMySQL~=1.0.2
+great-expectations>=0.13.31

@@ -15,6 +15,11 @@ export interface CreateDashboard {
    */
   description?: string;
   /**
+   * Display Name that identifies this Dashboard. It could be title or label from the source
+   * services
+   */
+  displayName?: string;
+  /**
    * Name that identifies this dashboard.
    */
   name: string;
