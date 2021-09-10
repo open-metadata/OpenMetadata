@@ -188,14 +188,22 @@ const Appbar: React.FC = (): JSX.Element => {
                 alt="Doc icon"
                 className="tw-align-middle tw--mt-0.5 tw-mr-1"
                 icon={Icons.WHATS_NEW}
-                width="12"
+                width="16"
               />
-              <span>What&#39;s new!</span>
+              <span>What&#39;s new</span>
             </button>
             <div>
               <DropDown
                 dropDownList={supportLinks}
-                label="Need Help?"
+                icon={
+                  <SVGIcons
+                    alt="Doc icon"
+                    className="tw-align-middle tw-mr-1"
+                    icon={Icons.HELP_CIRCLE}
+                    width="16"
+                  />
+                }
+                label="Need Help"
                 type="link"
               />
             </div>
@@ -209,7 +217,16 @@ const Appbar: React.FC = (): JSX.Element => {
                     method: userSignOut,
                   },
                 ]}
-                icon={IconDefaultUserProfile}
+                icon={
+                  <IconDefaultUserProfile
+                    className=""
+                    style={{
+                      height: '24px',
+                      width: '24px',
+                      borderRadius: '50%',
+                    }}
+                  />
+                }
                 label=""
                 type="link"
               />

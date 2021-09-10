@@ -103,7 +103,7 @@ const DropDown: React.FC<DropDownProp> = ({
             ) : (
               <>
                 {Icon && (
-                  <div className="tw-h-6 tw-w-6 tw-pr-4">
+                  <div className="">
                     {AppState.userDetails.profile?.images.image512 ? (
                       <div className="profile-image">
                         <img
@@ -112,13 +112,7 @@ const DropDown: React.FC<DropDownProp> = ({
                         />
                       </div>
                     ) : (
-                      <Icon
-                        style={{
-                          height: '24px',
-                          width: '24px',
-                          borderRadius: '50%',
-                        }}
-                      />
+                      Icon
                     )}
                   </div>
                 )}
@@ -145,7 +139,7 @@ DropDown.propTypes = {
   className: PropTypes.string,
   label: PropTypes.string,
   type: PropTypes.string.isRequired,
-  icon: PropTypes.elementType,
+  icon: PropTypes.element,
   onSelect: PropTypes.func,
   selectedItems: PropTypes.array,
   dropDownList: PropTypes.array.isRequired,

@@ -52,6 +52,7 @@ import {
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
@@ -68,7 +69,26 @@ import {
   getUsagePercentile,
 } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
+import { getRelativeDay } from '../../utils/TimeUtils';
 import { issues } from './index.mock';
+
+const getProfilerRowDiff = (tableProfile: Table['tableProfile']) => {
+  let retDiff;
+  if (tableProfile && tableProfile.length > 0) {
+    let rowDiff: string | number = tableProfile[0].rowCount || 0;
+    const dayDiff = getRelativeDay(
+      tableProfile[0].profileDate
+        ? new Date(tableProfile[0].profileDate).getTime()
+        : Date.now()
+    );
+    if (tableProfile.length > 1) {
+      rowDiff = rowDiff - (tableProfile[1].rowCount || 0);
+    }
+    retDiff = `${(rowDiff >= 0 ? '+' : '-') + rowDiff} rows ${dayDiff}`;
+  }
+
+  return retDiff;
+};
 
 const MyDataDetailsPage = () => {
   // User Id for getting followers
@@ -99,6 +119,7 @@ const MyDataDetailsPage = () => {
     dayCount: 0,
     columnJoins: [],
   });
+  const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
   const [tableDetails, setTableDetails] = useState<TableDetail>(
     {} as TableDetail
   );
@@ -139,12 +160,35 @@ const MyDataDetailsPage = () => {
     },
   ];
 
-  const extraInfo = [
+  const profilerRowDiff = getProfilerRowDiff(tableProfile);
+
+  const extraInfo: Array<{
+    key?: string;
+    value: string | number;
+  }> = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
     { key: 'Usage', value: usage },
     { key: 'Queries', value: `${weeklyUsageCount} past week` },
+    {
+      key: 'Rows',
+      value:
+        tableProfile && tableProfile[0]?.rowCount
+          ? tableProfile[0].rowCount
+          : '--',
+    },
+    {
+      key: 'Columns',
+      value:
+        tableProfile && tableProfile[0]?.columnCount
+          ? tableProfile[0].columnCount
+          : '--',
+    },
   ];
+
+  if (!isNil(profilerRowDiff)) {
+    extraInfo.push({ value: profilerRowDiff });
+  }
 
   const onCancel = () => {
     setIsEdit(false);
@@ -298,7 +342,7 @@ const MyDataDetailsPage = () => {
   useEffect(() => {
     getTableDetailsByFQN(
       getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
-      'columns, database, usageSummary, followers, joins, tags, owner,sampleData'
+      'columns, database, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
     ).then((res: AxiosResponse) => {
       const {
         description,
@@ -314,6 +358,7 @@ const MyDataDetailsPage = () => {
         joins,
         tags,
         sampleData,
+        tableProfile,
       } = res.data;
       setTableDetails(res.data);
       setTableId(id);
@@ -365,6 +410,7 @@ const MyDataDetailsPage = () => {
       setDescription(description);
       setColumns(columns || []);
       setSampleData(sampleData);
+      setTableProfile(tableProfile || []);
       setTableTags(getTableTags(columns || []));
       if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
         const percentile = getUsagePercentile(
