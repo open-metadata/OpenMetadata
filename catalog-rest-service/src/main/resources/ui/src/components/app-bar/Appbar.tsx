@@ -190,7 +190,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 icon={Icons.WHATS_NEW}
                 width="12"
               />
-              <span>What&#39;s new</span>
+              <span>What&#39;s new!</span>
             </button>
             <div>
               <DropDown

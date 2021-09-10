@@ -103,7 +103,11 @@ const UserCard = ({
   };
 
   return (
-    <div className="tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group">
+    <div
+      className={classNames(
+        'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
+        { 'tw-py-5': isDataset }
+      )}>
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
           <Avatar name={item.description} />
@@ -118,10 +122,11 @@ const UserCard = ({
           {isDataset ? (
             <>{getDatasetTitle(item.name, item.description)}</>
           ) : (
-            <p className="tw-font-normal">{item.description}</p>
+            <>
+              <p className="tw-font-normal">{item.description}</p>
+              <p>{isIconVisible ? item.name : capitalize(item.name)}</p>
+            </>
           )}
-
-          <p>{isIconVisible ? item.name : capitalize(item.name)}</p>
         </div>
       </div>
       {isActionVisible && (
