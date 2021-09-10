@@ -6,10 +6,6 @@
       "host_port": "localhost:10000"
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {}
-  },
   "sink": {
     "type": "metadata-rest",
     "config": {}
