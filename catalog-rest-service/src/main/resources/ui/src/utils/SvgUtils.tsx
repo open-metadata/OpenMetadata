@@ -48,6 +48,7 @@ import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
@@ -98,6 +99,7 @@ export const Icons = {
   CHECK_CIRCLE: 'icon-check-circle',
   EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
+  HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
   UP_ARROW: 'icon-up-arrow',
   DOWN_ARROW: 'icon-down-arrow',
@@ -264,6 +266,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.TIMES_CIRCLE:
       IconComponent = IconTimesCircle;
+
+      break;
+    case Icons.HELP_CIRCLE:
+      IconComponent = IconHelpCircle;
 
       break;
     case Icons.FILTERS:
