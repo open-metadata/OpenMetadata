@@ -11,7 +11,7 @@ describe('Test FilterContainer Component', () => {
         count={5}
         isSelected={false}
         name="test"
-        type="service"
+        type="service type"
         onSelect={mockSelect}
       />
     );
@@ -25,7 +25,7 @@ describe('Test FilterContainer Component', () => {
         count={5}
         isSelected={false}
         name="test"
-        type="service"
+        type="service type"
         onSelect={mockSelect}
       />
     );

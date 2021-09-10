@@ -73,6 +73,7 @@ const DropDown: React.FC<DropDownProp> = ({
                 ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-gray-300 focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
             }`}
+            data-testid="menu-button"
             id="menu-button"
             type="button"
             onClick={() => setIsOpen((isOpen) => !isOpen)}>
