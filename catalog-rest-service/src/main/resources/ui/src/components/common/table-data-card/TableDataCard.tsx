@@ -17,8 +17,12 @@
 
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatasetDetailsPath } from '../../../constants/constants';
-import { getBadgeName, getUsagePercentile } from '../../../utils/TableUtils';
+import { stringToHTML } from '../../../utils/StringsUtils';
+import {
+  getEntityIcon,
+  getEntityLink,
+  getUsagePercentile,
+} from '../../../utils/TableUtils';
 import TableDataCardBody from './TableDataCardBody';
 
 type Props = {
@@ -31,54 +35,51 @@ type Props = {
   serviceType?: string;
   fullyQualifiedName: string;
   tags?: string[];
+  indexType: string;
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
   name,
   owner = '--',
   description,
-  tableType,
   tier = 'No Tier',
   usage,
   serviceType,
   fullyQualifiedName,
   tags,
+  indexType,
 }: Props) => {
-  const percentile = getUsagePercentile(usage || 0);
-  const badgeName = getBadgeName(tableType);
   const OtherDetails = [
     { key: 'Owner', value: owner },
-    { key: 'Service Type', value: serviceType },
-    { key: 'Usage', value: percentile },
+    { key: 'Service', value: serviceType },
+    {
+      key: 'Usage',
+      value: usage !== undefined ? getUsagePercentile(usage) : usage,
+    },
     { key: 'Tier', value: tier },
   ];
 
   return (
     <div
-      className="tw-bg-white tw-p-3 tw-border tw-border-gray-200 tw-rounded-md"
+      className="tw-bg-white tw-p-3 tw-border tw-border-main tw-rounded-md"
       data-testid="table-data-card">
       <div>
-        <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
-          <Link
-            data-testid="table-link"
-            to={getDatasetDetailsPath(fullyQualifiedName)}>
-            <button className="tw-text-grey-body tw-font-medium">
-              {name + ' '}
-            </button>
-          </Link>
-          <span
-            className={
-              'tw-ml-2 tw-text-xs tw-uppercase tw-tracking-widest tw-rounded tw-px-2 tw-py-1 badge-' +
-              badgeName
-            }
-            data-testid="badge">
-            {badgeName}
-          </span>
-        </h6>
+        <div className="tw-flex tw-gap-2">
+          {getEntityIcon(indexType)}
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
+            <Link
+              data-testid="table-link"
+              to={getEntityLink(indexType, fullyQualifiedName)}>
+              <button className="tw-text-grey-body tw-font-medium">
+                {stringToHTML(name)}
+              </button>
+            </Link>
+          </h6>
+        </div>
       </div>
       <div className="tw-pt-2">
         <TableDataCardBody
-          description={description || 'No description'}
+          description={description || ''}
           extraInfo={OtherDetails}
           tags={[...new Set(tags)]}
         />

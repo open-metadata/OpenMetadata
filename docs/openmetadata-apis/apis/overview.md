@@ -4,8 +4,6 @@ description: This page provides the overview of API design
 
 # Overview
 
-OpenMetadata API is the best way to get metadata in and out of the metadata platform. This section describes the best practices adopted for the API design.
-
 ## URI
 
 Following REST API conventions are followed for Resource URIs:
@@ -129,7 +127,7 @@ GET /v1/tables/name/service.database.dim_user
 
 ### Getting entities with only necessary fields
 
-To GET an entity with only necessary fields, pass `fields` query parameter while listing or getting an entity. This help clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
+To GET an entity with only necessary fields, pass `fields` query parameter while listing or getting an entity. This helps clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
 
 ```text
 GET /v1/tables/123e4567-e89b-42d3-a456-556642440000?fields=columns,tableConstraints,usage
@@ -239,7 +237,5 @@ DELETE http://localhost:8585/api/v1/users/6feb5287-f3c5-457f-86ae-95bcfb82e867
 200 OK
 ```
 
-## Server Implementation Notes
 
-We use the [Dropwizard](https://www.dropwizard.io/en/latest/) Java framework for developing Restful web services. APIs are documented using [Swagger/OpenAPI 3.x](https://swagger.io/specification/). We take schema first approach and define metadata entities and types in [JSON schema](https://json-schema.org/) specification version [Draft-07 to 2019-09](https://json-schema.org/draft/2019-09/release-notes.html). Java code is generated from the JSON schema using [JSON schema 2 pojo](https://www.jsonschema2pojo.org/) tool and Python code is generated using the [Data model code generator](https://github.com/koxudaxi/datamodel-code-generator) tool.
 

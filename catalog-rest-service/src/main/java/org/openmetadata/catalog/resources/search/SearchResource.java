@@ -85,8 +85,8 @@ public class SearchResource {
                          @Context SecurityContext securityContext,
                          @Parameter(description = "Search Query Text, Pass *text* for substring match; " +
                                  "Pass without wildcards for exact match. <br/> " +
-                                 "1. For listing all tables pass q=* <br/>" +
-                                 "2. For search tables pass q=*search_term* <br/>" +
+                                 "1. For listing all tables or topics pass q=* <br/>" +
+                                 "2. For search tables or topics pass q=*search_term* <br/>" +
                                  "3. For searching field names such as search by column_name " +
                                  "pass q=column_names:address <br/>" +
                                  "4. For searching by tag names pass q=tags:user.email <br/>" +
@@ -98,49 +98,36 @@ public class SearchResource {
                          @javax.ws.rs.QueryParam("q") String query,
                          @Parameter(description = "ElasticSearch Index name, defaults to table_search_index")
                            @DefaultValue("table_search_index") @QueryParam("index") String index,
-                         @Parameter(description = "From field to paginate the results, defaults to 1")
+                         @Parameter(description = "From field to paginate the results, defaults to 0")
                            @DefaultValue("0") @QueryParam("from") int from,
                          @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
                            @DefaultValue("10") @QueryParam("size") int size,
                          @Parameter(description = "Sort the search results by field, available fields to " +
                                  "sort weekly_stats" +
                                  " , daily_stats, monthly_stats, last_updated_timestamp defaults to weekly_stats")
-                                 @DefaultValue("weekly_stats") @QueryParam("sort_field") String sortFieldParam,
+                                  @QueryParam("sort_field") String sortFieldParam,
                          @Parameter(description = "Sort order asc for ascending or desc for descending, " +
-                                 "defaults to asc")
-                           @DefaultValue("asc") @QueryParam("sort_order") String sortOrderParam) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+                                 "defaults to desc")
+                           @DefaultValue("desc") @QueryParam("sort_order") String sortOrderParam) throws IOException {
+
     SearchRequest searchRequest = new SearchRequest(index);
-    SortOrder sortOrder = SortOrder.ASC;
-    if (sortOrderParam.equals("desc")) {
-      sortOrder = SortOrder.DESC;
+    SortOrder sortOrder = SortOrder.DESC;
+    SearchSourceBuilder searchSourceBuilder;
+    if (sortOrderParam.equals("asc")) {
+      sortOrder = SortOrder.ASC;
+    }
+    if (index.equals("topic_search_index")) {
+      searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
+    } else if (index.equals("dashboard_search_index")) {
+      searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
+    } else {
+      searchSourceBuilder = buildTableSearchBuilder(query, from, size);
     }
 
-    HighlightBuilder.Field highlightTableName =
-            new HighlightBuilder.Field("table_name");
-    highlightTableName.highlighterType("unified");
-    HighlightBuilder.Field highlightDescription =
-            new HighlightBuilder.Field("description");
-    highlightDescription.highlighterType("unified");
-    HighlightBuilder hb = new HighlightBuilder();
-    hb.field(highlightDescription);
-    hb.field(highlightTableName);
-    hb.preTags("<b>");
-    hb.postTags("</b>");
-    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
-            .field("table_name", 5.0f)
-            .field("description")
-            .field("column_names")
-            .field("column_descriptions")
-            .lenient(true))
-            .aggregation(AggregationBuilders.terms("Service Type").field("service_type"))
-            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
-            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
-            .highlighter(hb)
-            .from(from).size(size);
-
+    if (sortFieldParam != null && !sortFieldParam.isEmpty()) {
+      searchSourceBuilder.sort(sortFieldParam, sortOrder);
+    }
     LOG.info(searchSourceBuilder.toString());
-
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     searchRequest.source(searchSourceBuilder);
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
@@ -181,5 +168,87 @@ public class SearchResource {
     return Response.status(OK)
             .entity(suggest.toString())
             .build();
+  }
+
+  private SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("table_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("table_name", 5.0f)
+            .field("description")
+            .field("column_names")
+            .field("column_descriptions")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+   return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("topic_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("topic_name", 5.0f)
+            .field("description")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("dashboard_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("dashboard_name", 5.0f)
+            .field("description")
+            .field("chart_names")
+            .field("chart_descriptions")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+    return searchSourceBuilder;
   }
 }

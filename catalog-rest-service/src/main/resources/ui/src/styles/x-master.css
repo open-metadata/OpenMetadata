@@ -289,12 +289,15 @@ a:focus {
   height: calc(100% - 61px);
   overflow-y: auto;
   padding: 15px 0 0;
-  background: #f5f8fa;
   box-shadow: 0 -5px 5px -5px #d1cfc7;
 }
 
 .search-wrapper + .page-container {
   height: calc(100% - 104px);
+}
+
+.page-container.full-page {
+  height: 100%;
 }
 
 /* Widget Box */
@@ -584,13 +587,13 @@ a:focus {
   display: inline-block;
   font-weight: 600;
 }
-.toggle-switch {
+.cb-toggle-switch {
   position: relative;
   display: inline-block;
   width: 35px;
   height: 1.5em;
 }
-.toggle-switch .toggle-checkbox {
+.cb-toggle-switch .toggle-checkbox {
   opacity: 0;
   width: 0;
   height: 0;
@@ -687,3 +690,13 @@ a:focus {
   border-radius: 20px;
   z-index: 2;
 }
+
+/* popover css start */
+.tippy-popper {
+  pointer-events: auto !important;
+}
+.v-align-sub {
+  vertical-align: sub;
+}
+
+/* popover css end */

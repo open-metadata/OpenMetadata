@@ -23,7 +23,7 @@
 
   <groupId>org.openmetadata</groupId>
   <artifactId>catalog</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>0.4.0-SNAPSHOT</version>
   <modules>
     <module>common</module>
     <module>catalog-rest-service</module>

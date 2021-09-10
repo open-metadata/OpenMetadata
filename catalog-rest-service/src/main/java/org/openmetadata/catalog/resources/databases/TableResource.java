@@ -35,6 +35,7 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -109,13 +110,14 @@ public class TableResource {
     @SuppressWarnings("unused") /* Required for tests */
     public TableList() {}
 
-    public TableList(List<Table> data, int limitParam, String beforeCursor, String afterCursor)
+    public TableList(List<Table> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
-      super(data, limitParam, beforeCursor, afterCursor);
+      super(data, beforeCursor, afterCursor, total);
     }
   }
 
-  static final String FIELDS = "columns,tableConstraints,usageSummary,owner,database,tags,followers,joins,sampleData";
+  static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
+          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -152,29 +154,14 @@ public class TableResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    List<Table> tables;
-    String beforeCursor = null, afterCursor = null;
-
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    TableList tables;
     if (before != null) { // Reverse paging
-      tables = dao.listBefore(fields, databaseParam, limitParam + 1, before); // Ask for one extra entry
-      if (tables.size() > limitParam) {
-        tables.remove(0);
-        beforeCursor = tables.get(0).getFullyQualifiedName();
-      }
-      afterCursor = tables.get(tables.size() - 1).getFullyQualifiedName();
+      tables = dao.listBefore(fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
-      tables = dao.listAfter(fields, databaseParam, limitParam + 1, after);
-      beforeCursor = after == null ? null : tables.get(0).getFullyQualifiedName();
-      if (tables.size() > limitParam) {
-        tables.remove(limitParam);
-        afterCursor = tables.get(limitParam - 1).getFullyQualifiedName();
-      }
+      tables = dao.listAfter(fields, databaseParam, limitParam, after);
     }
-    tables.forEach(t -> addHref(uriInfo, t));
-    return new TableList(tables, limitParam, beforeCursor, afterCursor);
+    tables.getData().forEach(t -> addHref(uriInfo, t));
+    return tables;
   }
 
   @GET
@@ -236,7 +223,7 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
     table = addHref(uriInfo, dao.create(validateNewTable(table), create.getOwner(), create.getDatabase()));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -256,7 +243,7 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getOwner(), create.getDatabase());
     table = addHref(uriInfo, response.getEntity());
@@ -363,6 +350,21 @@ public class TableResource {
     return addHref(uriInfo, table);
   }
 
+  @PUT
+  @Path("/{id}/tableProfile")
+  @Operation(summary = "Add table profile data", tags = "tables",
+          description = "Add table profile data to the table.")
+  public Table addDataProfiler(@Context UriInfo uriInfo,
+                             @Context SecurityContext securityContext,
+                             @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                             @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(FIELD_LIST, "tableProfile");
+    dao.addTableProfileData(id, tableProfile);
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
+  }
+
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "tables",
@@ -384,6 +386,7 @@ public class TableResource {
   public static Table validateNewTable(Table table) {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
+    DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     return table;
   }
 }

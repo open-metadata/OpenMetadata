@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
 import APIClient from './index';
 
@@ -23,7 +24,10 @@ export const searchData: Function = (
   queryString: string,
   from: number,
   size: number,
-  filters: string
+  filters: string,
+  sortField: string,
+  sortOrder: string,
+  searchIndex: string
 ): Promise<AxiosResponse> => {
   const start = (from - 1) * size;
   const query = queryString ? `*${queryString}*` : '*';
@@ -31,7 +35,9 @@ export const searchData: Function = (
   return APIClient.get(
     `/search/query?q=${query}${
       filters ? ` AND ${filters}` : ''
-    }&from=${start}&size=${size}`
+    }&from=${start}&size=${size}${sortField ? `&sort_field=${sortField}` : ''}${
+      sortOrder ? `&sort_order=${sortOrder}` : ''
+    }${searchIndex ? `&index=${searchIndex}` : ''}`
   );
 };
 
@@ -50,5 +56,8 @@ export const fetchAuthorizerConfig: Function = (): Promise<AxiosResponse> => {
 export const getSuggestions: Function = (
   queryString: string
 ): Promise<AxiosResponse> => {
-  return APIClient.get(`/search/suggest?q=${queryString}`);
+  return APIClient.get(
+    `/search/suggest?q=${queryString}&index=${SearchIndex.DASHBOARD},${SearchIndex.TABLE},${SearchIndex.TOPIC}
+    `
+  );
 };

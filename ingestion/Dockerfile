@@ -1,9 +1,11 @@
-FROM python:3.9.2
+FROM python:3.8.10
 
 EXPOSE 7777
 
-COPY . /openmetadata-ingestion
-
+COPY ./pipelines /openmetadata-ingestion/pipelines
+COPY ./ingestion_scheduler /openmetadata-ingestion/ingestion_scheduler
+COPY ./ingestion_dependency.sh /openmetadata-ingestion/ingestion_dependency.sh
+COPY ./examples /openmetadata-ingestion/examples
 WORKDIR /openmetadata-ingestion
 
 RUN apt-get update && \

@@ -1,20 +1,13 @@
+---
+description: Please Join our Community to push OpenMetadata forward.
+---
+
 # Community
 
-All OpenMetadata discussions happen on the [mailing list](community.md), [Github Issues](community.md), and [Slack](community.md).
+* Please ask questions on [OpenMetadata Slack](https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email)
+* Star us at [open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) to follow the development. Ask questions, raise issues, or contribute pull requests. Please see the [Developer](developer/) Guide for more details.
+* Join and participate in community discussions at the [OpenMetadata Group](https://groups.google.com/g/openmetadata-users) mailing list.
+* Follow us on Twitter - [@open\_metadata](https://twitter.com/open_metadata)
 
-## Mailing Lists
 
-* \[dev@open-metadata.org\] \(mailto:dev@open-metadata.org\)
-
-## Github
-
-Star us at [open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) to follow the development. Ask questions, raise issues or contribute pull requests. Please see [Developers](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/README.md)
-
-## Slack Channel
-
-Please ask questions on [OpenMetadata Slack](community.md)
-
-## Twitter
-
-please follow us on Twitter [@open\_metadata](https://twitter.com/open_metadata)
 

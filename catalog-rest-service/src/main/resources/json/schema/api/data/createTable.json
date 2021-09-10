@@ -48,6 +48,11 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "viewDefinition": {
+      "description": "View Definition in SQL. Applies to TableType.View only",
+      "$ref": "../../type/basic.json#/definitions/sqlQuery",
+      "default" : null
     }
   },
   "required": ["name","columns","database"]

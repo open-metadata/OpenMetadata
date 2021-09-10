@@ -19,6 +19,7 @@ package org.openmetadata.catalog.util;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import org.openmetadata.catalog.type.Paging;
 import org.openmetadata.common.utils.CipherText;
 
 import javax.validation.constraints.NotNull;
@@ -38,38 +39,6 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"data"})
 public class ResultList<T> {
-
-  public static class Paging {
-    @JsonProperty("before")
-    @NotNull
-    private String before;
-
-    @JsonProperty("after")
-    @NotNull
-    private String after;
-
-    @JsonProperty("before")
-    public String getBefore() {
-      return before;
-    }
-
-    @JsonProperty("before")
-    public Paging setBefore(String before) {
-      this.before = before;
-      return this;
-    }
-
-    @JsonProperty("after")
-    public String getAfter() {
-      return after;
-    }
-
-    @JsonProperty("after")
-    public Paging setAfter(String after) {
-      this.after = after;
-      return this;
-    }
-  }
 
   @JsonProperty("data")
   @NotNull
@@ -139,12 +108,11 @@ public class ResultList<T> {
    *          -------- BACKWARD SCROLLING ENDS -------------
    *
    */
-  public ResultList(List<T> data, int limit, String beforeCursor, String afterCursor) throws GeneralSecurityException,
+  public ResultList(List<T> data, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException,
           UnsupportedEncodingException {
     this.data = data;
-    paging = new Paging();
-    paging.before = CipherText.instance().encrypt(beforeCursor);
-    paging.after = CipherText.instance().encrypt(afterCursor);
+    paging = new Paging().withBefore(CipherText.instance().encrypt(beforeCursor))
+                    .withAfter(CipherText.instance().encrypt(afterCursor)).withTotal(total);
   }
 
   @JsonProperty("data")
@@ -167,5 +135,4 @@ public class ResultList<T> {
     this.paging = paging;
     return this;
   }
-
 }

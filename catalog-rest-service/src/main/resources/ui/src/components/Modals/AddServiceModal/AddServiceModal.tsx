@@ -15,11 +15,20 @@
   * limitations under the License.
 */
 
-import React, { FunctionComponent, useState } from 'react';
+import classNames from 'classnames';
+import { ServiceTypes } from 'Models';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import { serviceTypes } from '../../../constants/services.const';
+import {
+  MessagingServiceType,
+  ServiceCategory,
+} from '../../../enums/service.enum';
+import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
+import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
 // import { serviceType } from '../../../constants/services.const';
 
-export type DatabaseObj = {
+export type DataObj = {
   description: string | undefined;
   ingestionSchedule:
     | {
@@ -27,25 +36,46 @@ export type DatabaseObj = {
         startDate: string;
       }
     | undefined;
-  jdbc: {
+  name: string;
+  serviceType: string;
+  jdbc?: {
     connectionUrl: string;
     driverClass: string;
   };
-  name: string;
-  serviceType: string;
+  brokers?: Array<string>;
+  schemaRegistry?: string;
+  dashboardUrl?: string;
+  username?: string;
+  password?: string;
 };
 
-export type DataObj = {
+type DatabaseService = {
   connectionUrl: string;
-  description: string;
   driverClass: string;
+  jdbc: { driverClass: string; connectionUrl: string };
+};
+
+type MessagingService = {
+  brokers: Array<string>;
+  schemaRegistry: string;
+};
+
+type DashboardService = {
+  dashboardUrl: string;
+  username: string;
+  password: string;
+};
+
+export type ServiceDataObj = {
+  description: string;
   href: string;
   id: string;
-  jdbc: { driverClass: string; connectionUrl: string };
   name: string;
   serviceType: string;
   ingestionSchedule?: { repeatFrequency: string; startDate: string };
-};
+} & Partial<DatabaseService> &
+  Partial<MessagingService> &
+  Partial<DashboardService>;
 
 export type EditObj = {
   edit: boolean;
@@ -54,21 +84,26 @@ export type EditObj = {
 
 type Props = {
   header: string;
-  serviceName: string;
-  serviceList: Array<DataObj>;
-  data?: DataObj;
-  onSave: (obj: DatabaseObj, text: string, editData: EditObj) => void;
+  serviceName: ServiceTypes;
+  serviceList: Array<ServiceDataObj>;
+  data?: ServiceDataObj;
+  onSave: (obj: DataObj, text: string, editData: EditObj) => void;
   onCancel: () => void;
 };
 
 type ErrorMsg = {
   selectService: boolean;
   name: boolean;
-  url: boolean;
-  port: boolean;
-  userName: boolean;
-  password: boolean;
-  driverClass: boolean;
+  url?: boolean;
+  // port: boolean;
+  driverClass?: boolean;
+  broker?: boolean;
+  dashboardUrl?: boolean;
+  username?: boolean;
+  password?: boolean;
+};
+type EditorContentRef = {
+  getEditorContent: () => string;
 };
 
 const requiredField = (label: string) => (
@@ -87,7 +122,7 @@ const generateOptions = (count: number, initialValue = 0) => {
     ));
 };
 
-const generateName = (data: Array<DataObj>) => {
+const generateName = (data: Array<ServiceDataObj>) => {
   const newArr: string[] = [];
   data.forEach((d) => {
     newArr.push(d.name);
@@ -99,33 +134,19 @@ const generateName = (data: Array<DataObj>) => {
 const seprateUrl = (url?: string) => {
   if (url) {
     const urlString = url?.split('://')[1] || url;
-    const [idpwd, urlport] = urlString.split('@');
-    const [userName, password] = idpwd.split(':');
-    const [path, portwarehouse] = urlport.split(':');
-    const [port, database] = portwarehouse.split('/');
+    // const [idpwd, urlport] = urlString.split('@');
+    // const [userName, password] = idpwd.split(':');
+    // const [path, portwarehouse] = urlport.split(':');
+    // const [port, database] = portwarehouse.split('/');
 
-    return { userName, password, path, port, database };
+    const database = urlString?.split('/')[1];
+    const connectionUrl = url.replace(`/${database}`, '');
+    // return { userName, password, path, port, database };
+
+    return { connectionUrl, database };
   }
 
   return {};
-};
-
-const fromISOString = (isoValue = '') => {
-  if (isoValue) {
-    // 'P1DT 0H 0M'
-    const [d, hm] = isoValue.split('T');
-    const day = +d.replace('D', '').replace('P', '');
-    const [h, time] = hm.split('H');
-    const minute = +time.replace('M', '');
-
-    return { day, hour: +h, minute };
-  } else {
-    return {
-      day: 1,
-      hour: 0,
-      minute: 0,
-    };
-  }
 };
 
 const errorMsg = (value: string) => {
@@ -145,33 +166,51 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   serviceList,
 }: Props) => {
   const [editData] = useState({ edit: !!data, id: data?.id });
-  const [serviceType] = useState(['MySQL', 'Redshift', 'BigQuery']);
+  const [serviceType, setServiceType] = useState(
+    serviceTypes[serviceName] || []
+  );
   const [parseUrl] = useState(seprateUrl(data?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
   const [selectService, setSelectService] = useState(data?.serviceType || '');
   const [name, setName] = useState(data?.name || '');
-  const [userName, setUserName] = useState(parseUrl?.userName || '');
-  const [password, setPassword] = useState(parseUrl?.password || '');
-  const [description, setDescription] = useState(data?.description || '');
+  // const [userName, setUserName] = useState(parseUrl?.userName || '');
+  // const [password, setPassword] = useState(parseUrl?.password || '');
   // const [tags, setTags] = useState('');
-  const [url, setUrl] = useState(parseUrl?.path || '');
-  const [port, setPort] = useState(parseUrl?.port || '');
+  const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
+  // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
   const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
+  const [brokers, setBrokers] = useState(
+    data?.brokers?.length ? data.brokers.join(', ') : ''
+  );
+  const [schemaRegistry, setSchemaRegistry] = useState(
+    data?.schemaRegistry || ''
+  );
+  const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
+  const [username, setUsername] = useState(data?.username || '');
+  const [password, setPassword] = useState(data?.password || '');
   const [frequency, setFrequency] = useState(
     fromISOString(data?.ingestionSchedule?.repeatFrequency)
   );
-  const [showErrorMsg, setShowErrorMsg] = useState({
+  const [showErrorMsg, setShowErrorMsg] = useState<ErrorMsg>({
     selectService: false,
     name: false,
     url: false,
-    port: false,
-    userName: false,
-    password: false,
+    // port: false,
+    // userName: false,
+    // password: false,
     driverClass: false,
+    broker: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
+  const markdownRef = useRef<EditorContentRef>();
+
+  const getBrokerUrlPlaceholder = (): string => {
+    return selectService === MessagingServiceType.PULSAR
+      ? 'hostname:port'
+      : 'hostname1:port1, hostname2:port2';
+  };
 
   const handleChangeFrequency = (
     event: React.ChangeEvent<HTMLSelectElement>
@@ -208,20 +247,20 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
         break;
 
-      case 'port':
-        setPort(value);
+      // case 'port':
+      //   setPort(value);
 
-        break;
+      //   break;
 
-      case 'userName':
-        setUserName(value);
+      // case 'userName':
+      //   setUserName(value);
 
-        break;
+      //   break;
 
-      case 'password':
-        setPassword(value);
+      // case 'password':
+      //   setPassword(value);
 
-        break;
+      //   break;
 
       case 'driverClass':
         setDriverClass(value);
@@ -236,55 +275,297 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const onSaveHelper = (value: ErrorMsg) => {
-    const { selectService, name, url, port, userName, password, driverClass } =
-      value;
+    const {
+      selectService,
+      name,
+      url,
+      driverClass,
+      broker,
+      dashboardUrl,
+      username,
+      password,
+    } = value;
 
     return (
       !sameNameError &&
       !selectService &&
       !name &&
       !url &&
-      !port &&
-      !userName &&
-      !password &&
-      !driverClass
+      !driverClass &&
+      !broker &&
+      !dashboardUrl &&
+      !username &&
+      !password
     );
   };
 
   const handleSave = () => {
-    const setMsg = {
+    let setMsg: ErrorMsg = {
       selectService: !selectService,
       name: !name,
-      url: !url,
-      port: !port,
-      userName: !userName,
-      password: !password,
-      driverClass: !driverClass,
     };
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            url: !url,
+            driverClass: !driverClass,
+          };
+        }
+
+        break;
+      case ServiceCategory.MESSAGING_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            broker: !brokers,
+          };
+        }
+
+        break;
+      case ServiceCategory.DASHBOARD_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            dashboardUrl: !dashboardUrl,
+            username: !username,
+            password: !password,
+          };
+        }
+
+        break;
+      default:
+        break;
+    }
     setShowErrorMsg(setMsg);
     if (onSaveHelper(setMsg)) {
       const { day, hour, minute } = frequency;
       const date = new Date();
-      const databaseObj: DatabaseObj = {
-        description: description || undefined,
+      let dataObj: DataObj = {
+        description: markdownRef.current?.getEditorContent(),
         ingestionSchedule: ingestion
           ? {
               repeatFrequency: `P${day}DT${hour}H${minute}M`,
               startDate: date.toISOString(),
             }
           : undefined,
-        jdbc: {
-          connectionUrl: `${userName}:${password}@${url}:${port}${
-            database && '/' + database
-          }`,
-          driverClass: driverClass,
-        },
         name: name,
         serviceType: selectService,
       };
-      onSave(databaseObj, serviceName, editData);
+      switch (serviceName) {
+        case ServiceCategory.DATABASE_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              jdbc: {
+                connectionUrl: `${url}${database && '/' + database}`,
+                driverClass: driverClass,
+              },
+            };
+          }
+
+          break;
+        case ServiceCategory.MESSAGING_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              brokers:
+                selectService === MessagingServiceType.PULSAR
+                  ? [brokers]
+                  : brokers.split(',').map((broker) => broker.trim()),
+              schemaRegistry: schemaRegistry,
+            };
+          }
+
+          break;
+        case ServiceCategory.DASHBOARD_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              dashboardUrl: dashboardUrl,
+              username: username,
+              password: password,
+            };
+          }
+
+          break;
+        default:
+          break;
+      }
+      onSave(dataObj, serviceName, editData);
     }
   };
+
+  const getDatabaseFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
+          <div className="tw-col-span-3">
+            <label className="tw-block tw-form-label" htmlFor="url">
+              {requiredField('Connection Url:')}
+            </label>
+            <input
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="url"
+              id="url"
+              name="url"
+              placeholder="username:password@hostname:port"
+              type="text"
+              value={url}
+              onChange={handleValidation}
+            />
+            {showErrorMsg.url && errorMsg('Connection url is required')}
+          </div>
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="database">
+            Database:
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="database"
+            id="database"
+            name="database"
+            placeholder="database name"
+            type="text"
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
+          />
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="driverClass">
+            {requiredField('Driver Class:')}
+          </label>
+          {!editData.edit ? (
+            <select
+              className="tw-form-inputs tw-px-3 tw-py-1"
+              data-testid="driverClass"
+              id="driverClass"
+              name="driverClass"
+              value={driverClass}
+              onChange={handleValidation}>
+              <option value="jdbc">jdbc</option>
+            </select>
+          ) : (
+            <input
+              disabled
+              className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
+              id="driverClass"
+              name="driverClass"
+              value={driverClass}
+            />
+          )}
+          {showErrorMsg.driverClass && errorMsg('Driver class is required')}
+        </div>
+      </>
+    );
+  };
+
+  const getMessagingFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="broker">
+            {requiredField('Broker Url:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="broker"
+            name="broker"
+            placeholder={getBrokerUrlPlaceholder()}
+            type="text"
+            value={brokers}
+            onChange={(e) => setBrokers(e.target.value)}
+          />
+          {showErrorMsg.broker && errorMsg('Broker url is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="schema-registry">
+            Schema Registry:
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="schema-registry"
+            name="schema-registry"
+            placeholder="http(s)://hostname:port"
+            type="text"
+            value={schemaRegistry}
+            onChange={(e) => setSchemaRegistry(e.target.value)}
+          />
+        </div>
+      </>
+    );
+  };
+
+  const getDashboardFields = (): JSX.Element => {
+    return (
+      <>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="dashboard-url">
+            {requiredField('Dashboard Url:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="dashboard-url"
+            name="dashboard-url"
+            placeholder="http(s)://hostname:port"
+            type="text"
+            value={dashboardUrl}
+            onChange={(e) => setDashboardUrl(e.target.value)}
+          />
+          {showErrorMsg.dashboardUrl && errorMsg('Dashboard url is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="username">
+            {requiredField('Username:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="username"
+            name="username"
+            placeholder="username"
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          {showErrorMsg.username && errorMsg('Username is required')}
+        </div>
+        <div className="tw-mt-4">
+          <label className="tw-block tw-form-label" htmlFor="password">
+            {requiredField('Password:')}
+          </label>
+          <input
+            className="tw-form-inputs tw-px-3 tw-py-1"
+            id="password"
+            name="password"
+            placeholder="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {showErrorMsg.password && errorMsg('Password is required')}
+        </div>
+      </>
+    );
+  };
+
+  const getOptionalFields = (): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES:
+        return getDatabaseFields();
+      case ServiceCategory.MESSAGING_SERVICES:
+        return getMessagingFields();
+      case ServiceCategory.DASHBOARD_SERVICES:
+        return getDashboardFields();
+      default:
+        return <></>;
+    }
+  };
+
+  useEffect(() => {
+    setServiceType(serviceTypes[serviceName] || []);
+  }, [serviceName]);
 
   return (
     <dialog className="tw-modal" data-testid="service-modal">
@@ -292,20 +573,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       <div className="tw-modal-container tw-max-w-lg">
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
-          <svg
-            className="tw-w-6 tw-h-6 tw-cursor-pointer"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            onClick={onCancel}>
-            <path
-              d="M6 18L18 6M6 6l12 12"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </svg>
         </div>
         <div className="tw-modal-body">
           <form className="tw-min-w-full" data-testid="form">
@@ -315,7 +582,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               {!editData.edit ? (
                 <select
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   data-testid="selectService"
                   id="selectService"
                   name="selectService"
@@ -323,7 +590,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                   onChange={handleValidation}>
                   <option value="">Select Service</option>
                   {serviceType.map((service, index) => (
-                    <option key={index} value={service.toUpperCase()}>
+                    <option key={index} value={service}>
                       {service}
                     </option>
                   ))}
@@ -331,7 +598,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               ) : (
                 <input
                   disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
+                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
                   id="selectService"
                   name="selectService"
                   value={selectService}
@@ -346,10 +613,11 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               {!editData.edit ? (
                 <input
-                  className="tw-form-input tw-px-3 tw-py-1"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   data-testid="name"
                   id="name"
                   name="name"
+                  placeholder="service name"
                   type="text"
                   value={name}
                   onChange={handleValidation}
@@ -357,7 +625,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               ) : (
                 <input
                   disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
+                  className="tw-form-inputs tw-px-3 tw-py-1 tw-cursor-not-allowed"
                   id="name"
                   name="name"
                   value={name}
@@ -366,153 +634,27 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {showErrorMsg.name && errorMsg('Service name is required.')}
               {sameNameError && errorMsg('Service name already exist.')}
             </div>
-            <div className="tw-mt-4 tw-grid tw-grid-cols-3 tw-gap-2 ">
-              <div className="tw-col-span-2">
-                <label className="tw-block tw-form-label" htmlFor="url">
-                  {requiredField('Connection Url:')}
-                </label>
-                <input
-                  className="tw-form-input tw-px-3 tw-py-1"
-                  data-testid="url"
-                  id="url"
-                  name="url"
-                  type="text"
-                  value={url}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.url && errorMsg('Connection url is required')}
-              </div>
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="port">
-                  {requiredField('Connection Port:')}
-                </label>
-                <input
-                  className="tw-form-input tw-px-3 tw-py-1"
-                  data-testid="port"
-                  id="port"
-                  name="port"
-                  type="number"
-                  value={port}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.port && errorMsg('Port is required')}
-              </div>
-            </div>
-            <div className="tw-mt-4 tw-grid tw-grid-cols-2 tw-gap-2 ">
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="userName">
-                  {requiredField('Username:')}
-                </label>
-                <input
-                  className="tw-form-input tw-px-3 tw-py-1"
-                  data-testid="userName"
-                  id="userName"
-                  name="userName"
-                  type="text"
-                  value={userName}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.userName && errorMsg('Username is required')}
-              </div>
-              <div>
-                <label className="tw-block tw-form-label" htmlFor="password">
-                  {requiredField('Password:')}
-                </label>
-                <input
-                  className="tw-form-input tw-px-3 tw-py-1"
-                  data-testid="password"
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={password}
-                  onChange={handleValidation}
-                />
-                {showErrorMsg.password && errorMsg('Password is required')}
-              </div>
-            </div>
-            <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="database">
-                Database:
-              </label>
-              <input
-                className="tw-form-input tw-px-3 tw-py-1"
-                data-testid="database"
-                id="database"
-                name="database"
-                type="text"
-                value={database}
-                onChange={(e) => setDatabase(e.target.value)}
-              />
-            </div>
-            <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="driverClass">
-                {requiredField('Driver Class:')}
-              </label>
-              {!editData.edit ? (
-                <select
-                  className="tw-form-input tw-px-3 tw-py-1"
-                  data-testid="driverClass"
-                  id="driverClass"
-                  name="driverClass"
-                  value={driverClass}
-                  onChange={handleValidation}>
-                  <option value="jdbc">jdbc</option>
-                </select>
-              ) : (
-                <input
-                  disabled
-                  className="tw-form-input tw-px-3 tw-py-1 tw-cursor-not-allowed"
-                  id="driverClass"
-                  name="driverClass"
-                  value={driverClass}
-                />
-              )}
-              {showErrorMsg.driverClass && errorMsg('Driver class is required')}
-            </div>
+            {getOptionalFields()}
             <div className="tw-mt-4">
               <label className="tw-block tw-form-label" htmlFor="description">
                 Description:
               </label>
-              <textarea
-                className="tw-form-input tw-px-3 tw-py-1 "
+              <MarkdownWithPreview
                 data-testid="description"
-                id="description"
-                name="description"
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                ref={markdownRef}
+                value={data?.description || ''}
               />
             </div>
-            {/* <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="tags">
-                Tags:
-              </label>
-              <select
-                className="tw-form-input tw-px-3 tw-py-1 "
-                name="tags"
-                id="tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}>
-                <option value="">Select Tags</option>
-                <option value="volvo">Volvo</option>
-                <option value="saab">Saab</option>
-                <option value="opel">Opel</option>
-                <option value="audi">Audi</option>
-              </select>
-            </div> */}
             <div className="tw-mt-4 tw-flex tw-items-center">
               <label className="tw-form-label tw-mb-0">Enable Ingestion</label>
               <div
-                className={`tw-w-9 tw-cursor-pointer tw-h-5 tw-flex tw-items-center tw-rounded-full tw-mx-2 tw-px-1 tw-transition tw-duration-500 tw-ease-in-out ${
-                  ingestion ? 'tw-bg-blue-700' : 'tw-bg-gray-100 tw-border-2'
-                }`}
+                className={classNames(
+                  'toggle-switch',
+                  ingestion ? 'open' : null
+                )}
                 data-testid="ingestion-switch"
                 onClick={() => setIngestion(!ingestion)}>
-                <div
-                  className={`tw-bg-white tw-w-3 tw-h-3 tw-rounded-full tw-shadow-md tw-transform tw-transition tw-duration-500 tw-ease-in-out ${
-                    ingestion && 'tw-translate-x-4'
-                  }`}
-                />
+                <div className="switch" />
               </div>
             </div>
             {ingestion && (
@@ -524,12 +666,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center ">
                   <label
-                    className="tw-form-label tw-text-xs flex-auto tw-mr-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs flex-auto tw-mr-2"
                     htmlFor="frequency">
                     Day:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1 flex-auto"
+                    className="tw-form-inputs tw-px-3 tw-py-1 flex-auto"
                     data-testid="frequency"
                     id="frequency"
                     name="day"
@@ -540,12 +682,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center">
                   <label
-                    className="tw-form-label tw-text-xs tw-mx-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs tw-mx-2"
                     htmlFor="frequency">
                     Hour:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1"
+                    className="tw-form-inputs tw-px-3 tw-py-1"
                     data-testid="hour"
                     id="hour"
                     name="hour"
@@ -556,12 +698,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 </div>
                 <div className="tw-flex tw-items-center">
                   <label
-                    className="tw-form-label tw-text-xs tw-mx-2"
+                    className="tw-form-label tw-mb-0 tw-text-xs tw-mx-2"
                     htmlFor="frequency">
                     Minute:
                   </label>
                   <select
-                    className="tw-form-input tw-px-3 tw-py-1 "
+                    className="tw-form-inputs tw-px-3 tw-py-1 "
                     data-testid="minute"
                     id="minute"
                     name="minute"
@@ -576,9 +718,10 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         </div>
         <div className="tw-modal-footer tw-justify-end">
           <Button
-            className="tw-mr-2 tw-text-blue-600 hover:tw-text-blue-600"
+            className="tw-mr-2"
             data-testid="cancel"
             size="regular"
+            theme="primary"
             variant="text"
             onClick={onCancel}>
             Discard

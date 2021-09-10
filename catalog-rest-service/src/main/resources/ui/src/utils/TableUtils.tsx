@@ -1,6 +1,13 @@
-import { ColumnTags } from 'Models';
+import { ColumnTags, TableDetail } from 'Models';
 import React from 'react';
+import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
+import {
+  getDashboardDetailsPath,
+  getDatasetDetailsPath,
+  getTopicDetailsPath,
+} from '../constants/constants';
+import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
@@ -57,6 +64,51 @@ export const getTagsWithoutTier = (
   );
 };
 
+export const getTierFromSearchTableTags = (tags: Array<string>): string => {
+  const tierTag = tags.find(
+    (item) =>
+      item.startsWith('Tier.Tier') && !isNaN(parseInt(item.substring(9).trim()))
+  );
+
+  return tierTag || '';
+};
+
+export const getSearchTableTagsWithoutTier = (
+  tags: Array<string>
+): Array<string> => {
+  return tags.filter(
+    (item) =>
+      !item.startsWith('Tier.Tier') || isNaN(parseInt(item.substring(9).trim()))
+  );
+};
+
+export const getOwnerFromId = (
+  id?: string
+): TableDetail['owner'] | undefined => {
+  let retVal: TableDetail['owner'];
+  if (id) {
+    const user = AppState.users.find((item) => item.id === id);
+    if (user) {
+      retVal = {
+        name: user.displayName,
+        id: user.id,
+        type: 'user',
+      };
+    } else {
+      const team = AppState.userTeams.find((item) => item.id === id);
+      if (team) {
+        retVal = {
+          name: team.displayName || team.name,
+          id: team.id,
+          type: 'team',
+        };
+      }
+    }
+  }
+
+  return retVal;
+};
+
 export const getConstraintIcon = (constraint = '') => {
   let title: string, icon: string;
   switch (constraint) {
@@ -95,4 +147,44 @@ export const getConstraintIcon = (constraint = '') => {
       <SVGIcons alt={title} icon={icon} width="12px" />
     </PopOver>
   );
+};
+
+export const getEntityLink = (
+  indexType: string,
+  fullyQualifiedName: string
+) => {
+  switch (indexType) {
+    case SearchIndex.TOPIC:
+      return getTopicDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.DASHBOARD:
+      return getDashboardDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.TABLE:
+    default:
+      return getDatasetDetailsPath(fullyQualifiedName);
+  }
+};
+
+export const getEntityIcon = (indexType: string) => {
+  let icon = '';
+  switch (indexType) {
+    case SearchIndex.TOPIC:
+      icon = 'topic';
+
+      break;
+
+    case SearchIndex.DASHBOARD:
+      icon = 'dashboard';
+
+      break;
+
+    case SearchIndex.TABLE:
+    default:
+      icon = 'table';
+
+      break;
+  }
+
+  return <SVGIcons alt={icon} icon={icon} width="14" />;
 };

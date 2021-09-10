@@ -34,47 +34,50 @@ export const button = {
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
     primary: {
-      base: 'tw-text-white tw-bg-blue-600 tw-border tw-border-transparent',
+      base: 'tw-text-white tw-bg-primary tw-border tw-border-transparent',
       active:
-        'active:tw-bg-blue-600 hover:tw-bg-blue-700 focus:tw-ring focus:tw-ring-blue-300',
+        'active:tw-bg-primary-active hover:tw-bg-primary-hover focus:tw-bg-primary-active focus:tw-ring focus:tw-ring-purple-300',
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
   },
   outlined: {
     default: {
-      base: 'tw-text-gray-500 tw-border-gray-300 tw-border dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted tw-border-gray-300 tw-border dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-border-gray-600 focus:tw-border-gray-600 
       hover:tw-text-gray-600 active:tw-text-gray-600 focus:tw-ring focus:tw-ring-gray-300`,
-      disabled: 'tw-opacity-60 tw-cursor-not-allowed',
+      disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
     primary: {
-      base: 'tw-text-blue-600 tw-border-blue-500 tw-border dark:tw-text-blue-300 focus:tw-outline-none',
-      active: `active:tw-bg-transparent hover:tw-border-blue-600 focus:tw-border-blue-600 
-      hover:tw-text-blue-600 active:tw-text-blue-600 focus:tw-ring focus:tw-ring-blue-300`,
+      base: 'tw-text-primary tw-border-primary tw-border dark:tw-text-blue-300 focus:tw-outline-none',
+      active: `active:tw-bg-transparent hover:tw-bg-primary-hover-lite hover:tw-text-white focus:tw-bg-primary 
+      active:tw-bg-primary active:tw-text-white focus:tw-ring focus:tw-ring-purple-300`,
+      disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
   },
   link: {
     default: {
-      base: 'tw-text-gray-500 dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-underline focus:tw-underline 
         hover:tw-text-gray-600 active:tw-text-gray-600`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
     primary: {
-      base: 'tw-text-blue-600 dark:tw-text-blue-300 focus:tw-outline-none',
+      base: 'tw-text-primary dark:tw-text-blue-300 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-underline focus:tw-underline 
-        hover:tw-text-blue-700 active:tw-text-blue-600`,
+        hover:tw-text-primary-hover active:tw-text-primary-active`,
+      disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
   },
   text: {
     default: {
-      base: 'tw-text-gray-500 dark:tw-text-gray-400 focus:tw-outline-none',
+      base: 'tw-text-grey-muted dark:tw-text-gray-400 focus:tw-outline-none',
       active: `active:tw-bg-transparent hover:tw-text-gray-600 active:tw-text-gray-600`,
       disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
     primary: {
-      base: 'tw-text-blue-600 dark:tw-text-blue-300 focus:tw-outline-none',
-      active: `active:tw-bg-transparent hover:tw-text-blue-600 active:tw-text-blue-600`,
+      base: 'tw-text-primary dark:tw-text-blue-300 focus:tw-outline-none',
+      active: `active:tw-bg-transparent hover:tw-text-primary-hover active:tw-text-primary-active`,
+      disabled: 'tw-opacity-50 tw-cursor-not-allowed',
     },
   },
 };

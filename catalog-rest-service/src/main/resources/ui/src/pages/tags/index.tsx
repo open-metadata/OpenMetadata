@@ -27,14 +27,16 @@ import {
   updateTagCategory,
 } from '../../axiosAPIs/tagAPI';
 import { Button } from '../../components/buttons/Button/Button';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
+import { getExplorePathWithSearch } from '../../constants/constants';
 import { isEven } from '../../utils/CommonUtils';
-import { stringToDOMElement } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
@@ -52,7 +54,7 @@ const TagsPage = () => {
 
   const fetchCategories = () => {
     setIsLoading(true);
-    getTagCategories()
+    getTagCategories('usageCount')
       .then((res) => {
         setCategoreis(res.data);
         setCurrentCategory(res.data[0]);
@@ -154,10 +156,12 @@ const TagsPage = () => {
     setEditTag(undefined);
   };
 
-  const getDescription = (description: string) => {
-    const desc = stringToDOMElement(description).textContent;
-
-    return desc && desc.length > 1 ? desc : 'No description added';
+  const getUsageCountLink = (tagFQN: string) => {
+    if (tagFQN.startsWith('Tier')) {
+      return `${getExplorePathWithSearch()}?tier=${tagFQN}`;
+    } else {
+      return `${getExplorePathWithSearch()}?tags=${tagFQN}`;
+    }
   };
 
   useEffect(() => {
@@ -167,16 +171,20 @@ const TagsPage = () => {
   const fetchLeftPanel = () => {
     return (
       <>
-        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3">
+        <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Tag Categories</h6>
-          <Button
-            className="tw-h-8 tw-px-3"
-            size="small"
-            theme="primary"
-            variant="contained"
-            onClick={() => setIsAddingCategory((prevState) => !prevState)}>
-            +
-          </Button>
+          <NonAdminAction
+            position="bottom"
+            title="Only Admin is allowed for the action">
+            <Button
+              className="tw-h-7 tw-px-2"
+              size="small"
+              theme="primary"
+              variant="contained"
+              onClick={() => setIsAddingCategory((prevState) => !prevState)}>
+              <i aria-hidden="true" className="fa fa-plus" />
+            </Button>
+          </NonAdminAction>
         </div>
         {categories &&
           categories.map((category: TagsCategory) => (
@@ -188,7 +196,9 @@ const TagsPage = () => {
               onClick={() => {
                 fetchCurrentCategory(category.name);
               }}>
-              <p className="tw-text-center tw-self-center">{category.name}</p>
+              <p className="tw-text-center tw-self-center tag-category">
+                {category.name}
+              </p>
 
               <p className="tw-bg-gray-200 tw-px-2 tw-py-1 tw-rounded tw-text-xs">
                 {category.usageCount}
@@ -211,36 +221,57 @@ const TagsPage = () => {
             <div className="container-fluid py-3">
               {currentCategory && (
                 <div className="tw-flex tw-justify-between tw-pl-1">
-                  <div className="tw-heading tw-text-blue-600 tw-text-base">
+                  <div className="tw-heading tw-text-link tw-text-base">
                     {currentCategory.name}
                   </div>
-                  <Button
-                    className="tw-h-8 tw-rounded tw-mb-2"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={() => setIsAddingTag((prevState) => !prevState)}>
-                    Add new tag
-                  </Button>
+                  <NonAdminAction
+                    position="bottom"
+                    title="Only Admin is allowed for the action">
+                    <Button
+                      className="tw-h-8 tw-rounded tw-mb-2"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => setIsAddingTag((prevState) => !prevState)}>
+                      Add new tag
+                    </Button>
+                  </NonAdminAction>
                 </div>
               )}
-              <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
-                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+              <div className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
+                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                   <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
                     Description
                   </span>
                   <div className="tw-flex-initial">
-                    <button
-                      className="focus:tw-outline-none"
-                      onClick={() => setIsEditCategory(true)}>
-                      <SVGIcons alt="edit" icon="icon-edit" title="Edit" />
-                    </button>
+                    <NonAdminAction
+                      position="bottom"
+                      title="Only Admin is allowed for the action">
+                      <button
+                        className="focus:tw-outline-none"
+                        onClick={() => setIsEditCategory(true)}>
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
+                      </button>
+                    </NonAdminAction>
                   </div>
                 </div>
-                <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                   {currentCategory && (
                     <div data-testid="description" id="description">
-                      {getDescription(currentCategory.description)}
+                      {currentCategory.description ? (
+                        <RichTextEditorPreviewer
+                          markdown={currentCategory.description}
+                        />
+                      ) : (
+                        <span className="tw-no-description">
+                          No description added
+                        </span>
+                      )}
                       {isEditCategory && (
                         <ModalWithMarkdownEditor
                           header={`Edit description for ${currentCategory.name}`}
@@ -254,10 +285,10 @@ const TagsPage = () => {
                   )}
                 </div>
               </div>
-              <div className="tw-border tw-rounded-md tw-bg-white">
+              <div className="tw-bg-white">
                 <table className="tw-w-full tw-overflow-x-auto">
                   <thead>
-                    <tr className="tw-border-b tw-text-sm tw-leading-normal">
+                    <tr className="tableHead-row">
                       <th className="tableHead-cell">Name</th>
                       <th className="tableHead-cell">Description</th>
                       <th className="tableHead-cell tw-w-60">
@@ -270,46 +301,61 @@ const TagsPage = () => {
                       (tag: Tag, index: number) => {
                         return (
                           <tr
-                            className={`${
-                              currentCategory.children?.length !== index + 1 &&
-                              'tw-border-b'
-                            } tw-border-gray-200 hover:tw-bg-gray-100 ${
-                              isEven(index + 1) && 'tw-bg-gray-50'
+                            className={`tableBody-row ${
+                              !isEven(index + 1) && 'odd-row'
                             }`}
                             key={index}>
-                            <td className="tw-py-3 tw-px-6 tw-text-left">
+                            <td className="tableBody-cell">
                               <p>{tag.name}</p>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setIsEditTag(true);
                                 setEditTag(tag);
                               }}>
-                              <div className="child-inline tw-cursor-pointer hover:tw-underline">
-                                {getDescription(tag.description)}
-                                <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                              <div className="tw-cursor-pointer hover:tw-underline tw-flex">
+                                <div>
+                                  {tag.description ? (
+                                    <RichTextEditorPreviewer
+                                      markdown={tag.description}
+                                    />
+                                  ) : (
+                                    <span className="tw-no-description">
+                                      No description added
+                                    </span>
+                                  )}
+                                </div>
+                                <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                   <SVGIcons
                                     alt="edit"
                                     icon="icon-edit"
-                                    title="edit"
+                                    title="Edit"
                                     width="10px"
                                   />
                                 </button>
                               </div>
                               <div className="tw-mt-1">
-                                <span className="tw-text-gray-400 tw-mr-1">
+                                <span className="tw-text-grey-muted tw-mr-1">
                                   Usage:
                                 </span>
-                                <Link
-                                  className="link-text tw-align-middle"
-                                  to={`/explore?tags=${tag.fullyQualifiedName}`}>
-                                  {tag.usageCount}
-                                </Link>
+                                {tag.usageCount ? (
+                                  <Link
+                                    className="link-text tw-align-middle"
+                                    to={getUsageCountLink(
+                                      tag.fullyQualifiedName
+                                    )}>
+                                    {tag.usageCount}
+                                  </Link>
+                                ) : (
+                                  <span className="tw-no-description">
+                                    Not used
+                                  </span>
+                                )}
                               </div>
                             </td>
                             <td
-                              className="tw-group tw-py-3 tw-px-6 tw-text-left"
+                              className="tw-group tableBody-cell"
                               onClick={() => {
                                 setEditTag(tag);
                               }}>
@@ -334,15 +380,15 @@ const TagsPage = () => {
                                     <SVGIcons
                                       alt="edit"
                                       icon="icon-edit"
-                                      title="edit"
+                                      title="Edit"
                                       width="10px"
                                     />
                                   </button>
                                 ) : (
                                   <span className="tw-opacity-0 group-hover:tw-opacity-100">
                                     <Tags
-                                      className="tw-border-gray-500"
-                                      tag="+ Add new tag"
+                                      className="tw-border-main"
+                                      tag="+ Add tag"
                                       type="outlined"
                                     />
                                   </span>
@@ -375,7 +421,7 @@ const TagsPage = () => {
                   initialData={{
                     name: '',
                     description: '',
-                    categoryType: 'DESCRIPTIVE',
+                    categoryType: 'Descriptive',
                   }}
                   onCancel={() => setIsAddingCategory(false)}
                   onSave={(data) => createCategory(data)}

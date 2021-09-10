@@ -36,6 +36,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   tagList,
   onCancel,
   onSelectionChange,
+  showTags = true,
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<ColumnTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
@@ -120,17 +121,18 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   };
 
   const getTagsContainer = (tag: ColumnTags, index: number) => {
-    return (
+    return tag.tagFQN ? (
       <Tags
         className="tw-bg-gray-200"
         editable={editable}
+        isRemovable={tag.isRemovable}
         key={index}
         removeTag={(_e, removedTag: string) => {
           handleTagRemoval(removedTag, index);
         }}
         tag={`#${tag.tagFQN}`}
       />
-    );
+    ) : null;
   };
 
   const getTagsElement = (tag: ColumnTags, index: number) => {
@@ -158,8 +160,8 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     <div
       className={classNames(
         editable
-          ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-blue-500 tw-cursor-text'
-          : null
+          ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-primary tw-cursor-text'
+          : 'tw-cursor-pointer'
       )}
       data-testid="tag-conatiner"
       onClick={(event) => {
@@ -170,11 +172,14 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         }
       }}>
       <div className="tw-flex tw-flex-wrap">
-        {tags.map((tag, index) => getTagsElement(tag, index))}
+        {(showTags || editable) && (
+          <>{tags.map((tag, index) => getTagsElement(tag, index))}</>
+        )}
         {editable ? (
           <span className="tw-relative">
             <input
               className="tw-flex-1 tw-border-0 tw-px-1 focus:tw-outline-none"
+              placeholder="Enter tag name..."
               ref={inputRef}
               style={{ width: inputWidth, minWidth: inputMinWidth }}
               value={newTag}

@@ -25,6 +25,7 @@ import CheckBoxDropDownList from './CheckBoxDropDownList';
 import { DropDownListItem, DropDownProp, DropDownType } from './types';
 
 const DropDown: React.FC<DropDownProp> = ({
+  className = '',
   label,
   type,
   icon: Icon,
@@ -70,9 +71,9 @@ const DropDown: React.FC<DropDownProp> = ({
             aria-haspopup="true"
             className={`tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none ${
               type === DropDownType.CHECKBOX
-                ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-gray-300 focus:tw-border-gray-500 tw-w-full`
+                ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
-            }`}
+            } ${className}`}
             data-testid="menu-button"
             id="menu-button"
             type="button"
@@ -103,7 +104,7 @@ const DropDown: React.FC<DropDownProp> = ({
             ) : (
               <>
                 {Icon && (
-                  <div className="tw-h-6 tw-w-6 tw-pr-4">
+                  <div className="">
                     {AppState.userDetails.profile?.images.image512 ? (
                       <div className="profile-image">
                         <img
@@ -112,13 +113,7 @@ const DropDown: React.FC<DropDownProp> = ({
                         />
                       </div>
                     ) : (
-                      <Icon
-                        style={{
-                          height: '24px',
-                          width: '24px',
-                          borderRadius: '50%',
-                        }}
-                      />
+                      Icon
                     )}
                   </div>
                 )}
@@ -142,9 +137,10 @@ const DropDown: React.FC<DropDownProp> = ({
   );
 };
 DropDown.propTypes = {
+  className: PropTypes.string,
   label: PropTypes.string,
   type: PropTypes.string.isRequired,
-  icon: PropTypes.elementType,
+  icon: PropTypes.element,
   onSelect: PropTypes.func,
   selectedItems: PropTypes.array,
   dropDownList: PropTypes.array.isRequired,

@@ -22,10 +22,7 @@ declare module 'Models' {
     };
   };
   export type FilterObject = {
-    tags: Array<string>;
-    // service: Array<string>;
-    'service type': Array<string>;
-    tier: Array<string>;
+    [key: string]: Array<string>;
   };
   export type PaginationProps = {
     sizePerPage: number;
@@ -53,9 +50,16 @@ declare module 'Models' {
 
   export type ServiceOption = {
     id: string;
+    brokers?: Array<string>;
     description: string;
-    jdbc: { connectionUrl: string; driverClass: string };
+    dashboardUrl?: string;
+    ingestionSchedule?: {
+      repeatFrequency: string;
+      startDate: string;
+    };
+    jdbc?: { connectionUrl: string; driverClass: string };
     name: string;
+    schemaRegistry?: string;
     serviceType: string;
   };
 
@@ -72,6 +76,7 @@ declare module 'Models' {
     tagFQN: string;
     labelType?: 'Manual' | 'Propagated' | 'Automated' | 'Derived';
     state?: 'Suggested' | 'Confirmed';
+    isRemovable?: boolean;
   };
 
   export type TableColumn = {
@@ -168,8 +173,9 @@ declare module 'Models' {
   };
 
   export type UserTeam = {
-    description?: string;
-    href?: string;
+    description: string;
+    displayName?: string;
+    href: string;
     id: string;
     name: string;
     type: string;
@@ -178,11 +184,13 @@ declare module 'Models' {
   export type User = {
     displayName: string;
     isBot: boolean;
+    isAdmin: boolean;
     id: string;
-    name?: string;
+    name: string;
     profile: UserProfile;
     teams: Array<UserTeam>;
     timezone: string;
+    href: string;
   };
 
   export type FormatedTableData = {
@@ -193,12 +201,18 @@ declare module 'Models' {
     owner: string;
     tableType?: string;
     tags: string[];
-    tableEntity: TableEntity;
-    dailyStats: number;
-    weeklyStats: number;
+    dailyStats?: number;
+    dailyPercentileRank?: number;
+    weeklyStats?: number;
+    weeklyPercentileRank?: number;
     service?: string;
     serviceType?: string;
     tier: string;
+    highlight?: {
+      description: string[];
+      table_name: string[];
+    };
+    index: string;
   };
 
   export type NewUser = {
@@ -211,7 +225,7 @@ declare module 'Models' {
   export type ClientAuth = {
     authority: string;
     client_id: string;
-    provider?: 'google' | 'okta' | 'github';
+    provider?: 'google' | 'okta' | 'auth0'; // TODO: add 'github' after adding support for Github SSO
     callbackUrl?: string;
     signingIn?: boolean;
   };
@@ -239,6 +253,7 @@ declare module 'Models' {
 
   export type Database = {
     description: string;
+    displayName?: string;
     fullyQualifiedName: string;
     href: string;
     id: string;
@@ -281,4 +296,94 @@ declare module 'Models' {
       aggregations: Record<string, Sterm>;
     };
   };
+  export type Team = {
+    id: string;
+    name: string;
+    displayName: string;
+    description: string;
+    href: string;
+    users: Array<UserTeam>;
+    owns: Array<UserTeam>;
+  };
+  export type ServiceCollection = {
+    name: string;
+    value: string;
+  };
+
+  export type ServiceData = {
+    collection: {
+      documentation: string;
+      href: string;
+      name: string;
+    };
+  };
+
+  export type ServiceTypes =
+    | 'databaseServices'
+    | 'messagingServices'
+    | 'dashboardServices';
+
+  export type ServiceRecord = Record<ServiceTypes, Array<ServiceDataObj>>;
+
+  export type SampleData = {
+    columns: Array<string>;
+    rows: Array<Array<string>>;
+  };
+
+  // topic interface start
+  export interface Topic {
+    cleanupPolicies: string[];
+    description: string;
+    followers: Follower[];
+    fullyQualifiedName: string;
+    href: string;
+    id: string;
+    maximumMessageSize: number;
+    minimumInSyncReplicas: number;
+    name: string;
+    owner: Owner;
+    partitions: number;
+    retentionSize: number;
+    retentionTime: number;
+    schemaText: string;
+    schemaType: string;
+    service: Service;
+    tags: ColumnTags[];
+  }
+
+  export interface Follower {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  export interface Owner {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  export interface Service {
+    description: string;
+    href: string;
+    id: string;
+    name: string;
+    type: string;
+  }
+
+  // topic interface end
+
+  interface RecentlyViewedData {
+    entityType: 'dataset' | 'topic' | 'dashboard';
+    fqn: string;
+    serviceType?: string;
+    timestamp: number;
+  }
+  export interface RecentlyViewed {
+    data: Array<RecentlyViewedData>;
+  }
 }

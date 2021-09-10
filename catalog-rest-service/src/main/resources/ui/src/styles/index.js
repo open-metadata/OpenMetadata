@@ -17,8 +17,10 @@
 
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'tailwindcss/tailwind.css';
+import './code-mirror.css';
 import './fonts.css';
 import './myDataDetailsTemp.css';
+import './slick-carousel.scss';
 import './stepper.css';
 import './tailwind.css';
 import './temp.css';

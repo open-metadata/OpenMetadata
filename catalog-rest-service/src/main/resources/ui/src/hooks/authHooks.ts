@@ -36,5 +36,8 @@ export const useAuth = (pathname = '') => {
       isEmpty(userDetails) &&
       isEmpty(newUser),
     isAuthenticatedRoute: isAuthenticatedRoute,
+    isAuthDisabled: authDisabled,
+    isAdminUser: userDetails?.isAdmin,
+    isFirstTimeUser: !isEmpty(userDetails) && !isEmpty(newUser),
   };
 };

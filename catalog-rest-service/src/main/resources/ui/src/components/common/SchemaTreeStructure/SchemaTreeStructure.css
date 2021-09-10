@@ -1,0 +1,47 @@
+.field-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 15px;
+  border-left: 3px solid #d9ceee;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.field-child {
+  display: flex;
+  gap: 4px;
+}
+.field-child::before {
+  content: '';
+  display: inline-block;
+  width: 32px;
+  height: 3px;
+  background: #d9ceee;
+  position: relative;
+  top: 11px;
+}
+.field-child-icon {
+  cursor: pointer;
+  color: #7147e8;
+}
+.field-child-icon i {
+  vertical-align: sub;
+  margin-right: 2px;
+  margin-left: 2px;
+}
+
+.field-label {
+  display: flex;
+  gap: 4px;
+}
+
+.field-label-name {
+  padding: 4px 6px;
+}
+
+.child-fields-wrapper {
+  display: flex;
+  flex-direction: column;
+  /* margin-top: -11px; */
+}

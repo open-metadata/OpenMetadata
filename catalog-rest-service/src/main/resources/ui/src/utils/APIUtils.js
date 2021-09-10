@@ -6,17 +6,27 @@ import { getRelativeTime } from './TimeUtils';
 export const formatDataResponse = (hits) => {
   const formattedData = hits.map((hit) => {
     const newData = {};
-    newData.id = hit._source.table_id;
-    newData.name = hit._source.table_name;
+    newData.index = hit._index;
+    newData.id =
+      hit._source.table_id || hit._source.topic_id || hit._source.dashboard_id;
+    newData.name =
+      hit._source.table_name ||
+      hit._source.topic_name ||
+      hit._source.dashboard_name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;
     newData.tags = hit._source.tags;
     newData.dailyStats = hit._source.daily_stats;
+    newData.dailyPercentileRank = hit._source.daily_percentile_rank;
+    newData.weeklyStats = hit._source.weekly_stats;
+    newData.weeklyPercentileRank = hit._source.weekly_percentile_rank;
     newData.service = hit._source.service;
     newData.serviceType = hit._source.service_type;
     newData.tableEntity = hit._source.table_entity;
     newData.tier = hit._source.tier;
+    newData.owner = hit._source.owner;
+    newData.highlight = hit.highlight;
 
     return newData;
   });

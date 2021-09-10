@@ -19,3 +19,11 @@
 /// <reference types="react-scripts" />
 declare module 'classnames';
 declare module 'react-js-pagination';
+declare module 'draft-js';
+declare module 'react-draft-wysiwyg';
+declare module 'markdown-draft-js';
+declare module 'react-syntax-highlighter';
+declare module 'rehype-raw';
+declare module 'react-codemirror2';
+declare module 'react-slick';
+declare module 'slick-carousel';

@@ -21,6 +21,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import Onboarding from '../components/onboarding/Onboarding'; // Remove this route once Onboarding is added to my-data
 import { ROUTES } from '../constants/constants';
+import MyDashBoardPage from '../pages/dashboard-details';
 import DatabaseDetails from '../pages/database-details/index';
 import ExplorePage from '../pages/explore';
 import MyDataPage from '../pages/my-data';
@@ -36,6 +37,7 @@ import StorePage from '../pages/store';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
+import MyTopicDetailPage from '../pages/topic-details';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -45,6 +47,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={ReportsPage} path={ROUTES.REPORTS} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />
+      <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_TAB} />
       <Route exact component={WorkflowsPage} path={ROUTES.WORKFLOWS} />
       <Route exact component={SQLBuilderPage} path={ROUTES.SQL_BUILDER} />
       <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
@@ -62,6 +65,8 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route component={MyDataDetailsPage} path={ROUTES.DATASET_DETAILS} />
+      <Route component={MyTopicDetailPage} path={ROUTES.TOPIC_DETAILS} />
+      <Route component={MyDashBoardPage} path={ROUTES.DASHBOARD_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>

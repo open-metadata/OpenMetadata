@@ -19,7 +19,7 @@ import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { User } from 'Models';
+import { NewUser, User } from 'Models';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
   ComponentType,
@@ -28,17 +28,20 @@ import React, {
   useState,
 } from 'react';
 import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
-import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
+import {
+  Redirect,
+  Route,
+  Switch,
+  useHistory,
+  useLocation,
+} from 'react-router-dom';
 import appState from '../AppState';
 import axiosClient from '../axiosAPIs';
 import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
-import {
-  getLoggedInUser,
-  getTeams,
-  getUserByName,
-  getUsers,
-} from '../axiosAPIs/userAPI';
-import { oidcTokenKey, ROUTES, TIMEOUT } from '../constants/constants';
+import { getLoggedInUser, getUserByName } from '../axiosAPIs/userAPI';
+import Loader from '../components/Loader/Loader';
+import { FirstTimeUserModal } from '../components/Modals/FirstTimeUserModal/FirstTimeUserModal';
+import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { useAuth } from '../hooks/authHooks';
 import useToastContext from '../hooks/useToastContext';
@@ -49,6 +52,7 @@ import {
   getOidcExpiry,
   getUserManagerConfig,
 } from '../utils/AuthProvider.util';
+import { fetchAllUsers } from '../utils/UsedDataUtils';
 import { AuthProviderProps, OidcUser } from './AuthProvider.interface';
 
 const cookieStorage = new CookieStorage();
@@ -67,9 +71,16 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   childComponentType,
   children,
 }: AuthProviderProps) => {
+  const location = useLocation();
   const history = useHistory();
   const showToast = useToastContext();
-  const { isSignedIn, isSigningIn, isSignedOut } = useAuth();
+  const {
+    isAuthenticatedRoute,
+    isFirstTimeUser,
+    isSignedIn,
+    isSigningIn,
+    isSignedOut,
+  } = useAuth(location.pathname);
 
   const oidcUserToken = cookieStorage.getItem(oidcTokenKey);
   const [loading, setLoading] = useState(true);
@@ -77,11 +88,11 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     {} as UserManager
   );
   const [userManagerConfig, setUserManagerConfig] = useState<
-    Record<string, string | WebStorageStateStore>
+    Record<string, string | boolean | WebStorageStateStore>
   >({});
 
   const clearOidcUserData = (
-    userConfig: Record<string, string | WebStorageStateStore>
+    userConfig: Record<string, string | boolean | WebStorageStateStore>
   ): void => {
     cookieStorage.removeItem(
       `oidc.user:${userConfig.authority}:${userConfig.client_id}`
@@ -92,30 +103,12 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
     history.push(ROUTES.HOME);
   };
 
-  // Moving this code here from App.tsx
-  const getAllUsersList = (): void => {
-    getUsers().then((res) => {
-      appState.users = res.data.data;
-    });
-  };
-
-  const getAllTeams = (): void => {
-    getTeams().then((res) => {
-      appState.userTeams = res.data.data;
-    });
-  };
-
-  const fetchAllUsers = () => {
-    getAllUsersList();
-    getAllTeams();
-    setInterval(getAllUsersList, TIMEOUT.USER_LIST);
-  };
-
   const fetchUserByEmail = (user: OidcUser) => {
     getUserByName(getNameFromEmail(user.profile.email), userAPIQueryFields)
       .then((res: AxiosResponse) => {
         if (res.data) {
           appState.userDetails = res.data;
+          fetchAllUsers();
           handledVerifiedUser();
         } else {
           cookieStorage.removeItem(oidcTokenKey);
@@ -192,6 +185,15 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
       });
   };
 
+  const handleFirstTourModal = (skip: boolean) => {
+    appState.newUser = {} as NewUser;
+    if (skip) {
+      history.push(ROUTES.HOME);
+    } else {
+      // TODO: Route to tour page
+    }
+  };
+
   useEffect(() => {
     fetchAuthConfig();
 
@@ -235,39 +237,50 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   return (
     <>
       {!loading ? (
-        <Switch>
-          <Route exact path={ROUTES.HOME}>
-            {!isSignedIn && !isSigningIn ? (
-              <Redirect to={ROUTES.SIGNIN} />
+        <>
+          <Switch>
+            <Route exact path={ROUTES.HOME}>
+              {!isSignedIn && !isSigningIn ? (
+                <Redirect to={ROUTES.SIGNIN} />
+              ) : (
+                <Redirect to={ROUTES.MY_DATA} />
+              )}
+            </Route>
+            <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+            {!isSigningIn ? (
+              <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+            ) : null}
+            <Route
+              path={ROUTES.CALLBACK}
+              render={() => (
+                <>
+                  <Callback
+                    userManager={userManager}
+                    onSuccess={(user) => {
+                      cookieStorage.setItem(oidcTokenKey, user.id_token, {
+                        expires: getOidcExpiry(),
+                      });
+                      fetchUserByEmail(user as OidcUser);
+                    }}
+                  />
+                  <Loader />
+                </>
+              )}
+            />
+            {isSignedOut ? <Redirect to={ROUTES.SIGNIN} /> : null}
+            {oidcUserToken || !userManagerConfig?.client_id ? (
+              children
             ) : (
-              <Redirect to={ROUTES.MY_DATA} />
+              <AppWithAuth />
             )}
-          </Route>
-          <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
-          {!isSigningIn ? (
-            <Route exact component={SigninPage} path={ROUTES.SIGNIN} />
+          </Switch>
+          {isAuthenticatedRoute && isFirstTimeUser ? (
+            <FirstTimeUserModal
+              onCancel={() => handleFirstTourModal(true)}
+              onSave={() => handleFirstTourModal(false)}
+            />
           ) : null}
-          <Route
-            path={ROUTES.CALLBACK}
-            render={() => (
-              <Callback
-                userManager={userManager}
-                onSuccess={(user) => {
-                  cookieStorage.setItem(oidcTokenKey, user.id_token, {
-                    expires: getOidcExpiry(),
-                  });
-                  fetchUserByEmail(user as OidcUser);
-                }}
-              />
-            )}
-          />
-          {isSignedOut ? <Redirect to={ROUTES.SIGNIN} /> : null}
-          {oidcUserToken || !userManagerConfig?.client_id ? (
-            children
-          ) : (
-            <AppWithAuth />
-          )}
-        </Switch>
+        </>
       ) : null}
     </>
   );

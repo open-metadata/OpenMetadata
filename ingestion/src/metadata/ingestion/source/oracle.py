@@ -16,18 +16,23 @@
 # This import verifies that the dependencies are available.
 import cx_Oracle  # noqa: F401
 
-from .sql_source import BasicSQLAlchemyConfig, SQLAlchemySource
-from ..ometa.auth_provider import MetadataServerConfig
+from .sql_source import SQLSource, SQLConnectionConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 
-class OracleConfig(BasicSQLAlchemyConfig):
+class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
 
+    
 
-class OracleSource(SQLAlchemySource):
+    def get_connection_url(self):
+        return super().get_connection_url()
+
+
+class OracleSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx, "oracle")
+        super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

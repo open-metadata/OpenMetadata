@@ -17,10 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.type.ColumnJoin;
-import org.openmetadata.catalog.type.JoinedWith;
-import org.openmetadata.catalog.type.TableData;
-import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
@@ -32,9 +28,16 @@ import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnJoin;
+import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -59,6 +62,7 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -72,15 +76,16 @@ import java.util.stream.Collectors;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
+import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 public abstract class TableRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
-  // Table that can be patched in a patch request
-
+  // Table fields that can be patched in a PATCH request
   private static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
+  // Table fields that can be updated in a PUT request
   private static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
-          "owner,columns,database,tags, tableConstraints");
+          "owner,columns,database,tags,tableConstraints");
 
   @CreateSqlObject
   abstract DatabaseDAO databaseDAO();
@@ -109,31 +114,47 @@ public abstract class TableRepository {
   @CreateSqlObject
   abstract TagDAO tagDAO();
 
- @Transaction
-  public List<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after) throws IOException,
+  @Transaction
+  public TableList listAfter(Fields fields, String databaseFQN, int limitParam, String after) throws IOException,
           ParseException, GeneralSecurityException {
-    // Forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = tableDAO().listAfter(databaseFQN, limitParam, after == null ? "" :
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = tableDAO().listAfter(databaseFQN, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Table> tables = new ArrayList<>();
     for (String json : jsons) {
       tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
     }
-    return tables;
+    int total = tableDAO().listCount(databaseFQN);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : tables.get(0).getFullyQualifiedName();
+    if (tables.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      tables.remove(limitParam);
+      afterCursor = tables.get(limitParam - 1).getFullyQualifiedName();
+    }
+    return new TableList(tables, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Table> listBefore(Fields fields, String databaseFQN, int limitParam, String before) throws IOException,
+  public TableList listBefore(Fields fields, String databaseFQN, int limitParam, String before) throws IOException,
           ParseException, GeneralSecurityException {
-      // Reverse scrolling
-    List<String> jsons = tableDAO().listBefore(databaseFQN, limitParam, CipherText.instance().decrypt(before));
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = tableDAO().listBefore(databaseFQN, limitParam + 1, CipherText.instance().decrypt(before));
 
     List<Table> tables = new ArrayList<>();
     for (String json : jsons) {
       tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
     }
-    return tables;
+    int total = tableDAO().listCount(databaseFQN);
+
+    String beforeCursor = null, afterCursor;
+    if (tables.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      tables.remove(0);
+      beforeCursor = tables.get(0).getFullyQualifiedName();
+    }
+    afterCursor = tables.get(tables.size() - 1).getFullyQualifiedName();
+    return new TableList(tables, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -254,6 +275,29 @@ public abstract class TableRepository {
 
     entityExtensionDAO().insert(tableId, "table.sampleData", "tableData",
             JsonUtils.pojoToJson(tableData));
+  }
+
+  @Transaction
+  public void addTableProfileData(String tableId, TableProfile tableProfile) throws IOException {
+    // Validate the request content
+    Table table = EntityUtil.validate(tableId, tableDAO().findById(tableId), Table.class);
+
+    List<TableProfile> storedTableProfiles = getTableProfile(table);
+    Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
+    if (storedTableProfiles != null) {
+      for (TableProfile profile : storedTableProfiles) {
+        storedMapTableProfiles.put(profile.getProfileDate(), profile);
+      }
+    }
+    //validate all the columns
+    for (ColumnProfile columnProfile: tableProfile.getColumnProfile()) {
+      validateColumn(table, columnProfile.getName());
+    }
+    storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
+    List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
+
+    entityExtensionDAO().insert(tableId, "table.tableProfile", "tableProfile",
+            JsonUtils.pojoToJson(updatedProfiles));
   }
 
   @Transaction
@@ -385,7 +429,7 @@ public abstract class TableRepository {
 
     // Remove previous tags. Merge tags from the update and the existing tags
     EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updated.setTags(EntityUtil.mergeTags(updated.getTags(), original.getTags()));
+    updateColumns(original, updated);
 
     storeTable(updated, true);
     updateRelationships(original, updated);
@@ -418,6 +462,8 @@ public abstract class TableRepository {
     getColumnTags(fields.contains("tags"), table);
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
+    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
     return table;
   }
 
@@ -452,8 +498,10 @@ public abstract class TableRepository {
       if (stored.getDescription() != null && !stored.getDescription().isEmpty()) {
         updated.setDescription(stored.getDescription()); // Carry forward non-empty description
       }
-      // Combine all the tags (duplicates will be deduped)
-      updated.setTags(EntityUtil.mergeTags(updated.getTags(), stored.getTags()));
+
+      EntityUtil.removeTagsByPrefix(tagDAO(), stored.getFullyQualifiedName());
+      //update tags
+      updated.setTags(updated.getTags());
     }
     storedTable.setColumns(updatedColumns);
   }
@@ -630,6 +678,18 @@ public abstract class TableRepository {
             TableData.class);
   }
 
+  private List<TableProfile> getTableProfile(Table table) throws IOException  {
+    List<TableProfile> tableProfiles = JsonUtils.readObjects(entityExtensionDAO().getExtension(table.getId().toString(),
+            "table.tableProfile"),
+            TableProfile.class);
+    if (tableProfiles != null) {
+      tableProfiles.sort(Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT),
+              Comparator.reverseOrder()));
+    }
+    return tableProfiles;
+  }
+
+
   public interface TableDAO {
     @SqlUpdate("INSERT INTO table_entity (json) VALUES (:json)")
     void insert(@Bind("json") String json);
@@ -642,6 +702,10 @@ public abstract class TableRepository {
 
     @SqlQuery("SELECT json FROM table_entity WHERE fullyQualifiedName = :tableFQN")
     String findByFQN(@Bind("tableFQN") String tableFQN);
+
+    @SqlQuery("SELECT count(*) FROM table_entity WHERE " +
+            "(fullyQualifiedName LIKE CONCAT(:databaseFQN, '.%') OR :databaseFQN IS NULL)")
+    int listCount(@Bind("databaseFQN") String databseFQN);
 
     @SqlQuery(
             "SELECT json FROM (" +

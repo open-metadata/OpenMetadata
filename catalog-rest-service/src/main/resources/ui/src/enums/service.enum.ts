@@ -15,7 +15,13 @@
   * limitations under the License.
 */
 
-export enum ServiceType {
+export enum ServiceCategory {
+  DATABASE_SERVICES = 'databaseServices',
+  MESSAGING_SERVICES = 'messagingServices',
+  DASHBOARD_SERVICES = 'dashboardServices',
+}
+
+export enum DatabaseServiceType {
   MYSQL = 'MySQL',
   REDSHIFT = 'Redshift',
   BIGQUERY = 'BigQuery',
@@ -23,4 +29,17 @@ export enum ServiceType {
   POSTGRES = 'Postgres',
   ORACLE = 'Oracle',
   SNOWFLAKE = 'Snowflake',
+  MSSQL = 'MSSQL',
+  ATHENA = 'Athena',
+  PRESTO = 'Presto',
+}
+
+export enum MessagingServiceType {
+  KAFKA = 'Kafka',
+  PULSAR = 'Pulsar',
+}
+
+export enum DashboardServiceType {
+  SUPERSET = 'Superset',
+  LOOKER = 'Looker',
 }

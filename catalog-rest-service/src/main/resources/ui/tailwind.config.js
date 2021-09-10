@@ -17,8 +17,37 @@
 
 const defaultTheme = require('tailwindcss/defaultTheme');
 
-const bluePrimaryDark = '#0366D6';
-const bluePrimaryLight = '#D4E2FC';
+// Primary colors for text and controls
+const primary = '#7147E8';
+const primaryHover = '#5523E0';
+const primaryActive = '#450DE2';
+const primaryHoverLite = '#DBD1F9';
+const secondary = '#B02AAC';
+const secondaryBG = '#B02AAC40';
+
+// state colors
+const success = '#008376';
+const error = '#FF4C3B';
+const info = '#1890FF';
+const warning = '#FFC34E';
+const warningBG = '#FFC34E40';
+
+// Background colors
+const bodyBG = '#FCFBFE';
+const bodyHoverBG = '#F9F8FD';
+const tagBG = '#EEEAF8';
+const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
+const backdropBG = '#302E36';
+
+// Borders and Separators
+const mainBorder = '#E2DCE4';
+const mainSeparator = '#D9CEEE';
+
+// Text color - Gray variants
+const textBody = '#37352f';
+const textMuted = '#6B7280';
+const textDark = '#000000';
+const textMutedLite = '#6B728026'; // 'rgba(107, 114, 128, 0.15)'
 
 module.exports = {
   purge: ['./src/**/*.{js,jsx,ts,tsx}', './public/index.html'],
@@ -32,24 +61,39 @@ module.exports = {
       xl: '1440px',
     },
     extend: {
-      backgroundColor: {
-        success: '#28a745',
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
-        'primary-tag': '#EECEDD',
-        'secondary-tag': '#F2E8D0',
-        search: '#F4F6FA',
-      },
       borderColor: {
         'orange-400': '#F9826C',
-        success: '#28a745',
-        'primary-dark': bluePrimaryDark,
-        'primary-light': bluePrimaryLight,
+        main: mainBorder,
+        text: textBody,
+        hover: textBody,
+        focus: primary,
         search: '#D5D6D9',
       },
-      textColor: {
-        success: '#28a745',
-        'grey-body': '#37352f',
+      boxShadow: {
+        modal: '1px 1px 5px rgba(0, 0, 0, 0.2)',
+      },
+      colors: {
+        'grey-body': textBody,
+        'grey-muted': textMuted,
+        'grey-muted-lite': textMutedLite,
+        'grey-dark': textDark,
+        'grey-backdrop': backdropBG,
+        'primary-lite': primaryBG,
+        primary: primary,
+        'primary-hover': primaryHover,
+        'primary-active': primaryActive,
+        'primary-hover-lite': primaryHoverLite,
+        secondary: secondary,
+        'secondary-lite': secondaryBG,
+        'body-main': bodyBG,
+        'body-hover': bodyHoverBG,
+        tag: tagBG,
+        success: success,
+        error: error,
+        warning: warning,
+        'warning-lite': warningBG,
+        info: info,
+        separator: mainSeparator,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],
@@ -63,11 +107,20 @@ module.exports = {
         h6: '14px',
         body: '14px',
       },
+      height: {
+        100: '25rem',
+      },
+      width: {
+        120: '30rem',
+      },
       maxHeight: {
         32: '8rem',
+        '90vh': '90vh',
       },
       minHeight: {
         32: '8rem',
+        168: '10.5rem',
+        tab: '24rem',
       },
       padding: {
         '5px': '5px',
@@ -79,10 +132,12 @@ module.exports = {
   },
   variants: {
     extend: {
+      backgroundColor: ['checked'],
       borderStyle: ['hover'],
       borderWidth: ['hover'],
       display: ['group-hover'],
+      opacity: ['disabled'],
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/custom-forms')],
 };

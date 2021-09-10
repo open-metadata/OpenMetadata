@@ -15,12 +15,17 @@
   * limitations under the License.
 */
 
+import { isEmpty } from 'lodash';
 import { FormatedTableData } from 'Models';
 import PropTypes from 'prop-types';
 import React, { ReactNode } from 'react';
 import { PAGE_SIZE } from '../../constants/constants';
 import { pluralize } from '../../utils/CommonUtils';
-import ErrorPlaceHolder from '../common/error-with-placeholder/ErrorPlaceHolder';
+import {
+  getOwnerFromId,
+  getTierFromSearchTableTags,
+} from '../../utils/TableUtils';
+import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import TableDataCard from '../common/table-data-card/TableDataCard';
 import PageContainer from '../containers/PageContainer';
 import Loader from '../Loader/Loader';
@@ -37,6 +42,7 @@ type SearchedDataProp = {
   showResultCount?: boolean;
   searchText?: string;
   showOnboardingTemplate?: boolean;
+  showOnlyChildren?: boolean;
 };
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
@@ -46,10 +52,44 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   paginate,
   showResultCount = false,
   showOnboardingTemplate = false,
+  showOnlyChildren = false,
   searchText,
   totalValue,
   fetchLeftPanel,
-}) => {
+}: SearchedDataProp) => {
+  const highlightSearchResult = () => {
+    return data.map((table, index) => {
+      const description = isEmpty(table.highlight?.description)
+        ? table.description
+        : table.highlight?.description.join(' ');
+
+      const name = isEmpty(table.highlight?.table_name)
+        ? table.name
+        : table.highlight?.table_name.join(' ') || table.name;
+
+      return (
+        <div className="tw-mb-3" key={index}>
+          <TableDataCard
+            description={description}
+            fullyQualifiedName={table.fullyQualifiedName}
+            indexType={table.index}
+            name={name}
+            owner={getOwnerFromId(table.owner)?.name}
+            serviceType={table.serviceType || '--'}
+            tableType={table.tableType}
+            tags={table.tags}
+            tier={
+              (table.tier || getTierFromSearchTableTags(table.tags))?.split(
+                '.'
+              )[1]
+            }
+            usage={table.weeklyPercentileRank}
+          />
+        </div>
+      );
+    });
+  };
+
   return (
     <>
       <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
@@ -58,47 +98,36 @@ const SearchedData: React.FC<SearchedDataProp> = ({
             <Loader />
           ) : (
             <>
-              {totalValue > 0 || showOnboardingTemplate ? (
+              {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
                 <>
                   {children}
-                  {showResultCount && searchText ? (
-                    <div className="tw-mb-1">
-                      {pluralize(totalValue, 'result')}
-                    </div>
-                  ) : null}
-                  {data.length > 0 ? (
-                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                      {data.map((table, index) => (
-                        <div className="tw-mb-3" key={index}>
-                          <TableDataCard
-                            description={table.description}
-                            fullyQualifiedName={table.fullyQualifiedName}
-                            name={table.name}
-                            owner={table.tableEntity.owner?.name}
-                            serviceType={table.serviceType || '--'}
-                            tableType={table.tableType}
-                            tags={table.tags}
-                            tier={table.tier?.split('.')[1]}
-                            usage={table.weeklyStats}
-                          />
+                  {!showOnlyChildren ? (
+                    <>
+                      {showResultCount && searchText ? (
+                        <div className="tw-mb-1">
+                          {pluralize(totalValue, 'result')}
                         </div>
-                      ))}
-
-                      {totalValue > 0 && data.length > 0 && (
-                        <Pagination
-                          currentPage={currentPage}
-                          paginate={paginate}
-                          sizePerPage={PAGE_SIZE}
-                          totalNumberOfValues={totalValue}
-                        />
+                      ) : null}
+                      {data.length > 0 ? (
+                        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                          {highlightSearchResult()}
+                          {totalValue > PAGE_SIZE && data.length > 0 && (
+                            <Pagination
+                              currentPage={currentPage}
+                              paginate={paginate}
+                              sizePerPage={PAGE_SIZE}
+                              totalNumberOfValues={totalValue}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <Onboarding />
                       )}
-                    </div>
-                  ) : (
-                    <Onboarding />
-                  )}
+                    </>
+                  ) : null}
                 </>
               ) : (
-                <ErrorPlaceHolder />
+                <ErrorPlaceHolderES type="noData" />
               )}
             </>
           )}

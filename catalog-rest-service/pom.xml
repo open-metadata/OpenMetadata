@@ -5,7 +5,7 @@
   <parent>
     <artifactId>catalog</artifactId>
     <groupId>org.openmetadata</groupId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.4.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -213,7 +213,6 @@
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
       <version>${jersey-client.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
@@ -340,9 +339,9 @@
               <title>OpenMetadata Apis</title>
               <version>0.3.0</version>
               <contact>
-                <email>contact@open-metadata.org</email>
+                <email>openmetadata-dev@googlegroups.com</email>
                 <name>OpenMetadata</name>
-                <url>https:/open-metadata.org</url>
+                <url>https://open-metadata.org</url>
               </contact>
               <license>
                 <url>https://www.apache.org/licenses/LICENSE-2.0</url>

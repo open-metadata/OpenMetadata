@@ -16,6 +16,13 @@
 */
 
 import { AxiosResponse } from 'axios';
+import { isNull } from 'lodash';
+import {
+  ServiceCollection,
+  ServiceData,
+  ServiceRecord,
+  ServiceTypes,
+} from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -25,25 +32,26 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
   AddServiceModal,
-  DatabaseObj,
   DataObj,
   EditObj,
+  ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
 import { getServiceDetailsPath } from '../../constants/constants';
-import { NOSERVICE, PLUS } from '../../constants/services.const';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
-type ServiceData = {
-  collection: {
-    documentation: string;
-    href: string;
-    name: string;
-  };
-};
+import {
+  arrServiceTypes,
+  NOSERVICE,
+  PLUS,
+  servicesDisplayName,
+} from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
+import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
+import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
+import SVGIcons from '../../utils/SvgUtils';
 
 export type ApiData = {
   description: string;
@@ -55,19 +63,23 @@ export type ApiData = {
   ingestionSchedule?: { repeatFrequency: string; startDate: string };
 };
 
-type ServiceCollection = { name: string; value: string };
-
 const ServicesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [serviceName] = useState('databaseServices');
-  const [serviceList, setServiceList] = useState<Array<DataObj>>([]);
-  const [editData, setEditData] = useState<DataObj>();
+  const [serviceName, setServiceName] =
+    useState<ServiceTypes>('databaseServices');
+  const [services, setServices] = useState<ServiceRecord>({
+    databaseServices: [],
+    messagingServices: [],
+    dashboardServices: [],
+  });
+  const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
+  const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
-    let listArr = [];
+    // let listArr = [];
     //   fetch services of all individual collection
     if (allServiceCollectionArr.length) {
       let promiseArr = [];
@@ -77,16 +89,24 @@ const ServicesPage = () => {
       Promise.all(promiseArr).then((result: AxiosResponse[]) => {
         if (result.length) {
           let serviceArr = [];
+          const serviceRecord = {} as ServiceRecord;
           serviceArr = result.map((service) => service?.data?.data || []);
-          // converted array of arrays to array
-          const allServices = serviceArr.reduce(
-            (acc, el) => acc.concat(el),
-            []
-          );
-          listArr = allServices.map((s: ApiData) => {
-            return { ...s, ...s.jdbc };
-          });
-          setServiceList(listArr);
+          for (let i = 0; i < serviceArr.length; i++) {
+            serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
+              serviceArr[i].map((s: ApiData) => {
+                return { ...s, ...s.jdbc };
+              });
+          }
+          // // converted array of arrays to array
+          // const allServices = serviceArr.reduce(
+          //   (acc, el) => acc.concat(el),
+          //   []
+          // );
+          // listArr = allServices.map((s: ApiData) => {
+          //   return { ...s, ...s.jdbc };
+          // });
+          setServices(serviceRecord);
+          setServiceList(serviceRecord[serviceName]);
         }
       });
     }
@@ -101,7 +121,7 @@ const ServicesPage = () => {
     setEditData(undefined);
   };
 
-  const handleEdit = (value: DataObj) => {
+  const handleEdit = (value: ServiceDataObj) => {
     setEditData(value);
     setIsModalOpen(true);
   };
@@ -109,36 +129,43 @@ const ServicesPage = () => {
   const handleUpdate = (
     selectedService: string,
     id: string,
-    dataObj: DatabaseObj
+    dataObj: DataObj
   ) => {
     updateService(selectedService, id, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
         const updatedServiceList = serviceList.map((s) =>
           s.id === updatedData.id ? updatedData : s
         );
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     );
   };
 
-  const handleAdd = (selectedService: string, dataObj: DatabaseObj) => {
+  const handleAdd = (selectedService: string, dataObj: DataObj) => {
     postService(selectedService, dataObj).then(
       ({ data }: { data: AxiosResponse['data'] }) => {
         const updatedData = {
           ...data,
           ...data.jdbc,
+          ...data.brokers,
+          ...data.schemaRegistry,
         };
-        setServiceList([...serviceList, updatedData]);
+        const updatedServiceList = [...serviceList, updatedData];
+        setServices({ ...services, [serviceName]: updatedServiceList });
+        setServiceList(updatedServiceList);
       }
     );
   };
 
   const handleSave = (
-    dataObj: DatabaseObj,
+    dataObj: DataObj,
     selectedService: string,
     isEdit: EditObj
   ) => {
@@ -155,9 +182,79 @@ const ServicesPage = () => {
     deleteService(serviceName, id).then((res: AxiosResponse) => {
       if (res.statusText === 'OK') {
         const updatedServiceList = serviceList.filter((s) => s.id !== id);
+        setServices({ ...services, [serviceName]: updatedServiceList });
         setServiceList(updatedServiceList);
       }
     });
+  };
+
+  const getServiceLogo = (serviceType: string): JSX.Element | null => {
+    const logo = serviceTypeLogo(serviceType);
+    if (!isNull(logo)) {
+      return <img alt="" className="tw-h-10 tw-w-10" src={logo} />;
+    }
+
+    return null;
+  };
+
+  const getServiceTabs = (): Array<{
+    name: ServiceTypes;
+    displayName: string;
+  }> => {
+    const tabs = Object.keys(services);
+
+    return arrServiceTypes
+      .filter((item) => tabs.includes(item))
+      .map((type) => {
+        return {
+          name: type,
+          displayName: servicesDisplayName[type],
+        };
+      });
+  };
+
+  const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
+    switch (serviceName) {
+      case ServiceCategory.DATABASE_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Driver Class:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.driverClass}
+              </span>
+            </div>
+          </>
+        );
+      }
+      case ServiceCategory.MESSAGING_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Brokers:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.brokers?.join(', ')}
+              </span>
+            </div>
+          </>
+        );
+      }
+      case ServiceCategory.DASHBOARD_SERVICES: {
+        return (
+          <>
+            <div className="tw-mb-1">
+              <label className="tw-mb-0">Dashboard URL:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {service.dashboardUrl}
+              </span>
+            </div>
+          </>
+        );
+      }
+      default: {
+        return <></>;
+      }
+    }
   };
 
   useEffect(() => {
@@ -185,16 +282,37 @@ const ServicesPage = () => {
       {!isLoading ? (
         <PageContainer>
           <div className="container-fluid">
+            <div className="tw-bg-transparent tw-mb-4">
+              <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
+                {getServiceTabs().map((tab, index) => (
+                  <button
+                    className={getTabClasses(tab.name, serviceName)}
+                    data-testid="tab"
+                    key={index}
+                    onClick={() => {
+                      setServiceName(tab.name);
+                      setServiceList(services[tab.name]);
+                    }}>
+                    {tab.displayName}
+                    {getCountBadge(services[tab.name].length)}
+                  </button>
+                ))}
+              </nav>
+            </div>
             {serviceList.length ? (
               <div
                 className="tw-grid tw-grid-cols-4 tw-gap-4"
                 data-testid="services-container">
                 {serviceList.map((service, index) => (
                   <div
-                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-gray-500"
+                    className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
                     key={index}>
                     <div className="tw-flex-auto">
-                      <Link to={getServiceDetailsPath(service.name)}>
+                      <Link
+                        to={getServiceDetailsPath(
+                          service.name,
+                          service.serviceType
+                        )}>
                         <button>
                           <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
                             {service.name}
@@ -202,14 +320,27 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div className="tw-text-grey-body tw-pb-1">
-                        {stringToHTML(service.description) ||
-                          'No description added'}
+                        {service.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={service.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
                       </div>
-                      {/* <div className="tw-my-2">
-                    <label className="tw-font-semibold ">Tags:</label>
-                    <span className="tw-tag tw-ml-3">mysql</span>
-                    <span className="tw-tag tw-ml-2">sales</span>
-                  </div> */}
+                      {getOptionalFields(service)}
+                      <div className="tw-mb-1">
+                        <label className="tw-mb-0">Ingestion:</label>
+                        <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                          {service.ingestionSchedule
+                            ? getFrequencyTime(
+                                service.ingestionSchedule.repeatFrequency
+                              )
+                            : '--'}
+                        </span>
+                      </div>
                       <div className="">
                         <label className="tw-mb-0">Type:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
@@ -217,35 +348,48 @@ const ServicesPage = () => {
                         </span>
                       </div>
                     </div>
-                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-1">
+                    <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                       <div className="tw-flex tw-justify-end">
                         <button
-                          className="tw-pr-2"
+                          className="tw-pr-3 focus:tw-outline-none"
                           onClick={() => handleEdit(service)}>
-                          <i className="far fa-edit tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="12px"
+                          />
                         </button>
-                        <button onClick={() => handleDelete(service.id)}>
-                          <i className="far fa-trash-alt tw-text-gray-500 tw-cursor-pointer hover:tw-text-gray-700" />
+                        <button
+                          className="focus:tw-outline-none"
+                          onClick={() => handleDelete(service.id)}>
+                          <SVGIcons
+                            alt="delete"
+                            icon="icon-delete"
+                            title="Delete"
+                            width="12px"
+                          />
                         </button>
                       </div>
                       <div className="tw-flex tw-justify-end">
-                        <img
-                          alt=""
-                          className="tw-h-10 tw-w-10 tw-filter tw-grayscale tw-opacity-50"
-                          src={serviceTypeLogo(service.serviceType)}
-                        />
+                        {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
+                          <img
+                            alt=""
+                            className="tw-h-10 tw-w-10"
+                            src={serviceTypeLogo(service.serviceType)}
+                          />
+                        )} */}
+                        {getServiceLogo(service.serviceType)}
                       </div>
                     </div>
                   </div>
                 ))}
                 <div
-                  className="tw-cursor-pointer tw-card tw-bg-gray-200 tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-2"
+                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
                   onClick={() => handleAddService()}>
-                  <img alt="" src={PLUS} />
-                  <p
-                    className="tw-text-base tw-font-medium tw-mt-1"
-                    style={{ color: 'rgba(3, 102, 214, 1)' }}>
-                    Add new service
+                  <img alt="Add service" src={PLUS} />
+                  <p className="tw-text-base tw-font-normal tw-mt-4">
+                    Add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>
@@ -258,11 +402,11 @@ const ServicesPage = () => {
                   <p className="tw-text-lg">
                     No services found.{' '}
                     <button
-                      className="tw-text-blue-700 tw-cursor-pointer tw-underline"
+                      className="link-text tw-underline"
                       onClick={handleAddService}>
                       Click here
                     </button>{' '}
-                    to add new services
+                    to add new {servicesDisplayName[serviceName]}
                   </p>
                 </div>
               </div>

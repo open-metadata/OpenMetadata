@@ -3,17 +3,10 @@ FROM openjdk:11
 EXPOSE 8585 3306
 
 RUN apt-get update -y && \
-    apt-get install --no-install-recommends curl unzip git -y && \
+    apt-get install --no-install-recommends curl wget -y && \
     rm -rf /var/lib/apt/lists/*
-
-#Need to add pom.xml for maven dependency installation  
-
-ADD /dist/target/catalog-1.0.0-SNAPSHOT.tar.gz /
-COPY /docker/metadata/catalog-start.sh /
-COPY /docker/metadata/catalog.yaml /
-RUN chmod 777 /catalog-start.sh
-
-WORKDIR /
-
-
-CMD ["./catalog-start.sh"]
+COPY openmetadata-start.sh /
+COPY openmetadata.yaml /
+RUN wget https://github.com/open-metadata/OpenMetadata/releases/download/0.3.0-release/openmetadata-0.3.0.tar.gz
+RUN chmod 777 openmetadata-start.sh && tar zxvf openmetadata-0.3.0.tar.gz
+CMD ["./openmetadata-start.sh"]

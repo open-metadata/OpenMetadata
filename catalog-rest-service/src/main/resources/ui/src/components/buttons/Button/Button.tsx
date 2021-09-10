@@ -44,7 +44,7 @@ export const Button: FunctionComponent<ButtonProps> = React.forwardRef<
     const sizeStyles = button.size[size];
     const layoutStyles = button[variant][theme].base;
     const activeStyles = button[variant][theme].active;
-    const disabledStyles = button[variant]['default'].disabled;
+    const disabledStyles = button[variant][theme].disabled;
     const classes = [
       baseStyle,
       sizeStyles,

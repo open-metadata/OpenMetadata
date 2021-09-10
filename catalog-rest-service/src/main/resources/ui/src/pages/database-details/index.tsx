@@ -18,6 +18,7 @@
 import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
 import { Database, Paging, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
@@ -32,6 +33,7 @@ import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { getDatabaseTables } from '../../axiosAPIs/tableAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
 import PopOver from '../../components/common/popover/PopOver';
+import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../components/common/title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
@@ -47,9 +49,8 @@ import {
 import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getUsagePercentile } from '../../utils/TableUtils';
+import { getOwnerFromId, getUsagePercentile } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatabaseDetails: FunctionComponent = () => {
@@ -70,6 +71,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const [description, setDescription] = useState('');
   const [databaseId, setDatabaseId] = useState('');
   const [paging, setPaging] = useState<Paging>(pagingObject);
+  const [instanceCount, setInstanceCount] = useState<number>(0);
 
   const history = useHistory();
   const showToast = useToastContext();
@@ -87,6 +89,7 @@ const DatabaseDetails: FunctionComponent = () => {
         if (res.data.data) {
           setData(res.data.data);
           setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
           setIsLoading(false);
         } else {
           setData([]);
@@ -114,7 +117,10 @@ const DatabaseDetails: FunctionComponent = () => {
               {
                 name: resService.data.name,
                 url: resService.data.name
-                  ? getServiceDetailsPath(resService.data.name)
+                  ? getServiceDetailsPath(
+                      resService.data.name,
+                      resService.data.serviceType
+                    )
                   : '',
                 imgSrc: resService.data.serviceType
                   ? serviceTypeLogo(resService.data.serviceType)
@@ -224,13 +230,20 @@ const DatabaseDetails: FunctionComponent = () => {
       ) : (
         <PageContainer>
           <div className="tw-px-4">
-            <div className="tw-mb-4">
-              <TitleBreadcrumb titleLinks={slashedTableName} />
+            <TitleBreadcrumb titleLinks={slashedTableName} />
+
+            <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Tables :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
+              </span>
             </div>
             <div className="tw-bg-white tw-mb-4">
               <div className="tw-col-span-3">
-                <div className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-rounded-md">
-                  <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+                <div className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md">
+                  <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                     <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
                       Description
                     </span>
@@ -238,13 +251,20 @@ const DatabaseDetails: FunctionComponent = () => {
                       <button
                         className="focus:tw-outline-none"
                         onClick={onDescriptionEdit}>
-                        <SVGIcons alt="edit" icon="icon-edit" title="edit" />
+                        <SVGIcons
+                          alt="edit"
+                          icon="icon-edit"
+                          title="Edit"
+                          width="12px"
+                        />
                       </button>
                     </div>
                   </div>
-                  <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                  <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
                     <div data-testid="description" id="description" />
-                    {stringToHTML(description.trim()) || (
+                    {description ? (
+                      <RichTextEditorPreviewer markdown={description} />
+                    ) : (
                       <span className="tw-no-description">
                         No description added
                       </span>
@@ -263,96 +283,100 @@ const DatabaseDetails: FunctionComponent = () => {
                 </div>
               </div>
             </div>
-            {data.length ? (
-              <>
-                <table
-                  className="tw-bg-white tw-w-full tw-mb-4"
-                  data-testid="database-tables">
-                  <thead>
-                    <tr className="tableHead-row">
-                      <th className="tableHead-cell">Table Name</th>
-                      <th className="tableHead-cell">Description</th>
-                      <th className="tableHead-cell">Owner</th>
-                      <th className="tableHead-cell">Usage</th>
-                      <th className="tableHead-cell tw-w-60">Tags</th>
-                    </tr>
-                  </thead>
-                  <tbody className="tableBody">
-                    {data.map((table, index) => (
-                      <tr
-                        className={classNames(
-                          'tableBody-row',
-                          !isEven(index + 1) ? 'odd-row' : null
+            <table
+              className="tw-bg-white tw-w-full tw-mb-4"
+              data-testid="database-tables">
+              <thead>
+                <tr className="tableHead-row">
+                  <th className="tableHead-cell">Table Name</th>
+                  <th className="tableHead-cell">Description</th>
+                  <th className="tableHead-cell">Owner</th>
+                  <th className="tableHead-cell">Usage</th>
+                  <th className="tableHead-cell tw-w-60">Tags</th>
+                </tr>
+              </thead>
+              <tbody className="tableBody">
+                {data.length > 0 ? (
+                  data.map((table, index) => (
+                    <tr
+                      className={classNames(
+                        'tableBody-row',
+                        !isEven(index + 1) ? 'odd-row' : null
+                      )}
+                      data-testid="column"
+                      key={index}>
+                      <td className="tableBody-cell">
+                        <Link
+                          to={getDatasetDetailsPath(table.fullyQualifiedName)}>
+                          {table.name}
+                        </Link>
+                      </td>
+                      <td className="tableBody-cell">
+                        {table.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={table.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
                         )}
-                        data-testid="column"
-                        key={index}>
-                        <td className="tableBody-cell">
-                          <Link
-                            to={getDatasetDetailsPath(
-                              table.fullyQualifiedName
-                            )}>
-                            {table.name}
-                          </Link>
-                        </td>
-                        <td className="tableBody-cell">
-                          {stringToHTML(table.description) || (
-                            <span className="tw-no-description">
-                              No description added
-                            </span>
+                      </td>
+                      <td className="tableBody-cell">
+                        <p>{getOwnerFromId(table?.owner?.id)?.name || '--'}</p>
+                      </td>
+                      <td className="tableBody-cell">
+                        <p>
+                          {getUsagePercentile(
+                            table.usageSummary.weeklyStats.percentileRank || 0
                           )}
-                        </td>
-                        <td className="tableBody-cell">
-                          <p>{table?.owner?.name || '--'}</p>
-                        </td>
-                        <td className="tableBody-cell">
-                          <p>
-                            {getUsagePercentile(
-                              table.usageSummary.weeklyStats.percentileRank || 0
-                            )}
-                          </p>
-                        </td>
-                        <td className="tableBody-cell">
-                          {table.tags.map((tag, tagIndex) => (
-                            <PopOver
-                              key={tagIndex}
-                              position="top"
-                              size="small"
-                              title={tag.labelType}
-                              trigger="mouseenter">
-                              <Tags
-                                className="tw-bg-gray-200"
-                                tag={`#${
-                                  tag.tagFQN.startsWith('Tier.Tier')
-                                    ? tag.tagFQN.split('.')[1]
-                                    : tag.tagFQN
-                                }`}
-                              />
-                            </PopOver>
-                          ))}
-                          {getTableTags(table.columns).map((tag, tagIdx) => (
-                            <PopOver
-                              key={tagIdx}
-                              position="top"
-                              size="small"
-                              title={tag.labelType}
-                              trigger="mouseenter">
-                              <Tags
-                                className="tw-bg-gray-200"
-                                tag={`#${tag.tagFQN}`}
-                              />
-                            </PopOver>
-                          ))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <NextPrevious paging={paging} pagingHandler={pagingHandler} />
-              </>
-            ) : (
-              <h1 className="tw-text-center tw-mt-60 tw-text-grey-body tw-font-normal">
-                {databaseName} does not have any tables
-              </h1>
+                        </p>
+                      </td>
+                      <td className="tableBody-cell">
+                        {table.tags.map((tag, tagIndex) => (
+                          <PopOver
+                            key={tagIndex}
+                            position="top"
+                            size="small"
+                            title={tag.labelType}
+                            trigger="mouseenter">
+                            <Tags
+                              className="tw-bg-gray-200"
+                              tag={`#${
+                                tag.tagFQN.startsWith('Tier.Tier')
+                                  ? tag.tagFQN.split('.')[1]
+                                  : tag.tagFQN
+                              }`}
+                            />
+                          </PopOver>
+                        ))}
+                        {getTableTags(table.columns).map((tag, tagIdx) => (
+                          <PopOver
+                            key={tagIdx}
+                            position="top"
+                            size="small"
+                            title={tag.labelType}
+                            trigger="mouseenter">
+                            <Tags
+                              className="tw-bg-gray-200"
+                              tag={`#${tag.tagFQN}`}
+                            />
+                          </PopOver>
+                        ))}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr className="tableBody-row">
+                    <td className="tableBody-cell tw-text-center" colSpan={5}>
+                      No records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+            {Boolean(!isNil(paging.after) || !isNil(paging.before)) && (
+              <NextPrevious paging={paging} pagingHandler={pagingHandler} />
             )}
           </div>
         </PageContainer>

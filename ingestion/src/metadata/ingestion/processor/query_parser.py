@@ -22,7 +22,7 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.table_queries import TableQuery, QueryParserData
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class QueryParserProcessorConfig(ConfigModel):
@@ -52,7 +52,7 @@ class QueryParserProcessor(Processor):
         try:
             start_date = datetime.datetime.strptime(record.analysis_date, '%Y-%m-%d %H:%M:%S').date()
             parser = Parser(record.sql)
-            columns_dict = {} if parser.columns_dict == None else parser.columns_dict
+            columns_dict = {} if parser.columns_dict is None else parser.columns_dict
             query_parser_data = QueryParserData(tables=parser.tables,
                                                 tables_aliases=parser.tables_aliases,
                                                 columns=columns_dict,
@@ -60,7 +60,7 @@ class QueryParserProcessor(Processor):
                                                 sql=record.sql,
                                                 date=start_date.strftime('%Y-%m-%d'))
         except Exception as err:
-            logger.error(record.sql)
+            logger.debug(record.sql)
             logger.error(err)
             query_parser_data = None
             pass

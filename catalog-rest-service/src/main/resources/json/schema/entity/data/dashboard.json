@@ -1,8 +1,8 @@
 {
-  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/entity/data/dashboard.json",
+  "$id": "https://open-metadata.org/schema/entity/data/dashboard.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dashboard",
-  "description": "This schema defines Dashboard entity.",
+  "description": "This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.",
   "type": "object",
 
   "properties" : {
@@ -16,15 +16,32 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this Dashboard. It could be title or label from the source services",
+      "type": "string"
+    },
     "fullyQualifiedName": {
-      "description": "Unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.",
+      "description": "A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "description": {
-      "description": "Description of dashboard, what it is and how to use it.",
+      "description": "Description of the dashboard, what it is, and how to use it.",
       "type": "string"
+    },
+    "dashboardUrl" : {
+      "description": "Dashboard URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "charts": {
+      "description": "All the charts included in this Dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",
@@ -33,6 +50,18 @@
     "owner": {
       "description": "Owner of this dashboard.",
       "$ref": "../../type/entityReference.json"
+    },
+    "followers": {
+      "description": "Followers of this dashboard.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this dashboard.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "service" : {
       "description": "Link to service where this dashboard is hosted in.",

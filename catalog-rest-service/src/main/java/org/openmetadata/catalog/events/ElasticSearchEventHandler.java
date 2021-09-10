@@ -90,8 +90,7 @@ public class ElasticSearchEventHandler implements EventHandler {
             }
           }
           if (!tags.isEmpty()) {
-            List<String> tagsList = new ArrayList<>();
-            tagsList.addAll(tags);
+            List<String> tagsList = new ArrayList<>(tags);
             jsonMap.put("tags", tagsList);
           }
           if (!columnDescriptions.isEmpty()) {

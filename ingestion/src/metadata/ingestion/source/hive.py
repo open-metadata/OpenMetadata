@@ -13,28 +13,38 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Optional
 from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
 from .sql_source import (
-    BasicSQLAlchemyConfig,
-    SQLAlchemySource,
+    SQLConnectionConfig,
+    SQLSource,
     register_custom_type,
 )
-from ..ometa.auth_provider import MetadataServerConfig
+from ..ometa.openmetadata_rest import MetadataServerConfig
 
 register_custom_type(HiveDate, "DATE")
 register_custom_type(HiveTimestamp, "TIME")
 register_custom_type(HiveDecimal, "NUMBER")
 
 
-class HiveConfig(BasicSQLAlchemyConfig):
+class HiveConfig(SQLConnectionConfig):
     scheme = "hive"
+    auth_options: Optional[str] = None
+    service_type = "Hive"
+
+    def get_connection_url(self):
+        url = super().get_connection_url()
+        if self.auth_options is not None:
+            return f'{url};{self.auth_options}'
+        else:
+            return url
 
 
-class HiveSource(SQLAlchemySource):
+class HiveSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
-        super().__init__(config, metadata_config, ctx, "hive")
+        super().__init__(config, metadata_config, ctx)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):

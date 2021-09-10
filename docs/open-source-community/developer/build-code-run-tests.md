@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Firt of all you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
+First of all, you need to make sure you are using maven 3.5.x or higher and JDK 11 or higher.
 
 ## Building
 
@@ -28,19 +28,46 @@ The binaries will be created at:
 ```text
 dist/target/open-metadata-<version>.pom
 dist/target/open-metadata-<version>.tar.gz
-dist/target/open-metadata-<version>.zip
 ```
 
-## Run instance through Intellij
+## Run instance through IntelliJ IDEA
 
-1. Add new Run/Debug configuration like below screenshot.
+Add a new Run/Debug configuration like the below screenshot.
 
-   ![Intellj Run Configuration](https://github.com/open-metadata/OpenMetadata/blob/main/docs/install/images/ingestion-bot-service-account.png)
+![Intellij Run Configuration](../../.gitbook/assets/image%20%281%29.png)
+
+## Add missing dependency
+
+Right-click on catalog-rest-service
+
+![](../../.gitbook/assets/image-1-.png)
+
+Click on "Open Module Settings"
+
+![](../../.gitbook/assets/image-2-.png)
+
+Go to "Dependencies"
+
+![](../../.gitbook/assets/image-3-.png)
+
+Click “+” at the bottom of the dialog box and click "Add"
+
+![](../../.gitbook/assets/image-4-.png)
+
+Click on Library
+
+![](../../.gitbook/assets/image-5-.png)
+
+In that list look for "jersey-client:2.25.1"
+
+![](../../.gitbook/assets/image-6-.png)
+
+Select it and click "OK". Now run/debug the application.
 
 ## Coding Style
 
 1. [Refer to coding guidelines](https://github.com/open-metadata/OpenMetadata/blob/main/docs/open-source-community/developer/coding-style.md)
-2. Configure Intellij to disable the \[wild-card imports\]
+2. Configure IntelliJ to disable the \[wild-card imports\]
 
    \([https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html\#disable-wildcard-imports](https://www.jetbrains.com/help/idea/creating-and-optimizing-imports.html#disable-wildcard-imports)\)
 

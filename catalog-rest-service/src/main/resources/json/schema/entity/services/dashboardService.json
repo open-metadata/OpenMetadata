@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/dashboardService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Dashboard Service",
+  "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
+  "type": "object",
+  "definitions": {
+    "dashboardServiceType": {
+      "description": "Type of Dashboard service - Superset or Lookr",
+      "type": "string",
+      "enum": [
+        "Superset",
+        "Looker"
+      ],
+      "javaEnums": [
+        {
+          "name": "Superset"
+        },
+        {
+          "name": "Looker"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this dashboard service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this dashboard service.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "serviceType": {
+      "description": "Type of dashboard service such as Lookr or Superset...",
+      "$ref": "#/definitions/dashboardServiceType"
+    },
+    "description": {
+      "description": "Description of a dashboard service instance.",
+      "type": "string"
+    },
+    "dashboardUrl": {
+      "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service",
+      "type": "string",
+      "format": "uri"
+    },
+    "username" : {
+      "description": "Username to log-into Dashboard Service",
+      "type": "string"
+    },
+    "password" : {
+      "description": "Password to log-into Dashboard Service",
+      "type": "string"
+    },
+    "ingestionSchedule": {
+      "description": "Schedule for running metadata ingestion jobs.",
+      "$ref": "../../type/schedule.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this messaging service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "serviceType",
+    "dashboardUrl"
+  ]
+}

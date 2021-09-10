@@ -14,7 +14,7 @@ description: This is a guide to create ingestion bot service app.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946539-cb31793d-7616-4343-821b-8e190d626b63.png)
 
-* Enter following values to generate **public/private key pair**:
+* Enter the following values to generate a **public/private key pair**:
   * Key size - 2048
   * Key use — signature
   * Algorithm — RSA256
@@ -22,7 +22,7 @@ description: This is a guide to create ingestion bot service app.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946546-1e86ae45-2774-4217-925e-f423053a7a1d.png)
 
-* Once you provide the input, click **Generate**. You will get the **Public/Private Keypair**, **Public/Private Keypair Set** and **Public Key**
+* Once you provide the input, click **Generate**. You will get the **Public/Private Keypair**, **Public/Private Keypair Set,** and **Public Key**
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946550-ec9fa2b3-0a47-4fe1-ac32-7e326b3f7d45.png)
 
@@ -30,7 +30,7 @@ description: This is a guide to create ingestion bot service app.
 
 * You will need to make a **POST** request to `https://${yourOktaDomain}/oauth2/v1/clients` endpoint to create a service app in okta
 * The parameters involved in the request are:
-  * **client\_name** - name of service app
+  * **client\_name** - the name of the service app
   * **grant\_type** - **client\_credentials**
   * **token\_endpoint\_auth\_method** — **private\_key\_jwt**
   * **application\_type** — **service**
@@ -60,7 +60,7 @@ description: This is a guide to create ingestion bot service app.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126947013-8ba3bf00-26ad-457f-bba4-dab2b022c073.png)
 
-* You can also add scopes by navigating to you **Okta Dashboard** and Clicking on **Appications -&gt; Applicaitons** just like in step 2.
+* You can also add scopes by navigating to your **Okta Dashboard** and Clicking on **Applications -&gt; Applications** just like in step 2.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946558-89969475-c23b-4338-8681-6da66b2c2486.png)
 

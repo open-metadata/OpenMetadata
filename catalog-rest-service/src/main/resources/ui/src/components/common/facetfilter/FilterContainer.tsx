@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import classNames from 'classnames';
 import React, { FunctionComponent } from 'react';
 import { countBackground } from '../../../utils/styleconstant';
 import { FilterContainerProp } from './FacetTypes';
@@ -24,20 +25,27 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   onSelect,
   isSelected,
   type,
+  isDisabled = false,
 }: FilterContainerProp) => {
   return (
     <div className="filter-group tw-mb-2" data-testid="filter-container">
       <input
         checked={isSelected}
-        className="mr-1"
+        className={classNames('tw-mr-1 custom-checkbox', {
+          'tw-cursor-not-allowed': isDisabled,
+        })}
         data-testid="checkbox"
-        // disabled={count > 0 ? false : true}
+        disabled={isDisabled}
         type="checkbox"
         onChange={() => {
           onSelect(!isSelected, name, type);
         }}
       />
-      <div className="filters-title tw-w-40 tw-truncate">
+      <div
+        className={classNames(
+          'filters-title tw-w-40 tw-truncate custom-checkbox-label',
+          { 'tw-text-grey-muted': isDisabled }
+        )}>
         {name.startsWith('Tier.Tier') ? name.split('.')[1] : name}
       </div>
       <div

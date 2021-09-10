@@ -155,8 +155,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   }
 
   private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, DBI jdbi) {
-    ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
-    environment.jersey().register(eventFilter);
+    if (catalogConfig.getEventHandlerConfiguration() != null) {
+      ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
+      environment.jersey().register(eventFilter);
+    }
   }
 
   private void registerResources(CatalogApplicationConfig config, Environment environment, DBI jdbi) {

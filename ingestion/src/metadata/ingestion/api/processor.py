@@ -28,7 +28,7 @@ class ProcessorStatus(Status):
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def records_processed(self, record: Record):
+    def processed(self, record: Record):
         self.records += 1
 
     def warning(self, info: Any) -> None:

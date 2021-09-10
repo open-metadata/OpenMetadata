@@ -23,12 +23,40 @@ import appState from '../../AppState';
 import PageContainer from '../../components/containers/PageContainer';
 import { ROUTES } from '../../constants/constants';
 import { AuthTypes } from '../../enums/signin.enum';
+import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 const SigninPage = () => {
   const history = useHistory();
 
   const handleSignIn = () => {
     appState.authProvider.signingIn = true;
+  };
+
+  const getSignInButton = (): JSX.Element => {
+    switch (appState.authProvider.provider) {
+      case AuthTypes.GOOGLE: {
+        return (
+          <button className="tw-signin-button">
+            <SVGIcons alt="Google Logo" icon={Icons.GOOGLE_ICON} width="22" />
+            <span className="tw-ml-3">Sign in with Google</span>
+          </button>
+        );
+      }
+      case AuthTypes.OKTA: {
+        return (
+          <button className="tw-signin-button tw-text-white tw-bg-blue-700 hover:tw-bg-blue-600">
+            Sign in with Okta
+          </button>
+        );
+      }
+      case AuthTypes.AUTH0: {
+        return <button className="tw-signin-button">Sign in with Auth0</button>;
+      }
+      // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
+      default: {
+        return <></>;
+      }
+    }
   };
 
   if (appState.authDisabled || !isEmpty(appState.userDetails)) {
@@ -40,26 +68,25 @@ const SigninPage = () => {
       <div
         className="tw-w-screen tw-h-screen tw-flex tw-justify-center"
         data-testid="signin-page">
-        <div className="tw-flex tw-flex-col tw-mt-52">
-          <div>
-            <h3>Sign in to OpenMetadata</h3>
+        <div className="tw-flex tw-flex-col tw-items-center signin-box">
+          <div className="tw-flex tw-justify-center tw-items-center tw-mb-7 tw-mt-20">
+            <SVGIcons
+              alt="OpenMetadata Logo"
+              icon={Icons.LOGO_SMALL}
+              width="50"
+            />
           </div>
-          <div className="tw-flex tw-flex-col tw-mt-4" onClick={handleSignIn}>
-            {appState.authProvider.provider === AuthTypes.GOOGLE && (
-              <button className="tw-signin-button tw-bg-red-700 hover:tw-bg-red-600">
-                Sign in with Google
-              </button>
-            )}
-            {appState.authProvider.provider === AuthTypes.OKTA && (
-              <button className="tw-signin-button tw-bg-blue-700 hover:tw-bg-blue-600">
-                Sign in with Okta
-              </button>
-            )}
-            {appState.authProvider.provider === AuthTypes.GITHUB && (
-              <button className="tw-signin-button tw-bg-gray-800 hover:tw-bg-gray-700">
-                Sign in with Github
-              </button>
-            )}
+          <div className="tw-mb-7">
+            <h4 className="tw-font-semibold">
+              Welcome to <span className="tw-text-primary">OpenMetadata</span>
+            </h4>
+          </div>
+          <div className="tw-text-grey-muted tw-font-light tw-mb-7">
+            <h6 className="tw-mb-px">Centralized Metadata Store, Discover,</h6>
+            <h6 className="tw-mb-px">Collaborate and get your Data Right</h6>
+          </div>
+          <div className="tw-mt-4" onClick={handleSignIn}>
+            {getSignInButton()}
           </div>
         </div>
       </div>

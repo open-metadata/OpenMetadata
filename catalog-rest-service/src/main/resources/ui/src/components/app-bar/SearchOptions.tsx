@@ -65,8 +65,8 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
             <div className="py-1" role="none">
               <Link
                 className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-gray-200"
-                data-testid="InCollate"
+                    hover:tw-bg-body-hover"
+                data-testid="InOpenMetadata"
                 to={getExplorePathWithSearch(searchText)}
                 onClick={() => setIsOpen(false)}>
                 {searchText}
@@ -79,7 +79,7 @@ const SearchOptions: FunctionComponent<SearchOptionsProp> = ({
               {options.map((option, index) => (
                 <span
                   className="link-text tw-flex tw-justify-between tw-px-4 tw-py-2 tw-text-sm 
-                    hover:tw-bg-gray-200"
+                    hover:tw-bg-body-hover"
                   data-testid="InPage"
                   key={index}
                   onClick={() => {

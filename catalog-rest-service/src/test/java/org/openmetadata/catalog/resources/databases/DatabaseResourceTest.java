@@ -101,6 +101,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     createService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
     MYSQL_REFERENCE = EntityUtil.getEntityReference(service);
+
   }
 
   @Test

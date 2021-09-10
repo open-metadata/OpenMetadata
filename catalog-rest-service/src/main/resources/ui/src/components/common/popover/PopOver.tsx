@@ -22,6 +22,7 @@ import 'react-tippy/dist/tippy.css';
 import { PopOverProp, Position, Size, Theme, Trigger } from './PopOverTypes';
 
 const PopOver: React.FC<PopOverProp> = ({
+  arrow = true,
   children,
   className = '',
   html,
@@ -33,7 +34,7 @@ const PopOver: React.FC<PopOverProp> = ({
 }): JSX.Element => {
   return (
     <Tooltip
-      arrow
+      arrow={arrow}
       className={className}
       html={html}
       position={position}

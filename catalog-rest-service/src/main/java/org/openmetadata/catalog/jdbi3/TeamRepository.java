@@ -26,7 +26,10 @@ import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.resources.teams.TeamResource;
+import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -91,6 +94,12 @@ public abstract class TeamRepository {
   @CreateSqlObject
   abstract ReportDAO reportDAO();
 
+  @CreateSqlObject
+  abstract TopicDAO topicDAO();
+
+  @CreateSqlObject
+  abstract ChartDAO chartDAO();
+
   @Transaction
   public Team create(Team team, List<UUID> userIds) throws IOException {
     // Query 1 - Validate user IDs
@@ -119,30 +128,47 @@ public abstract class TeamRepository {
   }
 
   @Transaction
-  public List<Team> listAfter(Fields fields, int limitParam, String after) throws IOException,
+  public TeamList listAfter(Fields fields, int limitParam, String after) throws IOException,
           ParseException, GeneralSecurityException {
     // Forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = teamDAO().listAfter(limitParam, after == null ? "" :
+    List<String> jsons = teamDAO().listAfter(limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Team> teams = new ArrayList<>();
     for (String json : jsons) {
       teams.add(setFields(JsonUtils.readValue(json, Team.class), fields));
     }
-    return teams;
+
+    int total = teamDAO().listCount();
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : teams.get(0).getName();
+    if (teams.size() > limitParam) {
+      teams.remove(limitParam);
+      afterCursor = teams.get(limitParam - 1).getName();
+    }
+    return new TeamList(teams, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public List<Team> listBefore(Fields fields, int limitParam, String before) throws IOException,
+  public TeamList listBefore(Fields fields, int limitParam, String before) throws IOException,
           ParseException, GeneralSecurityException {
     // Reverse scrolling
-    List<String> jsons = teamDAO().listBefore(limitParam, CipherText.instance().decrypt(before));
+    List<String> jsons = teamDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
 
     List<Team> teams = new ArrayList<>();
     for (String json : jsons) {
       teams.add(setFields(JsonUtils.readValue(json, Team.class), fields));
     }
-    return teams;
+    int total = teamDAO().listCount();
+
+    String beforeCursor = null, afterCursor;
+    if (teams.size() > limitParam) {
+      teams.remove(0);
+      beforeCursor = teams.get(0).getName();
+    }
+    afterCursor = teams.get(teams.size() - 1).getName();
+    return new TeamList(teams, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -231,7 +257,7 @@ public abstract class TeamRepository {
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.getEntityReference(relationshipDAO().findTo(teamId, OWNS.ordinal()), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO());
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO());
   }
 
   private void addUserRelationship(Team team, User user) {
@@ -249,6 +275,9 @@ public abstract class TeamRepository {
     @SqlQuery("SELECT json FROM team_entity where name = :name")
     String findByName(@Bind("name") String name);
 
+    @SqlQuery("SELECT count(*) FROM team_entity")
+    int listCount();
+
     @SqlQuery(
             "SELECT json FROM (" +
                     "SELECT name, json FROM team_entity WHERE " +
@@ -263,7 +292,6 @@ public abstract class TeamRepository {
             "ORDER BY name " + // Pagination ordering by team name
             "LIMIT :limit")
     List<String> listAfter(@Bind("limit") int limit, @Bind("after") String after);
-
 
     @SqlUpdate("DELETE FROM team_entity WHERE id = :teamId")
     int delete(@Bind("teamId") String teamId);

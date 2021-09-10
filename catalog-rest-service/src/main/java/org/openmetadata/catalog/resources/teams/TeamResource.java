@@ -97,13 +97,13 @@ public class TeamResource {
     this.authorizer = authorizer;
   }
 
-  static class TeamList extends ResultList<Team> {
+  public static class TeamList extends ResultList<Team> {
     @SuppressWarnings("unused") /* Required for tests */
     TeamList() {}
 
-    TeamList(List<Team> teams, int limitParam, String beforeCursor, String afterCursor)
+    public TeamList(List<Team> teams, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
-      super(teams, limitParam, beforeCursor, afterCursor);
+      super(teams, beforeCursor, afterCursor, total);
     }
   }
 
@@ -140,30 +140,15 @@ public class TeamResource {
                        @QueryParam("after") String after) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    List<Team> teams;
-    String beforeCursor = null, afterCursor = null;
 
-    // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
-    // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
-    // beforeCursor is not null. Remove the extra entry before returning results.
+    TeamList teams;
     if (before != null) { // Reverse paging
-      teams = dao.listBefore(fields, limitParam + 1, before); // Ask for one extra entry
-      if (teams.size() > limitParam) {
-        teams.remove(0);
-        beforeCursor = teams.get(0).getName();
-      }
-      afterCursor = teams.get(teams.size() - 1).getName();
+      teams = dao.listBefore(fields, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      teams = dao.listAfter(fields, limitParam + 1, after);
-      beforeCursor = after == null ? null : teams.get(0).getName();
-      if (teams.size() > limitParam) {
-        teams.remove(limitParam);
-        afterCursor = teams.get(limitParam - 1).getName();
-      }
+      teams = dao.listAfter(fields, limitParam, after);
     }
-    teams.forEach(team -> addHref(uriInfo, team));
-    LOG.info("Returning {} teams", teams.size());
-    return new TeamList(teams, limitParam, beforeCursor, afterCursor);
+    teams.getData().forEach(team -> addHref(uriInfo, team));
+    return teams;
   }
 
   @GET

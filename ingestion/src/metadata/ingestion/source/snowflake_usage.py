@@ -15,8 +15,8 @@
 
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
-from metadata.ingestion.ometa.auth_provider import MetadataServerConfig
-from metadata.ingestion.source.sql_source_common import SQLAlchemyHelper, SQLSourceStatus
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Iterator, Union, Dict, Any, Iterable
 
@@ -28,7 +28,7 @@ class SnowflakeUsageSource(Source):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
         select query_id as query,Query_text as sql,query_type as label,
-        database_name as database,start_time as starttime,end_time as endtime
+        database_name as database,start_time as starttime,end_time as endtime,schema_name
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
         end_time_range_end=>to_timestamp_ltz('{end_date}')));
@@ -83,7 +83,10 @@ class SnowflakeUsageSource(Source):
         for row in self._get_raw_extract_iter():
             tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
                             str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
-            self.report.records_produced(tq)
+            if row['schema_name'] is not None:
+                self.report.scanned(f"{row['database']}.{row['schema_name']}")
+            else:
+                self.report.scanned(f"{row['database']}")
             yield tq
 
     def get_report(self):

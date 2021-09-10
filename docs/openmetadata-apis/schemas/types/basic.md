@@ -1,78 +1,75 @@
-# Basic
+# Basic Types
 
 This schema defines basic common types that are used by other schemas.
 
-<b id="httpsgithub.comopen-metadataopenmetadatablobmaincatalog-rest-servicesrcmainresourcesjsonschematypebasic.json">&#36;id: https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json</b>
+**$id:** [**https://open-metadata.org/schema/type/basic.json**](https://open-metadata.org/schema/type/basic.json)
 
+## Type definitions in this schema
 
+### uuid
 
-## Definitions
-**_uuid_**
+* Unique id used to identify an entity.
+* Type: `string`
+* String format must be a "uuid"
 
- - Unique id used to identify an entity.
- - Type: `string`
- - String format must be a "uuid"
+### email
 
+* Email address of a user or other entities.
+* Type: `string`
+* String format must be a "email"
+* The value must match this pattern: `^\S+@\S+\.\S+$`
+* Length: between 6 and 127
 
-**_email_**
+### entityLink
 
- - Email address of a user or other entities.
- - Type: `string`
- - String format must be a "email"
- - The value must match this pattern: `^\S+@\S+\.\S+$`
- - Length: between 6 and 127
+* Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
+* Type: `string`
+* The value must match this pattern: `^<#E/\S+/\S+>$`
 
+### timestamp
 
-**_entityLink_**
+* Timestamp in unixTimeMillis.
+* Type: `string`
+* String format must be a "utc-millisec"
 
- - Link to an entity or field of an entity of format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
- - Type: `string`
- - The value must match this pattern: `^<#E/\S+/\S+>$`
+### href
 
+* URI that points to a resource.
+* Type: `string`
+* String format must be a "uri"
 
-**_timestamp_**
+### timeInterval
 
- - Time stamp in unixTimeMillis
- - Type: `string`
- - String format must be a "utc-millisec"
+* Type: `object`
+* **Properties**
+  * **start**
+    * Start time in unixTimeMillis.
+    * Type: `integer`
+  * **end**
+    * End time in unixTimeMillis.
+    * Type: `integer`
 
+### duration
 
-**_href_**
+* Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.
+* Type: `string`
 
- - href that points to a resource.
- - Type: `string`
- - String format must be a "uri"
+### date
 
+* Date in ISO 8601 format in UTC. Example - '2018-11-13'.
+* Type: `string`
+* String format must be a "date"
 
-**_timeInterval_**
+### dateTime
 
- - Type: `object`
- - **_Properties_**
-	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json/definitions/timeInterval/properties/start">start</b>
-		 - Start time in unixTimeMillis.
-		 - Type: `integer`
-	 - <b id="#https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/type/basic.json/definitions/timeInterval/properties/end">end</b>
-		 - End time in unixTimeMillis.
-		 - Type: `integer`
+* Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.
+* Type: `string`
+* String format must be a "date-time"
 
+### sqlQuery
 
-**_duration_**
+* SQL query statement. Example - 'select \* from orders'.
+* Type: `string`
 
- - Duration in ISO 8601 format in UTC time. Example - 'P23DT23H'.
- - Type: `string`
-
-
-**_date_**
-
- - Date in ISO 8601 format in UTC time. Example - '2018-11-13'.
- - Type: `string`
- - String format must be a "date"
-
-
-**_dateTime_**
-
- - Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.
- - Type: `string`
- - String format must be a "date-Time"
-
+_This document was updated on: Thursday, August 26, 2021_
 

@@ -32,10 +32,11 @@ import {
   getTableFQNFromColumnFQN,
   isEven,
 } from '../../utils/CommonUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import PopOver from '../common/popover/PopOver';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 // import { EditSchemaColumnModal } from '../Modals/EditSchemaColumnModal/EditSchemaColumnModal';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
@@ -46,6 +47,7 @@ type Props = {
   joins: Array<ColumnJoins>;
   searchText?: string;
   onUpdate: (columns: Array<TableColumn>) => void;
+  columnName: string;
 };
 
 const SchemaTable: FunctionComponent<Props> = ({
@@ -53,6 +55,7 @@ const SchemaTable: FunctionComponent<Props> = ({
   joins,
   searchText = '',
   onUpdate,
+  columnName,
 }: Props) => {
   const [editColumn, setEditColumn] = useState<{
     column: TableColumn;
@@ -95,16 +98,6 @@ const SchemaTable: FunctionComponent<Props> = ({
         return 'boolean';
       default:
         return dataType;
-    }
-  };
-
-  const handleClick = () => {
-    if (rowRef.current) {
-      rowRef.current.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'nearest',
-        block: 'nearest',
-      });
     }
   };
 
@@ -197,8 +190,12 @@ const SchemaTable: FunctionComponent<Props> = ({
         ...columns.slice(editColumn.index + 1),
       ];
       onUpdate(updatedColumns);
+      setEditColumn(undefined);
+    } else {
+      setEditColumn(undefined);
     }
   };
+
   useEffect(() => {
     if (!searchText) {
       setSearchedColumns(columns);
@@ -224,137 +221,195 @@ const SchemaTable: FunctionComponent<Props> = ({
     fetchTags();
   }, []);
 
+  useEffect(() => {
+    if (rowRef.current) {
+      rowRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'center',
+      });
+    }
+  }, [columnName, rowRef.current]);
+
   return (
     <>
-      <table className="tw-w-full" data-testid="schema-table">
-        <thead>
-          <tr className="tableHead-row">
-            <th className="tableHead-cell">Column Name</th>
-            <th className="tableHead-cell">Data Type</th>
-            <th className="tableHead-cell">Description</th>
-            <th className="tableHead-cell tw-w-60">Tags</th>
-          </tr>
-        </thead>
-        <tbody className="tableBody">
-          {searchedColumns.map((column, index) => {
-            return (
-              <tr
-                className={classNames(
-                  'tableBody-row',
-                  !isEven(index + 1) ? 'odd-row' : null
-                )}
-                data-testid="column"
-                id={column.name}
-                key={index}
-                ref={rowRef}>
-                <td className="tw-relative tableBody-cell">
-                  {getConstraintIcon(column.columnConstraint)}
-                  <span>{column.name}</span>
-                </td>
+      <div className="tw-table-responsive">
+        <table className="tw-w-full" data-testid="schema-table">
+          <thead>
+            <tr className="tableHead-row">
+              <th className="tableHead-cell">Column Name</th>
+              <th className="tableHead-cell">Data Type</th>
+              <th className="tableHead-cell">Description</th>
+              <th className="tableHead-cell tw-w-60">Tags</th>
+            </tr>
+          </thead>
+          <tbody className="tableBody">
+            {searchedColumns.map((column, index) => {
+              return (
+                <tr
+                  className={classNames(
+                    'tableBody-row',
+                    !isEven(index + 1) ? 'odd-row' : null,
+                    {
+                      'column-highlight': columnName === column.name,
+                    }
+                  )}
+                  data-testid="column"
+                  id={column.name}
+                  key={index}
+                  ref={columnName === column.name ? rowRef : null}>
+                  <td className="tw-relative tableBody-cell">
+                    {getConstraintIcon(column.columnConstraint)}
+                    <span>{column.name}</span>
+                  </td>
 
-                <td className="tableBody-cell">
-                  <span>
-                    {column.columnDataType
-                      ? lowerCase(getDataTypeString(column.columnDataType))
-                      : ''}
-                  </span>
-                </td>
-                <td className="tw-group tableBody-cell tw-relative">
-                  <div>
-                    <div
-                      className="child-inline tw-cursor-pointer hover:tw-underline"
-                      data-testid="description"
-                      id={`column-description-${index}`}
-                      onClick={() => handleEditColumn(column, index)}>
-                      {stringToHTML(column.description) || (
-                        <span className="tw-no-description">
-                          No description added
+                  <td className="tableBody-cell">
+                    <span>
+                      {column.columnDataType
+                        ? lowerCase(getDataTypeString(column.columnDataType))
+                        : ''}
+                    </span>
+                  </td>
+                  <td className="tw-group tableBody-cell tw-relative">
+                    <div>
+                      <div
+                        className="tw-cursor-pointer hover:tw-underline tw-flex"
+                        data-testid="description"
+                        id={`column-description-${index}`}
+                        onClick={() => handleEditColumn(column, index)}>
+                        <div>
+                          {column.description ? (
+                            <RichTextEditorPreviewer
+                              markdown={column.description}
+                            />
+                          ) : (
+                            <span className="tw-no-description">
+                              No description added
+                            </span>
+                          )}
+                        </div>
+                        <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="10px"
+                          />
+                        </button>
+                      </div>
+
+                      {checkIfJoinsAvailable(column.name) && (
+                        <div className="tw-mt-3">
+                          <span className="tw-text-gray-400 tw-mr-1">
+                            Frequently joined columns:
+                          </span>
+                          {getFrequentlyJoinedWithColumns(column.name)
+                            .slice(0, 3)
+                            .map((columnJoin, index) => (
+                              <Fragment key={index}>
+                                {index > 0 && (
+                                  <span className="tw-mr-1">,</span>
+                                )}
+                                <Link
+                                  className="link-text"
+                                  to={getDatasetDetailsPath(
+                                    getTableFQNFromColumnFQN(
+                                      columnJoin.fullyQualifiedName
+                                    ),
+                                    getPartialNameFromFQN(
+                                      columnJoin.fullyQualifiedName,
+                                      ['column']
+                                    )
+                                  )}>
+                                  {getPartialNameFromFQN(
+                                    columnJoin.fullyQualifiedName,
+                                    ['database', 'table', 'column']
+                                  )}
+                                </Link>
+                              </Fragment>
+                            ))}
+                          {getFrequentlyJoinedWithColumns(column.name).length >
+                            3 && (
+                            <PopOver
+                              html={
+                                <div className="tw-text-left">
+                                  {getFrequentlyJoinedWithColumns(column.name)
+                                    ?.slice(3)
+                                    .map((columnJoin, index) => (
+                                      <Fragment key={index}>
+                                        <a
+                                          className="link-text tw-block tw-py-1"
+                                          href={getDatasetDetailsPath(
+                                            getTableFQNFromColumnFQN(
+                                              columnJoin.fullyQualifiedName
+                                            ),
+                                            getPartialNameFromFQN(
+                                              columnJoin.fullyQualifiedName,
+                                              ['column']
+                                            )
+                                          )}>
+                                          {getPartialNameFromFQN(
+                                            columnJoin.fullyQualifiedName,
+                                            ['database', 'table', 'column']
+                                          )}
+                                        </a>
+                                      </Fragment>
+                                    ))}
+                                </div>
+                              }
+                              position="bottom"
+                              theme="light"
+                              trigger="click">
+                              <span className="show-more tw-ml-1">...</span>
+                            </PopOver>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td
+                    className="tw-group tw-relative tableBody-cell"
+                    onClick={() => {
+                      if (!editColumnTag) {
+                        handleEditColumnTag(column, index);
+                      }
+                    }}>
+                    <TagsContainer
+                      editable={editColumnTag?.index === index}
+                      selectedTags={column.tags}
+                      tagList={allTags}
+                      onCancel={() => {
+                        handleTagSelection();
+                      }}
+                      onSelectionChange={(tags) => {
+                        handleTagSelection(tags);
+                      }}>
+                      {column.tags.length ? (
+                        <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                          <SVGIcons
+                            alt="edit"
+                            icon="icon-edit"
+                            title="Edit"
+                            width="10px"
+                          />
+                        </button>
+                      ) : (
+                        <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                          <Tags
+                            className="tw-border-main"
+                            tag="+ Add tag"
+                            type="outlined"
+                          />
                         </span>
                       )}
-                      <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="edit"
-                          width="10px"
-                        />
-                      </button>
-                    </div>
-                    {checkIfJoinsAvailable(column.name) && (
-                      <div className="tw-mt-3">
-                        <span className="tw-text-gray-400 tw-mr-1">
-                          Frequently joined columns:
-                        </span>
-                        {getFrequentlyJoinedWithColumns(column.name).map(
-                          (columnJoin, index) => (
-                            <Fragment key={index}>
-                              {index > 0 && <span className="tw-mr-1">,</span>}
-                              <Link
-                                className="link-text"
-                                to={getDatasetDetailsPath(
-                                  getTableFQNFromColumnFQN(
-                                    columnJoin.fullyQualifiedName
-                                  ),
-                                  getPartialNameFromFQN(
-                                    columnJoin.fullyQualifiedName,
-                                    ['column']
-                                  )
-                                )}
-                                onClick={handleClick}>
-                                {getPartialNameFromFQN(
-                                  columnJoin.fullyQualifiedName,
-                                  ['database', 'table', 'column']
-                                )}
-                              </Link>
-                            </Fragment>
-                          )
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </td>
-                <td
-                  className="tw-group tw-relative tableBody-cell"
-                  onClick={() => {
-                    if (!editColumnTag) {
-                      handleEditColumnTag(column, index);
-                    }
-                  }}>
-                  <TagsContainer
-                    editable={editColumnTag?.index === index}
-                    selectedTags={column.tags}
-                    tagList={allTags}
-                    onCancel={() => {
-                      handleTagSelection();
-                    }}
-                    onSelectionChange={(tags) => {
-                      handleTagSelection(tags);
-                    }}>
-                    {column.tags.length ? (
-                      <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="edit"
-                          width="10px"
-                        />
-                      </button>
-                    ) : (
-                      <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                        <Tags
-                          className="tw-border-gray-500"
-                          tag="+ Add new tag"
-                          type="outlined"
-                        />
-                      </span>
-                    )}
-                  </TagsContainer>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    </TagsContainer>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       {editColumn && (
         <ModalWithMarkdownEditor
           header={`Edit column: "${editColumn.column.name}"`}

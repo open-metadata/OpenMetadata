@@ -25,6 +25,7 @@ export type FacetProp = {
     type: keyof FilterObject
   ) => void;
   filters: FilterObject;
+  onClearFilter: (value: keyof FilterObject) => void;
 };
 
 export type FilterContainerProp = {
@@ -33,4 +34,5 @@ export type FilterContainerProp = {
   onSelect: (checked: boolean, name: string, type: keyof FilterObject) => void;
   isSelected: boolean;
   type: keyof FilterObject;
+  isDisabled: boolean;
 };

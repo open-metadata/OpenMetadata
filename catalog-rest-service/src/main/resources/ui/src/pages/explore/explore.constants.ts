@@ -17,7 +17,13 @@
 
 import { lowerCase } from 'lodash';
 import { AggregationType, Bucket } from 'Models';
-import { tiers } from '../../constants/constants';
+import {
+  tableSortingFields,
+  tiers,
+  topicSortingFields,
+} from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { Icons } from '../../utils/SvgUtils';
 
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];
@@ -53,3 +59,33 @@ export const getAggrWithDefaultValue = (
     ? aggregations
     : aggregations.filter((item) => allowedAgg.includes(lowerCase(item.title)));
 };
+
+export const tabsInfo = [
+  {
+    label: 'Tables',
+    index: SearchIndex.TABLE,
+    sortingFields: tableSortingFields,
+    sortField: tableSortingFields[0].value,
+    tab: 1,
+    path: 'tables',
+    icon: Icons.TABLE_GREY,
+  },
+  {
+    label: 'Topics',
+    index: SearchIndex.TOPIC,
+    sortingFields: topicSortingFields,
+    sortField: topicSortingFields[0].value,
+    tab: 2,
+    path: 'topics',
+    icon: Icons.TOPIC_GREY,
+  },
+  {
+    label: 'Dashboards',
+    index: SearchIndex.DASHBOARD,
+    sortingFields: topicSortingFields,
+    sortField: topicSortingFields[0].value,
+    tab: 3,
+    path: 'dashboards',
+    icon: Icons.DASHBOARD_GREY,
+  },
+];

@@ -21,9 +21,8 @@ import sys
 import click
 from pydantic import ValidationError
 
-from metadata.check.check_cli import check
-from metadata.config.config_loader import load_config_file
-from metadata.ingestion.workflow.workflow import Workflow
+from metadata.config.common import load_config_file
+from metadata.ingestion.api.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +36,14 @@ logging.basicConfig(format=BASE_LOGGING_FORMAT)
 
 
 @click.group()
+def check() -> None:
+    pass
+
+
+@click.group()
 @click.option("--debug/--no-debug", default=False)
 def metadata(debug: bool) -> None:
-    if debug or os.getenv("METADATA_DEBUG", False):
+    if os.getenv("METADATA_DEBUG", False):
         logging.getLogger().setLevel(logging.INFO)
         logging.getLogger("metadata").setLevel(logging.DEBUG)
     else:
@@ -52,24 +56,25 @@ def metadata(debug: bool) -> None:
     "-c",
     "--config",
     type=click.Path(exists=True, dir_okay=False),
-    help="Config file in .toml or .yaml format",
+    help="Workflow config",
     required=True,
 )
 def ingest(config: str) -> None:
     """Main command for ingesting metadata into Metadata"""
-
     config_file = pathlib.Path(config)
     workflow_config = load_config_file(config_file)
 
     try:
         logger.info(f"Using config: {workflow_config}")
-        del workflow_config['cron']
+        if workflow_config.get('cron'):
+            del workflow_config['cron']
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
         sys.exit(1)
 
     workflow.execute()
+    workflow.stop()
     ret = workflow.print_status()
     sys.exit(ret)
 

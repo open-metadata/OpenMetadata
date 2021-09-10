@@ -49,11 +49,22 @@ public final class TestUtils {
   public static final String LONG_ENTITY_NAME = "012345678901234567890123456789012345678901234567890123456789012345";
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static JdbcInfo JDBC_INFO;
+  public static URI DASHBOARD_URL;
+
   static {
     try {
       JDBC_INFO = new JdbcInfo().withConnectionUrl(new URI("jdbc:service://")).withDriverClass("driverClass");
     } catch (URISyntaxException e) {
       JDBC_INFO = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      DASHBOARD_URL = new URI("http://localhost:8088");
+    } catch (URISyntaxException e) {
+      DASHBOARD_URL = null;
       e.printStackTrace();
     }
   }
@@ -110,6 +121,8 @@ public final class TestUtils {
     for (int i = 0; i < actual.getData().size(); i++) {
       assertEquals(allEntities.get(offset + i), actual.getData().get(i));
     }
+    // Ensure total count returned in paging is correct
+    assertEquals(allEntities.size(), actual.getPaging().getTotal());
   }
 
   public static void post(WebTarget target, Map<String, String> headers) throws HttpResponseException {
@@ -168,6 +181,11 @@ public final class TestUtils {
     assertNotNull(ref.getHref());
     assertNotNull(ref.getName());
     assertNotNull(ref.getType());
+    // Ensure data entities use fully qualified name
+    if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
+            .contains(ref.getName())) {
+      ref.getName().contains("."); // FullyQualifiedName has "." as separator
+    }
   }
 
   public static void validateEntityReference(List<EntityReference> list) {

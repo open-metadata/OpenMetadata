@@ -7,7 +7,8 @@ export const getFilterString = (filters, excludeFilters = []) => {
     const modifiedFilter = [];
     const filter = filters[key];
     filter.forEach((value) => {
-      modifiedFilter.push(`${key.split(' ').join('_')}:${value}`);
+      const modifiedKey = key === 'service' ? 'service type' : key;
+      modifiedFilter.push(`${modifiedKey.split(' ').join('_')}:${value}`);
     });
     modifiedFilters[key] = modifiedFilter;
   }

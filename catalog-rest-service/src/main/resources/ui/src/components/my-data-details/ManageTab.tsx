@@ -15,43 +15,56 @@
   * limitations under the License.
 */
 
+import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
-import { data } from '../../jsons/tiersData';
+import { getCategory } from '../../axiosAPIs/tagAPI';
+import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
+import { CardWithListItems } from '../card-list/CardListItem/CardWithListItems.interface';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import DropDownList from '../dropdown/DropDownList';
+import Loader from '../Loader/Loader';
 
 type Props = {
   currentTier?: string;
   currentUser?: string;
-  onSave: (owner: TableDetail['owner'], tier: TableDetail['tier']) => void;
+  onSave: (
+    owner: TableDetail['owner'],
+    tier: TableDetail['tier']
+  ) => Promise<void>;
+  hasEditAccess: boolean;
 };
 
 const ManageTab: FunctionComponent<Props> = ({
   currentTier = '',
   currentUser = '',
   onSave,
+  hasEditAccess,
 }: Props) => {
-  // const { data } = cardData;
+  const [loading, setLoading] = useState<boolean>(false);
+  const [status, setStatus] = useState<'initial' | 'waiting' | 'success'>(
+    'initial'
+  );
   const [activeTier, setActiveTier] = useState(currentTier);
   const [listVisible, setListVisible] = useState(false);
+
+  const [tierData, setTierData] = useState<Array<CardWithListItems>>([]);
   const [listOwners] = useState(() => {
     const user = !isEmpty(appState.userDetails)
       ? appState.userDetails
       : appState.users.length
       ? appState.users[0]
       : undefined;
-    const teams = (appState.userDetails.teams || appState.userTeams).map(
-      (team) => ({
-        name: team.name,
-        value: team.id,
-        group: 'Teams',
-      })
-    );
+    const teams = getUserTeams().map((team) => ({
+      name: team?.displayName || team.name,
+      value: team.id,
+      group: 'Teams',
+    }));
 
     return user
       ? [{ name: user.displayName, value: user.id }, ...teams]
@@ -81,6 +94,8 @@ const ManageTab: FunctionComponent<Props> = ({
   };
 
   const handleSave = () => {
+    setLoading(true);
+    setStatus('waiting');
     // Save API call goes here...
     const newOwner: TableDetail['owner'] =
       owner !== currentUser
@@ -90,13 +105,44 @@ const ManageTab: FunctionComponent<Props> = ({
           }
         : undefined;
     const newTier = activeTier !== currentTier ? activeTier : undefined;
-    onSave(newOwner, newTier);
+    onSave(newOwner, newTier).catch(() => {
+      setStatus('initial');
+      setLoading(false);
+    });
   };
 
   const handleCancel = () => {
     setActiveTier(currentTier);
     setOwner(currentUser);
   };
+
+  const getTierData = () => {
+    getCategory('Tier').then((res: AxiosResponse) => {
+      if (res.data) {
+        const tierData = res.data.children.map(
+          (tier: { name: string; description: string }) => ({
+            id: `Tier.${tier.name}`,
+            title: tier.name,
+            description: tier.description.substring(
+              0,
+              tier.description.indexOf('\n\n')
+            ),
+            data: tier.description.substring(
+              tier.description.indexOf('\n\n') + 1
+            ),
+          })
+        );
+
+        setTierData(tierData);
+      } else {
+        setTierData([]);
+      }
+    });
+  };
+
+  useEffect(() => {
+    getTierData();
+  }, []);
 
   useEffect(() => {
     setActiveTier(currentTier);
@@ -106,9 +152,21 @@ const ManageTab: FunctionComponent<Props> = ({
     setOwner(currentUser);
   }, [currentUser]);
 
+  useEffect(() => {
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+    if (status === 'waiting') {
+      setStatus('success');
+      setTimeout(() => {
+        setStatus('initial');
+      }, 3000);
+    }
+  }, [currentTier, currentUser]);
+
   return (
     <div className="tw-max-w-3xl tw-mx-auto" data-testid="manage-tab">
-      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-gray-300">
+      <div className="tw-mt-2 tw-mb-4 tw-pb-4 tw-border-b tw-border-separator">
         <span className="tw-mr-2">Owner:</span>
         <span className="tw-relative">
           <Button
@@ -124,7 +182,8 @@ const ManageTab: FunctionComponent<Props> = ({
               alt="edit"
               className="tw-ml-1"
               icon="icon-edit"
-              title="edit"
+              title="Edit"
+              width="12px"
             />
           </Button>
           {listVisible && (
@@ -138,13 +197,23 @@ const ManageTab: FunctionComponent<Props> = ({
         </span>
       </div>
       <div className="tw-flex tw-flex-col" data-testid="cards">
-        {data.map((card, i) => (
-          <CardListItem
-            card={card}
-            isActive={activeTier === card.id}
+        {tierData.map((card, i) => (
+          <NonAdminAction
+            html={
+              <>
+                <p>You need to be owner to perform this action</p>
+                <p>Claim ownership from above </p>
+              </>
+            }
+            isOwner={hasEditAccess || Boolean(owner)}
             key={i}
-            onSelect={handleCardSelection}
-          />
+            position="left">
+            <CardListItem
+              card={card}
+              isActive={activeTier === card.id}
+              onSelect={handleCardSelection}
+            />
+          </NonAdminAction>
         ))}
       </div>
       <div className="tw-mt-6 tw-text-right" data-testid="buttons">
@@ -155,13 +224,34 @@ const ManageTab: FunctionComponent<Props> = ({
           onClick={handleCancel}>
           Discard
         </Button>
-        <Button
-          size="regular"
-          theme="primary"
-          variant="contained"
-          onClick={handleSave}>
-          Save
-        </Button>
+        {loading ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <Loader size="small" type="white" />
+          </Button>
+        ) : status === 'success' ? (
+          <Button
+            disabled
+            className="tw-w-16 tw-h-10 disabled:tw-opacity-100"
+            size="regular"
+            theme="primary"
+            variant="contained">
+            <i aria-hidden="true" className="fa fa-check" />
+          </Button>
+        ) : (
+          <Button
+            className="tw-w-16 tw-h-10"
+            size="regular"
+            theme="primary"
+            variant="contained"
+            onClick={handleSave}>
+            Save
+          </Button>
+        )}
       </div>
     </div>
   );

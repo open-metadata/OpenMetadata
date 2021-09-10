@@ -26,6 +26,7 @@ const Tags: FunctionComponent<TagProps> = ({
   tag,
   type = 'contained',
   removeTag,
+  isRemovable = true,
 }: TagProps) => {
   const baseStyle = tagStyles.base;
   const layoutStyles = tagStyles[type];
@@ -39,14 +40,14 @@ const Tags: FunctionComponent<TagProps> = ({
       className={classNames(baseStyle, layoutStyles, className)}
       data-testid="tags">
       <span className={classNames(textBaseStyle, textLayoutStyles)}>{tag}</span>
-      {editable && (
+      {editable && isRemovable && (
         <span
-          className="tw-py-1 tw-px-2 tw-rounded hover:tw-bg-gray-300"
+          className="tw-py-1 tw-px-2 tw-rounded tw-cursor-pointer"
           data-testid="remove"
           onClick={(e: React.MouseEvent<HTMLElement, MouseEvent>) => {
             e.preventDefault();
             e.stopPropagation();
-            removeTag && removeTag(e, tag);
+            removeTag && removeTag(e, tag.startsWith('#') ? tag.slice(1) : tag);
           }}>
           <i aria-hidden="true" className="fa fa-times tw-text-grey-300" />
         </span>

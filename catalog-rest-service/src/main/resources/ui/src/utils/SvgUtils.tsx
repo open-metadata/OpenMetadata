@@ -1,5 +1,13 @@
 import React, { FunctionComponent } from 'react';
+import IconGoogle from '../assets/img/google-icon.png';
+import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
+import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
+import IconConfig from '../assets/svg/config.svg';
+import IconDashboardGrey from '../assets/svg/dashboard-grey.svg';
+import IconDashboard from '../assets/svg/dashboard.svg';
+import IconAsstest from '../assets/svg/data-assets.svg';
+import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
@@ -32,6 +40,7 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
+import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
@@ -39,6 +48,15 @@ import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconHelpCircle from '../assets/svg/question-circle.svg';
+import IconSetting from '../assets/svg/service.svg';
+import IconSlack from '../assets/svg/slack.svg';
+import IconTableGrey from '../assets/svg/table-grey.svg';
+import IconTable from '../assets/svg/table.svg';
+import IconTerns from '../assets/svg/terms.svg';
+import IconTopicGrey from '../assets/svg/topic-grey.svg';
+import IconTopic from '../assets/svg/topic.svg';
+import IconUser from '../assets/svg/user.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
 type Props = {
@@ -50,6 +68,8 @@ type Props = {
 export const Icons = {
   LOGO: 'logo',
   LOGO_SMALL: 'logo-small',
+  WELCOME_POPPER: 'welcome-popper',
+  GOOGLE_ICON: 'google-icon',
   EDIT: 'icon-edit',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
@@ -79,6 +99,7 @@ export const Icons = {
   CHECK_CIRCLE: 'icon-check-circle',
   EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
+  HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
   UP_ARROW: 'icon-up-arrow',
   DOWN_ARROW: 'icon-down-arrow',
@@ -90,6 +111,21 @@ export const Icons = {
   KEY: 'key',
   NOT_NULL: 'not-null',
   UNIQUE: 'unique',
+  ASSETS: 'assets',
+  SERVICE: 'service',
+  USERS: 'users',
+  TERMS: 'terms',
+  DOC: 'doc',
+  API: 'api',
+  WHATS_NEW: 'whats-new',
+  TABLE: 'table',
+  TOPIC: 'topic',
+  DASHBOARD: 'dashboard',
+  TABLE_GREY: 'table-grey',
+  TOPIC_GREY: 'topic-grey',
+  DASHBOARD_GREY: 'dashboard-grey',
+  CONFIG: 'icon-config',
+  SLACK: 'slack',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -138,6 +174,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.LOGO_SMALL:
       IconComponent = LogoMonogram;
+
+      break;
+    case Icons.WELCOME_POPPER:
+      IconComponent = IconWelcomePopper;
+
+      break;
+    case Icons.GOOGLE_ICON:
+      IconComponent = IconGoogle;
 
       break;
     case Icons.MENU:
@@ -224,6 +268,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTimesCircle;
 
       break;
+    case Icons.HELP_CIRCLE:
+      IconComponent = IconHelpCircle;
+
+      break;
     case Icons.FILTERS:
       IconComponent = IconFilter;
 
@@ -264,8 +312,68 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconUnique;
 
       break;
+    case Icons.ASSETS:
+      IconComponent = IconAsstest;
+
+      break;
     case Icons.TOAST_INFO:
       IconComponent = IconInfo;
+
+      break;
+    case Icons.SERVICE:
+      IconComponent = IconSetting;
+
+      break;
+    case Icons.USERS:
+      IconComponent = IconUser;
+
+      break;
+    case Icons.TERMS:
+      IconComponent = IconTerns;
+
+      break;
+    case Icons.DOC:
+      IconComponent = IconDoc;
+
+      break;
+    case Icons.API:
+      IconComponent = IconAPI;
+
+      break;
+    case Icons.WHATS_NEW:
+      IconComponent = IconWhatsNew;
+
+      break;
+    case Icons.TABLE:
+      IconComponent = IconTable;
+
+      break;
+    case Icons.TOPIC:
+      IconComponent = IconTopic;
+
+      break;
+    case Icons.DASHBOARD:
+      IconComponent = IconDashboard;
+
+      break;
+    case Icons.TABLE_GREY:
+      IconComponent = IconTableGrey;
+
+      break;
+    case Icons.TOPIC_GREY:
+      IconComponent = IconTopicGrey;
+
+      break;
+    case Icons.DASHBOARD_GREY:
+      IconComponent = IconDashboardGrey;
+
+      break;
+    case Icons.CONFIG:
+      IconComponent = IconConfig;
+
+      break;
+    case Icons.SLACK:
+      IconComponent = IconSlack;
 
       break;
 
