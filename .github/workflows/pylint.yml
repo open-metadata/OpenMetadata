@@ -26,14 +26,15 @@ jobs:
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
-      - name: Install dependencies
+          python-version: 3.9.6
+      - name: Install Ubuntu related dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pylint
-          cd ingestion
-          sudo apt-get install -y libsasl2-dev unixodbc-dev
-          pip install '.[all]'
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install Python & Openmetadata related dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          pip install '.[all]' pylint
           
       - name: Analysing the code with pylint
         run: |
