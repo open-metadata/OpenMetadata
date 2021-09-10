@@ -22,7 +22,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import Slider from 'react-slick';
 
 type Props = {
-  data: { title: string; description: string; image: string }[];
+  data: {
+    title: string;
+    description: string;
+    isImage: boolean;
+    path: string;
+  }[];
 };
 
 const FeaturesCarousel = ({ data }: Props) => {
@@ -51,11 +56,21 @@ const FeaturesCarousel = ({ data }: Props) => {
     <>
       <Slider ref={sliderRef} {...settings}>
         {data.map((d) => (
-          <div className="tw-pr-2" key={uniqueId()}>
+          <div className="tw-px-1" key={uniqueId()}>
             <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
             <p className="tw-text-sm tw-mb-3">{d.description}</p>
             <div className="tw-max-w-3xl">
-              <img alt="feature" className="tw-w-full" src={d.image} />
+              {d.isImage ? (
+                <img alt="feature" className="tw-w-full" src={d.path} />
+              ) : (
+                <iframe
+                  allowFullScreen
+                  className="tw-w-full"
+                  frameBorder={0}
+                  height={278}
+                  src={`https://www.youtube.com/embed/${d.path}`}
+                />
+              )}
             </div>
           </div>
         ))}

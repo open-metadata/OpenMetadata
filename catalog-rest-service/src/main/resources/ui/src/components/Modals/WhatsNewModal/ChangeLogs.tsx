@@ -22,33 +22,43 @@ import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEdito
 
 type Props = {
   data: {
-    highlight: string;
-    bugFix: string;
-    miscellaneous: string;
+    highlight?: string;
+    bugFix?: string;
+    miscellaneous?: string;
   };
 };
 
 const ChangeLogs = ({ data }: Props) => {
   return (
     <div>
-      <div className="tw-mb-4">
-        <div className="tw-border-b tw-mb-2.5 tw-border-text">
-          <p className="tw-text-base tw-font-medium tw-mb-2.5">Highlights</p>
+      {data.highlight && (
+        <div className="tw-mb-4">
+          <div className="tw-border-b tw-mb-2.5 tw-border-text">
+            <p className="tw-text-base tw-font-medium tw-mb-2.5">Highlights</p>
+          </div>
+          <RichTextEditorPreviewer markdown={data.highlight} />
         </div>
-        <RichTextEditorPreviewer markdown={data.highlight} />
-      </div>
-      <div className="tw-mb-4">
-        <div className="tw-border-b tw-mb-2.5 tw-border-text">
-          <p className="tw-text-base tw-font-medium tw-mb-2.5">Bug fixes</p>
+      )}
+
+      {data.bugFix && (
+        <div className="tw-mb-4">
+          <div className="tw-border-b tw-mb-2.5 tw-border-text">
+            <p className="tw-text-base tw-font-medium tw-mb-2.5">Bug fixes</p>
+          </div>
+          <RichTextEditorPreviewer markdown={data.bugFix} />
         </div>
-        <RichTextEditorPreviewer markdown={data.bugFix} />
-      </div>
-      <div className="tw-mb-4">
-        <div className="tw-border-b tw-mb-2.5 tw-border-text">
-          <p className="tw-text-base tw-font-medium tw-mb-2.5">Miscellaneous</p>
+      )}
+
+      {data.miscellaneous && (
+        <div className="tw-mb-4">
+          <div className="tw-border-b tw-mb-2.5 tw-border-text">
+            <p className="tw-text-base tw-font-medium tw-mb-2.5">
+              Miscellaneous
+            </p>
+          </div>
+          <RichTextEditorPreviewer markdown={data.miscellaneous} />
         </div>
-        <RichTextEditorPreviewer markdown={data.miscellaneous} />
-      </div>
+      )}
     </div>
   );
 };
