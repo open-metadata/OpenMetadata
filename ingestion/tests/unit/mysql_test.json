@@ -1,0 +1,34 @@
+{
+  "source": {
+    "type": "mysql",
+    "config": {
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
+      "database": "openmetadata_db",
+      "service_name": "local_mysql_test",
+      "filter_pattern": {
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
+    }
+  },
+  "stage": {
+    "type": "file",
+    "config": {
+      "filename": "/tmp/mysql_test"
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
