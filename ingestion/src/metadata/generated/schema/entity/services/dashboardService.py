@@ -15,6 +15,7 @@ from ...type import basic, schedule
 class DashboardServiceType(Enum):
     Superset = 'Superset'
     Looker = 'Looker'
+    Tableau = 'Tableau'
 
 
 class DashboardService(BaseModel):
