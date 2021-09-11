@@ -73,17 +73,22 @@ class LookerSource(Source):
     metadata_config: MetadataServerConfig
     status: LookerDashboardSourceStatus
 
-    def __init__(self, config: LookerSourceConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
+    def __init__(
+            self, config: LookerSourceConfig, metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext
+            ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.client = self.looker_client()
-        self.service = get_dashboard_service_or_create(config.service_name,
-                                                       DashboardServiceType.Looker.name,
-                                                       config.username,
-                                                       config.password,
-                                                       config.url,
-                                                       metadata_config)
+        self.service = get_dashboard_service_or_create(
+            config.service_name,
+            DashboardServiceType.Looker.name,
+            config.username,
+            config.password,
+            config.url,
+            metadata_config
+            )
 
     def looker_client(self):
         os.environ["LOOKERSDK_CLIENT_ID"] = self.config.username
@@ -108,18 +113,20 @@ class LookerSource(Source):
 
     def _yield_charts(self, chart: DashboardElement):
         yield Chart(
-                    id=uuid.uuid4(),
-                    name=chart.id,
-                    displayName=chart.title,
-                    chartType=chart.type,
-                    service=EntityReference(id=self.service.id, type="dashboardService"),
-                    description=chart.subtitle_text,
-                )
+            id=uuid.uuid4(),
+            name=chart.id,
+            displayName=chart.title,
+            chartType=chart.type,
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+            description=chart.subtitle_text,
+        )
 
     def _get_looker_charts(self) -> Optional[Chart]:
         for child_dashboard in self.client.all_dashboards(fields="id"):
             fields = ["id", "title", "dashboard_elements", "dashboard_filters", "view_count"]
-            charts = self.client.dashboard_dashboard_elements(dashboard_id=child_dashboard.id, fields=",".join(fields))
+            charts = self.client.dashboard_dashboard_elements(
+                dashboard_id=child_dashboard.id, fields=",".join(fields)
+                )
             for chart in charts:
                 self._yield_charts(chart)
 
@@ -161,8 +168,13 @@ class LookerSource(Source):
                     dashboard_id=child_dashboard, fields=",".join(fields)
                 )
             except SDKError:
-                self.status.warning(child_dashboard, f"Error occurred while loading dashboard {child_dashboard}.",)
+                self.status.warning(
+                    child_dashboard,
+                    f"Error occurred while loading dashboard {child_dashboard}.", )
             return self.looker_dashboard(dashboard)
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def close(self):
+        pass

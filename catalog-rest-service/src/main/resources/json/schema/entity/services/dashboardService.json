@@ -6,11 +6,13 @@
   "type": "object",
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset or Lookr",
+      "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau",
       "type": "string",
       "enum": [
         "Superset",
-        "Looker"
+        "Looker",
+        "Tableau",
+        "Redash"
       ],
       "javaEnums": [
         {
@@ -18,6 +20,12 @@
         },
         {
           "name": "Looker"
+        },
+        {
+          "name": "Tableau"
+        },
+        {
+          "name": "Redash"
         }
       ]
     }
@@ -34,7 +42,7 @@
       "maxLength": 64
     },
     "serviceType": {
-      "description": "Type of dashboard service such as Lookr or Superset...",
+      "description": "Type of dashboard service such as Looker or Superset...",
       "$ref": "#/definitions/dashboardServiceType"
     },
     "description": {
