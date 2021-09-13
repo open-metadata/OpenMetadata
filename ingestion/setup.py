@@ -85,6 +85,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
+    "pii-processor": {"pandas~=1.3.1"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
@@ -95,7 +96,7 @@ plugins: Dict[str, Set[str]] = {
     "sample-data": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
-    "pii-processor": {"pandas~=1.3.1"},
+    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"}
 }
 
 build_options = {"includes": ["_cffi_backend"]}
