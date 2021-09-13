@@ -4,8 +4,7 @@
     "config": {
       "api_key": "api_key",
       "uri": "http://localhost:5000",
-      "service_name": "redash",
-      "service_type": "Redash"
+      "service_name": "redash"
     }
   },
   "sink": {

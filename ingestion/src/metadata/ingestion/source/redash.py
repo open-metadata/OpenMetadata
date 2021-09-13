@@ -12,34 +12,30 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import sys
 import uuid
 from dataclasses import dataclass
 from dataclasses import field
-from typing import List, Iterable, Optional
-from redash_toolbelt import Redash
+from typing import List, Iterable
 
-from metadata.ingestion.api.common import IncludeFilterPattern
-from metadata.ingestion.api.source import SourceStatus
+import requests
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
 from metadata.ingestion.api.source import Source
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.generated.schema.entity.data.chart import Chart
-
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.table_metadata import Dashboard
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from redash_toolbelt import Redash
+from metadata.utils.helpers import get_dashboard_service_or_create
+from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
 
 
 class RedashSourceConfig(ConfigModel):
     uri: str = "http://localhost:5000"
+    username: str = ""
     api_key: str
-    env: str = "DEV"
-    dashboard_patterns: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    chart_patterns: IncludeFilterPattern = IncludeFilterPattern.allow_all()
-    skip_draft: bool = True
-    api_page_limit: int = sys.maxsize
     service_name: str
-    service_type: str
+    service_type: str = "Redash"
 
 
 @dataclass
@@ -65,16 +61,13 @@ class RedashSource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.status = RedashSourceStatus()
-
-        self.config.uri = self.config.uri.strip("/")
-
         self.client = Redash(self.config.uri, self.config.api_key)
-        self.client.session.headers.update(
-            {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            }
-        )
+        self.service = get_dashboard_service_or_create(config.service_name,
+                                                       DashboardServiceType.Redash.name,
+                                                       config.username,
+                                                       config.api_key,
+                                                       config.uri,
+                                                       metadata_config)
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -86,15 +79,15 @@ class RedashSource(Source):
         pass
 
     def next_record(self) -> Iterable[Record]:
-        yield self.get_redash_charts()
-        yield self.get_redash_dashboard()
+        yield from self.get_redash_charts()
+        yield from self.get_redash_dashboard()
 
-    def get_redash_charts(self) -> Optional[Chart]:
-        query_response = self.client.queries()
-        for query_response in query_response["results"]:
-            query_id = query_response["id"]
-            query_name = query_response["name"]
-            query_data = self.client._get(f"/api/queries/{query_id}").json()
+    def get_redash_charts(self) -> Chart:
+        query_info = self.client.queries()
+        for query_info in query_info["results"]:
+            query_id = query_info["id"]
+            query_name = query_info["name"]
+            query_data = requests.get(f"{self.config.uri}/api/queries/{query_id}").json()
             for visualization in query_data.get("Visualizations", []):
                 chart_type = visualization.get("type", "")
                 chart_description = visualization.get("description", "") if visualization.get("description", "") else ""
@@ -109,26 +102,25 @@ class RedashSource(Source):
 
     def get_redash_dashboard(self) -> Dashboard:
         charts: List[Chart] = []
-        dashboard_response = self.client.dashboards()
-        for dashboard_response in dashboard_response["results"]:
-            if dashboard_response["id"] is not None:
-                if not self.config.chart_pattern.allowed(dashboard_response["id"]):
-                    self.status.item_dropped_status(dashboard_response["id"])
-                    continue
+        dashboard_info = self.client.dashboards()
+        for dashboard_info in dashboard_info["results"]:
+            dashboard_id = dashboard_info["id"]
+            if dashboard_info["id"] is not None:
                 self.status.item_scanned_status()
-                dashboard_data = self.client.dashboard(dashboard_response["slug"])
-                widgets = dashboard_data.get("widgets", [])
-                dashboard_description = widgets.get("text")
-                yield Dashboard(
-                    id=uuid.uuid4(),
-                    name=dashboard_response["id"],
-                    displayName=dashboard_response["name"],
-                    description=dashboard_description if dashboard_response else "",
-                    charts=charts,
-                    usageSummary=None,
-                    service=EntityReference(id=self.service.id, type="dashboardService"),
-                    href=dashboard_response["slug"]
-                )
+                dashboard_data = self.client.dashboard(dashboard_id)
+                dashboard_url = f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
+                for widgets in dashboard_data.get("widgets", []):
+                    dashboard_description = widgets.get("text")
+                    yield Dashboard(
+                        id=uuid.uuid4(),
+                        name=dashboard_info["id"],
+                        displayName=dashboard_info["name"],
+                        description=dashboard_description if dashboard_info else "",
+                        charts=charts,
+                        usageSummary=None,
+                        service=EntityReference(id=self.service.id, type="dashboardService"),
+                        url=dashboard_url
+                    )
 
     def get_status(self) -> SourceStatus:
         return self.status
