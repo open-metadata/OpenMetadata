@@ -1,0 +1,13 @@
+{% if expectation_suite_name %}
+  {% set expectation_suite_name_dot_count = expectation_suite_name.count(".") -%}
+{% endif %}
+
+{% if "ValidationResults" in renderer_type or "ProfilingResults" in renderer_type %}
+  {% set static_images_dir = ((expectation_suite_name_dot_count + 3) * "../") + "static/images/" -%}
+{% elif "ExpectationSuite" in renderer_type %}
+  {% set static_images_dir = ((expectation_suite_name_dot_count + 1) * "../") + "static/images/" -%}
+{% elif "SiteIndex" in renderer_type %}
+  {% set static_images_dir = "./static/images/" -%}
+{% endif %}
+
+<link rel="shortcut icon" href="{{ static_images_dir + "favicon.ico" }}" type="image/x-icon"/>

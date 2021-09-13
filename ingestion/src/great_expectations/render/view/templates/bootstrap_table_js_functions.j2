@@ -1,0 +1,29 @@
+<script>
+  function rowStyleLinks(row, index) {
+    return {
+      css: {
+        cursor: "pointer"
+      }
+    }
+  }
+
+  function rowAttributesLinks(row, index) {
+    return {
+      "class": "clickable-row",
+      "data-href": row._table_row_link_path
+    }
+  }
+
+  function expectationSuiteNameFilterDataCollector(value, row, formattedValue) {
+    return row._expectation_suite_name_sort;
+  }
+
+  function validationSuccessFilterDataCollector(value, row, formattedValue) {
+    return row._validation_success_text;
+  }
+
+  function clearTableFilters(tableId) {
+    $(`#${tableId}`).bootstrapTable('clearFilterControl');
+    $(`#${tableId}`).bootstrapTable('resetSearch');
+  }
+</script>

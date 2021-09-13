@@ -1,0 +1,38 @@
+{% if "styling" in content_block and "header" in content_block["styling"] -%}
+    {% set content_block_header_styling = content_block["styling"]["header"] | render_styling -%}
+{% else -%}
+    {% set content_block_header_styling = "" -%}
+{% endif -%}
+
+{% if "styling" in content_block and "subheader" in content_block["styling"] -%}
+    {% set content_block_subheader_styling = content_block["styling"]["subheader"] | render_styling -%}
+{% else -%}
+    {% set content_block_subheader_styling = "" -%}
+{% endif -%}
+
+{% if (content_block.get("header") or content_block.get("subheader")) and content_block["content_block_type"] != "header" -%}
+    <div id="{{content_block_id}}-header" {{ content_block_header_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+        {% if content_block.get("header") and content_block["content_block_type"] != "header" %}
+          {% if content_block["header"] is mapping %}
+            <div>
+              {{ content_block["header"] | render_content_block }}
+            </div>
+          {% else %}
+            <h5>
+                {{ content_block["header"] | render_content_block }}
+            </h5>
+          {% endif %}
+        {% endif %}
+        {%- if content_block.get("subheader") and content_block["content_block_type"] != "header" -%}
+          {% if content_block["subheader"] is mapping %}
+            <div id="{{content_block_id}}-subheader" {{ content_block_subheader_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+              {{ content_block["subheader"] | render_content_block }}
+            </div>
+          {% else %}
+            <h6 id="{{content_block_id}}-subheader" {{ content_block_subheader_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+                {{ content_block["subheader"] | render_content_block }}
+            </h6>
+          {% endif %}
+        {% endif -%}
+    </div>
+{% endif -%}

@@ -1,0 +1,16 @@
+{%- if section_loop is defined -%}
+    {%- set section_id = "section-"~section_loop.index -%}
+{%- else -%}
+    {%- set section_id = None -%}
+{%- endif -%}
+{% if content_block_loop is defined -%}
+    {%- if section_loop is defined -%}
+        {%- set content_block_id = "section-"~section_loop.index~"-content-block-"~content_block_loop.index -%}
+    {%- else -%}
+        {%- set content_block_id = "content-block-"~content_block_loop.index -%}
+    {%- endif -%}
+{%- else -%}
+    {%- set content_block_id = "content-block" -%}
+{% endif %}
+
+{{ content_block | render_content_block }}

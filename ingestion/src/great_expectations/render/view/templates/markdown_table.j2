@@ -1,0 +1,18 @@
+{% include 'markdown_content_block_header.j2' %}
+{% if content_block.get("header_row") %}
+  {% set header_row = content_block.get("header_row") %}
+{% else %}
+  {% set header_row_cell_count = content_block["table"][0] | length %}
+  {% set header_row = ((header_row_cell_count - 1) * ",").split(',') %}
+  {% set hidden_table_header = True %}
+{% endif %}
+{% for header_cell in header_row %} | {{ header_cell | render_content_block }}{% if loop.last %} |{% else %}{% endif %}{% endfor %}
+{% for header_cell in header_row %}{% if loop.last %} | ------------ | {% else %} | ------------ {% endif %}{% endfor %}
+{% for row in content_block["table"] -%}
+  {% set rowloop = loop -%}
+  {% for cell in row -%}
+      {%- set content_block_id = content_block_id ~ "-cell-" ~ rowloop.index ~ "-" ~ loop.index -%}
+      {{ cell | render_content_block(content_block_id=content_block_id + '-content') }} {% if loop.last %} {% else %} | {% endif %}
+  {%- endfor -%}
+  {{ "\n" }}
+{%- endfor -%}

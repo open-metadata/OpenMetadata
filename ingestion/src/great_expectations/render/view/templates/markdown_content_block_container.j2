@@ -1,0 +1,13 @@
+{% include 'markdown_content_block_header.j2' %}
+
+{% if "styling" in content_block -%}
+    {% set content_block_styling = content_block["styling"] | render_styling -%}
+{% else -%}
+    {% set content_block_styling = "" -%}
+{% endif -%}
+
+<div id="{{ content_block_id }}-container" {{ content_block_body_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+  {% for el in content_block["content_blocks"] %}
+    {{ el | render_content_block }}
+  {% endfor %}
+</div>

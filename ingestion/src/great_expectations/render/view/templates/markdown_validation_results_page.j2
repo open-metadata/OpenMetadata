@@ -1,0 +1,10 @@
+
+# Validation Results
+
+{% for section in sections %}
+  {% set section_loop = loop -%}
+  {% include 'markdown_section.j2' %}
+{% endfor %}
+
+-----------------------------------------------------------
+Powered by [Great Expectations](https://greatexpectations.io/)

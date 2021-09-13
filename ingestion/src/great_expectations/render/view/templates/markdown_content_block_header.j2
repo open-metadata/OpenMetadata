@@ -1,0 +1,9 @@
+
+{% if (content_block.get("header") or content_block.get("subheader")) and content_block["content_block_type"] != "header" -%}
+{% if content_block.get("header") and content_block["content_block_type"] != "header" %}
+### {{ content_block["header"] | render_content_block }}
+{% endif %}
+{%- if content_block.get("subheader") and content_block["content_block_type"] != "header" -%}
+#### {{ content_block["subheader"] | render_content_block }}
+{% endif -%}
+{% endif -%}

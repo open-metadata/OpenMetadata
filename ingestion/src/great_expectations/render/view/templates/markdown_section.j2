@@ -1,0 +1,5 @@
+{% set section_loop = loop -%}
+{% for content_block in section["content_blocks"] -%}
+    {% set content_block_loop = loop -%}
+    {% include 'markdown_component.j2' %}
+{% endfor %}
