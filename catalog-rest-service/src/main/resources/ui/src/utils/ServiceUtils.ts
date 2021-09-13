@@ -14,11 +14,13 @@ import {
   POSTGRES,
   PRESTO,
   PULSAR,
+  REDASH,
   REDSHIFT,
   serviceTypes,
   SERVICE_DEFAULT,
   SNOWFLAKE,
   SUPERSET,
+  TABLEAU,
 } from '../constants/services.const';
 import {
   DashboardServiceType,
@@ -70,6 +72,12 @@ export const serviceTypeLogo = (type: string) => {
 
     case DashboardServiceType.LOOKER:
       return LOOKER;
+
+    case DashboardServiceType.TABLEAU:
+      return TABLEAU;
+
+    case DashboardServiceType.REDASH:
+      return REDASH;
 
     default:
       return SERVICE_DEFAULT;
@@ -197,6 +205,8 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
         break;
       case DashboardServiceType.SUPERSET:
       case DashboardServiceType.LOOKER:
+      case DashboardServiceType.TABLEAU:
+      case DashboardServiceType.REDASH:
         entityCounts.dashboardCount += bucket.doc_count;
 
         break;
