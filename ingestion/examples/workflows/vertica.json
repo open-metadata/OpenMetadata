@@ -1,0 +1,32 @@
+{
+  "source": {
+    "type": "vertica",
+    "config": {
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
+      "database": "openmetadata_db",
+      "service_name": "local_vertica",
+      "filter_pattern": {
+        "excludes": []
+      }
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}

@@ -18,7 +18,8 @@
         "Hive",
         "Oracle",
         "Athena",
-        "Presto"
+        "Presto",
+        "Vertica"
       ],
       "javaEnums": [
         {
@@ -50,6 +51,9 @@
         },
         {
           "name": "Presto"
+        },
+        {
+          "name": "Vertica"
         }
       ]
     }
