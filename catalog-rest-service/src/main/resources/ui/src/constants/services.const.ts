@@ -28,10 +28,12 @@ import postgres from '../assets/img/service-icon-post.png';
 import presto from '../assets/img/service-icon-presto.png';
 import pulsar from '../assets/img/service-icon-pulsar.png';
 import query from '../assets/img/service-icon-query.png';
+import redash from '../assets/img/service-icon-redash.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import superset from '../assets/img/service-icon-superset.png';
+import tableau from '../assets/img/service-icon-tableau.png';
 import plus from '../assets/svg/plus.svg';
 import { ServiceCategory } from '../enums/service.enum';
 
@@ -49,6 +51,8 @@ export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const SUPERSET = superset;
 export const LOOKER = looker;
+export const TABLEAU = tableau;
+export const REDASH = redash;
 export const SERVICE_DEFAULT = serviceDefault;
 
 export const PLUS = plus;
@@ -68,7 +72,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Presto',
   ],
   messagingServices: ['Kafka', 'Pulsar'],
-  dashboardServices: ['Superset', 'Looker'],
+  dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [
