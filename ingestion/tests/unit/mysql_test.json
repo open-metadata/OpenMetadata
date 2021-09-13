@@ -4,21 +4,18 @@
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "service_name": "local_mysql",
+      "database": "openmetadata_db",
+      "service_name": "local_mysql_test",
       "filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*"]
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
-  "processor": {
-    "type": "pii",
+  "stage": {
+    "type": "file",
     "config": {
-      "api_endpoint": "http://localhost:8585/api"
+      "filename": "/tmp/mysql_test"
     }
-  },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",

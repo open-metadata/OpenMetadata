@@ -58,16 +58,15 @@ base_requirements = {
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "okta==1.7.0",
-    "pandas~=1.3.1",
+    "okta>=1.7.0",
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "spacy==3.0.5",
     "requests~=2.25.1",
+    "great-expectations>=0.13.31",
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web"
 }
 base_plugins = {
-    "pii-processor",
     "query-parser",
     "metadata-usage",
     "file-stage",
@@ -86,6 +85,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
+    "pii-processor": {"pandas~=1.3.1"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
@@ -95,7 +95,9 @@ plugins: Dict[str, Set[str]] = {
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-data": {"faker~=8.1.1"},
-    "superset": {}
+    "superset": {},
+    "tableau": {"tableau-api-lib==0.1.22"},
+    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"}
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -130,12 +132,13 @@ setup(
             plugin: list(dependencies)
             for (plugin, dependencies) in plugins.items()
         },
-        "all": list(base_requirements.union(
-            *[
+        "all": list(
+            base_requirements.union(
+                *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    ]
-        )
+                ]
+            )
         )
     }
 

@@ -30,7 +30,12 @@ export type DropDownListItem = {
   to?: string;
   disabled?: boolean;
   method?: () => void;
-} & Record<string, string | number | boolean | undefined | Function>;
+  icon?: React.ReactElement;
+  isOpenNewTab?: boolean;
+} & Record<
+  string,
+  string | number | boolean | undefined | Function | React.ReactElement
+>;
 
 export type DropDownListProp = {
   dropDownList: Array<DropDownListItem>;
@@ -51,5 +56,5 @@ export type DropDownProp = {
   className?: string;
   label?: string;
   type: string;
-  icon?: React.ElementType | string;
+  icon?: React.ReactElement | string;
 } & DropDownListProp;

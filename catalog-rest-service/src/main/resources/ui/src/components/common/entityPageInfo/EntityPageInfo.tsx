@@ -1,4 +1,5 @@
 import classNames from 'classnames';
+import { isNil } from 'lodash';
 import { ColumnTags } from 'Models';
 import React, { useState } from 'react';
 import { LIST_SIZE } from '../../../constants/constants';
@@ -10,7 +11,7 @@ import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
 
 type ExtraInfo = {
-  key: string;
+  key?: string;
   value: string | number;
 };
 
@@ -101,14 +102,29 @@ const EntityPageInfo = ({
       <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
         {extraInfo.map((info, index) => (
           <span key={index}>
-            <span className="tw-text-grey-muted tw-font-normal">
-              {info.key} :
-            </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">{info.value || '--'}</span>
-            {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
-              <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
-                •
-              </span>
+            {!isNil(info.key) ? (
+              <>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  {info.key} :
+                </span>{' '}
+                <span className="tw-pl-1 tw-font-normal">
+                  {info.value || '--'}
+                </span>
+                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                  <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                    •
+                  </span>
+                ) : null}
+              </>
+            ) : !isNil(info.value) ? (
+              <>
+                <span className="tw-font-normal">{info.value}</span>
+                {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
+                  <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
+                    •
+                  </span>
+                ) : null}
+              </>
             ) : null}
           </span>
         ))}

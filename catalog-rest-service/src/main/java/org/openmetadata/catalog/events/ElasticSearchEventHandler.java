@@ -26,7 +26,9 @@ import org.elasticsearch.client.RestHighLevelClient;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
@@ -74,41 +76,18 @@ public class ElasticSearchEventHandler implements EventHandler {
       LOG.info("request Context "+ requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
+        UpdateRequest updateRequest = null;
         if (entity.getClass().toString().toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
           Table instance = (Table) entity;
-          Map<String, Object> jsonMap = new HashMap<>();
-          jsonMap.put("description", instance.getDescription());
-          Set<String> tags = new HashSet<>();
-          List<String> columnDescriptions = new ArrayList<>();
-          if (instance.getTags() != null) {
-            instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-          }
-          if (instance.getColumns() != null) {
-            for (Column column : instance.getColumns()) {
-              column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-              columnDescriptions.add(column.getDescription());
-            }
-          }
-          if (!tags.isEmpty()) {
-            List<String> tagsList = new ArrayList<>(tags);
-            jsonMap.put("tags", tagsList);
-          }
-          if (!columnDescriptions.isEmpty()) {
-            jsonMap.put("column_descriptions", columnDescriptions);
-          }
-          if(instance.getOwner() != null) {
-            jsonMap.put("owner", instance.getOwner().getId().toString());
-          }
-          if (instance.getFollowers() != null) {
-            List<String> followers = new ArrayList<>();
-            for(EntityReference follower: instance.getFollowers()) {
-              followers.add(follower.getId().toString());
-            }
-            jsonMap.put("followers", followers);
-          }
-          jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
-          UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
-          updateRequest.doc(jsonMap);
+          updateRequest = updateTable(instance);
+        } else if (entity.getClass().toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
+          Dashboard instance = (Dashboard) entity;
+          updateRequest = updateDashboard(instance);
+        } else if (entity.getClass().toString().toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
+          Topic instance = (Topic) entity;
+          updateRequest = updateTopic(instance);
+        }
+        if (updateRequest != null) {
           client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
         }
       }
@@ -116,6 +95,98 @@ public class ElasticSearchEventHandler implements EventHandler {
       LOG.error("failed to update ES doc", e);
     }
     return null;
+  }
+
+  private UpdateRequest updateTable(Table instance) {
+    Map<String, Object> jsonMap = new HashMap<>();
+    jsonMap.put("description", instance.getDescription());
+    Set<String> tags = new HashSet<>();
+    List<String> columnDescriptions = new ArrayList<>();
+    if (instance.getTags() != null) {
+      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+    if (instance.getColumns() != null) {
+      for (Column column : instance.getColumns()) {
+        column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+        columnDescriptions.add(column.getDescription());
+      }
+    }
+    if (!tags.isEmpty()) {
+      List<String> tagsList = new ArrayList<>(tags);
+      jsonMap.put("tags", tagsList);
+    }
+    if (!columnDescriptions.isEmpty()) {
+      jsonMap.put("column_descriptions", columnDescriptions);
+    }
+    if(instance.getOwner() != null) {
+      jsonMap.put("owner", instance.getOwner().getId().toString());
+    }
+    if (instance.getFollowers() != null) {
+      List<String> followers = new ArrayList<>();
+      for(EntityReference follower: instance.getFollowers()) {
+        followers.add(follower.getId().toString());
+      }
+      jsonMap.put("followers", followers);
+    }
+    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+    UpdateRequest updateRequest = new UpdateRequest("table_search_index", instance.getId().toString());
+    updateRequest.doc(jsonMap);
+    return updateRequest;
+  }
+
+  private UpdateRequest updateTopic(Topic instance) {
+    Map<String, Object> jsonMap = new HashMap<>();
+    jsonMap.put("description", instance.getDescription());
+    Set<String> tags = new HashSet<>();
+
+    if (instance.getTags() != null) {
+      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+    if (!tags.isEmpty()) {
+      List<String> tagsList = new ArrayList<>(tags);
+      jsonMap.put("tags", tagsList);
+    }
+    if(instance.getOwner() != null) {
+      jsonMap.put("owner", instance.getOwner().getId().toString());
+    }
+    if (instance.getFollowers() != null) {
+      List<String> followers = new ArrayList<>();
+      for(EntityReference follower: instance.getFollowers()) {
+        followers.add(follower.getId().toString());
+      }
+      jsonMap.put("followers", followers);
+    }
+    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+    UpdateRequest updateRequest = new UpdateRequest("topic_search_index", instance.getId().toString());
+    updateRequest.doc(jsonMap);
+    return updateRequest;
+  }
+
+  private UpdateRequest updateDashboard(Dashboard instance) {
+    Map<String, Object> jsonMap = new HashMap<>();
+    jsonMap.put("description", instance.getDescription());
+    Set<String> tags = new HashSet<>();
+    if (instance.getTags() != null) {
+      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+    if (!tags.isEmpty()) {
+      List<String> tagsList = new ArrayList<>(tags);
+      jsonMap.put("tags", tagsList);
+    }
+    if(instance.getOwner() != null) {
+      jsonMap.put("owner", instance.getOwner().getId().toString());
+    }
+    if (instance.getFollowers() != null) {
+      List<String> followers = new ArrayList<>();
+      for(EntityReference follower: instance.getFollowers()) {
+        followers.add(follower.getId().toString());
+      }
+      jsonMap.put("followers", followers);
+    }
+    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+    UpdateRequest updateRequest = new UpdateRequest("dashboard_search_index", instance.getId().toString());
+    updateRequest.doc(jsonMap);
+    return updateRequest;
   }
 
   public void close() {

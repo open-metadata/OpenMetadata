@@ -1,9 +1,14 @@
 {
   "source": {
-    "type": "sample-dashboards",
+    "type": "vertica",
     "config": {
-      "service_name": "sample_superset",
-      "sample_dashboard_folder": "./examples/superset_data/"
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
+      "database": "openmetadata_db",
+      "service_name": "local_vertica",
+      "filter_pattern": {
+        "excludes": []
+      }
     }
   },
   "sink": {

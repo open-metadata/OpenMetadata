@@ -38,7 +38,8 @@ export const getTableFQNFromColumnFQN = (columnFQN: string): string => {
 
 export const getPartialNameFromFQN = (
   fqn: string,
-  arrTypes: Array<'service' | 'database' | 'table' | 'column'> = []
+  arrTypes: Array<'service' | 'database' | 'table' | 'column'> = [],
+  joinSeperator = '/'
 ): string => {
   const arrFqn = fqn.split('.');
   const arrPartialName = [];
@@ -54,7 +55,7 @@ export const getPartialNameFromFQN = (
     }
   }
 
-  return arrPartialName.join('/');
+  return arrPartialName.join(joinSeperator);
 };
 
 export const getCurrentUserId = (): string => {

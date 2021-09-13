@@ -40,6 +40,7 @@ import IconTimesCircle from '../assets/svg/ic-times-circle.svg';
 import IconTrends from '../assets/svg/ic-trends.svg';
 import IconUpArrow from '../assets/svg/ic-up-arrow.svg';
 import IconVEllipsis from '../assets/svg/ic-v-ellipsis.svg';
+import IconWhatsNew from '../assets/svg/ic-whats-new.svg';
 import IconWorkflows from '../assets/svg/ic-workflows.svg';
 import IconKey from '../assets/svg/icon-key.svg';
 import IconNotNull from '../assets/svg/icon-notnull.svg';
@@ -47,7 +48,9 @@ import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTerns from '../assets/svg/terms.svg';
@@ -96,6 +99,7 @@ export const Icons = {
   CHECK_CIRCLE: 'icon-check-circle',
   EXCLAMATION_CIRCLE: 'icon-exclamation-circle',
   TIMES_CIRCLE: 'icon-times-circle',
+  HELP_CIRCLE: 'icon-help-circle',
   FILTERS: 'icon-filters',
   UP_ARROW: 'icon-up-arrow',
   DOWN_ARROW: 'icon-down-arrow',
@@ -113,6 +117,7 @@ export const Icons = {
   TERMS: 'terms',
   DOC: 'doc',
   API: 'api',
+  WHATS_NEW: 'whats-new',
   TABLE: 'table',
   TOPIC: 'topic',
   DASHBOARD: 'dashboard',
@@ -120,6 +125,7 @@ export const Icons = {
   TOPIC_GREY: 'topic-grey',
   DASHBOARD_GREY: 'dashboard-grey',
   CONFIG: 'icon-config',
+  SLACK: 'slack',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -262,6 +268,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconTimesCircle;
 
       break;
+    case Icons.HELP_CIRCLE:
+      IconComponent = IconHelpCircle;
+
+      break;
     case Icons.FILTERS:
       IconComponent = IconFilter;
 
@@ -330,6 +340,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       IconComponent = IconAPI;
 
       break;
+    case Icons.WHATS_NEW:
+      IconComponent = IconWhatsNew;
+
+      break;
     case Icons.TABLE:
       IconComponent = IconTable;
 
@@ -356,6 +370,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.CONFIG:
       IconComponent = IconConfig;
+
+      break;
+    case Icons.SLACK:
+      IconComponent = IconSlack;
 
       break;
 

@@ -32,6 +32,10 @@ export interface CreateTopic {
    */
   partitions: number;
   /**
+   * Replication Factor in integer (more than 1).
+   */
+  replicationFactor?: number;
+  /**
    * Maximum size of a partition in bytes before old data is discarded. For Kafka -
    * `retention.bytes` configuration.
    */

@@ -27,14 +27,17 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
-      - name: Install dependencies
+      - name: Install Ubuntu related dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install pylint
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install Python & Openmetadata related dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
           cd ingestion
-          sudo apt-get install -y libsasl2-dev unixodbc-dev
-          pip install '.[all]'
+          pip install '.[all]' pylint
           
       - name: Analysing the code with pylint
         run: |
+          source env/bin/activate
           pylint $(find ./ingestion/src -path ./ingestion/src/metadata/generated -prune -false -o  -type f -name "*.py")

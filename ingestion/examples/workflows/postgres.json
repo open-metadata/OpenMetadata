@@ -9,10 +9,6 @@
       "service_name": "local_postgres"
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {}
-  },
   "sink": {
     "type": "metadata-rest",
     "config": {}

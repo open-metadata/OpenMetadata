@@ -1,15 +1,16 @@
 {
   "source": {
-    "type": "sample-tables",
+    "type": "tableau",
     "config": {
-      "database": "warehouse",
-      "service_name": "gcp_bigquery",
-      "sample_schema_folder": "./examples/sample_data/datasets"
+      "username": "username",
+      "password": "password",
+      "service_name": "local_tableau",
+      "server": "server_address",
+      "site_name": "site_name",
+      "site_url": "site_url",
+      "api_version": "api version",
+      "env": "env"
     }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",

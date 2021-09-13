@@ -26,6 +26,7 @@ import {
   getUserTeams,
 } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
+import { bytesToSize } from '../../utils/StringsUtils';
 import {
   getOwnerFromId,
   getTagsWithoutTier,
@@ -292,10 +293,20 @@ const MyTopicDetailPage = () => {
     return [
       { key: 'Partitions', value: partitions },
       { key: 'Replication Factor', value: replicationFactor },
-      { key: 'Retention Size', value: retentionSize.toLocaleString() },
-      { key: 'CleanUp Policies', value: cleanupPolicies.join() },
+      { key: 'Retention Size', value: bytesToSize(retentionSize) },
+      { key: 'CleanUp Policies', value: cleanupPolicies.join(',') },
       { key: 'Max Message Size', value: maximumMessageSize },
     ];
+  };
+
+  const getConfigObject = () => {
+    return {
+      Partitions: partitions,
+      'Replication Factor': replicationFactor,
+      'Retention Size': retentionSize,
+      'CleanUp Policies': cleanupPolicies,
+      'Max Message Size': maximumMessageSize,
+    };
   };
 
   useEffect(() => {
@@ -317,6 +328,7 @@ const MyTopicDetailPage = () => {
             extraInfo={[
               { key: 'Owner', value: owner?.name || '' },
               { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+              ...getConfigDetails(),
             ]}
             followers={followers}
             followHandler={followTopic}
@@ -365,16 +377,7 @@ const MyTopicDetailPage = () => {
                 />
               )}
               {activeTab === 3 && (
-                <div className="tw-grid tw-grid-cols-5 tw-gap-2 ">
-                  {getConfigDetails().map((config, index) => (
-                    <div
-                      className="tw-card tw-py-2 tw-px-3 tw-group"
-                      key={index}>
-                      <p className="tw-text-grey-muted">{config.key}</p>
-                      <p className="tw-text-lg">{config.value}</p>
-                    </div>
-                  ))}
-                </div>
+                <SchemaEditor value={JSON.stringify(getConfigObject())} />
               )}
             </div>
           </div>

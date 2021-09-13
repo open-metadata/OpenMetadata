@@ -1,9 +1,14 @@
 {
   "source": {
-    "type": "sample-topics",
+    "type": "mysql",
     "config": {
-      "service_name": "sample_kafka",
-      "sample_schema_folder": "./examples/sample_data/topics"
+      "username": "openmetadata_user",
+      "password": "openmetadata_password",
+      "database": "openmetadata_db",
+      "service_name": "local_mysql",
+      "filter_pattern": {
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
     }
   },
   "sink": {

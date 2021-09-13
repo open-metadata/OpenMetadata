@@ -47,6 +47,7 @@ type Props = {
   joins: Array<ColumnJoins>;
   searchText?: string;
   onUpdate: (columns: Array<TableColumn>) => void;
+  columnName: string;
 };
 
 const SchemaTable: FunctionComponent<Props> = ({
@@ -54,6 +55,7 @@ const SchemaTable: FunctionComponent<Props> = ({
   joins,
   searchText = '',
   onUpdate,
+  columnName,
 }: Props) => {
   const [editColumn, setEditColumn] = useState<{
     column: TableColumn;
@@ -96,16 +98,6 @@ const SchemaTable: FunctionComponent<Props> = ({
         return 'boolean';
       default:
         return dataType;
-    }
-  };
-
-  const handleClick = () => {
-    if (rowRef.current) {
-      rowRef.current.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'nearest',
-        block: 'nearest',
-      });
     }
   };
 
@@ -229,6 +221,16 @@ const SchemaTable: FunctionComponent<Props> = ({
     fetchTags();
   }, []);
 
+  useEffect(() => {
+    if (rowRef.current) {
+      rowRef.current.scrollIntoView({
+        behavior: 'smooth',
+        inline: 'center',
+        block: 'center',
+      });
+    }
+  }, [columnName, rowRef.current]);
+
   return (
     <>
       <div className="tw-table-responsive">
@@ -247,12 +249,15 @@ const SchemaTable: FunctionComponent<Props> = ({
                 <tr
                   className={classNames(
                     'tableBody-row',
-                    !isEven(index + 1) ? 'odd-row' : null
+                    !isEven(index + 1) ? 'odd-row' : null,
+                    {
+                      'column-highlight': columnName === column.name,
+                    }
                   )}
                   data-testid="column"
                   id={column.name}
                   key={index}
-                  ref={rowRef}>
+                  ref={columnName === column.name ? rowRef : null}>
                   <td className="tw-relative tableBody-cell">
                     {getConstraintIcon(column.columnConstraint)}
                     <span>{column.name}</span>
@@ -315,8 +320,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                                       columnJoin.fullyQualifiedName,
                                       ['column']
                                     )
-                                  )}
-                                  onClick={handleClick}>
+                                  )}>
                                   {getPartialNameFromFQN(
                                     columnJoin.fullyQualifiedName,
                                     ['database', 'table', 'column']
@@ -343,8 +347,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                                               columnJoin.fullyQualifiedName,
                                               ['column']
                                             )
-                                          )}
-                                          onClick={handleClick}>
+                                          )}>
                                           {getPartialNameFromFQN(
                                             columnJoin.fullyQualifiedName,
                                             ['database', 'table', 'column']

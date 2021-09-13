@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import logging
+from typing import List
 
 from pydantic import ValidationError
 
@@ -30,7 +31,7 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig, TableProfiles
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,10 @@ class MetadataRestSink(Sink):
 
             created_table = self.client.create_or_update_table(table_request)
             if table_and_db.table.sampleData is not None:
-                self.client.ingest_sample_data(id=created_table.id, sample_data=table_and_db.table.sampleData)
+                self.client.ingest_sample_data(table_id=created_table.id, sample_data=table_and_db.table.sampleData)
+            if table_and_db.table.tableProfile is not None:
+                self.client.ingest_table_profile_data(table_id=created_table.id,
+                                                      table_profile=table_and_db.table.tableProfile)
 
             logger.info(
                 'Successfully ingested table {}.{}'.

@@ -31,11 +31,13 @@ import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
+import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -60,6 +62,7 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +76,7 @@ import java.util.stream.Collectors;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
+import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
 public abstract class TableRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
@@ -274,6 +278,29 @@ public abstract class TableRepository {
   }
 
   @Transaction
+  public void addTableProfileData(String tableId, TableProfile tableProfile) throws IOException {
+    // Validate the request content
+    Table table = EntityUtil.validate(tableId, tableDAO().findById(tableId), Table.class);
+
+    List<TableProfile> storedTableProfiles = getTableProfile(table);
+    Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
+    if (storedTableProfiles != null) {
+      for (TableProfile profile : storedTableProfiles) {
+        storedMapTableProfiles.put(profile.getProfileDate(), profile);
+      }
+    }
+    //validate all the columns
+    for (ColumnProfile columnProfile: tableProfile.getColumnProfile()) {
+      validateColumn(table, columnProfile.getName());
+    }
+    storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
+    List<TableProfile> updatedProfiles = new ArrayList<>(storedMapTableProfiles.values());
+
+    entityExtensionDAO().insert(tableId, "table.tableProfile", "tableProfile",
+            JsonUtils.pojoToJson(updatedProfiles));
+  }
+
+  @Transaction
   public void deleteFollower(String tableId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
     EntityUtil.removeFollower(relationshipDAO(), tableId, userId);
@@ -436,6 +463,7 @@ public abstract class TableRepository {
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
     return table;
   }
 
@@ -648,6 +676,17 @@ public abstract class TableRepository {
   private TableData getSampleData(Table table) throws IOException {
     return JsonUtils.readValue(entityExtensionDAO().getExtension(table.getId().toString(), "table.sampleData"),
             TableData.class);
+  }
+
+  private List<TableProfile> getTableProfile(Table table) throws IOException  {
+    List<TableProfile> tableProfiles = JsonUtils.readObjects(entityExtensionDAO().getExtension(table.getId().toString(),
+            "table.tableProfile"),
+            TableProfile.class);
+    if (tableProfiles != null) {
+      tableProfiles.sort(Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT),
+              Comparator.reverseOrder()));
+    }
+    return tableProfiles;
   }
 
 

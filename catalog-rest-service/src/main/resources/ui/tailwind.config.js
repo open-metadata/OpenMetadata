@@ -26,7 +26,7 @@ const secondary = '#B02AAC';
 const secondaryBG = '#B02AAC40';
 
 // state colors
-const success = '#51C41A';
+const success = '#008376';
 const error = '#FF4C3B';
 const info = '#1890FF';
 const warning = '#FFC34E';
@@ -37,6 +37,7 @@ const bodyBG = '#FCFBFE';
 const bodyHoverBG = '#F9F8FD';
 const tagBG = '#EEEAF8';
 const primaryBG = '#7147E840'; // 'rgba(113, 71, 232, 0.25)';
+const backdropBG = '#302E36';
 
 // Borders and Separators
 const mainBorder = '#E2DCE4';
@@ -63,7 +64,6 @@ module.exports = {
       borderColor: {
         'orange-400': '#F9826C',
         main: mainBorder,
-        separator: mainSeparator,
         text: textBody,
         hover: textBody,
         focus: primary,
@@ -77,6 +77,7 @@ module.exports = {
         'grey-muted': textMuted,
         'grey-muted-lite': textMutedLite,
         'grey-dark': textDark,
+        'grey-backdrop': backdropBG,
         'primary-lite': primaryBG,
         primary: primary,
         'primary-hover': primaryHover,
@@ -92,6 +93,7 @@ module.exports = {
         warning: warning,
         'warning-lite': warningBG,
         info: info,
+        separator: mainSeparator,
       },
       fontFamily: {
         sans: ['Inter', ...defaultTheme.fontFamily.sans],

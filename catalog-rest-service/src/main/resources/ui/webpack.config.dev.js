@@ -67,8 +67,19 @@ module.exports = {
       // .css and .scss files to be handled by sass-loader
       // include scss rule and sass-loader if injecting scss/sass file
       {
-        test: /\.(css)$/,
-        use: ['style-loader', 'css-loader', 'postcss-loader'],
+        test: /\.(css|s[ac]ss)$/,
+        use: [
+          'style-loader',
+          'css-loader',
+          {
+            loader: 'sass-loader',
+            options: {
+              // Prefer `dart-sass`
+              implementation: require.resolve('sass'),
+            },
+          },
+          'postcss-loader',
+        ],
         // No exclude, may need to handle files outside the source code
         // (from node_modules)
       },
@@ -78,18 +89,33 @@ module.exports = {
         use: ['@svgr/webpack'],
         exclude: /node_modules/, // Just the source code
       },
-      //
+      // different urls to be handled by url-loader
       {
-        test: /\.(png|jpg|jpeg|gif|svg|ico)$/i,
+        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
         use: [
           {
             loader: 'url-loader',
             options: {
               limit: 8192,
+              name: `[name].[ext]`,
             },
           },
         ],
         exclude: /node_modules/, // Just the source code
+      },
+      // different urls to be handled by url-loader in node_modules
+      {
+        test: /\.(png|jpg|jpeg|gif|svg|ico|eot|woff|woff2)$/i,
+        use: [
+          {
+            loader: 'url-loader',
+            options: {
+              limit: 8192,
+              name: `[name].[ext]`,
+            },
+          },
+        ],
+        include: /node_modules\/slick-carousel/, // Just slick-carousel from node_modules
       },
       // Font files to be handled by file-loader
       {
@@ -104,6 +130,20 @@ module.exports = {
           },
         ],
         exclude: /node_modules/, // Just the source code
+      },
+      // Font files to be handled by file-loader in node_modules
+      {
+        test: /\.ttf$/,
+        use: [
+          {
+            loader: 'file-loader',
+            options: {
+              name: '[name].[ext]',
+              outputPath: 'fonts/',
+            },
+          },
+        ],
+        include: /node_modules\/slick-carousel/, // Just slick-carousel from node_modules
       },
     ],
   },

@@ -70,7 +70,9 @@ const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
       <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
         <p className="tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
           {`Hi, ${
-            AppState.userDetails.displayName || AppState.users[0].displayName
+            AppState.userDetails.displayName || AppState.users?.length > 0
+              ? AppState.users[0].displayName
+              : 'User'
           }!`}
         </p>
         {type === 'noData' && noRecordForES()}
