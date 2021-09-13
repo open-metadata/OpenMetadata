@@ -87,14 +87,15 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
-    "redshift": {"sqlalchemy-redshift",  "GeoAlchemy2", "psycopg2-binary"},
+    "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-data": {"faker~=8.1.1"},
     "superset": {},
-    "pii-processor": {"pandas~=1.3.1"}
+    "tableau": {"tableau-api-lib==0.1.22"},
+    "pii-processor": {"pandas~=1.3.1"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -129,12 +130,13 @@ setup(
             plugin: list(dependencies)
             for (plugin, dependencies) in plugins.items()
         },
-        "all": list(base_requirements.union(
-            *[
+        "all": list(
+            base_requirements.union(
+                *[
                     requirements
                     for plugin, requirements in plugins.items()
-                    ]
-        )
+                ]
+            )
         )
     }
 
