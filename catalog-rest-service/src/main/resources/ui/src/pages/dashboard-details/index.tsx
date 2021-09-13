@@ -125,11 +125,18 @@ const MyDashBoardPage = () => {
       promiseArr = charts.map((chart) =>
         getChartById(chart.id, ['service', 'tags'])
       );
-      await Promise.all(promiseArr).then((res: Array<AxiosResponse>) => {
-        if (res.length) {
-          chartsData = res.map((chart) => chart.data);
+      await Promise.allSettled(promiseArr).then(
+        (res: PromiseSettledResult<AxiosResponse>[]) => {
+          if (res.length) {
+            chartsData = res
+              .filter((chart) => chart.status === 'fulfilled')
+              .map(
+                (chart) =>
+                  (chart as PromiseFulfilledResult<AxiosResponse>).value.data
+              );
+          }
         }
-      });
+      );
     }
 
     return chartsData;
