@@ -44,13 +44,19 @@ const SigninPage = () => {
       }
       case AuthTypes.OKTA: {
         return (
-          <button className="tw-signin-button tw-text-white tw-bg-blue-700 hover:tw-bg-blue-600">
-            Sign in with Okta
+          <button className="tw-signin-button">
+            <SVGIcons alt="Okta Logo" icon={Icons.OKTA_ICON} width="22" />
+            <span className="tw-ml-3">Sign in with Okta</span>
           </button>
         );
       }
       case AuthTypes.AUTH0: {
-        return <button className="tw-signin-button">Sign in with Auth0</button>;
+        return (
+          <button className="tw-signin-button">
+            <SVGIcons alt="Auth0 Logo" icon={Icons.AUTH0_ICON} width="22" />
+            <span className="tw-ml-3">Sign in with Auth0</span>
+          </button>
+        );
       }
       // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
       default: {
