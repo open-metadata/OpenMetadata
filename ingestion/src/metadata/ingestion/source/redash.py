@@ -111,16 +111,16 @@ class RedashSource(Source):
                 dashboard_url = f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
                 for widgets in dashboard_data.get("widgets", []):
                     dashboard_description = widgets.get("text")
-                    yield Dashboard(
-                        id=uuid.uuid4(),
-                        name=dashboard_info["id"],
-                        displayName=dashboard_info["name"],
-                        description=dashboard_description if dashboard_info else "",
-                        charts=charts,
-                        usageSummary=None,
-                        service=EntityReference(id=self.service.id, type="dashboardService"),
-                        url=dashboard_url
-                    )
+                yield Dashboard(
+                    id=uuid.uuid4(),
+                    name=dashboard_info["id"],
+                    displayName=dashboard_info["name"],
+                    description=dashboard_description if dashboard_info else "",
+                    charts=charts,
+                    usageSummary=None,
+                    service=EntityReference(id=self.service.id, type="dashboardService"),
+                    url=dashboard_url
+                )
 
     def get_status(self) -> SourceStatus:
         return self.status
