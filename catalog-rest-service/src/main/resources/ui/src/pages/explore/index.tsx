@@ -271,19 +271,21 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       emptyValue,
       SearchIndex.DASHBOARD
     );
-    Promise.all([tableCount, topicCount, dashboardCount])
-      .then(([table, topic, dashboard]: Array<SearchResponse>) => {
-        setTableCount(table.data.hits.total.value);
-        setTopicCount(topic.data.hits.total.value);
-        setDashboardCount(dashboard.data.hits.total.value);
-      })
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
-      });
+    Promise.allSettled([tableCount, topicCount, dashboardCount]).then(
+      ([table, topic, dashboard]: PromiseSettledResult<SearchResponse>[]) => {
+        setTableCount(
+          table.status === 'fulfilled' ? table.value.data.hits.total.value : 0
+        );
+        setTopicCount(
+          topic.status === 'fulfilled' ? topic.value.data.hits.total.value : 0
+        );
+        setDashboardCount(
+          dashboard.status === 'fulfilled'
+            ? dashboard.value.data.hits.total.value
+            : 0
+        );
+      }
+    );
   };
 
   const fetchTableData = (forceSetAgg: boolean) => {

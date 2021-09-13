@@ -112,11 +112,13 @@ const getAllServiceList = (
       promiseArr = allServiceCollectionArr.map((obj) => {
         return getServices(obj.value);
       });
-      Promise.all(promiseArr)
-        .then((result: AxiosResponse[]) => {
+      Promise.allSettled(promiseArr)
+        .then((result: PromiseSettledResult<AxiosResponse>[]) => {
           if (result.length) {
             let serviceArr = [];
-            serviceArr = result.map((service) => service?.data?.data || []);
+            serviceArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
             // converted array of arrays to array
             const allServices = serviceArr.reduce(
               (acc, el) => acc.concat(el),
