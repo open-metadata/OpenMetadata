@@ -92,6 +92,28 @@ const getCurrentTab = (tab: string) => {
   return currentTab;
 };
 
+const getCurrentIndex = (tab: string) => {
+  let currentIndex = SearchIndex.TABLE;
+  switch (tab) {
+    case 'topics':
+      currentIndex = SearchIndex.TOPIC;
+
+      break;
+    case 'dashboards':
+      currentIndex = SearchIndex.DASHBOARD;
+
+      break;
+
+    case 'tables':
+    default:
+      currentIndex = SearchIndex.TABLE;
+
+      break;
+  }
+
+  return currentIndex;
+};
+
 const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
   const history = useHistory();
@@ -113,7 +135,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('last_updated_timestamp');
   const [sortOrder, setSortOrder] = useState<string>('desc');
-  const [searchIndex, setSearchIndex] = useState<string>(SearchIndex.TABLE);
+  const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
@@ -491,7 +513,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setSearchText(searchQuery || '');
     setCurrentPage(1);
     setCurrentTab(getCurrentTab(tab));
-    setSearchIndex(tabsInfo[getCurrentTab(tab) - 1].index);
+    setSearchIndex(getCurrentIndex(tab));
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
   }, [searchQuery, tab]);
@@ -507,7 +529,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, searchIndex]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === searchIndex) {
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
       fetchTableData(false);
     }
   }, [currentPage, filters, sortField, sortOrder]);
