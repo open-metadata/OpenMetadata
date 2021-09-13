@@ -21,17 +21,19 @@ import { uniqueId } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import Slider from 'react-slick';
 
+type CarousalData = {
+  title: string;
+  description: string;
+  isImage: boolean;
+  path: string;
+};
+
 type Props = {
-  data: {
-    title: string;
-    description: string;
-    isImage: boolean;
-    path: string;
-  }[];
+  data: CarousalData[];
 };
 
 const FeaturesCarousel = ({ data }: Props) => {
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isDataChange, setIsDataChange] = useState(false);
   const sliderRef = useRef<typeof Slider | null>(null);
 
   const settings = {
@@ -41,41 +43,48 @@ const FeaturesCarousel = ({ data }: Props) => {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
-    initialSlide: 0,
-    afterChange: (currentSlide: number) => setCurrentSlide(currentSlide),
+    beforeChange: (current: number) => {
+      if (current >= data.length) {
+        setIsDataChange(true);
+      } else {
+        setIsDataChange(false);
+      }
+    },
+    onReInit: () => {
+      if (isDataChange) {
+        setTimeout(() => {
+          sliderRef?.current?.slickGoTo(0);
+        }, 200);
+      }
+    },
   };
 
   useEffect(() => {
-    if (currentSlide > 0 && sliderRef.current) {
-      sliderRef.current.slickGoTo(0, true);
-      setCurrentSlide(0);
-    }
+    setIsDataChange(true);
   }, [data]);
 
   return (
-    <>
-      <Slider ref={sliderRef} {...settings}>
-        {data.map((d) => (
-          <div className="tw-px-1" key={uniqueId()}>
-            <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
-            <p className="tw-text-sm tw-mb-3">{d.description}</p>
-            <div className="tw-max-w-3xl">
-              {d.isImage ? (
-                <img alt="feature" className="tw-w-full" src={d.path} />
-              ) : (
-                <iframe
-                  allowFullScreen
-                  className="tw-w-full"
-                  frameBorder={0}
-                  height={278}
-                  src={`https://www.youtube.com/embed/${d.path}`}
-                />
-              )}
-            </div>
+    <Slider ref={sliderRef} {...settings}>
+      {data.map((d) => (
+        <div className="tw-px-1" key={uniqueId()}>
+          <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
+          <p className="tw-text-sm tw-mb-3">{d.description}</p>
+          <div className="tw-max-w-3xl">
+            {d.isImage ? (
+              <img alt="feature" className="tw-w-full" src={d.path} />
+            ) : (
+              <iframe
+                allowFullScreen
+                className="tw-w-full"
+                frameBorder={0}
+                height={278}
+                src={`https://www.youtube.com/embed/${d.path}`}
+              />
+            )}
           </div>
-        ))}
-      </Slider>
-    </>
+        </div>
+      ))}
+    </Slider>
   );
 };
 
