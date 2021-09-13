@@ -54,7 +54,7 @@ const FeaturesCarousel = ({ data }: Props) => {
       if (isDataChange) {
         setTimeout(() => {
           sliderRef?.current?.slickGoTo(0);
-        }, 500);
+        }, 200);
       }
     },
   };
