@@ -1,0 +1,61 @@
+{% include 'content_block_header.j2' %}
+
+{% if "styling" in content_block and "body" in content_block["styling"] -%}
+    {% set content_block_body_styling = content_block["styling"]["body"] | render_styling -%}
+{% else -%}
+    {% set content_block_body_styling = "" -%}
+{% endif -%}
+
+{% set table_options = content_block.get("table_options", {}) %}
+{% set table_id = content_block_id ~ "-body-table" %}
+{% set table_toolbar_id = table_id ~ "-toolbar" %}
+
+{% set table_columns = content_block["table_columns"] %}
+{%- if "title_row" in content_block -%}
+  {%- set title_row -%}
+    <tr><th class="text-center p-2" colspan="{{ table_columns | length }}">{{ content_block["title_row"] | render_content_block }}</th></tr>
+  {% endset %}
+{% else %}
+  {% set title_row = None %}
+{% endif %}
+
+<div id="{{ table_toolbar_id }}" class="ml-1">
+  {% if table_options.get('filterControl') == "true" or table_options.get('search') == "true" %}
+    <button class="btn btn-sm btn-secondary ml-1" onclick="clearTableFilters('{{ table_id }}')">Clear Filters</button>
+  {% endif %}
+</div>
+
+<table
+  id="{{ table_id }}"
+  {{ content_block_body_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}
+  data-toggle="table"
+>
+</table>
+
+{% include 'bootstrap_table_js_functions.j2' %}
+
+<script>
+  $('{{ '#' ~ table_id }}').bootstrapTable(
+    Object.assign(
+      {
+        columns: {{ table_columns }},
+        data: {{ content_block["table_data"] | render_bootstrap_table_data }},
+        toolbar: '{{ '#' ~ table_toolbar_id }}'
+      },
+      {{ table_options }}
+    )
+  );
+
+  {% if title_row %}
+    $("{{ '#' ~ table_id ~ ' > thead' }}").prepend('{{ title_row | trim }}');
+  {% endif %}
+
+  {% if table_options.get("rowAttributes") == "rowAttributesLinks" %}
+    $(document).ready(function() {
+      $("#{{ table_id }}").on('click-row.bs.table', function(e, row, $element) {
+          window.location = $element.data("href");
+        })
+      }
+    );
+  {% endif %}
+</script>

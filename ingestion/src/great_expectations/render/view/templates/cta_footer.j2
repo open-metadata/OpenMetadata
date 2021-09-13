@@ -1,0 +1,28 @@
+{% if "styling" in cta_footer  -%}
+    {% set cta_footer_styling = cta_footer["styling"] | render_styling -%}
+{% else -%}
+    {% set cta_footer_styling = "" -%}
+{% endif -%}
+
+<footer {{ cta_footer_styling }}>
+  <h5 class="alert-heading text-center">
+    {{ cta_footer["tooltip_icon"] | render_string_template }}
+    {{ cta_footer["header"] | render_string_template }}
+  </h5>
+  <div class="d-flex justify-content-center flex-sm-row flex-column">
+    {% for cta_button in cta_footer["buttons"] %}
+      <a href="{{ cta_button.link }}" class="btn btn-primary m-2" rel="noopener noreferrer" target="_blank">{{ cta_button.title }}</a>
+    {% endfor %}
+  </div>
+  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</footer>
+<script>
+  if (sessionStorage.getItem("showCta") !== "false") {
+    $('#ge-cta-footer').removeClass("invisible")
+  }
+  $('#ge-cta-footer').on('closed.bs.alert', function () {
+    sessionStorage.setItem("showCta", false)
+  })
+</script>

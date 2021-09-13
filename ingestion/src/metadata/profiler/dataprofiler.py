@@ -31,7 +31,6 @@ from great_expectations.data_context.types.base import (
 
 from metadata.generated.schema.entity.data.table import TableProfile, ColumnProfile
 from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.models.table_metadata import DatasetProfile, DatasetColumnProfile,  ValueFrequency
 from metadata.profiler.util import group_by
 
 logger: logging.Logger = logging.getLogger(__name__)

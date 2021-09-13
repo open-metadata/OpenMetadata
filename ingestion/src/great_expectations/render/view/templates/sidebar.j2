@@ -1,0 +1,11 @@
+<div class="col-lg-2 col-md-2 col-sm-12 d-sm-block px-0">
+  {% include 'ge_info.j2' %}
+  <div class="sticky">
+    {% if (renderer_type not in ["ValidationResultsPageRenderer"] and show_how_to_buttons | default(True)) or (renderer_type in ["ValidationResultsPageRenderer"]) %}
+      {% include 'page_action_card.j2' %}
+    {% endif %}
+    {% if renderer_type != "SiteIndexPageRenderer" %}
+      {% include 'table_of_contents.j2' %}
+    {% endif %}
+  </div>
+</div>

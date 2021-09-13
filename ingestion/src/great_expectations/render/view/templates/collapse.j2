@@ -1,0 +1,55 @@
+{% set collapse_toggle_link = content_block.get("collapse_toggle_link", "Show more...") %}
+
+{% if "styling" in content_block and "parent" in content_block["styling"] -%}
+    {% set content_block_parent_styling = content_block["styling"]["parent"] | render_styling -%}
+{% else -%}
+    {% set content_block_parent_styling = "" -%}
+{% endif -%}
+
+{% if "styling" in content_block and content_block["styling"].get("body") -%}
+  {% set content_block_body_styling_dict = content_block["styling"]["body"] %}
+  {% if content_block_body_styling_dict.get("classes") %}
+    {% do content_block_body_styling_dict["classes"].append("collapse") %}
+    {% do content_block_body_styling_dict["classes"].append("m-2") %}
+  {% endif %}
+    {% set content_block_body_styling = content_block_body_styling_dict | render_styling -%}
+{% else -%}
+  {% set content_block_body_styling_dict = {"classes": ["collapse", "m-2"]} %}
+  {% set content_block_body_styling = content_block_body_styling_dict | render_styling -%}
+{% endif -%}
+
+{% if "styling" in content_block and content_block["styling"].get("collapse_link") %}
+  {% set collapse_link_styling = content_block["styling"].get("collapse_link") %}
+{% else %}
+  {% set collapse_link_styling = "" %}
+{% endif %}
+
+{% set collapse_id = content_block_id ~ "-collapse-body-" | generate_html_element_uuid %}
+
+{% if content_block["inline_link"] %}
+  <span class="m-0">
+    <a data-toggle="collapse" href="#{{collapse_id}}" aria-expanded="false" aria-controls="{{content_block_id}}-collapse-body" {{ collapse_link_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+      {{ collapse_toggle_link | render_content_block }}
+    </a>
+  </span>
+{% endif %}
+
+<div id="{{content_block_id}}-parent" {{ content_block_parent_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+  {% if not content_block["inline_link"] %}
+    <p class="m-0">
+      <a data-toggle="collapse" href="#{{collapse_id}}" aria-expanded="false" aria-controls="{{content_block_id}}-collapse-body" {{ collapse_link_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+        {{ collapse_toggle_link | render_content_block }}
+      </a>
+    </p>
+  {% endif %}
+
+  <div id={{collapse_id}} {{ content_block_body_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
+    {% set content_block_body_styling = "" %}
+    {% include 'content_block_header.j2' %}
+    {% for block in content_block["collapse"] %}
+      {% set collapse_block_loop = loop %}
+      {% set content_block_id = content_block_id ~ "-collapse-item-" ~ collapse_block_loop.index %}
+      {{ block | render_content_block(content_block_id=content_block_id) }}
+    {% endfor %}
+  </div>
+</div>

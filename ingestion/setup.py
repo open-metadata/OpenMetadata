@@ -63,7 +63,6 @@ base_requirements = {
     "sql-metadata~=2.0.0",
     "spacy==3.0.5",
     "requests~=2.25.1",
-    "great-expectations>=0.13.31",
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web"
 }
 base_plugins = {

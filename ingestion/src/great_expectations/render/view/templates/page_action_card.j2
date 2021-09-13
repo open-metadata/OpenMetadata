@@ -1,0 +1,65 @@
+<script>
+    function showAllValidations() {
+    $(".hide-succeeded-validation-target-child").parent().fadeIn();
+    $(".hide-succeeded-validation-target").fadeIn();
+    $(".hide-succeeded-validations-column-section-target-child").parent().parent().each((idx, el) => {
+      $(el).fadeIn();
+      const elId = el.id;
+      $(`a[href$=${elId}]`).fadeIn();
+    })
+  }
+
+    function hideSucceededValidations() {
+    $(".hide-succeeded-validation-target-child").parent().fadeOut();
+    $(".hide-succeeded-validation-target").fadeOut();
+    $(".hide-succeeded-validations-column-section-target-child").parent().parent().each((idx, el) => {
+      $(el).fadeOut();
+      const elId = el.id;
+      $(`a[href$=${elId}]`).fadeOut();
+    })
+  }
+</script>
+
+<div class="card bg-light mb-3">
+  <div class="card-header p-2">
+    <strong>Actions</strong>
+  </div>
+  <div class="card-body p-3">
+    {% if renderer_type in ["ValidationResultsPageRenderer"] %}
+      <div class="mb-2">
+        <p class="card-text col-12 p-0 mb-1">
+          Validation Filter:
+        </p>
+        <div class="d-flex justify-content-center">
+          <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-primary active" onclick="showAllValidations()">
+              <input type="radio" name="options" id="option1" autocomplete="off" checked> Show All
+            </label>
+            <label class="btn btn-primary" onclick="hideSucceededValidations()">
+              <input type="radio" name="options" id="option2" autocomplete="off"> Failed Only
+            </label>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+    {% if show_how_to_buttons | default(True) %}
+      {% if renderer_type in ["ValidationResultsPageRenderer", "ExpectationSuitePageRenderer"] %}
+        <div class="mb-2">
+          <div class="d-flex justify-content-center">
+            <button type="button" class="btn btn-warning" data-toggle="modal" data-target=".ge-expectation-editing-instructions-modal">
+              <i class="fas fa-edit"></i> How to Edit This Suite
+            </button>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="mb-2">
+        <div class="d-flex justify-content-center">
+          <button type="button" class="btn btn-info" data-toggle="modal" data-target=".ge-walkthrough-modal">
+            Show Walkthrough
+          </button>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>

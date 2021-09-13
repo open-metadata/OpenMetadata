@@ -1,0 +1,55 @@
+{% include 'content_block_header.j2' %}
+
+{% if "styling" in content_block and "body" in content_block["styling"] -%}
+    {% set content_block_body_styling = content_block["styling"]["body"] | render_styling -%}
+{% else -%}
+    {% set content_block_body_styling = "" -%}
+{% endif -%}
+
+{% set table_options = content_block.get("table_options", {}) %}
+
+<table
+  id="{{content_block_id}}-body"
+  {{ content_block_body_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}
+  data-toggle="table"
+  {{ table_options | attributes_dict_to_html_string(prefix="data") }}
+>
+    {% set header_row_options = content_block.get("header_row_options", {}) %}
+    {% set hidden_table_header = False %}
+    {% if content_block.get("header_row") %}
+      {% set header_row = content_block.get("header_row") %}
+    {% else %}
+      {% set header_row_cell_count = content_block["table"][0] | length %}
+      {% set header_row = ((header_row_cell_count - 1) * ",").split(',') %}
+      {% set hidden_table_header = True %}
+    {% endif %}
+      <thead {{ "hidden" if  hidden_table_header }}>
+        <tr>
+            {% for header_cell in header_row %}
+                {% set header_cell_string = header_cell | string %}
+                <th
+                  {{ header_row_options.get(header_cell_string, {}) | attributes_dict_to_html_string(prefix="data") }}
+                >
+                  {{ header_cell | render_content_block }}
+                </th>
+            {% endfor %}
+        </tr>
+      </thead>
+
+    <tbody>
+      {% for row in content_block["table"] -%}
+          <tr>
+          {% set rowloop = loop -%}
+          {% for cell in row -%}
+              {%- set content_block_id = content_block_id ~ "-cell-" ~ rowloop.index ~ "-" ~ loop.index -%}
+              {% if cell is mapping and "styling" in cell -%}
+                  {% set cell_styling = cell["styling"].get("parent", {}) | render_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) -%}
+              {% else -%}
+                  {% set cell_styling = "" -%}
+              {% endif -%}
+              <td id="{{content_block_id}}" {{ cell_styling }}><div class="show-scrollbars">{{ cell | render_content_block(content_block_id=content_block_id + '-content') }}</div></td>
+          {%- endfor -%}
+          </tr>
+      {%- endfor -%}
+    </tbody>
+</table>

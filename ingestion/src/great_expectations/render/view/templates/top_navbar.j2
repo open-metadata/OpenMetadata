@@ -1,0 +1,38 @@
+{% if expectation_suite_name %}
+  {% set expectation_suite_name_dot_count = expectation_suite_name.count(".") -%}
+{% endif %}
+
+{% if "ValidationResults" in renderer_type or "ProfilingResults" in renderer_type %}
+  {% set home_url =  ((expectation_suite_name_dot_count + 4) * "../") + "index.html" -%}
+  {% set static_images_dir = ((expectation_suite_name_dot_count + 4) * "../") + "static/images/" -%}
+{% elif "ExpectationSuite" in renderer_type %}
+  {% set home_url = ((expectation_suite_name_dot_count + 1) * "../") + "index.html" -%}
+  {% set static_images_dir = ((expectation_suite_name_dot_count + 1) * "../") + "static/images/" -%}
+{% elif "SiteIndex" in renderer_type %}
+  {% set home_url = "#" -%}
+{% endif %}
+
+{% set static_images_dir = "https://great-expectations-web-assets.s3.us-east-2.amazonaws.com/" -%}
+
+<nav class="navbar bg-light navbar-expand-md sticky-top border-bottom" style="height: 70px">
+  <div class="mr-auto">
+    <nav class="d-flex align-items-center">
+      <div class="float-left navbar-brand m-0 h-100">
+        <a href="{{ home_url }}">
+          <img
+            class="NO-CACHE"
+            src="{{ static_images_dir + "logo-long.png" | add_data_context_id_to_url }}"
+            alt="Great Expectations"
+            style="width: auto; height: 50px"
+          />
+        </a>
+      </div>
+      {% if page_title %}
+        <ol class="ge-breadcrumbs breadcrumb d-md-inline-flex bg-light ml-2 mr-0 mt-0 mb-0 pt-0 pb-0 d-none">
+            <li class="ge-breadcrumbs-item breadcrumb-item"><a href="{{ home_url }}">Home</a></li>
+            <li class="ge-breadcrumbs-item breadcrumb-item active" aria-current="page">{{page_title}}</li>
+        </ol>
+      {% endif %}
+    </nav>
+  </div>
+</nav>
