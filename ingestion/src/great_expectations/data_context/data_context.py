@@ -329,7 +329,7 @@ class BaseDataContext:
             None
         """
         print("hello world")
-        print("WTF!")
+
         if not BaseDataContext.validate_config(project_config):
             raise ge_exceptions.InvalidConfigError(
                 "Your project_config is not valid. Try using the CLI check-config command."
