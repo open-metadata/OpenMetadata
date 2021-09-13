@@ -1,5 +1,8 @@
 import React, { FunctionComponent } from 'react';
-import IconGoogle from '../assets/img/google-icon.png';
+import IconAuth0 from '../assets/img/icon-auth0.png';
+import IconGithub from '../assets/img/icon-github.png';
+import IconGoogle from '../assets/img/icon-google.png';
+import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
@@ -70,6 +73,9 @@ export const Icons = {
   LOGO_SMALL: 'logo-small',
   WELCOME_POPPER: 'welcome-popper',
   GOOGLE_ICON: 'google-icon',
+  OKTA_ICON: 'okta-icon',
+  GITHUB_ICON: 'github-icon',
+  AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
@@ -182,6 +188,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.GOOGLE_ICON:
       IconComponent = IconGoogle;
+
+      break;
+    case Icons.OKTA_ICON:
+      IconComponent = IconOkta;
+
+      break;
+    case Icons.GITHUB_ICON:
+      IconComponent = IconGithub;
+
+      break;
+    case Icons.AUTH0_ICON:
+      IconComponent = IconAuth0;
 
       break;
     case Icons.MENU:
