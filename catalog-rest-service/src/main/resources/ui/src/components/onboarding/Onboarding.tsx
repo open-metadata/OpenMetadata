@@ -26,7 +26,9 @@ const data = [
 
 const Onboarding: React.FC = () => {
   return (
-    <div className="tw-flex tw-items-center tw-justify-around tw-mt-20">
+    <div
+      className="tw-flex tw-items-center tw-justify-around tw-mt-20"
+      data-testid="onboarding">
       <div className="tw-p-4" style={{ maxWidth: '700px' }}>
         <div className="tw-mb-6">
           <h4>Welcome to OpenMetadata.</h4>
@@ -61,6 +63,7 @@ const Onboarding: React.FC = () => {
         <SVGIcons
           alt="OpenMetadata Logo"
           className="tw-h-auto tw-filter tw-grayscale tw-opacity-50"
+          data-testid="logo"
           icon={Icons.LOGO_SMALL}
           width="350"
         />

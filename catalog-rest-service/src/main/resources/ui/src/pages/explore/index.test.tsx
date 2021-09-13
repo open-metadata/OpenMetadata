@@ -41,7 +41,7 @@ describe('Test Explore page', () => {
       render(<ExplorePage />);
     });
 
-    expect(await screen.findByText('No data found')).toBeInTheDocument();
+    expect(await screen.findByTestId('no-data-found')).toBeInTheDocument();
   });
 
   it('getFilterString should return filter as string', async () => {

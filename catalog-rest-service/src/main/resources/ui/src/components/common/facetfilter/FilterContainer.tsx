@@ -28,12 +28,13 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
   isDisabled = false,
 }: FilterContainerProp) => {
   return (
-    <div className="filter-group tw-mb-2">
+    <div className="filter-group tw-mb-2" data-testid="filter-container">
       <input
         checked={isSelected}
         className={classNames('tw-mr-1 custom-checkbox', {
           'tw-cursor-not-allowed': isDisabled,
         })}
+        data-testid="checkbox"
         disabled={isDisabled}
         type="checkbox"
         onChange={() => {

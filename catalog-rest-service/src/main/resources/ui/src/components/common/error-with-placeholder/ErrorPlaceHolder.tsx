@@ -20,9 +20,11 @@ import NoDataFound from '../../../assets/svg/no-data-found.svg';
 
 const ErrorPlaceHolder = () => {
   return (
-    <div className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center">
+    <div
+      className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center"
+      data-testid="error">
       {' '}
-      <img src={NoDataFound} width="500" />
+      <img data-testid="no-data-found" src={NoDataFound} width="500" />
     </div>
   );
 };

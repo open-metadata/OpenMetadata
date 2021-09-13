@@ -17,16 +17,43 @@
 
 import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { schemaDetails } from '../../pages/my-data-details/index.mock';
+import { MemoryRouter } from 'react-router-dom';
 import SchemaTable from './SchemaTable';
+
+const mockColumns = [
+  {
+    name: 'testId',
+    columnDataType: 'string',
+    description: 'string',
+    fullyQualifiedName: 'string',
+    tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],
+    ordinalPosition: 2,
+  },
+];
+
+const mockjoins = [
+  {
+    columnName: 'testId',
+    joinedWith: [{ fullyQualifiedName: 'joinedTable', joinCount: 1 }],
+  },
+];
+
+const mockUpdate = jest.fn();
 
 describe('Test QueryDetails Component', () => {
   it('Renders all the columns sent to the component', () => {
     const { container } = render(
-      <SchemaTable columns={schemaDetails.columns} />
+      <SchemaTable
+        columns={mockColumns}
+        joins={mockjoins}
+        onUpdate={mockUpdate}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
     );
     const columns = getAllByTestId(container, 'column');
 
-    expect(columns.length).toBe(18);
+    expect(columns.length).toBe(1);
   });
 });
