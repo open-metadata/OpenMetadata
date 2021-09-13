@@ -44,6 +44,7 @@ describe('Test QueryDetails Component', () => {
   it('Renders all the columns sent to the component', () => {
     const { container } = render(
       <SchemaTable
+        columnName="testColumn"
         columns={mockColumns}
         joins={mockjoins}
         onUpdate={mockUpdate}

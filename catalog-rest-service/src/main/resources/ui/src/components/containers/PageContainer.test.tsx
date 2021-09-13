@@ -2,6 +2,14 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import PageContainer from './PageContainer';
 
+jest.mock('react-router-dom', () => ({
+  useLocation: jest.fn().mockReturnValue({ pathName: '/path' }),
+}));
+
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue(true),
+}));
+
 describe('Test PageContainer Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
@@ -15,7 +23,7 @@ describe('Test PageContainer Component', () => {
     expect(container).toBeInTheDocument();
   });
 
-  it('if left panel containt should display if provided', () => {
+  it('left panel containt should display if provided', () => {
     const { queryByText } = render(
       <PageContainer leftPanelContent="left panel">
         <p>Hello world</p>

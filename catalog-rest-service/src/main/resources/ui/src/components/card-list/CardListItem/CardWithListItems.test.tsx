@@ -7,7 +7,7 @@ const mockCard = {
   id: 'test1',
   title: 'card',
   description: 'description',
-  contents: [{ text: 'string1' }],
+  data: 'data',
 };
 
 describe('Test CardWithListing Component', () => {

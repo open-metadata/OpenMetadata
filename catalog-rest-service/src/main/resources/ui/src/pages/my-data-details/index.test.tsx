@@ -20,6 +20,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataDetailsPage from './index';
 
+jest.mock('../../components/my-data-details/ManageTab', () => ({
+  ManageTab: jest.fn().mockReturnValue('ManageTab'),
+}));
+
 describe('Test MyDataDetailsPage page', () => {
   // Rewrite this test as component has actual data from api and api is not mocked here
   it('Checks if the page has all the proper components rendered', () => {
