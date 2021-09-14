@@ -206,7 +206,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 icon={
                   <SVGIcons
                     alt="Doc icon"
-                    className="tw-align-middle tw-mr-1"
+                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
                     icon={Icons.HELP_CIRCLE}
                     width="16"
                   />
@@ -226,14 +226,25 @@ const Appbar: React.FC = (): JSX.Element => {
                   },
                 ]}
                 icon={
-                  <IconDefaultUserProfile
-                    className=""
-                    style={{
-                      height: '24px',
-                      width: '24px',
-                      borderRadius: '50%',
-                    }}
-                  />
+                  <>
+                    {appState.userDetails.profile?.images.image512 ? (
+                      <div className="profile-image">
+                        <img
+                          alt="user"
+                          src={appState.userDetails.profile.images.image512}
+                        />
+                      </div>
+                    ) : (
+                      <IconDefaultUserProfile
+                        className=""
+                        style={{
+                          height: '24px',
+                          width: '24px',
+                          borderRadius: '50%',
+                        }}
+                      />
+                    )}
+                  </>
                 }
                 label=""
                 type="link"
