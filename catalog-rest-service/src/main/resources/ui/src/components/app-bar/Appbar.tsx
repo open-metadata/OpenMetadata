@@ -145,7 +145,7 @@ const Appbar: React.FC = (): JSX.Element => {
                         getExplorePathWithSearch(
                           target.value,
                           // this is for if user is searching from another page
-                          location.pathname.startsWith('/explore')
+                          location.pathname.startsWith(ROUTES.EXPLORE)
                             ? appState.explorePageTab
                             : 'tables'
                         )

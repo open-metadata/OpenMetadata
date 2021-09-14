@@ -513,14 +513,18 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
-    setFilters(filterObject);
     setSearchText(searchQuery || '');
     setCurrentPage(1);
-    setCurrentTab(getCurrentTab(tab));
-    setSearchIndex(getCurrentIndex(tab));
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
-  }, [searchQuery, tab]);
+    setCurrentTab(getCurrentTab(tab));
+    setSearchIndex(getCurrentIndex(tab));
+    setCurrentPage(1);
+  }, [tab]);
 
   useEffect(() => {
     if (getFilterString(filters)) {
@@ -533,11 +537,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, searchIndex]);
 
   useEffect(() => {
-    if (
-      !isMounting.current &&
-      previsouIndex === getCurrentIndex(tab) &&
-      !searchText
-    ) {
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
       fetchTableData(false);
     }
   }, [currentPage, filters, sortField, sortOrder]);
