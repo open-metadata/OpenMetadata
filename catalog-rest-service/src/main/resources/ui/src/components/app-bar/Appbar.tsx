@@ -141,7 +141,15 @@ const Appbar: React.FC = (): JSX.Element => {
                     const target = e.target as HTMLInputElement;
                     if (e.key === 'Enter') {
                       setIsOpen(false);
-                      history.push(getExplorePathWithSearch(target.value));
+                      history.push(
+                        getExplorePathWithSearch(
+                          target.value,
+                          // this is for if user is searching from another page
+                          location.pathname.startsWith(ROUTES.EXPLORE)
+                            ? appState.explorePageTab
+                            : 'tables'
+                        )
+                      );
                     }
                   }}
                 />
