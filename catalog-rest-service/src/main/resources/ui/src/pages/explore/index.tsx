@@ -26,6 +26,7 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -471,6 +472,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
+      AppState.explorePageTab = tabsInfo[selectedTab - 1].path;
       resetFilters();
       history.push({
         pathname: getExplorePathWithSearch(
@@ -531,7 +533,11 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, searchIndex]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
+    if (
+      !isMounting.current &&
+      previsouIndex === getCurrentIndex(tab) &&
+      !searchText
+    ) {
       fetchTableData(false);
     }
   }, [currentPage, filters, sortField, sortOrder]);
