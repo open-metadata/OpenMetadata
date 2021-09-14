@@ -698,5 +698,9 @@ a:focus {
 .v-align-sub {
   vertical-align: sub;
 }
-
 /* popover css end */
+
+.text-highlighter {
+  background-color: #ffc34e40;
+  padding: 0.25rem;
+}
