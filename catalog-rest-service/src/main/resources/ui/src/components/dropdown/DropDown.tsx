@@ -17,7 +17,6 @@
 
 import PropTypes from 'prop-types';
 import React, { useState } from 'react';
-import AppState from '../../AppState';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
 import AnchorDropDownList from './AnchorDropDownList';
@@ -102,20 +101,7 @@ const DropDown: React.FC<DropDownProp> = ({
               </>
             ) : (
               <>
-                {Icon && (
-                  <div className="">
-                    {AppState.userDetails.profile?.images.image512 ? (
-                      <div className="profile-image">
-                        <img
-                          alt="user"
-                          src={AppState.userDetails.profile.images.image512}
-                        />
-                      </div>
-                    ) : (
-                      Icon
-                    )}
-                  </div>
-                )}
+                {Icon && Icon}
                 {label && (
                   <p
                     className="hover:tw-underline"
