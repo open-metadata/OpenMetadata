@@ -97,31 +97,35 @@ const MyDataHeader: FunctionComponent<Props> = ({
   return (
     <section className="tw-flex tw-flex-col tw-items-center tw-py-7">
       <h3 className="tw-mb-7 tw-font-semibold ">
-        <span style={{ color: '#8D6AF1' }}>Open</span>
-        <span style={{ color: '#7147E8' }}>Metadata</span>
+        <span className="tw-text-primary-II">Open</span>
+        <span className="tw-text-primary">Metadata</span>
       </h3>
-      <div className="tw-flex tw-gap-5 tw-mb-7">
+      <div className="tw-flex tw-mb-7">
         {Object.values(dataSummary).map((data, index) => (
-          <div className="tw-flex tw-items-center tw-gap-2" key={index}>
+          <div
+            className={classNames('tw-flex tw-items-center', {
+              'tw-pl-5': Boolean(index),
+            })}
+            key={index}>
             <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={data.icon} />
             {data.link ? (
-              <Link className="tw-font-medium" to={data.link}>
+              <Link className="tw-font-medium tw-pl-2" to={data.link}>
                 <button className="tw-text-grey-body hover:tw-text-primary-hover hover:tw-underline">
                   {data.data}
                 </button>
               </Link>
             ) : (
-              <p className="tw-font-medium">{data.data}</p>
+              <p className="tw-font-medium tw-pl-2">{data.data}</p>
             )}
           </div>
         ))}
       </div>
 
-      <div className="tw-flex tw-gap-10">
+      <div className="tw-flex">
         {LANDING_STATES.map((d, i) => (
           <div
             className={classNames(
-              'tw-card tw-p-3 tw-w-72',
+              'tw-card tw-p-3 tw-w-72 tw-mr-10',
               d.route ? 'tw-cursor-pointer' : null
             )}
             key={i}
