@@ -1,8 +1,9 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail, Topic } from 'Models';
+import { ColumnTags, TableDetail, Topic, User } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
   addFollower,
@@ -20,6 +21,7 @@ import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -36,13 +38,17 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const MyTopicDetailPage = () => {
   const USERId = getCurrentUserId();
+
+  const { isAuthDisabled } = useAuth();
+
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { topicFQN } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [topicId, setTopicId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<number>(0);
+  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
@@ -108,6 +114,13 @@ const MyTopicDetailPage = () => {
       }
     });
   };
+
+  const setFollowersData = (followers: Array<User>) => {
+    // need to check if already following or not with logedIn user id
+    setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
+    setFollowersCount(followers?.length);
+  };
+
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
     getTopicByFqn(topicFQN, ['owner', 'service', 'followers', 'tags']).then(
@@ -133,7 +146,8 @@ const MyTopicDetailPage = () => {
         setTopicId(id);
         setDescription(description ?? '');
         setSchemaType(schemaType);
-        setFollowers(followers?.length);
+        setFollowers(followers);
+        setFollowersData(followers);
         setOwner(getOwnerFromId(owner?.id));
         setTier(getTierFromTableTags(tags));
         setTags(getTagsWithoutTier(tags));
@@ -143,9 +157,6 @@ const MyTopicDetailPage = () => {
         setMaximumMessageSize(maximumMessageSize);
         setReplicationFactor(replicationFactor);
         setRetentionSize(retentionSize);
-        setIsFollowing(
-          followers.some(({ id }: { id: string }) => id === USERId)
-        );
         getServiceById('messagingServices', service?.id).then(
           (serviceRes: AxiosResponse) => {
             setSlashedTopicName([
@@ -184,12 +195,12 @@ const MyTopicDetailPage = () => {
   const followTopic = (): void => {
     if (isFollowing) {
       removeFollower(topicId, USERId).then(() => {
-        setFollowers((preValu) => preValu - 1);
+        setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
       addFollower(topicId, USERId).then(() => {
-        setFollowers((preValu) => preValu + 1);
+        setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
     }
@@ -314,6 +325,12 @@ const MyTopicDetailPage = () => {
   }, [topicFQN]);
 
   useEffect(() => {
+    if (isAuthDisabled && AppState.users.length && followers.length) {
+      setFollowersData(followers);
+    }
+  }, [AppState.users, followers]);
+
+  useEffect(() => {
     fetchTags();
   }, []);
 
@@ -330,7 +347,7 @@ const MyTopicDetailPage = () => {
               { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
               ...getConfigDetails(),
             ]}
-            followers={followers}
+            followers={followersCount}
             followHandler={followTopic}
             isFollowing={isFollowing}
             tagList={tagList}
