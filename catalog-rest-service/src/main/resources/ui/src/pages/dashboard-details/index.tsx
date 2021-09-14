@@ -1,9 +1,10 @@
 import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail } from 'Models';
+import { ColumnTags, TableDetail, User } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
 import {
   addFollower,
@@ -27,6 +28,7 @@ import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
+import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
   getCurrentUserId,
@@ -46,6 +48,9 @@ type ChartType = {
 } & Chart;
 const MyDashBoardPage = () => {
   const USERId = getCurrentUserId();
+
+  const { isAuthDisabled } = useAuth();
+
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { dashboardFQN } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
@@ -54,7 +59,8 @@ const MyDashBoardPage = () => {
   const [dashboardId, setDashboardId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<number>(0);
+  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
@@ -142,6 +148,12 @@ const MyDashBoardPage = () => {
     return chartsData;
   };
 
+  const setFollowersData = (followers: Array<User>) => {
+    // need to check if already following or not with logedIn user id
+    setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
+    setFollowersCount(followers?.length);
+  };
+
   const fetchDashboardDetail = (dashboardFQN: string) => {
     setLoading(true);
     getDashboardByFqn(dashboardFQN, [
@@ -166,11 +178,11 @@ const MyDashBoardPage = () => {
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');
-      setFollowers(followers?.length);
+      setFollowers(followers);
+      setFollowersData(followers);
       setOwner(getOwnerFromId(owner?.id));
       setTier(getTierFromTableTags(tags));
       setTags(getTagsWithoutTier(tags));
-      setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
       getServiceById('dashboardServices', service?.id).then(
         (serviceRes: AxiosResponse) => {
           setSlashedDashboardName([
@@ -210,12 +222,12 @@ const MyDashBoardPage = () => {
   const followDashboard = (): void => {
     if (isFollowing) {
       removeFollower(dashboardId, USERId).then(() => {
-        setFollowers((preValu) => preValu - 1);
+        setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
       addFollower(dashboardId, USERId).then(() => {
-        setFollowers((preValu) => preValu + 1);
+        setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
     }
@@ -378,6 +390,12 @@ const MyDashBoardPage = () => {
   }, [dashboardFQN]);
 
   useEffect(() => {
+    if (isAuthDisabled && AppState.users.length && followers.length) {
+      setFollowersData(followers);
+    }
+  }, [AppState.users, followers]);
+
+  useEffect(() => {
     fetchTags();
   }, []);
 
@@ -390,7 +408,7 @@ const MyDashBoardPage = () => {
           <EntityPageInfo
             isTagEditable
             extraInfo={extraInfo}
-            followers={followers}
+            followers={followersCount}
             followHandler={followDashboard}
             isFollowing={isFollowing}
             tagList={tagList}

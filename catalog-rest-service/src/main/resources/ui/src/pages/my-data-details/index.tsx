@@ -25,9 +25,11 @@ import {
   TableColumn,
   TableDetail,
   TableJoinsData,
+  User,
 } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
@@ -53,6 +55,7 @@ import {
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
   addToRecentViewed,
@@ -95,10 +98,13 @@ const MyDataDetailsPage = () => {
 
   const USERId = getCurrentUserId();
 
+  const { isAuthDisabled } = useAuth();
+
   const [tableId, setTableId] = useState('');
   const [tier, setTier] = useState<string>();
   const [name, setName] = useState('');
-  const [followers, setFollowers] = useState(0);
+  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
@@ -296,12 +302,12 @@ const MyDataDetailsPage = () => {
   const followTable = (): void => {
     if (isFollowing) {
       removeFollower(tableId, USERId).then(() => {
-        setFollowers((preValu) => preValu - 1);
+        setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
       addFollower(tableId, USERId).then(() => {
-        setFollowers((preValu) => preValu + 1);
+        setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
     }
@@ -339,6 +345,12 @@ const MyDataDetailsPage = () => {
     return freqJoin;
   };
 
+  const setFollowersData = (followers: Array<User>) => {
+    // need to check if already following or not with logedIn user id
+    setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
+    setFollowersCount(followers?.length);
+  };
+
   useEffect(() => {
     getTableDetailsByFQN(
       getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
@@ -364,11 +376,8 @@ const MyDataDetailsPage = () => {
       setTableId(id);
       setTier(getTierFromTableTags(tags));
       setOwner(getOwnerFromId(owner?.id));
-      // need to check if already following or not with logedIn user id
-      setIsFollowing(
-        !!followers.filter(({ id }: { id: string }) => id === USERId).length
-      );
-      setFollowers(followers?.length);
+      setFollowers(followers);
+      setFollowersData(followers);
       getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
         getServiceById('databaseServices', resDB.data.service?.id).then(
           (resService: AxiosResponse) => {
@@ -429,12 +438,18 @@ const MyDataDetailsPage = () => {
     });
   }, [tableFQN]);
 
+  useEffect(() => {
+    if (isAuthDisabled && AppState.users.length && followers.length) {
+      setFollowersData(followers);
+    }
+  }, [AppState.users, followers]);
+
   return (
     <PageContainer>
       <div className="tw-px-4 w-full">
         <EntityPageInfo
           extraInfo={extraInfo}
-          followers={followers}
+          followers={followersCount}
           followHandler={followTable}
           isFollowing={isFollowing}
           tags={tableTags}
