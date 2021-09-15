@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from typing import Optional, Tuple
-
+import os
 from metadata.generated.schema.entity.data.table import TableData
 
 # This import verifies that the dependencies are available.
@@ -41,12 +41,13 @@ class BigquerySource(SQLSource):
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
-        config = BigQueryConfig.parse_obj(config_dict)
+        config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options['credentials_path']
         return cls(config, metadata_config, ctx)
 
     def standardize_schema_table_names(
-        self, schema: str, table: str
+            self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:
