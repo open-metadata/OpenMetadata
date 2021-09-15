@@ -137,12 +137,12 @@ public class JwtFilter implements ContainerRequestFilter {
 
   protected static RSAPublicKey getParsedPublicKey() {
     // public key in PEM format without content '---PUBLIC KEY---' and '---END PUBLIC KEY---'
-    String PUB_KEY = oktaPublicKey;
+    String pubKey = oktaPublicKey;
 
     // removes white spaces
-    String PUBLIC_KEY = PUB_KEY.replace(" ", "");
+    String publicKey = pubKey.replace(" ", "");
     try {
-      byte[] encode =  Base64.decodeBase64(PUBLIC_KEY);
+      byte[] encode =  Base64.decodeBase64(publicKey);
       X509EncodedKeySpec keySpecX509 = new X509EncodedKeySpec(encode);
       KeyFactory keyFactory = KeyFactory.getInstance("RSA");
       return (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
