@@ -41,6 +41,10 @@ scheduler_requirements = {
     "simplescheduler@git+git://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
 }
 
+profiler_requirements = {
+    "openmetadata-data-profiler@git+git://github.com/open-metadata/data-profiler.git#egg=openmetadata-data-rofiler"
+}
+
 base_requirements = {
     "commonregex",
     "idna<3,>=2.5",
@@ -91,6 +95,7 @@ plugins: Dict[str, Set[str]] = {
     "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
+    "data-profiler": profiler_requirements,
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-data": {"faker~=8.1.1"},

@@ -1,5 +1,0 @@
-{% include 'markdown_content_block_header.j2' %}
-
-{% for bullet_point in content_block["bullet_list"] %}
-  * {{ bullet_point | render_content_block }}
-{% endfor %}

@@ -1,5 +1,0 @@
-{% include 'markdown_content_block_header.j2' %}
-
-{% for value in content_block["value_list"] -%}
-    {{ value | render_content_block }}
-{% endfor -%}

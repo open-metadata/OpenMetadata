@@ -1,1 +1,0 @@
-from .asset import Asset

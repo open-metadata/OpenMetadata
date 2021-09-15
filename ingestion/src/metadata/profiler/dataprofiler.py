@@ -18,12 +18,12 @@ import time
 from datetime import datetime
 from typing import Any, Iterable, Optional
 
-from great_expectations.core.expectation_validation_result import (
+from data_profiler.core.expectation_validation_result import (
     ExpectationSuiteValidationResult,
     ExpectationValidationResult,
 )
-from great_expectations.data_context import BaseDataContext
-from great_expectations.data_context.types.base import (
+from data_profiler.data_context import BaseDataContext
+from data_profiler.data_context.types.base import (
     DataContextConfig,
     DatasourceConfig,
     InMemoryStoreBackendDefaults,
