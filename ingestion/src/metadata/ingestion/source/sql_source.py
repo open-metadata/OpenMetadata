@@ -21,7 +21,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
 from pydantic import ValidationError
-
+from metadata.config.common import ConfigurationError
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -43,7 +43,6 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_database_service_or_create
-from metadata.profiler.dataprofiler import DataProfiler
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -187,10 +186,21 @@ class SQLSource(Source):
         self.connection_string = self.sql_config.get_connection_url()
         self.engine = create_engine(self.connection_string, **self.sql_config.options)
         self.connection = self.engine.connect()
-        if self.config.data_profiler_enabled:
-            self.data_profiler = DataProfiler(
-                status=self.status,
-                connection_str=self.connection_string,
+        self.data_profiler = None
+
+    def _instantiate_profiler(self):
+        try:
+            if self.config.data_profiler_enabled:
+                if self.data_profiler is None:
+                    from metadata.profiler.dataprofiler import DataProfiler
+                    self.data_profiler = DataProfiler(status=self.status,
+                                                    connection_str=self.connection_string)
+                return True
+            return False
+        except Exception:
+            raise ConfigurationError(
+                "DataProfiler configuration is enabled. Please make sure you ran "
+                "pip install 'openmetadata[data-profiler]'"
             )
 
     def prepare(self):
@@ -261,7 +271,7 @@ class SQLSource(Source):
                     table_data = self.fetch_sample_data(schema, table_name)
                     table_entity.sampleData = table_data
 
-                if self.config.data_profiler_enabled:
+                if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
                     table_entity.tableProfile = profile
 
