@@ -198,7 +198,7 @@ class SQLSource(Source):
                 return True
             return False
         except Exception:
-            raise ConfigurationError(
+            logger.error(
                 "DataProfiler configuration is enabled. Please make sure you ran "
                 "pip install 'openmetadata[data-profiler]'"
             )
