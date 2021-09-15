@@ -38,14 +38,39 @@ const mockjoins = [
   },
 ];
 
+const mockSampleData = {
+  columns: ['test 1', 'test 2', 'test 3'],
+  rows: [
+    ['test 1 - string 1', 'test 1 - string 2', 'test 1 - string 3'],
+    ['test 2 - string 1', 'test 2 - string 2', 'test 2 - string 3'],
+    ['test 3 - string 1', 'test 3 - string 2', 'test 3 - string 3'],
+  ],
+};
+
 const mockUpdate = jest.fn();
+
+jest.mock('./SchemaTable', () =>
+  jest.fn().mockReturnValue(<p data-testid="schema-table">SchemaTable</p>)
+);
+
+jest.mock('./SampleDataTable', () =>
+  jest
+    .fn()
+    .mockReturnValue(<p data-testid="sample-data-table">SampleDataTable</p>)
+);
+
+jest.mock('../common/searchbar/Searchbar', () =>
+  jest.fn().mockReturnValue(<p data-testid="search-bar-container">Searchbar</p>)
+);
 
 describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
       <SchemaTab
+        columnName="test 1"
         columns={mockColumns}
         joins={mockjoins}
+        sampleData={mockSampleData}
         onUpdate={mockUpdate}
       />,
       {

@@ -3,6 +3,7 @@ import React from 'react';
 import FacetFilter from './FacetFilter';
 
 const onSelectHandler = jest.fn();
+const onClearFilter = jest.fn();
 const aggregations = [
   {
     title: 'Filter 1',
@@ -30,6 +31,7 @@ describe('Test FacetFilter Component', () => {
       <FacetFilter
         aggregations={aggregations}
         filters={filters}
+        onClearFilter={onClearFilter}
         onSelectHandler={onSelectHandler}
       />
     );

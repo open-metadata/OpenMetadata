@@ -17,53 +17,56 @@
 
 import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { schemaDetails } from '../../pages/my-data-details/index.mock';
 import SampleDataTable from './SampleDataTable';
+
+const mockSampleData = {
+  columns: [
+    {
+      name: 'column 1',
+      dataType: 'uuid',
+    },
+    {
+      name: 'column 2',
+      dataType: 'string',
+    },
+    {
+      name: 'column 3',
+      dataType: 'number',
+    },
+  ],
+  rows: [
+    ['row 1', 'row 2', 'row 3'],
+    ['row 1', 'row 2', 'row 3'],
+    ['row 1', 'row 2', 'row 3'],
+  ],
+};
 
 describe('Test SampleDataTable Component', () => {
   it('Renders all the data that was sent to the component', () => {
     const { container } = render(
-      <SampleDataTable
-        columns={schemaDetails.columns}
-        data={schemaDetails.data}
-      />
+      <SampleDataTable sampleData={mockSampleData} />
     );
     const columns = getAllByTestId(container, 'column-name');
 
-    expect(columns.length).toBe(18);
+    expect(columns.length).toBe(3);
 
     const rows = getAllByTestId(container, 'row');
 
-    expect(rows.length).toBe(19);
+    expect(rows.length).toBe(3);
 
     const cells = getAllByTestId(container, 'cell');
 
-    expect(cells.length).toBe(342);
-  });
-
-  it('Renders only data for the columns that was passed', () => {
-    const { container } = render(
-      <SampleDataTable
-        columns={schemaDetails.columns.slice(0, 5)}
-        data={schemaDetails.data}
-      />
-    );
-    const columns = getAllByTestId(container, 'column-name');
-
-    expect(columns.length).toBe(5);
-
-    const rows = getAllByTestId(container, 'row');
-
-    expect(rows.length).toBe(19);
-
-    const cells = getAllByTestId(container, 'cell');
-
-    expect(cells.length).toBe(95);
+    expect(cells.length).toBe(9);
   });
 
   it('Renders no data if the columns passed are empty', () => {
     const { queryByTestId } = render(
-      <SampleDataTable columns={[]} data={schemaDetails.data} />
+      <SampleDataTable
+        sampleData={{
+          columns: [],
+          rows: [],
+        }}
+      />
     );
 
     expect(queryByTestId('column-name')).toBeNull();

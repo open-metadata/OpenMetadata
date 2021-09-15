@@ -19,11 +19,22 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import SettingsPage from './index';
 
+jest.mock('../../components/containers/PageContainer', () => ({ children }) => (
+  <div data-testid="PageContainer">{children}</div>
+));
+
 describe('Test Settings page', () => {
   it('Check for heading', async () => {
     const { findByText } = render(<SettingsPage />);
     const heading = await findByText(/Settings/);
 
     expect(heading).toBeInTheDocument();
+  });
+
+  it('Pagecontainer should be there', async () => {
+    const { findByTestId } = render(<SettingsPage />);
+    const pageContainer = await findByTestId('PageContainer');
+
+    expect(pageContainer).toBeInTheDocument();
   });
 });

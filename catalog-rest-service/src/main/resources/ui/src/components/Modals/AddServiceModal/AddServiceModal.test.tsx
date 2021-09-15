@@ -30,7 +30,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -45,7 +45,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -67,7 +67,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -89,7 +89,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -127,7 +127,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -156,7 +156,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -179,7 +179,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />

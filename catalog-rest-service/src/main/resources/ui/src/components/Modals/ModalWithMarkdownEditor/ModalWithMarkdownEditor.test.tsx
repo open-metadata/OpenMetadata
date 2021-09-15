@@ -6,9 +6,9 @@ const mockOnSave = jest.fn();
 const mockOnCancel = jest.fn();
 const mockValue = 'Test value';
 
-jest.mock('../../common/editor/MarkdownWithPreview', () => ({
-  MarkdownWithPreview: jest.fn().mockImplementation(() => mockValue),
-}));
+jest.mock('../../common/editor/MarkdownWithPreview', () => {
+  return () => jest.fn().mockImplementation(() => mockValue);
+});
 
 describe('Test ModalWithMarkdownEditor Component', () => {
   it('Component should render', () => {

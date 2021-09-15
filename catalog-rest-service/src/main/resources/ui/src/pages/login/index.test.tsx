@@ -8,6 +8,13 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 
+jest.mock(
+  '../../components/containers/PageContainer',
+  () =>
+    ({ children }: { children: React.ReactNode }) =>
+      <div data-testid="PageContainer">{children}</div>
+);
+
 describe('Test SigninPage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<SigninPage />, {

@@ -21,7 +21,11 @@ jest.mock('../../../constants/constants', () => ({
 describe('Test TableDataCard Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(
-      <TableDataCard fullyQualifiedName="testFQN" name="test card" />,
+      <TableDataCard
+        fullyQualifiedName="testFQN"
+        indexType="testIndex"
+        name="test card"
+      />,
       { wrapper: MemoryRouter }
     );
     const tableDataCard = getByTestId('table-data-card');
@@ -31,7 +35,11 @@ describe('Test TableDataCard Component', () => {
 
   it('if description is empty, should show No Description', () => {
     const { queryByText } = render(
-      <TableDataCard fullyQualifiedName="testFQN" name="test card" />,
+      <TableDataCard
+        fullyQualifiedName="testFQN"
+        indexType="testIndex"
+        name="test card"
+      />,
       { wrapper: MemoryRouter }
     );
     const noDescription = queryByText(/No description/i);
@@ -41,7 +49,11 @@ describe('Test TableDataCard Component', () => {
 
   it('Badge icon should render', () => {
     const { getByTestId } = render(
-      <TableDataCard fullyQualifiedName="testFQN" name="test card" />,
+      <TableDataCard
+        fullyQualifiedName="testFQN"
+        indexType="testIndex"
+        name="test card"
+      />,
       { wrapper: MemoryRouter }
     );
     const badge = getByTestId('badge');
@@ -52,7 +64,11 @@ describe('Test TableDataCard Component', () => {
   it('Link should have proper path', () => {
     const FQN = 'testFQN';
     const { getByTestId } = render(
-      <TableDataCard fullyQualifiedName={FQN} name="test card" />,
+      <TableDataCard
+        fullyQualifiedName="testFQN"
+        indexType="testIndex"
+        name="test card"
+      />,
       { wrapper: MemoryRouter }
     );
     const link = getByTestId('table-link');

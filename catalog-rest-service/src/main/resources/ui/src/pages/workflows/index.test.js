@@ -19,6 +19,10 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import WorkflowsPage from './index';
 
+jest.mock('../../components/containers/PageContainer', () => ({ children }) => (
+  <div data-testid="PageContainer">{children}</div>
+));
+
 describe('Test Workflows page', () => {
   it('Check for heading', async () => {
     const { findByText } = render(<WorkflowsPage />);
