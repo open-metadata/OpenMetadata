@@ -110,7 +110,7 @@ class MetadataSource(Source):
     def fetch_dashboard(self) -> Dashboard:
         if self.config.include_dashboards:
             dashboards = self.client.list_dashboards(
-                fields="owner,service,tags,followers,charts", offset=0, limit=self.config.limit_records)
+                fields="owner,service,tags,followers,charts,usageSummary", offset=0, limit=self.config.limit_records)
             for dashboard in dashboards:
                 self.status.scanned_dashboard(dashboard.name)
                 yield dashboard

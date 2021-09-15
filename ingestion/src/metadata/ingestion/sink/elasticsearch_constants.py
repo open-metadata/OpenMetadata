@@ -200,6 +200,24 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
             },
             "suggest": {
               "type": "completion"
+            },
+             "monthly_stats":{
+              "type": "long"
+            },
+            "monthly_percentile_rank":{
+              "type": "long"
+            },
+            "weekly_stats":{
+              "type": "long"
+            },
+            "weekly_percentile_rank":{
+              "type": "long"
+            },
+            "daily_percentile_rank": {
+             "type": "long"
+            },
+            "daily_stats": {
+              "type": "long"
             }
           }
         }

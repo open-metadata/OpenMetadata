@@ -225,6 +225,12 @@ class DashboardESDocument(BaseModel):
     tier: Optional[str] = None
     owner: str
     followers: List[str]
+    monthly_stats: int
+    monthly_percentile_rank: int
+    weekly_stats: int
+    weekly_percentile_rank: int
+    daily_stats: int
+    daily_percentile_rank: int
 
 
 class DashboardOwner(BaseModel):
