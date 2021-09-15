@@ -1,6 +1,7 @@
 import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { ColumnTags, TableDetail, User } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -41,6 +42,7 @@ import {
   getOwnerFromId,
   getTagsWithoutTier,
   getTierFromTableTags,
+  getUsagePercentile,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 type ChartType = {
@@ -68,6 +70,8 @@ const MyDashBoardPage = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [usage, setUsage] = useState('');
+  const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -115,6 +119,8 @@ const MyDashBoardPage = () => {
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Usage', value: usage },
+    { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
   const fetchTags = () => {
     getTagCategories().then((res) => {
@@ -174,6 +180,7 @@ const MyDashBoardPage = () => {
         owner,
         displayName,
         charts,
+        usageSummary,
       } = res.data;
       setDashboardDetails(res.data);
       setDashboardId(id);
@@ -214,6 +221,17 @@ const MyDashBoardPage = () => {
         }
       );
       fetchCharts(charts).then((charts) => setCharts(charts));
+      if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
+        const percentile = getUsagePercentile(
+          usageSummary.weeklyStats.percentileRank
+        );
+        setUsage(percentile);
+      } else {
+        setUsage('--');
+      }
+      setWeeklyUsageCount(
+        usageSummary?.weeklyStats.count.toLocaleString() || '--'
+      );
 
       setLoading(false);
     });
