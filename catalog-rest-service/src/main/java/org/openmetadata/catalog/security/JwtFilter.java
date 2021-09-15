@@ -24,7 +24,6 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.dropwizard.util.Strings;
 import lombok.SneakyThrows;
-import org.apache.commons.codec.binary.Base64;
 import org.openmetadata.catalog.security.auth.CatalogSecurityContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +36,8 @@ import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import java.lang.invoke.MethodHandles;
 import java.net.URI;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
-import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
 import java.util.Calendar;
-import java.util.Objects;
 
 @Provider
 public class JwtFilter implements ContainerRequestFilter {
@@ -54,8 +48,6 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public static final String TOKEN_HEADER = "X-Catalog-Source";
   private String publicKeyUri;
-  private String authProvider;
-  private String oktaPublicKey;
 
   @SuppressWarnings("unused")
   private JwtFilter() {
@@ -63,8 +55,6 @@ public class JwtFilter implements ContainerRequestFilter {
 
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
     this.publicKeyUri = authenticationConfiguration.getPublicKey();
-    this.authProvider = authenticationConfiguration.getProvider();
-    this.oktaPublicKey = authenticationConfiguration.getOktaPublicKey();
   }
 
   @SneakyThrows
@@ -91,13 +81,7 @@ public class JwtFilter implements ContainerRequestFilter {
     final URI uri = new URI(publicKeyUri).normalize();
     UrlJwkProvider urlJwkProvider = new UrlJwkProvider(uri.toURL());
     Jwk jwk = urlJwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm;
-    // Specify public key in conf openmetadata-security.yaml if auth-type is "okta"
-    if (Objects.equals(authProvider, "okta")) {
-      algorithm = Algorithm.RSA256(getParsedPublicKey(), null);
-    } else {
-      algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
-    }
+    Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {
@@ -133,22 +117,5 @@ public class JwtFilter implements ContainerRequestFilter {
       throw new AuthenticationException("Not Authorized! Token not present");
     }
     return source;
-  }
-
-  protected RSAPublicKey getParsedPublicKey() {
-    // public key in PEM format without content '---PUBLIC KEY---' and '---END PUBLIC KEY---'
-    String pubKey = oktaPublicKey;
-
-    // removes white spaces
-    String publicKey = pubKey.replace(" ", "");
-    try {
-      byte[] encode =  Base64.decodeBase64(publicKey);
-      X509EncodedKeySpec keySpecX509 = new X509EncodedKeySpec(encode);
-      KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-      return (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
-    } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-      LOG.error("Public key parsing error", e);
-      return null;
-    }
   }
 }
