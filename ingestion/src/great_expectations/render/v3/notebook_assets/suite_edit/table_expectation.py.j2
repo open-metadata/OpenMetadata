@@ -1,6 +1,0 @@
-{% if batch_request %}
-validator.{{ expectation["expectation_type"] }}({{ kwargs_string }})
-{% else %}
-expectation_configuration = ExpectationConfiguration(**{{ expectation }})
-suite.add_expectation(expectation_configuration=expectation_configuration)
-{% endif %}

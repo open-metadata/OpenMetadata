@@ -1,7 +1,0 @@
-{% include 'content_block_header.j2' %}
-
-<p id="{{content_block_id}}-body" {{ content_block_body_styling | replace("{{section_id}}", section_id) | replace("{{content_block_id}}", content_block_id) }}>
-    {% for value in content_block["value_list"] -%}
-        {{ value | render_content_block }}
-    {% endfor -%}
-</p>
