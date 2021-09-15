@@ -55,7 +55,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String TOKEN_HEADER = "X-Catalog-Source";
   private String publicKeyUri;
   private String authProvider;
-  private static String oktaPublicKey;
+  private String oktaPublicKey;
 
   @SuppressWarnings("unused")
   private JwtFilter() {
@@ -64,7 +64,7 @@ public class JwtFilter implements ContainerRequestFilter {
   public JwtFilter(AuthenticationConfiguration authenticationConfiguration) {
     this.publicKeyUri = authenticationConfiguration.getPublicKey();
     this.authProvider = authenticationConfiguration.getProvider();
-    oktaPublicKey = authenticationConfiguration.getOktaPublicKey();
+    this.oktaPublicKey = authenticationConfiguration.getOktaPublicKey();
   }
 
   @SneakyThrows
@@ -135,7 +135,7 @@ public class JwtFilter implements ContainerRequestFilter {
     return source;
   }
 
-  protected static RSAPublicKey getParsedPublicKey() {
+  protected RSAPublicKey getParsedPublicKey() {
     // public key in PEM format without content '---PUBLIC KEY---' and '---END PUBLIC KEY---'
     String pubKey = oktaPublicKey;
 
@@ -147,8 +147,7 @@ public class JwtFilter implements ContainerRequestFilter {
       KeyFactory keyFactory = KeyFactory.getInstance("RSA");
       return (RSAPublicKey) keyFactory.generatePublic(keySpecX509);
     } catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-      e.printStackTrace();
-      System.out.println("Exception block | Public key parsing error ");
+      LOG.error("Public key parsing error", e);
       return null;
     }
   }
