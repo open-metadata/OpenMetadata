@@ -42,7 +42,7 @@ scheduler_requirements = {
 }
 
 profiler_requirements = {
-    "openmetadata-data-profiler@git+git://github.com/open-metadata/data-profiler.git@dependency-error#egg"
+    "openmetadata-data-profiler@git+git://github.com/open-metadata/data-profiler.git#egg"
     "=openmetadata-data-profiler"
 }
 
