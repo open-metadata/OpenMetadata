@@ -67,6 +67,7 @@ class MetadataServerConfig(ConfigModel):
     secret_key: str = None
     org_url: str = None
     client_id: str = None
+    kid: str = None
     private_key: str = None
     domain: str = None
     email: str = None
@@ -113,16 +114,19 @@ class OktaAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> str:
         my_pem, my_jwk = JWT.get_PEM_JWK(self.config.private_key)
+        headers = {
+            'kid': self.config.kid
+        }
         claims = {
             'sub': self.config.client_id,
             'iat': time.time(),
             'exp': time.time() + JWT.ONE_HOUR,
-            'iss': self.config.client_id,
+            'iss': f"https://{self.config.org_url}/oauth2/default",
             'aud': self.config.org_url + JWT.OAUTH_ENDPOINT,
-            'jti': uuid.uuid4(),
+            'jti': uuid.uuid4().hex,
             'email': self.config.email
         }
-        token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM)
+        token = jwt.encode(claims, my_jwk.to_dict(), JWT.HASH_ALGORITHM, headers)
         return token
 
 

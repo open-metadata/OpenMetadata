@@ -21,6 +21,8 @@ public class AuthenticationConfiguration {
 
   private String publicKey;
 
+  private String oktaPublicKey;
+
   private String authority;
 
   private String clientId;
@@ -41,6 +43,14 @@ public class AuthenticationConfiguration {
 
   public void setPublicKey(String publicKey) {
     this.publicKey = publicKey;
+  }
+
+  public String getOktaPublicKey() {
+    return oktaPublicKey;
+  }
+
+  public void setOktaPublicKey(String oktaPublicKey) {
+    this.oktaPublicKey = oktaPublicKey;
   }
 
   public String getAuthority() {
