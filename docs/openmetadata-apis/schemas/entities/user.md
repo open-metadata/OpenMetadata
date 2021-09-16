@@ -10,44 +10,44 @@ This schema <u>does not</u> accept additional properties.
 
 ## Properties
  - **id** `required`
-	 - Unique identifier that identifies a user entity instance.
-	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
+   - Unique identifier that identifies a user entity instance.
+   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
  - **name** `required`
-	 - $ref: [#/definitions/userName](#username)
+   - $ref: [#/definitions/userName](#username)
  - **displayName**
-	 - Name used for display purposes. Example 'FirstName LastName'.
-	 - Type: `string`
+   - Name used for display purposes. Example 'FirstName LastName'.
+   - Type: `string`
  - **email** `required`
-	 - Email address of the user.
-	 - $ref: [../../type/basic.json#/definitions/email](../types/basic.md#email)
+   - Email address of the user.
+   - $ref: [../../type/basic.json#/definitions/email](../types/basic.md#email)
  - **href** `required`
-	 - Link to the resource corresponding to this entity.
-	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+   - Link to the resource corresponding to this entity.
+   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
  - **timezone**
-	 - Timezone of the user.
-	 - Type: `string`
-	 - String format must be a "timezone"
+   - Timezone of the user.
+   - Type: `string`
+   - String format must be a "timezone"
  - **deactivated**
-	 - When true indicates the user has been deactivated. Users are deactivated instead of deleted.
-	 - Type: `boolean`
+   - When true indicates the user has been deactivated. Users are deactivated instead of deleted.
+   - Type: `boolean`
  - **isBot**
-	 - When true indicates a special type of user called Bot.
-	 - Type: `boolean`
+   - When true indicates a special type of user called Bot.
+   - Type: `boolean`
  - **isAdmin**
-	 - When true indicates user is an administrator for the system with superuser privileges.
-	 - Type: `boolean`
+   - When true indicates user is an administrator for the system with superuser privileges.
+   - Type: `boolean`
  - **profile**
-	 - Profile of the user.
-	 - $ref: [../../type/profile.json](../types/profile.md)
+   - Profile of the user.
+   - $ref: [../../type/profile.json](../types/profile.md)
  - **teams**
-	 - Teams that the user belongs to.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+   - Teams that the user belongs to.
+   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
  - **owns**
-	 - List of entities owned by the user.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+   - List of entities owned by the user.
+   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
  - **follows**
-	 - List of entities followed by the user.
-	 - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+   - List of entities followed by the user.
+   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 
 
 ## Type definitions in this schema

@@ -8,13 +8,13 @@ Type: `object`
 
 ## Properties
  - **before**
-	 - Before cursor used for getting the previous page (see API pagination for details).
-	 - Type: `string`
+   - Before cursor used for getting the previous page (see API pagination for details).
+   - Type: `string`
  - **after**
-	 - After cursor used for getting the next page (see API pagination for details).
-	 - Type: `string`
+   - After cursor used for getting the next page (see API pagination for details).
+   - Type: `string`
  - **total** `required`
-	 - Total number of entries available to page through.
-	 - Type: `integer`
+   - Total number of entries available to page through.
+   - Type: `integer`
 
 _This document was updated on: Thursday, September 16, 2021_

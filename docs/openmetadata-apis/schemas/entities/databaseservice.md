@@ -8,27 +8,27 @@ Type: `object`
 
 ## Properties
  - **id** `required`
-	 - Unique identifier of this database service instance.
-	 - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
+   - Unique identifier of this database service instance.
+   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
  - **name** `required`
-	 - Name that identifies this database service.
-	 - Type: `string`
-	 - Length: between 1 and 64
+   - Name that identifies this database service.
+   - Type: `string`
+   - Length: between 1 and 64
  - **serviceType** `required`
-	 - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
-	 - $ref: [#/definitions/databaseServiceType](#databaseservicetype)
+   - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
+   - $ref: [#/definitions/databaseServiceType](#databaseservicetype)
  - **description**
-	 - Description of a database service instance.
-	 - Type: `string`
+   - Description of a database service instance.
+   - Type: `string`
  - **href** `required`
-	 - Link to the resource corresponding to this database service.
-	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+   - Link to the resource corresponding to this database service.
+   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
  - **jdbc** `required`
-	 - JDBC connection information.
-	 - $ref: [../../type/jdbcConnection.json#/definitions/jdbcInfo](../types/jdbcconnection.md#jdbcinfo)
+   - JDBC connection information.
+   - $ref: [../../type/jdbcConnection.json#/definitions/jdbcInfo](../types/jdbcconnection.md#jdbcinfo)
  - **ingestionSchedule**
-	 - Schedule for running metadata ingestion jobs.
-	 - $ref: [../../type/schedule.json](../types/schedule.md)
+   - Schedule for running metadata ingestion jobs.
+   - $ref: [../../type/schedule.json](../types/schedule.md)
 
 
 ## Type definitions in this schema
@@ -37,17 +37,17 @@ Type: `object`
  - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
  - Type: `string`
  - The value is restricted to the following: 
-	 1. _"BigQuery"_
-	 2. _"MySQL"_
-	 3. _"Redshift"_
-	 4. _"Snowflake"_
-	 5. _"Postgres"_
-	 6. _"MSSQL"_
-	 7. _"Hive"_
-	 8. _"Oracle"_
-	 9. _"Athena"_
-	 10. _"Presto"_
-	 11. _"Vertica"_
+   1. _"BigQuery"_
+   2. _"MySQL"_
+   3. _"Redshift"_
+   4. _"Snowflake"_
+   5. _"Postgres"_
+   6. _"MSSQL"_
+   7. _"Hive"_
+   8. _"Oracle"_
+   9. _"Athena"_
+   10. _"Presto"_
+   11. _"Vertica"_
 
 
 

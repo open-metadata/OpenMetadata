@@ -10,10 +10,10 @@ This schema <u>does not</u> accept additional properties.
 
 ## Properties
  - **count** `required`
-	 - Daily count of a measurement on the given date.
-	 - Type: `integer`
-	 - Range:  &ge; 0
+   - Daily count of a measurement on the given date.
+   - Type: `integer`
+   - Range:  &ge; 0
  - **date** `required`
-	 - $ref: [basic.json#/definitions/date](basic.md#date)
+   - $ref: [basic.json#/definitions/date](basic.md#date)
 
 _This document was updated on: Thursday, September 16, 2021_

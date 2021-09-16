@@ -8,17 +8,17 @@ Type: `object`
 
 ## Properties
  - **driverClass** `required`
-	 - JDBC driver class.
-	 - $ref: [#/definitions/driverClass](#driverclass)
+   - JDBC driver class.
+   - $ref: [#/definitions/driverClass](#driverclass)
  - **connectionUrl** `required`
-	 - JDBC connection URL.
-	 - $ref: [#/definitions/connectionUrl](#connectionurl)
+   - JDBC connection URL.
+   - $ref: [#/definitions/connectionUrl](#connectionurl)
  - **userName** `required`
-	 - Login user name.
-	 - Type: `string`
+   - Login user name.
+   - Type: `string`
  - **password** `required`
-	 - Login password.
-	 - Type: `string`
+   - Login password.
+   - Type: `string`
 
 
 ## Type definitions in this schema
@@ -40,10 +40,10 @@ Type: `object`
  - Type for capturing JDBC connector information.
  - Type: `object`
  - **Properties**
-	 - **driverClass** `required`
-		 - $ref: [#/definitions/driverClass](#driverclass)
-	 - **connectionUrl** `required`
-		 - $ref: [#/definitions/connectionUrl](#connectionurl)
+   - **driverClass** `required`
+     - $ref: [#/definitions/driverClass](#driverclass)
+   - **connectionUrl** `required`
+     - $ref: [#/definitions/connectionUrl](#connectionurl)
 
 
 

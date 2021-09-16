@@ -49,12 +49,12 @@ This schema defines basic common types that are used by other schemas.
  - Time interval in unixTimeMillis.
  - Type: `object`
  - **Properties**
-	 - **start**
-		 - Start time in unixTimeMillis.
-		 - Type: `integer`
-	 - **end**
-		 - End time in unixTimeMillis.
-		 - Type: `integer`
+   - **start**
+     - Start time in unixTimeMillis.
+     - Type: `integer`
+   - **end**
+     - End time in unixTimeMillis.
+     - Type: `integer`
 
 
 ### duration

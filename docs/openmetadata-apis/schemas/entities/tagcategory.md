@@ -10,23 +10,23 @@ This schema <u>does not</u> accept additional properties.
 
 ## Properties
  - **name** `required`
-	 - $ref: [#/definitions/tagName](#tagname)
+   - $ref: [#/definitions/tagName](#tagname)
  - **description** `required`
-	 - Description of the tag category.
-	 - Type: `string`
+   - Description of the tag category.
+   - Type: `string`
  - **categoryType** `required`
-	 - $ref: [#/definitions/tagCategoryType](#tagcategorytype)
+   - $ref: [#/definitions/tagCategoryType](#tagcategorytype)
  - **href**
-	 - Link to the resource corresponding to the tag category.
-	 - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+   - Link to the resource corresponding to the tag category.
+   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
  - **usageCount**
-	 - Count of how many times the tags from this tag category are used.
-	 - Type: `integer`
+   - Count of how many times the tags from this tag category are used.
+   - Type: `integer`
  - **children**
-	 - Tags under this category.
-	 - Type: `array`
-		 - **Items**
-		 - $ref: [#/definitions/tag](#tag)
+   - Tags under this category.
+   - Type: `array`
+     - **Items**
+     - $ref: [#/definitions/tag](#tag)
 
 
 ## Type definitions in this schema
@@ -42,8 +42,8 @@ This schema <u>does not</u> accept additional properties.
  - Type of tag category.
  - Type: `string`
  - The value is restricted to the following: 
-	 1. _"Descriptive"_
-	 2. _"Classification"_
+   1. _"Descriptive"_
+   2. _"Classification"_
 
 
 ### tag

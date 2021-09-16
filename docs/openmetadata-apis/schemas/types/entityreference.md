@@ -8,28 +8,28 @@ Type: `object`
 
 ## Properties
  - **id** `required`
-	 - Unique identifier that identifies an entity instance.
-	 - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
+   - Unique identifier that identifies an entity instance.
+   - $ref: [basic.json#/definitions/uuid](basic.md#uuid)
  - **type** `required`
-	 - Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...
-	 - Type: `string`
+   - Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...
+   - Type: `string`
  - **name**
-	 - Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
-	 - Type: `string`
+   - Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
+   - Type: `string`
  - **description**
-	 - Optional description of entity.
-	 - Type: `string`
+   - Optional description of entity.
+   - Type: `string`
  - **href**
-	 - Link to the entity resource.
-	 - $ref: [basic.json#/definitions/href](basic.md#href)
+   - Link to the entity resource.
+   - $ref: [basic.json#/definitions/href](basic.md#href)
 
 
 ## Type definitions in this schema
 ### entityReferenceList
 
  - Type: `array`
-	 - **Items**
-	 - $ref: [entityReference.json](entityreference.md)
+   - **Items**
+   - $ref: [entityReference.json](entityreference.md)
 
 
 

@@ -8,17 +8,17 @@ Type: `object`
 
 ## Properties
  - **dailyStats** `required`
-	 - Daily usage stats of a data asset on the start date.
-	 - $ref: [#/definitions/usageStats](#usagestats)
+   - Daily usage stats of a data asset on the start date.
+   - $ref: [#/definitions/usageStats](#usagestats)
  - **weeklyStats**
-	 - Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-	 - $ref: [#/definitions/usageStats](#usagestats)
+   - Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+   - $ref: [#/definitions/usageStats](#usagestats)
  - **monthlyStats**
-	 - Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-	 - $ref: [#/definitions/usageStats](#usagestats)
+   - Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+   - $ref: [#/definitions/usageStats](#usagestats)
  - **date** `required`
-	 - Date in UTC.
-	 - $ref: [basic.json#/definitions/date](basic.md#date)
+   - Date in UTC.
+   - $ref: [basic.json#/definitions/date](basic.md#date)
 
 
 ## Type definitions in this schema
