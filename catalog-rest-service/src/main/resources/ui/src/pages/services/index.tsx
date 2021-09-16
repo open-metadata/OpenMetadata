@@ -48,7 +48,10 @@ import {
   PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
-import { ServiceCategory } from '../../enums/service.enum';
+import {
+  DashboardServiceType,
+  ServiceCategory,
+} from '../../enums/service.enum';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -239,7 +242,11 @@ const ServicesPage = () => {
         return (
           <>
             <div className="tw-mb-1">
-              <label className="tw-mb-0">Dashboard URL:</label>
+              <label className="tw-mb-0">
+                {service.serviceType === DashboardServiceType.TABLEAU
+                  ? 'Site URL:'
+                  : 'Dashboard URL:'}
+              </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {service.dashboardUrl}
               </span>
