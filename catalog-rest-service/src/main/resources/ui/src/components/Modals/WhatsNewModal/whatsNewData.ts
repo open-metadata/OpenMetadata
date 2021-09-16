@@ -21,10 +21,10 @@ export const LATEST_VERSION_ID = 0;
 
 export const COOKIE_VERSION = 'VERSION_0_4_0';
 
-const dummyImg = 'https://via.placeholder.com/725x278';
+export const dummyImg = 'https://via.placeholder.com/725x278';
 
 // for youtube video make isImage = false and path = {video embed id}
-// embed:- youtube video => share => click on embed and take id of it
+// embed:- youtube video => share => click on embed and take {url with id} from it
 
 export const WHATS_NEW = [
   {
