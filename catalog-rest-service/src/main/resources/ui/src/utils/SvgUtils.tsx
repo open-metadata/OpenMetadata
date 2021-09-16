@@ -12,6 +12,7 @@ import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExternalLink from '../assets/svg/external-link.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
@@ -132,6 +133,7 @@ export const Icons = {
   DASHBOARD_GREY: 'dashboard-grey',
   CONFIG: 'icon-config',
   SLACK: 'slack',
+  EXTERNAL_LINK: 'external-link',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -392,6 +394,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SLACK:
       IconComponent = IconSlack;
+
+      break;
+    case Icons.EXTERNAL_LINK:
+      IconComponent = IconExternalLink;
 
       break;
 

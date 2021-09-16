@@ -235,7 +235,17 @@ const ServicePage: FunctionComponent = () => {
                     href={serviceDetails.schemaRegistry}
                     rel="noopener noreferrer"
                     target="_blank">
-                    {serviceDetails.schemaRegistry}
+                    <>
+                      <span className="tw-mr-1">
+                        {serviceDetails.schemaRegistry}
+                      </span>
+                      <SVGIcons
+                        alt="external-link"
+                        className="tw-align-middle"
+                        icon="external-link"
+                        width="12px"
+                      />
+                    </>
                   </a>
                 ) : (
                   '--'
@@ -270,7 +280,17 @@ const ServicePage: FunctionComponent = () => {
                           href={serviceDetails.dashboardUrl}
                           rel="noopener noreferrer"
                           target="_blank">
-                          {serviceDetails.dashboardUrl}
+                          <>
+                            <span className="tw-mr-1">
+                              {serviceDetails.dashboardUrl}
+                            </span>
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle"
+                              icon="external-link"
+                              width="12px"
+                            />
+                          </>
                         </a>
                       ) : (
                         '--'
@@ -296,7 +316,17 @@ const ServicePage: FunctionComponent = () => {
                       href={serviceDetails.dashboardUrl}
                       rel="noopener noreferrer"
                       target="_blank">
-                      {serviceDetails.dashboardUrl}
+                      <>
+                        <span className="tw-mr-1">
+                          {serviceDetails.dashboardUrl}
+                        </span>
+                        <SVGIcons
+                          alt="external-link"
+                          className="tw-align-middle"
+                          icon="external-link"
+                          width="12px"
+                        />
+                      </>
                     </a>
                   ) : (
                     '--'
