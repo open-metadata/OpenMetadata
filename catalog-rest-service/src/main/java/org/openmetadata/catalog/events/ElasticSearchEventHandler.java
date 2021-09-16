@@ -111,8 +111,20 @@ public class ElasticSearchEventHandler implements EventHandler {
         columnDescriptions.add(column.getDescription());
       }
     }
+    
     if (!tags.isEmpty()) {
       List<String> tagsList = new ArrayList<>(tags);
+      String tierTag = null;
+      for (String tag: tagsList) {
+        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
+          tierTag = tag;
+          break;
+        }
+      }
+      if (tierTag != null) {
+        tagsList.remove(tierTag);
+        jsonMap.put("tier", tierTag);
+      }
       jsonMap.put("tags", tagsList);
     }
     if (!columnDescriptions.isEmpty()) {
@@ -144,8 +156,20 @@ public class ElasticSearchEventHandler implements EventHandler {
     }
     if (!tags.isEmpty()) {
       List<String> tagsList = new ArrayList<>(tags);
+      String tierTag = null;
+      for (String tag: tagsList) {
+        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
+          tierTag = tag;
+          break;
+        }
+      }
+      if (tierTag != null) {
+        tagsList.remove(tierTag);
+        jsonMap.put("tier", tierTag);
+      }
       jsonMap.put("tags", tagsList);
     }
+
     if(instance.getOwner() != null) {
       jsonMap.put("owner", instance.getOwner().getId().toString());
     }
@@ -169,10 +193,23 @@ public class ElasticSearchEventHandler implements EventHandler {
     if (instance.getTags() != null) {
       instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
+
     if (!tags.isEmpty()) {
       List<String> tagsList = new ArrayList<>(tags);
+      String tierTag = null;
+      for (String tag: tagsList) {
+        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
+          tierTag = tag;
+          break;
+        }
+      }
+      if (tierTag != null) {
+        tagsList.remove(tierTag);
+        jsonMap.put("tier", tierTag);
+      }
       jsonMap.put("tags", tagsList);
     }
+
     if(instance.getOwner() != null) {
       jsonMap.put("owner", instance.getOwner().getId().toString());
     }
