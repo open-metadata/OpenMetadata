@@ -291,6 +291,8 @@ public abstract class DashboardRepository {
     EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
 
     EntityReference newService = updated.getService();
+    // Remove previous tags. Merge tags from the update and the existing tags
+    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
 
     updated.setHref(null);
     updated.setOwner(null);
