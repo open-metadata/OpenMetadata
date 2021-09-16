@@ -31,7 +31,8 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig, TableProfiles
+from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig, \
+    TableProfiles
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,10 @@ class MetadataRestSink(Sink):
     config: MetadataRestSinkConfig
     status: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: MetadataRestSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+            self, ctx: WorkflowContext, config: MetadataRestSinkConfig,
+            metadata_config: MetadataServerConfig
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -87,36 +91,51 @@ class MetadataRestSink(Sink):
 
     def write_tables(self, table_and_db: OMetaDatabaseAndTable):
         try:
-            db_request = CreateDatabaseEntityRequest(name=table_and_db.database.name,
-                                                     description=table_and_db.database.description,
-                                                     service=EntityReference(id=table_and_db.database.service.id,
-                                                                             type="databaseService"))
+            db_request = CreateDatabaseEntityRequest(
+                name=table_and_db.database.name,
+                description=table_and_db.database.description,
+                service=EntityReference(
+                    id=table_and_db.database.service.id,
+                    type="databaseService"
+                )
+            )
             db = self.client.create_database(db_request)
-            table_request = CreateTableEntityRequest(name=table_and_db.table.name,
-                                                     tableType=table_and_db.table.tableType,
-                                                     columns=table_and_db.table.columns,
-                                                     description=table_and_db.table.description,
-                                                     database=db.id)
+            table_request = CreateTableEntityRequest(
+                name=table_and_db.table.name,
+                tableType=table_and_db.table.tableType,
+                columns=table_and_db.table.columns,
+                description=table_and_db.table.description,
+                database=db.id
+            )
 
             if table_and_db.table.viewDefinition is not None and table_and_db.table.viewDefinition != "":
                 table_request.viewDefinition = table_and_db.table.viewDefinition.__root__
 
             created_table = self.client.create_or_update_table(table_request)
             if table_and_db.table.sampleData is not None:
-                self.client.ingest_sample_data(table_id=created_table.id, sample_data=table_and_db.table.sampleData)
+                self.client.ingest_sample_data(
+                    table_id=created_table.id, sample_data=table_and_db.table.sampleData
+                )
             if table_and_db.table.tableProfile is not None:
-                self.client.ingest_table_profile_data(table_id=created_table.id,
-                                                      table_profile=table_and_db.table.tableProfile)
+                self.client.ingest_table_profile_data(
+                    table_id=created_table.id,
+                    table_profile=table_and_db.table.tableProfile
+                )
 
             logger.info(
                 'Successfully ingested table {}.{}'.
-                    format(table_and_db.database.name.__root__, created_table.name.__root__))
+                    format(table_and_db.database.name.__root__, created_table.name.__root__)
+            )
             self.status.records_written(
-                '{}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
+                '{}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__)
+            )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(table_and_db.table.name.__root__,
-                                                                   table_and_db.database.name.__root__))
+                "Failed to ingest table {} in database {} ".format(
+                    table_and_db.table.name.__root__,
+                    table_and_db.database.name.__root__
+                )
+            )
             logger.error(err)
             self.status.failure(table_and_db.table.name.__root__)
 
@@ -124,11 +143,13 @@ class MetadataRestSink(Sink):
         try:
             created_topic = self.client.create_or_update_topic(topic)
             logger.info(
-                'Successfully ingested topic {}'.format(created_topic.name.__root__))
+                'Successfully ingested topic {}'.format(created_topic.name.__root__)
+            )
             self.status.records_written(created_topic.name)
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest topic {} ".format(topic.name.__root__))
+                "Failed to ingest topic {} ".format(topic.name.__root__)
+            )
             logger.error(err)
             self.status.failure(topic.name)
 
@@ -149,7 +170,8 @@ class MetadataRestSink(Sink):
             created_chart = self.client.create_or_update_chart(chart_request)
             self.charts_dict[chart.name] = EntityReference(id=created_chart.id, type='chart')
             logger.info(
-                'Successfully ingested chart {}'.format(created_chart.displayName))
+                'Successfully ingested chart {}'.format(created_chart.displayName)
+            )
             self.status.records_written(
                 '{}'.format(created_chart.displayName)
             )

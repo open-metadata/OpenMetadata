@@ -58,6 +58,7 @@ Topics = List[Topic]
 Dashboards = List[Dashboard]
 TableProfiles = List[TableProfile]
 
+
 class MetadataServerConfig(ConfigModel):
     api_endpoint: str
     api_version: str = 'v1'
@@ -273,7 +274,9 @@ class OpenMetadataAPIClient(object):
 
     def ingest_table_profile_data(self, table_id, table_profile):
         print(table_profile.json())
-        resp = self.client.put('/tables/{}/tableProfile'.format(table_id.__root__), data=table_profile.json())
+        resp = self.client.put(
+            '/tables/{}/tableProfile'.format(table_id.__root__), data=table_profile.json()
+            )
         return [TableProfile(**t) for t in resp['tableProfile']]
 
     def get_table_by_id(self, table_id: str, fields: [] = ['columns']) -> Table:
@@ -387,17 +390,23 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get('/charts/{}'.format(chart_id), data=params)
         return Chart(**resp)
 
-    def create_or_update_dashboard(self, create_dashboard_request: CreateDashboardEntityRequest) -> Dashboard:
+    def create_or_update_dashboard(
+            self, create_dashboard_request: CreateDashboardEntityRequest
+            ) -> Dashboard:
         """Create or Update a Dashboard """
         resp = self.client.put('/dashboards', data=create_dashboard_request.json())
         return Dashboard(**resp)
 
-    def list_dashboards(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Dashboards:
+    def list_dashboards(
+            self, fields: str = None, offset: int = 0, limit: int = 1000000
+            ) -> Dashboards:
         """ List all dashboards"""
         if fields is None:
             resp = self.client.get('/dashboards')
         else:
-            resp = self.client.get('/dashboards?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+            resp = self.client.get(
+                '/dashboards?fields={}&offset={}&limit={}'.format(fields, offset, limit)
+                )
         if self._use_raw_data:
             return resp
         else:

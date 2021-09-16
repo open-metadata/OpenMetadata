@@ -26,8 +26,10 @@ from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopic
-from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import \
+    CreateDashboardServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import \
+    CreateMessagingServiceEntityRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -62,8 +64,9 @@ def get_database_service_or_create(service_json, metadata_config) -> DatabaseSer
     else:
         created_service = client.create_database_service(
             CreateDatabaseServiceEntityRequest(**service_json)
-            )
+        )
         return created_service
+
 
 def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
@@ -71,8 +74,11 @@ def get_messaging_service_or_create(service_json, metadata_config) -> MessagingS
     if service is not None:
         return service
     else:
-        created_service = client.create_messaging_service(CreateMessagingServiceEntityRequest(**service_json))
+        created_service = client.create_messaging_service(
+            CreateMessagingServiceEntityRequest(**service_json)
+            )
         return created_service
+
 
 def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
@@ -80,7 +86,9 @@ def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardS
     if service is not None:
         return service
     else:
-        created_service = client.create_dashboard_service(CreateDashboardServiceEntityRequest(**service_json))
+        created_service = client.create_dashboard_service(
+            CreateDashboardServiceEntityRequest(**service_json)
+            )
         return created_service
 
 
@@ -117,7 +125,6 @@ class SampleDataSourceStatus(SourceStatus):
     def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
         self.warnings.append(entity_name)
         logger.warning("Dropped {} {} due to {}".format(entity_type, entity_name, err))
-
 
 
 class TableSchema:
@@ -274,17 +281,37 @@ class SampleDataSource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.client = OpenMetadataAPIClient(metadata_config)
-        self.database_service_json = json.load(open(self.config.sample_data_folder + "/datasets/service.json", 'r'))
-        self.database = json.load(open(self.config.sample_data_folder + "/datasets/database.json", 'r'))
-        self.tables = json.load(open(self.config.sample_data_folder + "/datasets/tables.json", 'r'))
-        self.database_service = get_database_service_or_create(self.database_service_json, self.metadata_config)
-        self.kafka_service_json = json.load(open(self.config.sample_data_folder + "/topics/service.json", 'r'))
+        self.database_service_json = json.load(
+            open(self.config.sample_data_folder + "/datasets/service.json", 'r')
+            )
+        self.database = json.load(
+            open(self.config.sample_data_folder + "/datasets/database.json", 'r')
+            )
+        self.tables = json.load(
+            open(self.config.sample_data_folder + "/datasets/tables.json", 'r')
+            )
+        self.database_service = get_database_service_or_create(
+            self.database_service_json, self.metadata_config
+            )
+        self.kafka_service_json = json.load(
+            open(self.config.sample_data_folder + "/topics/service.json", 'r')
+            )
         self.topics = json.load(open(self.config.sample_data_folder + "/topics/topics.json", 'r'))
-        self.kafka_service = get_messaging_service_or_create(self.kafka_service_json, self.metadata_config)
-        self.dashboard_service_json = json.load(open(self.config.sample_data_folder + "/dashboards/service.json", 'r'))
-        self.charts = json.load(open(self.config.sample_data_folder + "/dashboards/charts.json", 'r'))
-        self.dashboards = json.load(open(self.config.sample_data_folder + "/dashboards/dashboards.json", 'r'))
-        self.dashboard_service = get_dashboard_service_or_create(self.dashboard_service_json, metadata_config)
+        self.kafka_service = get_messaging_service_or_create(
+            self.kafka_service_json, self.metadata_config
+            )
+        self.dashboard_service_json = json.load(
+            open(self.config.sample_data_folder + "/dashboards/service.json", 'r')
+            )
+        self.charts = json.load(
+            open(self.config.sample_data_folder + "/dashboards/charts.json", 'r')
+            )
+        self.dashboards = json.load(
+            open(self.config.sample_data_folder + "/dashboards/dashboards.json", 'r')
+            )
+        self.dashboard_service = get_dashboard_service_or_create(
+            self.dashboard_service_json, metadata_config
+            )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -302,10 +329,12 @@ class SampleDataSource(Source):
         yield from self.ingest_dashboards()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
-        db = Database(id=uuid.uuid4(),
-                      name=self.database['name'],
-                      description=self.database['description'],
-                      service=EntityReference(id=self.database_service.id, type=self.config.service_type))
+        db = Database(
+            id=uuid.uuid4(),
+            name=self.database['name'],
+            description=self.database['description'],
+            service=EntityReference(id=self.database_service.id, type=self.config.service_type)
+            )
         for table in self.tables['tables']:
             if not table.get('sampleData'):
                 table['sampleData'] = GenerateFakeSampleData.check_columns(table['columns'])
@@ -324,12 +353,14 @@ class SampleDataSource(Source):
     def ingest_charts(self) -> Iterable[Chart]:
         for chart in self.charts['charts']:
             try:
-                chart_ev = Chart(name=chart['name'],
-                                 displayName=chart['displayName'],
-                                 description=chart['description'],
-                                 chart_type=chart['chartType'],
-                                 url=chart['chartUrl'],
-                                 service=EntityReference(id=self.dashboard_service.id, type="dashboardService"))
+                chart_ev = Chart(
+                    name=chart['name'],
+                    displayName=chart['displayName'],
+                    description=chart['description'],
+                    chart_type=chart['chartType'],
+                    url=chart['chartUrl'],
+                    service=EntityReference(id=self.dashboard_service.id, type="dashboardService")
+                    )
                 self.status.scanned("chart", chart_ev.name)
                 yield chart_ev
             except ValidationError as err:
@@ -337,12 +368,14 @@ class SampleDataSource(Source):
 
     def ingest_dashboards(self) -> Iterable[Dashboard]:
         for dashboard in self.dashboards['dashboards']:
-            dashboard_ev = Dashboard(name=dashboard['name'],
-                                     displayName=dashboard['displayName'],
-                                     description=dashboard['description'],
-                                     url=dashboard['dashboardUrl'],
-                                     charts=dashboard['charts'],
-                                     service=EntityReference(id=self.dashboard_service.id, type="dashboardService"))
+            dashboard_ev = Dashboard(
+                name=dashboard['name'],
+                displayName=dashboard['displayName'],
+                description=dashboard['description'],
+                url=dashboard['dashboardUrl'],
+                charts=dashboard['charts'],
+                service=EntityReference(id=self.dashboard_service.id, type="dashboardService")
+                )
             self.status.scanned("dashboard", dashboard_ev.name)
             yield dashboard_ev
 

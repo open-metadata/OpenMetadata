@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 import logging
-from typing import Iterable, Optional,List
+from typing import Iterable, Optional, List
 from dataclasses import dataclass, field
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
@@ -54,7 +54,9 @@ class MetadataSourceStatus(SourceStatus):
         self.success.append(dashboard_name)
         logger.info('Dashboard Scanned: {}'.format(dashboard_name))
 
-    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+    def filtered(
+            self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+            ) -> None:
         self.warnings.append(table_name)
         logger.warning("Dropped Entity {} due to {}".format(table_name, err))
 
@@ -66,7 +68,7 @@ class MetadataSource(Source):
     def __init__(
             self, config: MetadataTablesRestSourceConfig, metadata_config: MetadataServerConfig,
             ctx: WorkflowContext
-            ):
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -94,7 +96,8 @@ class MetadataSource(Source):
         if self.config.include_tables:
             tables = self.client.list_tables(
                 fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
-                offset=0, limit=self.config.limit_records)
+                offset=0, limit=self.config.limit_records
+            )
             for table in tables:
                 self.status.scanned_table(table.name.__root__)
                 yield table
@@ -102,7 +105,8 @@ class MetadataSource(Source):
     def fetch_topic(self) -> Topic:
         if self.config.include_topics:
             topics = self.client.list_topics(
-                fields="owner,service,tags,followers", offset=0, limit=self.config.limit_records)
+                fields="owner,service,tags,followers", offset=0, limit=self.config.limit_records
+            )
             for topic in topics:
                 self.status.scanned_topic(topic.name.__root__)
                 yield topic
@@ -110,7 +114,9 @@ class MetadataSource(Source):
     def fetch_dashboard(self) -> Dashboard:
         if self.config.include_dashboards:
             dashboards = self.client.list_dashboards(
-                fields="owner,service,tags,followers,charts,usageSummary", offset=0, limit=self.config.limit_records)
+                fields="owner,service,tags,followers,charts,usageSummary", offset=0,
+                limit=self.config.limit_records
+            )
             for dashboard in dashboards:
                 self.status.scanned_dashboard(dashboard.name)
                 yield dashboard

@@ -193,8 +193,10 @@ class SQLSource(Source):
             if self.config.data_profiler_enabled:
                 if self.data_profiler is None:
                     from metadata.profiler.dataprofiler import DataProfiler
-                    self.data_profiler = DataProfiler(status=self.status,
-                                                    connection_str=self.connection_string)
+                    self.data_profiler = DataProfiler(
+                        status=self.status,
+                        connection_str=self.connection_string
+                    )
                 return True
             return False
         except Exception:
@@ -399,7 +401,7 @@ class SQLSource(Source):
         logger.info(
             f"Running Profiling for {dataset_name}. "
             f"If you haven't configured offset and limit this process can take longer"
-            
+
         )
         if self.config.scheme == "bigquery":
             table = dataset_name

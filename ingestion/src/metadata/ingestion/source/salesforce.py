@@ -17,21 +17,22 @@ import logging
 import uuid
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, List
+from pydantic import ValidationError
+from simple_salesforce import Salesforce
 
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from simple_salesforce import Salesforce
 
 from .sql_source import SQLConnectionConfig
+from metadata.utils.helpers import get_database_service_or_create
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from ...generated.schema.entity.data.database import Database
 from ...generated.schema.entity.data.table import Column, ColumnConstraint, Table, TableData
 from ...generated.schema.type.entityReference import EntityReference
-from metadata.utils.helpers import get_database_service_or_create
-from pydantic import ValidationError
 
 logger: logging.Logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SalesforceSourceStatus(SourceStatus):
@@ -71,9 +72,9 @@ class SalesforceSource(Source):
         self.service = get_database_service_or_create(config, metadata_config)
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
-                username=self.config.username, password=self.config.password,
-                security_token=self.config.security_token
-            )
+            username=self.config.username, password=self.config.password,
+            security_token=self.config.security_token
+        )
 
     @classmethod
     def create(cls, config: dict, metadata_config: dict, ctx: WorkflowContext):
@@ -93,13 +94,13 @@ class SalesforceSource(Source):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         yield from self.salesforce_client()
 
-    def fetch_sample_data(self,sobject_name):
+    def fetch_sample_data(self, sobject_name):
         md = self.sf.restful("sobjects/{}/describe/".format(sobject_name), params=None)
         columns = []
         rows = []
         for column in md['fields']:
             columns.append(column['name'])
-        query = "select {} from {}".format(str(columns)[1:-1].replace('\'',''),sobject_name)
+        query = "select {} from {}".format(str(columns)[1:-1].replace('\'', ''), sobject_name)
         logger.info("Ingesting data using {}".format(query))
         resp = self.sf.query(query)
         for record in resp['records']:
@@ -111,11 +112,13 @@ class SalesforceSource(Source):
 
     def salesforce_client(self) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            
+
             row_order = 1
             table_columns = []
-            md = self.sf.restful("sobjects/{}/describe/".format(self.config.sobject_name), params=None)
-            
+            md = self.sf.restful(
+                "sobjects/{}/describe/".format(self.config.sobject_name), params=None
+                )
+
             for column in md['fields']:
                 col_constraint = None
                 if column['nillable']:
