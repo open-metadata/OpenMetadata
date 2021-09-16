@@ -78,7 +78,7 @@ const FeaturesCarousel = ({ data }: Props) => {
                 className="tw-w-full"
                 frameBorder={0}
                 height={278}
-                src={`https://www.youtube.com/embed/${d.path}`}
+                src={d.path}
               />
             )}
           </div>
