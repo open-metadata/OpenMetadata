@@ -71,8 +71,8 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Athena',
     'Presto',
   ],
-  messagingServices: ['Kafka', 'Pulsar'],
-  dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash'],
+  messagingServices: ['Kafka'],
+  dashboardServices: ['Superset', 'Looker', 'Tableau'],
 };
 
 export const arrServiceTypes: Array<ServiceTypes> = [

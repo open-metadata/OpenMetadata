@@ -20,6 +20,7 @@ import { ServiceTypes } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { serviceTypes } from '../../../constants/services.const';
 import {
+  DashboardServiceType,
   MessagingServiceType,
   ServiceCategory,
 } from '../../../enums/service.enum';
@@ -47,6 +48,12 @@ export type DataObj = {
   dashboardUrl?: string;
   username?: string;
   password?: string;
+  url?: string;
+  api_key?: string;
+  site_name?: string;
+  api_version?: string;
+  server?: string;
+  env?: string;
 };
 
 type DatabaseService = {
@@ -61,9 +68,15 @@ type MessagingService = {
 };
 
 type DashboardService = {
-  dashboardUrl: string;
-  username: string;
-  password: string;
+  dashboardUrl?: string;
+  username?: string;
+  password?: string;
+  url?: string;
+  api_key?: string;
+  site_name?: string;
+  api_version?: string;
+  server?: string;
+  env?: string;
 };
 
 export type ServiceDataObj = {
@@ -101,6 +114,11 @@ type ErrorMsg = {
   dashboardUrl?: boolean;
   username?: boolean;
   password?: boolean;
+  redashUrl?: boolean;
+  apiKey?: boolean;
+  siteName?: boolean;
+  apiVersion?: boolean;
+  server?: boolean;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -190,6 +208,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
   const [username, setUsername] = useState(data?.username || '');
   const [password, setPassword] = useState(data?.password || '');
+  const [redashUrl, setRedashUrl] = useState(data?.url || '');
+  const [apiKey, setApiKey] = useState(data?.api_key || '');
+  const [siteName, setSiteName] = useState(data?.site_name || '');
+  const [apiVersion, setApiVersion] = useState(data?.api_version || '');
+  const [server, setServer] = useState(data?.server || '');
+  const [env, setEnv] = useState(data?.env || '');
   const [frequency, setFrequency] = useState(
     fromISOString(data?.ingestionSchedule?.repeatFrequency)
   );
@@ -198,10 +222,16 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     name: false,
     url: false,
     // port: false,
-    // userName: false,
-    // password: false,
     driverClass: false,
     broker: false,
+    dashboardUrl: false,
+    username: false,
+    password: false,
+    redashUrl: false,
+    apiKey: false,
+    siteName: false,
+    apiVersion: false,
+    server: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
   const markdownRef = useRef<EditorContentRef>();
@@ -284,6 +314,11 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       dashboardUrl,
       username,
       password,
+      redashUrl,
+      apiKey,
+      siteName,
+      apiVersion,
+      server,
     } = value;
 
     return (
@@ -295,7 +330,12 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       !broker &&
       !dashboardUrl &&
       !username &&
-      !password
+      !password &&
+      !redashUrl &&
+      !apiKey &&
+      !siteName &&
+      !apiVersion &&
+      !server
     );
   };
 
@@ -326,12 +366,43 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         break;
       case ServiceCategory.DASHBOARD_SERVICES:
         {
-          setMsg = {
-            ...setMsg,
-            dashboardUrl: !dashboardUrl,
-            username: !username,
-            password: !password,
-          };
+          switch (selectService) {
+            case DashboardServiceType.REDASH:
+              {
+                setMsg = {
+                  ...setMsg,
+                  redashUrl: !redashUrl,
+                  apiKey: !apiKey,
+                };
+              }
+
+              break;
+            case DashboardServiceType.TABLEAU:
+              {
+                setMsg = {
+                  ...setMsg,
+                  dashboardUrl: !dashboardUrl,
+                  siteName: !siteName,
+                  username: !username,
+                  password: !password,
+                  apiVersion: !apiVersion,
+                  server: !server,
+                };
+              }
+
+              break;
+            default:
+              {
+                setMsg = {
+                  ...setMsg,
+                  dashboardUrl: !dashboardUrl,
+                  username: !username,
+                  password: !password,
+                };
+              }
+
+              break;
+          }
         }
 
         break;
@@ -381,12 +452,46 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           break;
         case ServiceCategory.DASHBOARD_SERVICES:
           {
-            dataObj = {
-              ...dataObj,
-              dashboardUrl: dashboardUrl,
-              username: username,
-              password: password,
-            };
+            switch (selectService) {
+              case DashboardServiceType.REDASH:
+                {
+                  dataObj = {
+                    ...dataObj,
+                    url: redashUrl,
+                    // eslint-disable-next-line @typescript-eslint/camelcase
+                    api_key: apiKey,
+                  };
+                }
+
+                break;
+              case DashboardServiceType.TABLEAU:
+                {
+                  dataObj = {
+                    ...dataObj,
+                    dashboardUrl: dashboardUrl,
+                    // eslint-disable-next-line @typescript-eslint/camelcase
+                    site_name: siteName,
+                    username: username,
+                    password: password,
+                    // eslint-disable-next-line @typescript-eslint/camelcase
+                    api_version: apiVersion,
+                    server: server,
+                  };
+                }
+
+                break;
+              default:
+                {
+                  dataObj = {
+                    ...dataObj,
+                    dashboardUrl: dashboardUrl,
+                    username: username,
+                    password: password,
+                  };
+                }
+
+                break;
+            }
           }
 
           break;
@@ -496,55 +601,215 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   };
 
   const getDashboardFields = (): JSX.Element => {
-    return (
-      <>
-        <div className="tw-mt-4">
-          <label className="tw-block tw-form-label" htmlFor="dashboard-url">
-            {requiredField('Dashboard Url:')}
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            id="dashboard-url"
-            name="dashboard-url"
-            placeholder="http(s)://hostname:port"
-            type="text"
-            value={dashboardUrl}
-            onChange={(e) => setDashboardUrl(e.target.value)}
-          />
-          {showErrorMsg.dashboardUrl && errorMsg('Dashboard url is required')}
-        </div>
-        <div className="tw-mt-4">
-          <label className="tw-block tw-form-label" htmlFor="username">
-            {requiredField('Username:')}
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            id="username"
-            name="username"
-            placeholder="username"
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          {showErrorMsg.username && errorMsg('Username is required')}
-        </div>
-        <div className="tw-mt-4">
-          <label className="tw-block tw-form-label" htmlFor="password">
-            {requiredField('Password:')}
-          </label>
-          <input
-            className="tw-form-inputs tw-px-3 tw-py-1"
-            id="password"
-            name="password"
-            placeholder="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {showErrorMsg.password && errorMsg('Password is required')}
-        </div>
-      </>
-    );
+    let elemFields: JSX.Element;
+    switch (selectService) {
+      case DashboardServiceType.REDASH: {
+        elemFields = (
+          <>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="url">
+                {requiredField('Url:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="url"
+                name="url"
+                placeholder="http(s)://hostname:port"
+                type="text"
+                value={redashUrl}
+                onChange={(e) => setRedashUrl(e.target.value)}
+              />
+              {showErrorMsg.redashUrl && errorMsg('Url is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="api-key">
+                {requiredField('Api key:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="api-key"
+                name="api-key"
+                placeholder="api key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+              {showErrorMsg.apiKey && errorMsg('Api key is required')}
+            </div>
+          </>
+        );
+
+        break;
+      }
+      case DashboardServiceType.TABLEAU: {
+        elemFields = (
+          <>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="site-name">
+                {requiredField('Site Name:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="site-name"
+                name="site-name"
+                placeholder="site name"
+                type="text"
+                value={siteName}
+                onChange={(e) => setSiteName(e.target.value)}
+              />
+              {showErrorMsg.siteName && errorMsg('Site name is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="dashboard-url">
+                {requiredField('Site Url:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="dashboard-url"
+                name="dashboard-url"
+                placeholder="http(s)://hostname:port"
+                type="text"
+                value={dashboardUrl}
+                onChange={(e) => setDashboardUrl(e.target.value)}
+              />
+              {showErrorMsg.dashboardUrl && errorMsg('Site url is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="username">
+                {requiredField('Username:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="username"
+                name="username"
+                placeholder="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              {showErrorMsg.username && errorMsg('Username is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="password">
+                {requiredField('Password:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="password"
+                name="password"
+                placeholder="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {showErrorMsg.password && errorMsg('Password is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="server">
+                {requiredField('Server:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="server"
+                name="server"
+                placeholder="http(s)://hostname:port"
+                type="text"
+                value={server}
+                onChange={(e) => setServer(e.target.value)}
+              />
+              {showErrorMsg.server && errorMsg('Server is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="api-version">
+                {requiredField('Api Version:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="api-version"
+                name="api-version"
+                placeholder="api version"
+                type="text"
+                value={apiVersion}
+                onChange={(e) => setApiVersion(e.target.value)}
+              />
+              {showErrorMsg.apiVersion && errorMsg('Api version is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="env">
+                Environment:
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="env"
+                name="env"
+                placeholder="environment"
+                type="text"
+                value={env}
+                onChange={(e) => setEnv(e.target.value)}
+              />
+            </div>
+          </>
+        );
+
+        break;
+      }
+      default: {
+        elemFields = (
+          <>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="dashboard-url">
+                {requiredField('Dashboard Url:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="dashboard-url"
+                name="dashboard-url"
+                placeholder="http(s)://hostname:port"
+                type="text"
+                value={dashboardUrl}
+                onChange={(e) => setDashboardUrl(e.target.value)}
+              />
+              {showErrorMsg.dashboardUrl &&
+                errorMsg('Dashboard url is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="username">
+                {requiredField('Username:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="username"
+                name="username"
+                placeholder="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              {showErrorMsg.username && errorMsg('Username is required')}
+            </div>
+            <div className="tw-mt-4">
+              <label className="tw-block tw-form-label" htmlFor="password">
+                {requiredField('Password:')}
+              </label>
+              <input
+                className="tw-form-inputs tw-px-3 tw-py-1"
+                id="password"
+                name="password"
+                placeholder="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {showErrorMsg.password && errorMsg('Password is required')}
+            </div>
+          </>
+        );
+
+        break;
+      }
+    }
+
+    return elemFields;
   };
 
   const getOptionalFields = (): JSX.Element => {

@@ -36,7 +36,10 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import Tags from '../../components/tags/tags';
 import { pagingObject } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { ServiceCategory } from '../../enums/service.enum';
+import {
+  DashboardServiceType,
+  ServiceCategory,
+} from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Topic } from '../../generated/entity/data/topic';
 import useToastContext from '../../hooks/useToastContext';
@@ -254,37 +257,88 @@ const ServicePage: FunctionComponent = () => {
         );
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        return (
-          <span>
-            <span className="tw-text-grey-muted tw-font-normal">
-              Dashboard Url :
-            </span>{' '}
-            <span className="tw-pl-1 tw-font-normal ">
-              {serviceDetails?.dashboardUrl ? (
-                <a
-                  className="link-text tw-mr-1"
-                  href={serviceDetails.dashboardUrl}
-                  rel="noopener noreferrer"
-                  target="_blank">
-                  <>
-                    <span className="tw-mr-1">
-                      {serviceDetails.dashboardUrl}
+        let elemFields: JSX.Element;
+        switch (serviceType) {
+          // case DashboardServiceType.REDASH:
+          //   {
+          //     // TODO: add Redash fields if required
+          //   }
+
+          //   break;
+          case DashboardServiceType.TABLEAU:
+            {
+              elemFields = (
+                <>
+                  <span>
+                    <span className="tw-text-grey-muted tw-font-normal">
+                      Site Url :
+                    </span>{' '}
+                    <span className="tw-pl-1tw-font-normal ">
+                      {serviceDetails?.dashboardUrl ? (
+                        <a
+                          className="link-text"
+                          href={serviceDetails.dashboardUrl}
+                          rel="noopener noreferrer"
+                          target="_blank">
+                          <>
+                            <span className="tw-mr-1">
+                              {serviceDetails.dashboardUrl}
+                            </span>
+                            <SVGIcons
+                              alt="external-link"
+                              className="tw-align-middle"
+                              icon="external-link"
+                              width="12px"
+                            />
+                          </>
+                        </a>
+                      ) : (
+                        '--'
+                      )}
                     </span>
-                    <SVGIcons
-                      alt="external-link"
-                      className="tw-align-middle"
-                      icon="external-link"
-                      width="12px"
-                    />
-                  </>
-                </a>
-              ) : (
-                '--'
-              )}
-            </span>
-            <span className="tw-mx-3 tw-text-grey-muted">•</span>
-          </span>
-        );
+                    <span className="tw-mx-3 tw-text-grey-muted">•</span>
+                  </span>
+                </>
+              );
+            }
+
+            break;
+          default: {
+            elemFields = (
+              <span>
+                <span className="tw-text-grey-muted tw-font-normal">
+                  Dashboard Url :
+                </span>{' '}
+                <span className="tw-pl-1tw-font-normal ">
+                  {serviceDetails?.dashboardUrl ? (
+                    <a
+                      className="link-text"
+                      href={serviceDetails.dashboardUrl}
+                      rel="noopener noreferrer"
+                      target="_blank">
+                      <>
+                        <span className="tw-mr-1">
+                          {serviceDetails.dashboardUrl}
+                        </span>
+                        <SVGIcons
+                          alt="external-link"
+                          className="tw-align-middle"
+                          icon="external-link"
+                          width="12px"
+                        />
+                      </>
+                    </a>
+                  ) : (
+                    '--'
+                  )}
+                </span>
+                <span className="tw-mx-3 tw-text-grey-muted">•</span>
+              </span>
+            );
+          }
+        }
+
+        return elemFields;
       }
       default: {
         return <></>;
