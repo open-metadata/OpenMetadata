@@ -17,7 +17,9 @@
 
 /* eslint-disable max-len */
 
-export const LATEST_VERSION_ID = 2;
+export const LATEST_VERSION_ID = 0;
+
+export const COOKIE_VERSION = 'VERSION_0_4_0';
 
 const dummyImg = 'https://via.placeholder.com/725x278';
 
@@ -27,103 +29,25 @@ const dummyImg = 'https://via.placeholder.com/725x278';
 export const WHATS_NEW = [
   {
     id: 0,
-    version: 'v4.00',
-    description: 'Released on 4 Aug 2021.',
-    features: [
-      {
-        title: 'lorem ipsum v4.00',
-        description: `It is a long established fact that a reader will be distracted by the readable content
-        of a page when looking at its layout. The point of using Lorem Ipsum is that it has a
-           more-or-less normal distribution of letters, as opposed to using 'Content here, content
-            here', making it look like readable English. Many desktop publishing packages and web
-             page editors now use Lorem Ipsum as their default model text, and a search for 'lorem
-             ipsum' will uncover many web sites still in their infancy.`,
-        isImage: true,
-        path: dummyImg,
-      },
-      {
-        title: 'lorem ipsum v4.00',
-        description: `It is a long established fact that a reader will be distracted by the readable content
-        of a page when looking at its layout. The point of using Lorem Ipsum is that it has a
-           more-or-less normal distribution of letters, as opposed to using 'Content here, content
-            here', making it look like readable English. Many desktop publishing packages and web
-             page editors now use Lorem Ipsum as their default model text, and a search for 'lorem
-             ipsum' will uncover many web sites still in their infancy.`,
-        isImage: true,
-        path: dummyImg,
-      },
-    ],
-    changeLogs: {
-      highlight: `- Added experimental, opt-in CSS Grid support\n- Added support for responsive offcanvas components in navbars\n- Added new placeholders component for skeleton loading screens\n- Added support for horizontal collapsing in the collapse component\n- Added new stack and vertical rule helpers\n- Added tons of new CSS variables for body styles, colors, RGB colors, and more\n- Updated .bg-* and .text-* utilities to use CSS variables and new RGB CSS variables for real-time customization`,
-      bugFix: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
-      miscellaneous: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
-    },
-  },
-  {
-    id: 1,
-    version: 'v4.50',
-    description: 'Released on 8 Aug 2021.',
-    features: [
-      {
-        title: 'lorem ipsum v4.50',
-        description:
-          "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
-        isImage: true,
-        path: dummyImg,
-      },
-      {
-        title: 'lorem ipsum v4.50',
-        description:
-          "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
-        isImage: true,
-        path: dummyImg,
-      },
-      {
-        title: 'lorem ipsum v4.50',
-        description:
-          "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
-        isImage: true,
-        path: dummyImg,
-      },
-      {
-        title: 'lorem ipsum v4.50',
-        description:
-          "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
-        isImage: true,
-        path: dummyImg,
-      },
-    ],
-    changeLogs: {
-      highlight: `- Added experimental, opt-in CSS Grid support\n- Added support for responsive offcanvas components in navbars\n- Added new placeholders component for skeleton loading screens\n- Added support for horizontal collapsing in the collapse component\n- Added new stack and vertical rule helpers\n- Added tons of new CSS variables for body styles, colors, RGB colors, and more\n- Updated .bg-* and .text-* utilities to use CSS variables and new RGB CSS variables for real-time customization`,
-      bugFix: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
-      miscellaneous: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
-    },
-  },
-  {
-    id: 2,
-    version: 'v5.01',
+    version: 'v0.4.0',
     description: 'Released on 20 Aug 2021.',
     features: [
       {
-        title: 'lorem ipsum v5.01 slide 1',
+        title: 'Dashboards',
         description:
           "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
         isImage: true,
         path: dummyImg,
       },
       {
-        title: 'lorem ipsum v5.01 slide 2',
+        title: 'Messaging service',
         description:
           "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
         isImage: false,
         path: 'jssO8-5qmag',
       },
       {
-        title: 'lorem ipsum v5.01 slide 3',
+        title: 'UI implements',
         description:
           "It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution of letters, as opposed to using 'Content here, content here', making it look like readable English. Many desktop publishing packages and web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. ",
         isImage: true,
@@ -131,11 +55,20 @@ export const WHATS_NEW = [
       },
     ],
     changeLogs: {
-      highlight: `- Added experimental, opt-in CSS Grid support\n- Added support for responsive offcanvas components in navbars\n- Added new placeholders component for skeleton loading screens\n- Added support for horizontal collapsing in the collapse component\n- Added new stack and vertical rule helpers\n- Added tons of new CSS variables for body styles, colors, RGB colors, and more\n- Updated .bg-* and .text-* utilities to use CSS variables and new RGB CSS variables for real-time customization`,
-      bugFix: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
-      miscellaneous: `- [#31813](https://www.github.com): Add optional CSS grid\n- [#31859](https://github.com): Add a "skeletons" component\n- [#32319](https://github.com): Add maps for all colors, document how to extend color utilities\n- [#33403](https://github.com): modal: change data-dismiss so that it can be outside of a modal using bs-target\n- [#33781](https://github.com): Add utility classes for opacity\n- [#33986](https://github.com): New helpers: .hstack, .vstack, and .vr\n- [#34253](https://github.com): Add horizontal collapse support\n
-      `,
+      OpenMetadata: `- Support for Kafka (and Pulsar WIP)\n
+                        - Support for Message Service and Topic entities in schemas, APIs, and UI\n
+                        - Kafka connector and ingestion support for Confluent Schema Registry\n
+                        - Support for Dashboards\n
+                        - Support for Dashboard services, Dashboards, and Charts entities in schemas, APIs, and UI\n
+                        - Looker, Superset, Tableau connector, and ingestion support`,
+      'Other features': `- Pluggable SSO integration - Auth0 support\n
+                          - Support for Presto`,
+      'User Interface': `- Sort search results based on Usage, Relevance, and Last updated time\n
+                          - Search string highlighted in search results\n
+                          - Support for Kafka and Dashboards from Looker, SuperSet, and Tableau`,
+      'Work in progress': `- Salesforce CRM connector\n
+                            - Data profiler to profile tables in ingestion framework and show it table details page\n
+                            - Redash dashboard connector`,
     },
   },
 ];

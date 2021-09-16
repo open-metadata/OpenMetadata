@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -41,21 +42,28 @@ import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
 
+const cookieStorage = new CookieStorage();
+
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn } = useAuth(location.pathname);
+  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser } = useAuth(
+    location.pathname
+  );
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(() => {
+    return !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true';
+  });
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -112,6 +120,12 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
   ];
+
+  useEffect(() => {
+    setIsFeatureModalOpen(
+      !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true'
+    );
+  }, [isFirstTimeUser]);
 
   return (
     <>

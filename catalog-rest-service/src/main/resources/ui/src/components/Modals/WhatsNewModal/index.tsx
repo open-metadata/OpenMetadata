@@ -16,10 +16,11 @@
 */
 
 import classNames from 'classnames';
+import { CookieStorage } from 'cookie-storage';
 import React, { FunctionComponent, useState } from 'react';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
-import { LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
+import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
 // import { Button } from '../../buttons/Button/Button';
 
 type Props = {
@@ -31,6 +32,8 @@ type ToggleType = 'features' | 'change-log';
 
 const iconString = `M7.878 3.002a1.876 1.876 0 11-3.751 0 1.876 1.876 0 013.751 0zm1.073.562a3.003
  3.003 0 01-5.897 0H.563a.563.563 0 010-1.125h2.49a3.002 3.002 0 015.898 0h2.491a.563.563 0 010 1.125H8.951z`;
+
+const cookieStorage = new CookieStorage();
 
 export const WhatsNewModal: FunctionComponent<Props> = ({
   header,
@@ -52,6 +55,11 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
     setCheckedValue(type);
   };
 
+  const handleCancel = () => {
+    cookieStorage.setItem(COOKIE_VERSION, 'true');
+    onCancel();
+  };
+
   return (
     <dialog className="tw-modal">
       <div className="tw-modal-backdrop" />
@@ -66,7 +74,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
               stroke="currentColor"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
-              onClick={onCancel}>
+              onClick={handleCancel}>
               <path
                 d="M6 18L18 6M6 6l12 12"
                 strokeLinecap="round"
@@ -84,13 +92,6 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
             <div
               className="tw-border-r-2 tw-px-4 tw-py-4 tw-border-separate"
               style={{ width: '14%' }}>
-              <div className="tw-mb-2.5 tw-flex tw-justify-end">
-                <button
-                  className="tw-border tw-rounded-md tw-border-success tw-text-success tw-px-1.5 tw-py-1 tw-text-xs"
-                  onClick={() => setActiveData(WHATS_NEW[LATEST_VERSION_ID])}>
-                  Latest Release
-                </button>
-              </div>
               <div className="tw-flex tw-flex-col-reverse">
                 {WHATS_NEW.map((d) => (
                   <div

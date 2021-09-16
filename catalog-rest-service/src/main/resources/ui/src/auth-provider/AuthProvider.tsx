@@ -41,6 +41,7 @@ import { fetchAuthorizerConfig } from '../axiosAPIs/miscAPI';
 import { getLoggedInUser, getUserByName } from '../axiosAPIs/userAPI';
 import Loader from '../components/Loader/Loader';
 import { FirstTimeUserModal } from '../components/Modals/FirstTimeUserModal/FirstTimeUserModal';
+import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
 import { useAuth } from '../hooks/authHooks';
@@ -90,6 +91,10 @@ const AuthProvider: FunctionComponent<AuthProviderProps> = ({
   const [userManagerConfig, setUserManagerConfig] = useState<
     Record<string, string | boolean | WebStorageStateStore>
   >({});
+
+  if (isFirstTimeUser) {
+    cookieStorage.removeItem(COOKIE_VERSION);
+  }
 
   const clearOidcUserData = (
     userConfig: Record<string, string | boolean | WebStorageStateStore>
