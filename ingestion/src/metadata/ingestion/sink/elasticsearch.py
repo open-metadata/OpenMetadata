@@ -31,7 +31,8 @@ from metadata.ingestion.sink.elasticsearch_constants import TABLE_ELASTICSEARCH_
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
-from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument, DashboardESDocument
+from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument, \
+    DashboardESDocument
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class ElasticsearchSink(Sink):
     def __init__(
             self, ctx: WorkflowContext, config: ElasticSearchConfig,
             metadata_config: MetadataServerConfig
-            ) -> None:
+    ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
@@ -77,11 +78,15 @@ class ElasticsearchSink(Sink):
         if self.config.index_tables:
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
-                )
+            )
         if self.config.index_topics:
-            self._check_or_create_index(self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING
+                )
         if self.config.index_dashboards:
-            self._check_or_create_index(self.config.dashboard_index_name, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.dashboard_index_name, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING
+                )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
@@ -93,27 +98,39 @@ class ElasticsearchSink(Sink):
             if not mapping[index_name]['mappings']:
                 logger.debug(f'There are no mappings for index {index_name}. Updating the mapping')
                 es_mapping_dict = json.loads(es_mapping)
-                es_mapping_update_dict =  {'properties': es_mapping_dict['mappings']['properties']}
-                self.elasticsearch_client.indices.put_mapping(index=index_name, body=json.dumps(es_mapping_update_dict))
+                es_mapping_update_dict = {'properties': es_mapping_dict['mappings']['properties']}
+                self.elasticsearch_client.indices.put_mapping(
+                    index=index_name, body=json.dumps(
+                        es_mapping_update_dict
+                        )
+                    )
         else:
-            logger.warning("Received index not found error from Elasticsearch. "
-                    + "The index doesn't exist for a newly created ES. It's OK on first run.")
+            logger.warning(
+                "Received index not found error from Elasticsearch. "
+                + "The index doesn't exist for a newly created ES. It's OK on first run."
+                )
             # create new index with mapping
             self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
 
     def write_record(self, record: Record) -> None:
         if isinstance(record, Table):
             table_doc = self._create_table_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.table_index_name, id=str(table_doc.table_id),
-                                            body=table_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.table_index_name, id=str(table_doc.table_id),
+                body=table_doc.json()
+                )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.topic_index_name, id=str(topic_doc.topic_id),
-                                            body=topic_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.topic_index_name, id=str(topic_doc.topic_id),
+                body=topic_doc.json()
+                )
         if isinstance(record, Dashboard):
             dashboard_doc = self._create_dashboard_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.dashboard_index_name, id=str(dashboard_doc.dashboard_id),
-                                            body=dashboard_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.dashboard_index_name, id=str(dashboard_doc.dashboard_id),
+                body=dashboard_doc.json()
+                )
         self.status.records_written(record.name)
 
     def _create_table_es_doc(self, table: Table):
@@ -172,7 +189,7 @@ class ElasticsearchSink(Sink):
             schema_description=None,
             owner=table_owner,
             followers=table_followers
-            )
+        )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
@@ -206,7 +223,7 @@ class ElasticsearchSink(Sink):
             fqdn=fqdn,
             owner=topic_owner,
             followers=topic_followers
-            )
+        )
 
         return topic_doc
 
@@ -238,27 +255,28 @@ class ElasticsearchSink(Sink):
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN)
-        dashboard_doc = DashboardESDocument(dashboard_id=str(dashboard.id.__root__),
-                                            service=service_entity.name,
-                                            service_type=service_entity.serviceType.name,
-                                            dashboard_name=dashboard.displayName,
-                                            chart_names=chart_names,
-                                            chart_descriptions=chart_descriptions,
-                                            suggest=suggest,
-                                            description=dashboard.description,
-                                            last_updated_timestamp=timestamp,
-                                            tier=tier,
-                                            tags=list(tags),
-                                            fqdn=fqdn,
-                                            owner=dashboard_owner,
-                                            followers=dashboard_followers,
-                                            monthly_stats=dashboard.usageSummary.monthlyStats.count,
-                                            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
-                                            weekly_stats=dashboard.usageSummary.weeklyStats.count,
-                                            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
-                                            daily_stats=dashboard.usageSummary.dailyStats.count,
-                                            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
-                                            )
+        dashboard_doc = DashboardESDocument(
+            dashboard_id=str(dashboard.id.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            dashboard_name=dashboard.displayName,
+            chart_names=chart_names,
+            chart_descriptions=chart_descriptions,
+            suggest=suggest,
+            description=dashboard.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=dashboard_owner,
+            followers=dashboard_followers,
+            monthly_stats=dashboard.usageSummary.monthlyStats.count,
+            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
+            weekly_stats=dashboard.usageSummary.weeklyStats.count,
+            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
+            daily_stats=dashboard.usageSummary.dailyStats.count,
+            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
+            )
 
         return dashboard_doc
 

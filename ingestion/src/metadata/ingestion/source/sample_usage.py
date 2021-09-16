@@ -4,9 +4,9 @@ import csv
 from typing import Iterable
 from metadata.ingestion.api.source import Source
 from .sample_data import  get_database_service_or_create, SampleDataSourceConfig, SampleDataSourceStatus
-from metadata.ingestion.models.table_queries import TableQuery
 from .sample_tables import SampleTableSourceConfig, SampleTableSourceStatus, get_service_or_create
 from ..ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
+from metadata.ingestion.models.table_queries import TableQuery
 
 
 class SampleUsageSource(Source):

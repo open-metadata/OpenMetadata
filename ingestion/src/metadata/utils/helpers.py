@@ -51,8 +51,11 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
         return service
     else:
         service = {'jdbc': {'connectionUrl': f'jdbc://{config.host_port}', 'driverClass': 'jdbc'},
-                   'name': config.service_name, 'description': '', 'serviceType': config.get_service_type()}
-        created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
+                   'name': config.service_name, 'description': '',
+                   'serviceType': config.get_service_type()}
+        created_service = client.create_database_service(
+            CreateDatabaseServiceEntityRequest(**service)
+            )
         return created_service
 
 
@@ -62,7 +65,7 @@ def get_messaging_service_or_create(
         schema_registry_url: str,
         brokers: List[str],
         metadata_config
-        ) -> MessagingService:
+) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_name)
     if service is not None:
@@ -85,7 +88,7 @@ def get_dashboard_service_or_create(
         password: str,
         dashboard_url: str,
         metadata_config
-        ) -> DashboardService:
+) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_dashboard_service(service_name)
     if service is not None:
