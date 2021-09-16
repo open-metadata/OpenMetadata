@@ -70,17 +70,19 @@ const FeaturesCarousel = ({ data }: Props) => {
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
           <p className="tw-text-sm tw-mb-3">{d.description}</p>
           <div className="tw-max-w-3xl">
-            {d.isImage ? (
-              <img alt="feature" className="tw-w-full" src={d.path} />
-            ) : (
-              <iframe
-                allowFullScreen
-                className="tw-w-full"
-                frameBorder={0}
-                height={278}
-                src={d.path}
-              />
-            )}
+            {d.path ? (
+              d.isImage ? (
+                <img alt="feature" className="tw-w-full" src={d.path} />
+              ) : (
+                <iframe
+                  allowFullScreen
+                  className="tw-w-full"
+                  frameBorder={0}
+                  height={278}
+                  src={d.path}
+                />
+              )
+            ) : null}
           </div>
         </div>
       ))}
