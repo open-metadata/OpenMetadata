@@ -28,17 +28,6 @@ git clone https://github.com/open-metadata/OpenMetadata.git
 cd OpenMetadata/ingestion
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[sample-data, elasticsearch]'
-```
-{% endtab %}
 {% endtabs %}
 
 ### Ingest using Sample Pipelines consisting of
