@@ -232,7 +232,17 @@ const ServicePage: FunctionComponent = () => {
                     href={serviceDetails.schemaRegistry}
                     rel="noopener noreferrer"
                     target="_blank">
-                    {serviceDetails.schemaRegistry}
+                    <>
+                      <span className="tw-mr-1">
+                        {serviceDetails.schemaRegistry}
+                      </span>
+                      <SVGIcons
+                        alt="external-link"
+                        className="tw-align-middle"
+                        icon="external-link"
+                        width="12px"
+                      />
+                    </>
                   </a>
                 ) : (
                   '--'
@@ -249,14 +259,24 @@ const ServicePage: FunctionComponent = () => {
             <span className="tw-text-grey-muted tw-font-normal">
               Dashboard Url :
             </span>{' '}
-            <span className="tw-pl-1tw-font-normal ">
+            <span className="tw-pl-1 tw-font-normal ">
               {serviceDetails?.dashboardUrl ? (
                 <a
-                  className="link-text"
+                  className="link-text tw-mr-1"
                   href={serviceDetails.dashboardUrl}
                   rel="noopener noreferrer"
                   target="_blank">
-                  {serviceDetails.dashboardUrl}
+                  <>
+                    <span className="tw-mr-1">
+                      {serviceDetails.dashboardUrl}
+                    </span>
+                    <SVGIcons
+                      alt="external-link"
+                      className="tw-align-middle"
+                      icon="external-link"
+                      width="12px"
+                    />
+                  </>
                 </a>
               ) : (
                 '--'

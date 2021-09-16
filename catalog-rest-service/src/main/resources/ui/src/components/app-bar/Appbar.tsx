@@ -238,8 +238,8 @@ const Appbar: React.FC = (): JSX.Element => {
                       <IconDefaultUserProfile
                         className=""
                         style={{
-                          height: '24px',
-                          width: '24px',
+                          height: '22px',
+                          width: '22px',
                           borderRadius: '50%',
                         }}
                       />
