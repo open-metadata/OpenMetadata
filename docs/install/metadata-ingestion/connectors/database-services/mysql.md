@@ -1,8 +1,8 @@
 ---
-description: This guide will help install Oracle connector and run manually
+description: This guide will help install MySQL connector and run manually
 ---
 
-# Oracle
+# MySQL
 
 {% hint style="info" %}
 **Prerequisites**
@@ -17,82 +17,74 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[oracle]'
+pip install 'openmetadata-ingestion[mysql]'
 python -m spacy download en_core_web_sm
-```
-{% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[oracle]'
 ```
 {% endtab %}
 {% endtabs %}
 
+### Run Manually
+
+```bash
+metadata ingest -c ./pipelines/mysql.json
+```
+
 ### Configuration
 
-{% code title="oracle.json" %}
+{% code title="mysql.json" %}
 ```javascript
 {
   "source": {
-    "type": "oracle",
+    "type": "mysql",
     "config": {
-      "host_port":"host_port",
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "service_name": "local_oracle",
-      "service_type": "Oracle"
+      "database": "openmetadata_db",
+      "service_name": "local_mysql",
+      "filter_pattern": {
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
     }
   },
  ...
 ```
 {% endcode %}
 
-1. **username** - pass the Oracle username. We recommend creating a user with read-only permissions to all the databases in your Oracle installation
+1. **username** - pass the MySQL username. We recommend creating a user with read-only permissions to all the databases in your MySQL installation
 2. **password** - password for the username
-3. **service\_name** - Service Name for this Oracle cluster. If you added Oracle cluster through OpenMetadata UI, make sure the service name matches the same.
+3. **service\_name** - Service Name for this MySQL cluster. If you added MySQL cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish Oracle data into the OpenMetadata service.
+Below is the configuration to publish MySQL data into the OpenMetadata service.
 
 Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
-{% code title="oracle.json" %}
+{% code title="mysql.json" %}
 ```javascript
 {
   "source": {
-    "type": "oracle",
+    "type": "mysql",
     "config": {
-      "host_port":"host_port",
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "service_name": "local_oracle",
-      "service_type": "Oracle"
-    }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
+      "database": "openmetadata_db",
+      "service_name": "local_mysql",
+      "filter_pattern": {
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
+      }
     }
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {
-    }
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+      "auth_provider_type": "no-auth"
     }
   },
   "cron": {
@@ -103,6 +95,7 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
+
 ```
 {% endcode %}
 

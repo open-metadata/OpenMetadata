@@ -22,17 +22,6 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[elasticsearch]'
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[elasticsearch]'
-```
-{% endtab %}
 {% endtabs %}
 
 ## Run Manually
