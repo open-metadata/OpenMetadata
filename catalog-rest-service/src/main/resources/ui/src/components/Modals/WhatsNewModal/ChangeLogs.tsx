@@ -21,45 +21,53 @@ import React from 'react';
 import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
-  data: {
-    highlight?: string;
-    bugFix?: string;
-    miscellaneous?: string;
-  };
+  data: { [name: string]: string };
 };
 
 const ChangeLogs = ({ data }: Props) => {
+  const logKeys: Array<string> = Object.keys(data);
+
   return (
     <div>
-      {data.highlight && (
-        <div className="tw-mb-4">
+      {logKeys.map((log, index) => (
+        <div className="tw-mb-4" key={index}>
           <div className="tw-border-b tw-mb-2.5 tw-border-text">
-            <p className="tw-text-base tw-font-medium tw-mb-2.5">Highlights</p>
+            <p className="tw-text-base tw-font-medium tw-mb-2.5">{log}</p>
           </div>
-          <RichTextEditorPreviewer markdown={data.highlight} />
+          <RichTextEditorPreviewer markdown={data[log]} />
         </div>
-      )}
-
-      {data.bugFix && (
-        <div className="tw-mb-4">
-          <div className="tw-border-b tw-mb-2.5 tw-border-text">
-            <p className="tw-text-base tw-font-medium tw-mb-2.5">Bug fixes</p>
-          </div>
-          <RichTextEditorPreviewer markdown={data.bugFix} />
-        </div>
-      )}
-
-      {data.miscellaneous && (
-        <div className="tw-mb-4">
-          <div className="tw-border-b tw-mb-2.5 tw-border-text">
-            <p className="tw-text-base tw-font-medium tw-mb-2.5">
-              Miscellaneous
-            </p>
-          </div>
-          <RichTextEditorPreviewer markdown={data.miscellaneous} />
-        </div>
-      )}
+      ))}
     </div>
+    // <div>
+    //   {data.highlight && (
+    //     <div className="tw-mb-4">
+    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
+    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">Highlights</p>
+    //       </div>
+    //       <RichTextEditorPreviewer markdown={data.highlight} />
+    //     </div>
+    //   )}
+
+    //   {data.bugFix && (
+    //     <div className="tw-mb-4">
+    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
+    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">Bug fixes</p>
+    //       </div>
+    //       <RichTextEditorPreviewer markdown={data.bugFix} />
+    //     </div>
+    //   )}
+
+    //   {data.miscellaneous && (
+    //     <div className="tw-mb-4">
+    //       <div className="tw-border-b tw-mb-2.5 tw-border-text">
+    //         <p className="tw-text-base tw-font-medium tw-mb-2.5">
+    //           Miscellaneous
+    //         </p>
+    //       </div>
+    //       <RichTextEditorPreviewer markdown={data.miscellaneous} />
+    //     </div>
+    //   )}
+    // </div>
   );
 };
 
