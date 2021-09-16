@@ -55,20 +55,10 @@ export const WHATS_NEW = [
       },
     ],
     changeLogs: {
-      OpenMetadata: `- Support for Kafka (and Pulsar WIP)\n
-                        - Support for Message Service and Topic entities in schemas, APIs, and UI\n
-                        - Kafka connector and ingestion support for Confluent Schema Registry\n
-                        - Support for Dashboards\n
-                        - Support for Dashboard services, Dashboards, and Charts entities in schemas, APIs, and UI\n
-                        - Looker, Superset, Tableau connector, and ingestion support`,
-      'Other features': `- Pluggable SSO integration - Auth0 support\n
-                          - Support for Presto`,
-      'User Interface': `- Sort search results based on Usage, Relevance, and Last updated time\n
-                          - Search string highlighted in search results\n
-                          - Support for Kafka and Dashboards from Looker, SuperSet, and Tableau`,
-      'Work in progress': `- Salesforce CRM connector\n
-                            - Data profiler to profile tables in ingestion framework and show it table details page\n
-                            - Redash dashboard connector`,
+      OpenMetadata: `- Support for Kafka (and Pulsar WIP)\n- Support for Message Service and Topic entities in schemas, APIs, and UI\n- Kafka connector and ingestion support for Confluent Schema Registry\n- Support for Dashboards\n- Support for Dashboard services, Dashboards, and Charts entities in schemas, APIs, and UI\n- Looker, Superset, Tableau connector, and ingestion support`,
+      'Other features': `- Pluggable SSO integration - Auth0 support\n- Support for Presto`,
+      'User Interface': `- Sort search results based on Usage, Relevance, and Last updated time\n- Search string highlighted in search results\n- Support for Kafka and Dashboards from Looker, SuperSet, and Tableau`,
+      'Work in progress': `- Salesforce CRM connector\n- Data profiler to profile tables in ingestion framework and show it table details page\n- Redash dashboard connector`,
     },
   },
 ];
