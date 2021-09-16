@@ -28,14 +28,14 @@ Type: `object`
  - Type: `object`
  - This schema <u>does not</u> accept additional properties.
  - **Properties**
-	 - **count** `required`
-		 - Usage count of a data asset on the start date.
-		 - Type: `integer`
-		 - Range:  &ge; 0
-	 - **percentileRank**
-		 - Optional daily percentile rank data asset use when relevant.
-		 - Type: `number`
-		 - Range: between 0 and 100
+   - **count** `required`
+     - Usage count of a data asset on the start date.
+     - Type: `integer`
+     - Range:  &ge; 0
+   - **percentileRank**
+     - Optional daily percentile rank data asset use when relevant.
+     - Type: `number`
+     - Range: between 0 and 100
 
 
 
