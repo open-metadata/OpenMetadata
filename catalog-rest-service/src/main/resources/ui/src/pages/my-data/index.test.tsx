@@ -184,6 +184,14 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
+jest.mock('../../components/searched-data/SearchedData', () => {
+  return jest.fn().mockReturnValue(<p>SearchedData</p>);
+});
+
+jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
+  return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
+});
+
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<MyDataPage />, {
@@ -202,8 +210,8 @@ describe('Test MyData page', () => {
 
     expect(tabs.length).toBe(3);
     expect(tabs.map((t) => t.textContent)).toStrictEqual([
-      'All',
-      'Owned',
+      'Recently Viewed',
+      'My Data',
       'Following',
     ]);
   });

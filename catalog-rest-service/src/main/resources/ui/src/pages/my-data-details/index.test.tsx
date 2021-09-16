@@ -20,8 +20,43 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataDetailsPage from './index';
 
-jest.mock('../../components/my-data-details/ManageTab', () => ({
-  ManageTab: jest.fn().mockReturnValue('ManageTab'),
+const mockUserTeam = [
+  {
+    description: 'description',
+    displayName: 'displayName',
+    href: 'href',
+    id: 'id',
+    name: 'name',
+    type: 'type',
+  },
+  {
+    description: 'description',
+    displayName: 'displayName',
+    href: 'href',
+    id: 'id',
+    name: 'name',
+    type: 'type',
+  },
+];
+
+jest.mock('../../components/my-data-details/ManageTab', () => {
+  return jest.fn().mockReturnValue(<p>ManageTab</p>);
+});
+
+jest.mock('../../components/common/description/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
+});
+
+jest.mock('../../components/my-data-details/SchemaTab', () => {
+  return jest.fn().mockReturnValue(<p>SchemaTab</p>);
+});
+
+jest.mock('../../utils/CommonUtils', () => ({
+  addToRecentViewed: jest.fn(),
+  getCurrentUserId: jest.fn().mockReturnValue('CurrentUserId'),
+  getPartialNameFromFQN: jest.fn().mockReturnValue('PartialNameFromFQN'),
+  // getTableFQNFromColumnFQN: jest.fn().mockReturnValue('TableFQNFromColumnFQN'),
+  getUserTeams: () => mockUserTeam,
 }));
 
 describe('Test MyDataDetailsPage page', () => {

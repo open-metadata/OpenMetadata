@@ -42,7 +42,7 @@ const CardListItem: FunctionComponent<Props> = ({
         <div className="tw-flex tw-flex-col">
           <h4 className={cardStyle.header.title}>{card.title}</h4>
           <p className={cardStyle.header.description}>
-            {card.description.replaceAll('*', '')}
+            {card.description.replace(/\*/g, '')}
           </p>
         </div>
         <div data-testid="icon">
