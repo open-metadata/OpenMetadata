@@ -35,7 +35,7 @@ jobs:
           python3 -m venv env
           source env/bin/activate
           cd ingestion
-          pip install '.[all]' pylint
+          pip install . pylint
           
       - name: Analysing the code with pylint
         run: |
