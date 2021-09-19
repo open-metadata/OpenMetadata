@@ -107,7 +107,7 @@ plugins: Dict[str, Set[str]] = {
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.2.2",
+    version="0.3.0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
