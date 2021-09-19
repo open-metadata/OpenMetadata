@@ -96,7 +96,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
             {showSearchBar && (
               <div className="has-search tw-p-4 tw-pb-2">
                 <input
-                  className="form-control form-control-sm search"
+                  className="tw-form-inputs tw-px-3 tw-py-1"
                   placeholder="Search..."
                   type="text"
                   onChange={(e) => {
@@ -114,11 +114,13 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               {listGroups.map((grp, index) => {
                 return (
                   <div key={index}>
-                    <span className="tw-flex tw-my-1 tw-text-grey-muted">
-                      <hr className="tw-mt-2 tw-w-full " />
-                      <span className="tw-text-xs tw-px-0.5">{grp}</span>{' '}
-                      <hr className="tw-mt-2 tw-w-full" />
-                    </span>
+                    {getSearchedListByGroup(grp).length > 0 && (
+                      <span className="tw-flex tw-my-1 tw-text-grey-muted">
+                        <hr className="tw-mt-2 tw-w-full " />
+                        <span className="tw-text-xs tw-px-0.5">{grp}</span>{' '}
+                        <hr className="tw-mt-2 tw-w-full" />
+                      </span>
+                    )}
                     {getSearchedListByGroup(grp).map(
                       (item: DropDownListItem, index: number) =>
                         getDropDownElement(item, index)

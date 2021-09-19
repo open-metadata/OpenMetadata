@@ -1,6 +1,8 @@
+import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
 import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png';
+import { useAuth } from '../../../hooks/authHooks';
 
 type Props = {
   type: 'error' | 'noData';
@@ -8,6 +10,14 @@ type Props = {
 };
 
 const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
+  const { isAuthDisabled } = useAuth();
+  const getUserDisplayName = () => {
+    return isAuthDisabled
+      ? AppState.users?.length > 0
+        ? AppState.users[0].displayName
+        : 'User'
+      : AppState.userDetails.displayName;
+  };
   const noRecordForES = () => {
     return (
       <>
@@ -69,11 +79,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
       </div>
       <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
         <p className="tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-          {`Hi, ${
-            AppState.userDetails.displayName || AppState.users?.length > 0
-              ? AppState.users[0].displayName
-              : 'User'
-          }!`}
+          {`Hi, ${getUserDisplayName()}!`}
         </p>
         {type === 'noData' && noRecordForES()}
         {type === 'error' && elasticSearchError()}
@@ -82,4 +88,4 @@ const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
   );
 };
 
-export default ErrorPlaceHolderES;
+export default observer(ErrorPlaceHolderES);

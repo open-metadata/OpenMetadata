@@ -17,6 +17,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isEmpty } from 'lodash';
+import { observer } from 'mobx-react';
 import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
@@ -64,13 +65,51 @@ const ManageTab: FunctionComponent<Props> = ({
       name: team?.displayName || team.name,
       value: team.id,
       group: 'Teams',
+      type: 'team',
     }));
 
-    return user
-      ? [{ name: user.displayName, value: user.id }, ...teams]
-      : teams;
+    if (user?.isAdmin) {
+      const users = appState.users
+        .map((user) => ({
+          name: user.displayName,
+          value: user.id,
+          group: 'Users',
+          type: 'user',
+        }))
+        .filter((u) => u.value != user.id);
+      const teams = appState.userTeams.map((team) => ({
+        name: team.displayName || team.name,
+        value: team.id,
+        group: 'Teams',
+        type: 'team',
+      }));
+
+      return [
+        {
+          name: user.displayName,
+          value: user.id,
+          group: 'Users',
+          type: 'user',
+        },
+        ...users,
+        ...teams,
+      ];
+    } else {
+      return user
+        ? [
+            {
+              name: user.displayName,
+              value: user.id,
+              group: 'Users',
+              type: 'user',
+            },
+            ...teams,
+          ]
+        : teams;
+    }
   });
   const [owner, setOwner] = useState(currentUser);
+  const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -101,7 +140,9 @@ const ManageTab: FunctionComponent<Props> = ({
       owner !== currentUser
         ? {
             id: owner,
-            type: owner === listOwners[0].value ? 'user' : 'team',
+            type: listOwners.find((item) => item.value === owner)?.type as
+              | 'user'
+              | 'team',
           }
         : undefined;
     const newTier = activeTier !== currentTier ? activeTier : undefined;
@@ -117,6 +158,7 @@ const ManageTab: FunctionComponent<Props> = ({
   };
 
   const getTierData = () => {
+    setIsLoadingTierData(true);
     getCategory('Tier').then((res: AxiosResponse) => {
       if (res.data) {
         const tierData = res.data.children.map(
@@ -134,8 +176,10 @@ const ManageTab: FunctionComponent<Props> = ({
         );
 
         setTierData(tierData);
+        setIsLoadingTierData(false);
       } else {
         setTierData([]);
+        setIsLoadingTierData(false);
       }
     });
   };
@@ -187,8 +231,9 @@ const ManageTab: FunctionComponent<Props> = ({
           </Button>
           {listVisible && (
             <DropDownList
+              showSearchBar
               dropDownList={listOwners}
-              listGroups={['Teams']}
+              listGroups={['Users', 'Teams']}
               value={owner}
               onSelect={handleOwnerSelection}
             />
@@ -196,24 +241,28 @@ const ManageTab: FunctionComponent<Props> = ({
         </span>
       </div>
       <div className="tw-flex tw-flex-col">
-        {tierData.map((card, i) => (
-          <NonAdminAction
-            html={
-              <>
-                <p>You need to be owner to perform this action</p>
-                <p>Claim ownership from above </p>
-              </>
-            }
-            isOwner={hasEditAccess || Boolean(owner)}
-            key={i}
-            position="left">
-            <CardListItem
-              card={card}
-              isActive={activeTier === card.id}
-              onSelect={handleCardSelection}
-            />
-          </NonAdminAction>
-        ))}
+        {isLoadingTierData ? (
+          <Loader />
+        ) : (
+          tierData.map((card, i) => (
+            <NonAdminAction
+              html={
+                <>
+                  <p>You need to be owner to perform this action</p>
+                  <p>Claim ownership from above </p>
+                </>
+              }
+              isOwner={hasEditAccess || Boolean(owner)}
+              key={i}
+              position="left">
+              <CardListItem
+                card={card}
+                isActive={activeTier === card.id}
+                onSelect={handleCardSelection}
+              />
+            </NonAdminAction>
+          ))
+        )}
       </div>
       <div className="tw-mt-6 tw-text-right">
         <Button
@@ -256,4 +305,4 @@ const ManageTab: FunctionComponent<Props> = ({
   );
 };
 
-export default ManageTab;
+export default observer(ManageTab);
