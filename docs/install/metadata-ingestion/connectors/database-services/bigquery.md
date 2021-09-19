@@ -21,17 +21,6 @@ pip install 'openmetadata-ingestion[bigquery]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[bigquery]'
-```
-{% endtab %}
 {% endtabs %}
 
 ## Run Manually
@@ -67,11 +56,20 @@ metadata ingest -c ./examples/workflows/bigquery.json
   "source": {
     "type": "bigquery",
     "config": {
-      "project_id": "project-id",
+      "project_id": "project_id",
+      "host_port": "bigquery.googleapis.com",
       "username": "username",
-      "host_port": "https://bigquery.googleapis.com",
       "service_name": "gcp_bigquery",
-      "service_type": "BigQuery"
+      "options": {
+        "credentials_path": "examples/creds/bigquery-cred.json"
+      },
+      "filter_pattern": {
+        "excludes": [
+          "[\\w]*cloudaudit.*",
+          "[\\w]*logging_googleapis_com.*",
+          "[\\w]*clouderrorreporting.*"
+        ]
+      }
     }
   },
 ```
@@ -95,17 +93,20 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
   "source": {
     "type": "bigquery",
     "config": {
-      "project_id": "project-id",
+      "project_id": "project_id",
+      "host_port": "bigquery.googleapis.com",
       "username": "username",
-      "host_port": "https://bigquery.googleapis.com",
       "service_name": "gcp_bigquery",
-      "service_type": "BigQuery"
-    }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
+      "options": {
+        "credentials_path": "examples/creds/bigquery-cred.json"
+      },
+      "filter_pattern": {
+        "excludes": [
+          "[\\w]*cloudaudit.*",
+          "[\\w]*logging_googleapis_com.*",
+          "[\\w]*clouderrorreporting.*"
+        ]
+      }
     }
   },
   "sink": {

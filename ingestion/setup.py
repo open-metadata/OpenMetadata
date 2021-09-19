@@ -42,8 +42,7 @@ scheduler_requirements = {
 }
 
 profiler_requirements = {
-    "openmetadata-data-profiler@git+git://github.com/open-metadata/data-profiler.git#egg"
-    "=openmetadata-data-profiler"
+    "openmetadata-data-profiler@git+git://github.com/open-metadata/data-profiler.git#egg=openmetadata-data-profiler"
 }
 
 base_requirements = {
@@ -92,7 +91,6 @@ plugins: Dict[str, Set[str]] = {
     "pii-processor": {"pandas~=1.3.1"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
-    "profiler": {"ruamel.yaml", "jsonpatch", "pandas", "IPython", "jsonschema", "scipy", "mistune", "altair", "tzlocal"},
     "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,

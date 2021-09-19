@@ -13,7 +13,8 @@
       "index_tables": "true",
       "index_topics": "true",
       "index_dashboards": "true",
-      "es_host_port": "localhost"
+      "es_host": "localhost",
+      "es_port": 9300
     }
   },
   "metadata_server": {

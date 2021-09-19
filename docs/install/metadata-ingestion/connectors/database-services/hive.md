@@ -22,19 +22,6 @@ pip install 'openmetadata-ingestion[hive]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-#install hive-sasl library
-sudo apt-get install libsasl2-dev
-python3 -m venv env
-source env/bin/activate
-pip install '.[hive]'
-```
-{% endtab %}
 {% endtabs %}
 
 ### Configuration
@@ -46,7 +33,6 @@ pip install '.[hive]'
     "type": "hive",
     "config": {
       "service_name": "local_hive",
-      "service_type": "Hive",
       "host_port": "localhost:10000"
     }
   },
@@ -70,13 +56,8 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "type": "hive",
     "config": {
       "service_name": "local_hive",
-      "service_type": "Hive",
       "host_port": "localhost:10000"
     }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",
@@ -97,6 +78,7 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
+
 
 ```
 {% endcode %}

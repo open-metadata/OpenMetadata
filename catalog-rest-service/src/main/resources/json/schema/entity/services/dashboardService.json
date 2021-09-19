@@ -6,7 +6,7 @@
   "type": "object",
   "definitions": {
     "dashboardServiceType": {
-      "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau",
+      "description": "Type of Dashboard service - Superset, Looker, Redash or Tableau.",
       "type": "string",
       "enum": [
         "Superset",
@@ -50,16 +50,16 @@
       "type": "string"
     },
     "dashboardUrl": {
-      "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service",
+      "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.",
       "type": "string",
       "format": "uri"
     },
     "username" : {
-      "description": "Username to log-into Dashboard Service",
+      "description": "Username to log-into Dashboard Service.",
       "type": "string"
     },
     "password" : {
-      "description": "Password to log-into Dashboard Service",
+      "description": "Password to log-into Dashboard Service.",
       "type": "string"
     },
     "ingestionSchedule": {

@@ -2,12 +2,12 @@
   "$id": "https://open-metadata.org/schema/entity/data/chart.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Chart",
-  "description": "This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard",
+  "description": "This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.",
   "type": "object",
   "definitions": {
     "chartType": {
       "javaType": "org.openmetadata.catalog.type.ChartType",
-      "description": "This schema defines the type used for describing different types of charts",
+      "description": "This schema defines the type used for describing different types of charts.",
       "type": "string",
       "enum": [
         "Line",
@@ -67,7 +67,7 @@
       "maxLength": 64
     },
     "displayName": {
-      "description": "Display Name that identifies this Chart. It could be title or label from the source services",
+      "description": "Display Name that identifies this Chart. It could be title or label from the source services.",
       "type": "string"
     },
     "fullyQualifiedName": {
@@ -84,7 +84,7 @@
       "$ref": "#/definitions/chartType"
     },
     "chartUrl" : {
-      "description": "Chart URL, pointing to its own Service URL",
+      "description": "Chart URL, pointing to its own Service URL.",
       "type": "string",
       "format": "uri"
     },
