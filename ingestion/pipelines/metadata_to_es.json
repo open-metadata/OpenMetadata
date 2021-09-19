@@ -14,7 +14,7 @@
       "index_topics": "true",
       "index_dashboards": "true",
       "es_host": "localhost",
-      "es_port": 9300
+      "es_port": 9200
     }
   },
   "metadata_server": {

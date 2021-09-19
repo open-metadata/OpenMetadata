@@ -21,7 +21,6 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
 from pydantic import ValidationError
-from metadata.config.common import ConfigurationError
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -78,7 +77,7 @@ class SQLConnectionConfig(ConfigModel):
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
-    data_profiler_enabled: Optional[bool] = True
+    data_profiler_enabled: Optional[bool] = False
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
