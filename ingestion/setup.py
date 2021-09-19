@@ -65,8 +65,7 @@ base_requirements = {
     "requests~=2.25.1"
 }
 pii_requirements = {
-    "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3"
-    ".0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
+    "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
     "pandas~=1.3.1",
     "spacy==3.0.5"
 }
@@ -90,13 +89,13 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "pii-processor": {"openmetadata-data-profiler"},
+    "pii-processor": pii_requirements,
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
-    "data-profiler": profiler_requirements,
+    "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
     "sample-data": {"faker~=8.1.1","pandas~=1.3.1"},
