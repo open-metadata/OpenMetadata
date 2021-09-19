@@ -10,5 +10,3 @@ Follow the sections in this guide to set up Google SSO.
 
 {% page-ref page="configure-security-ingestion.md" %}
 
-
-

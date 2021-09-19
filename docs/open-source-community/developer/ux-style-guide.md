@@ -4,7 +4,5 @@ The purpose of a style guide is to make sure that multiple contributors create i
 
 [Click here](https://www.figma.com/file/sw3NcGyvATuwL4l7astZXL/OpenMetadata-Style-Guide) to see the Figma design.
 
-{% file src="../../.gitbook/assets/openmetadata-style-guide.pdf" caption="OpenMetadata Style Guide" %}
-
-
+{% file src="../../.gitbook/assets/openmetadata-style-guide \(4\).pdf" caption="OpenMetadata Style Guide" %}
 

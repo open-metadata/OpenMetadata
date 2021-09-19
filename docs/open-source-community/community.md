@@ -9,5 +9,3 @@ description: Please Join our Community to push OpenMetadata forward.
 * Join and participate in community discussions at the [OpenMetadata Group](https://groups.google.com/g/openmetadata-users) mailing list.
 * Follow us on Twitter - [@open\_metadata](https://twitter.com/open_metadata)
 
-
-

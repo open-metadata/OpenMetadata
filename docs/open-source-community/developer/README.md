@@ -10,5 +10,3 @@ This document summarizes information relevant to OpenMetadata committers and con
 
 {% page-ref page="run-integration-tests.md" %}
 
-
-

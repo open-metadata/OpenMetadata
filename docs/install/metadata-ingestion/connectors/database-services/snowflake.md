@@ -103,7 +103,6 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
-
 ```
 {% endcode %}
 

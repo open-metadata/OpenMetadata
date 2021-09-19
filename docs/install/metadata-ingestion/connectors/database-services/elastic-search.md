@@ -85,7 +85,6 @@ Add Optionally `file` stage and `elasticsearch` bulk\_sink along with `metadata-
     "day_of_week": null
   }
 }
-
 ```
 {% endcode %}
 

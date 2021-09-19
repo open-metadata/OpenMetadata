@@ -10,5 +10,3 @@ Follow the sections in this guide to set up Okta SSO.
 
 {% page-ref page="configure-security-ingestion.md" %}
 
-
-

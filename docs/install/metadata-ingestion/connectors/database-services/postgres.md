@@ -12,7 +12,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-### Install from PyPI or Source
+## Install from PyPI or Source
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -23,13 +23,13 @@ python -m spacy download en_core_web_sm
 {% endtab %}
 {% endtabs %}
 
-### Run Manually
+## Run Manually
 
 ```bash
 metadata ingest -c ./examples/workflows/postgres.json
 ```
 
-### Configuration
+## Configuration
 
 {% code title="postgres.json" %}
 ```javascript
@@ -54,7 +54,7 @@ metadata ingest -c ./examples/workflows/postgres.json
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
-### Publish to OpenMetadata
+## Publish to OpenMetadata
 
 Below is the configuration to publish Postgres data into the OpenMetadata service.
 

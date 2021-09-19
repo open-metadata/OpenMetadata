@@ -11,6 +11,7 @@ OpenMetadata has the following high-level core entities and relationships:
 5. **Glossary and Tags** - Entities for defining business glossary that includes hierarchical tags.
 
 ## List of Schema Entities
+
 {% page-ref page="bot.md" %}
 
 {% page-ref page="chart.md" %}

@@ -63,5 +63,3 @@ Following is an example of a JSON schema of the User entity with attributes id, 
 }
 ```
 
-## 
-

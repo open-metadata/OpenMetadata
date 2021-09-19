@@ -16,13 +16,9 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 
 {% page-ref page="postgres.md" %}
 
-{% page-ref page="redshift.md" %}
-
 {% page-ref page="redshift-usage.md" %}
 
 {% page-ref page="snowflake.md" %}
 
 {% page-ref page="snowflake-usage.md" %}
-
-
 

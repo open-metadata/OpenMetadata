@@ -237,5 +237,3 @@ DELETE http://localhost:8585/api/v1/users/6feb5287-f3c5-457f-86ae-95bcfb82e867
 200 OK
 ```
 
-
-

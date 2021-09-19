@@ -31,7 +31,7 @@ metadata ingest -c ./pipelines/confluent_kafka.json
 
 ### Configuration
 
-{% code title="confluent_kafka.json" %}
+{% code title="confluent\_kafka.json" %}
 ```javascript
 {
   "source": {
@@ -58,7 +58,7 @@ Below is the configuration to publish Kafka data into the OpenMetadata service.
 
 Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
-{% code title="confluent_kafka.json" %}
+{% code title="confluent\_kafka.json" %}
 ```javascript
 {
   "source": {

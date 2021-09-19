@@ -58,7 +58,7 @@ metadata ingest -c ./examples/workflows/snowflake_usage.json
 
 Below is the configuration to publish Snowflake Usage data into the OpenMetadata service.
 
-Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage` bulk\_sink along with `metadata-server` config
+Add Optionally `query-parser` processor, `table-usage` stage and`metadata-usage` bulk\_sink along with `metadata-server` config
 
 {% code title="snowflake\_usage.json" %}
 ```javascript
@@ -108,7 +108,6 @@ Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage
     "day_of_week": null
   }
 }
-
 ```
 {% endcode %}
 
