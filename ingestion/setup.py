@@ -41,9 +41,6 @@ scheduler_requirements = {
     "simplescheduler@git+git://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
 }
 
-profiler_requirements = {
-    "openmetadata-data-profiler"
-}
 
 base_requirements = {
     "commonregex",
@@ -93,7 +90,7 @@ plugins: Dict[str, Set[str]] = {
     "mssql-odbc": {"pyodbc"},
     "mysql": {"pymysql>=1.0.2"},
     "oracle": {"cx_Oracle"},
-    "pii-processor": pii_requirements,
+    "pii-processor": {"openmetadata-data-profiler"},
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redshift": {"sqlalchemy-redshift", "GeoAlchemy2", "psycopg2-binary"},
