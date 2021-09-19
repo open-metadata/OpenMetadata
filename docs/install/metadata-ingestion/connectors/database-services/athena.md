@@ -21,17 +21,6 @@ pip install 'openmetadata-ingestion[athena]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[athena]'
-```
-{% endtab %}
 {% endtabs %}
 
 ### Configuration

@@ -14,14 +14,10 @@ description: This guide will help install Presto connector and run manually
 ### Install from PyPI or Source
 
 {% tabs %}
-{% tab title="Build from source " %}
+{% tab title="Install Using PyPI" %}
 ```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[presto]'
+pip install 'openmetadata-ingestion[tableau]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 {% endtabs %}
@@ -40,11 +36,8 @@ metadata ingest -c ./examples/workflows/presto.json
     "type": "presto",
     "config": {
       "service_name": "local_presto",
-      "service_type": "Presto",
       "host_port": "192.168.1.32:8080",
       "database": "default"
-      "username": "username" (optional)
-      "password": "password" (optional)
     }
   }, ...
 ```
@@ -69,15 +62,8 @@ add `metadata-rest-tables` sink along with `metadata-server` config
     "type": "presto",
     "config": {
       "service_name": "local_presto",
-      "service_type": "Presto",
       "host_port": "192.168.1.32:8080",
       "database": "default"
-    }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
     }
   },
   "sink": {
@@ -89,7 +75,7 @@ add `metadata-rest-tables` sink along with `metadata-server` config
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+      "auth_provider_type": "no-auth"
     }
   },
   "cron": {

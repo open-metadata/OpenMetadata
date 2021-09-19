@@ -21,17 +21,6 @@ pip install 'openmetadata-ingestion[mssql]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[mssql]'
-```
-{% endtab %}
 {% endtabs %}
 
 ## Run Manually
@@ -50,12 +39,12 @@ metadata ingest -c ./examples/workflows/mssql.json
     "config": {
       "host_port": "localhost:1433",
       "service_name": "local_mssql",
-      "service_type": "MSSQL",
-      "database":"catalog_test",
+      "database": "catalog_test",
+      "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
       "filter_pattern": {
-        "includes": ["catalog_test.*"]
+        "excludes": ["catalog_test.*"]
       }
     }
   },
@@ -84,24 +73,18 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "config": {
       "host_port": "localhost:1433",
       "service_name": "local_mssql",
-      "service_type": "MSSQL",
-      "database":"catalog_test",
+      "database": "catalog_test",
+      "query": "select top 50 * from {}.{}",
       "username": "sa",
       "password": "test!Password",
-      "include_pattern": {
+      "filter_pattern": {
         "excludes": ["catalog_test.*"]
       }
     }
   },
-  "processor": {
-    "type": "pii",
-    "config": {
-    }
-  },
   "sink": {
     "type": "metadata-rest",
-    "config": {
-    }
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
@@ -118,6 +101,7 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
+
  ...
 ```
 {% endcode %}

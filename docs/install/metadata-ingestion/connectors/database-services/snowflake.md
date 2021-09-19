@@ -21,17 +21,6 @@ pip install 'openmetadata-ingestion[snowflake]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[snowflake]'
-```
-{% endtab %}
 {% endtabs %}
 
 ## Run Manually
@@ -54,12 +43,9 @@ metadata ingest -c ./examples/workflows/snowflake.json
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "service_type": "Snowflake",
       "filter_pattern": {
-        "includes": [
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf10tcl"
+        "excludes": [
+          "tpcds_sf100tcl"
         ]
       }
     }
@@ -91,19 +77,12 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "service_type": "Snowflake",
       "filter_pattern": {
-        "includes": [
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf100tcl",
-          "(\\w)*tpcds_sf10tcl"
+        "excludes": [
+          "tpcds_sf100tcl"
         ]
       }
     }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",

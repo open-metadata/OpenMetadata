@@ -1,8 +1,8 @@
 ---
-description: This guide will help install Redshift connector and run manually
+description: This guide will help install Redshift Usage connector and run manually
 ---
 
-# Redshift
+# Redshift Usage
 
 {% hint style="info" %}
 **Prerequisites**
@@ -17,19 +17,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[redshift]'
-python -m spacy download en_core_web_sm
-```
-{% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[redshift]'
+pip install 'openmetadata-ingestion[redshift-usage]'
 ```
 {% endtab %}
 {% endtabs %}
@@ -37,23 +25,24 @@ pip install '.[redshift]'
 ## Run Manually
 
 ```bash
-metadata ingest -c ./examples/workflows/redshift.json
+metadata ingest -c ./examples/workflows/redshift_usage.json
 ```
 
 ### Configuration
 
-{% code title="redshift.json" %}
+{% code title="redshift\_usage.json" %}
 ```javascript
 {
   "source": {
-    "type": "redshift",
+    "type": "redshift-usage",
     "config": {
-      "host_port": "cluster.user.region.redshift.amazonaws.com:5439",
+      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
       "username": "username",
-      "password": "password",
+      "password": "strong_password",
       "database": "warehouse",
+      "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
       "service_name": "aws_redshift",
-      "service_type": "Redshift"
+      "duration": 2
     }
   },
  ...
@@ -67,31 +56,42 @@ metadata ingest -c ./examples/workflows/redshift.json
 
 ## Publish to OpenMetadata
 
-Below is the configuration to publish Redshift data into the OpenMeatadata service.
+Below is the configuration to publish Redshift Usage data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally`query-parser` processor, `table-usage` stage and `metadata-usage` bulk\_sink along with `metadata-server` config
 
-{% code title="redshift.json" %}
+{% code title="redshift\_usage.json" %}
 ```javascript
 {
   "source": {
-    "type": "redshift",
+    "type": "redshift-usage",
     "config": {
-      "host_port": "cluster.user.region.redshift.amazonaws.com:5439",
+      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
       "username": "username",
-      "password": "password",
+      "password": "strong_password",
       "database": "warehouse",
+      "where_clause": "and q.label != 'metrics' and q.label != 'health' and q.label != 'cmstats'",
       "service_name": "aws_redshift",
-      "service_type": "Redshift"
+      "duration": 2
     }
   },
   "processor": {
-    "type": "pii",
-    "config": {}
+    "type": "query-parser",
+    "config": {
+      "filter": ""
+    }
   },
-  "sink": {
-    "type": "metadata-rest",
-    "config": {}
+  "stage": {
+    "type": "table-usage",
+    "config": {
+      "filename": "/tmp/redshift_usage"
+    }
+  },
+  "bulk_sink": {
+    "type": "metadata-usage",
+    "config": {
+      "filename": "/tmp/redshift_usage"
+    }
   },
   "metadata_server": {
     "type": "metadata-server",

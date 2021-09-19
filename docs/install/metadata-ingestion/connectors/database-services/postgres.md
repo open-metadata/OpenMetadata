@@ -21,17 +21,6 @@ pip install 'openmetadata-ingestion[postgres]'
 python -m spacy download en_core_web_sm
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[postgres]'
-```
-{% endtab %}
 {% endtabs %}
 
 ### Run Manually
@@ -52,10 +41,7 @@ metadata ingest -c ./examples/workflows/postgres.json
       "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
-      "service_name": "local_postgres",
-      "service_type": "Postgres",
-      "filter_pattern": {
-        "excludes": ["pg_openmetadata.*[a-zA-Z0-9]*","information_schema.*[a-zA-Z0-9]*"]      }
+      "service_name": "local_postgres"
     }
   },
  ...
@@ -84,13 +70,8 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
-      "service_name": "local_postgres",
-      "service_type": "Postgres"
+      "service_name": "local_postgres"
     }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {}
   },
   "sink": {
     "type": "metadata-rest",

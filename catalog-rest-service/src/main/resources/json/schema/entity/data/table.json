@@ -251,19 +251,19 @@
           "type": "string"
         },
         "uniqueCount": {
-          "description": "No. of unique values in the column",
+          "description": "No. of unique values in the column.",
           "type": "number"
         },
         "uniqueProportion": {
-          "description": "Proportion of number of unique values in a column",
+          "description": "Proportion of number of unique values in a column.",
           "type": "number"
         },
         "nullCount": {
-          "description": "No.of null values in a column",
+          "description": "No.of null values in a column.",
           "type": "number"
         },
         "nullProportion": {
-          "description": "No.of null value proportion in columns",
+          "description": "No.of null value proportion in columns.",
           "type": "number"
         },
         "min": {
