@@ -19,7 +19,6 @@ description: This guide will help install Hive connector and run manually
 #install hive-sasl library
 sudo apt-get install libsasl2-dev
 pip install 'openmetadata-ingestion[hive]'
-python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 {% endtabs %}
