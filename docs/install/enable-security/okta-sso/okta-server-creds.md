@@ -53,7 +53,7 @@
 * Click on your application.
 * You will find your **Client id**, **Client secret,** and **Okta domain**.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
+![](../../../.gitbook/assets/screenshot-from-2021-09-20-14-59-07.png)
 
 * To get your **issuer** and **audience** click on **Sign On** available on top of the form.
 
