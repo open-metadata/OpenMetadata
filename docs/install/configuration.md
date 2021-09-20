@@ -117,7 +117,7 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
 ```
 
-EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you to leave it there as it enhances the user experience.
+EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you leave it there as it enhances the user experience.
 
 ## Healthcheck
 

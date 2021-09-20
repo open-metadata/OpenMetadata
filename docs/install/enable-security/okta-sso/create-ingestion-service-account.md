@@ -10,7 +10,7 @@ description: This is a guide to create ingestion bot service app.
 * For a production use case, use your own [internal instance](https://github.com/mitreid-connect/mkjwk.org) of the key pair generator.
 * For production use case, clone the repository using `git clone https://github.com/mitreid-connect/mkjwk.org.git`.
 * Use `mvn package -DskipTests && java -jar target/ROOT.war` to run the above repo.
-* Go to `http:localhost:8080` to generate **public/private key pair**.
+* Go to `http:localhost:8080` to generate **public/private key pairs**.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/126946539-cb31793d-7616-4343-821b-8e190d626b63.png)
 

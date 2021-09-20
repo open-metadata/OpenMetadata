@@ -25,7 +25,7 @@ cd openmetdata-0.3.0
 ./bin/openmetdata start
 ```
 
-We recommend configuring serviced to monitor openmetadata command to restart in case of any failures.
+We recommend configuring serviced to monitor the OpenMetadata command to restart in case of any failures.
 
 ## Running with a load balancer
 

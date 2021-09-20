@@ -6,7 +6,7 @@ description: This is a guide to configure Ingestion Connectors with security.
 
 ## Add Metadata Authentication for Connectors
 
-All Connectors have **metadata\_server** config. Pass the public/private keypair generated in step 1 in [Create Service Account](create-ingestion-service-account.md) as secret\_key
+All Connectors have **metadata\_server** config. Pass the public/private key pair generated in step 1 in [Create Service Account](create-ingestion-service-account.md) as secret\_key
 
 {% code title="Connector Config for MySQL Connector:" %}
 ```javascript

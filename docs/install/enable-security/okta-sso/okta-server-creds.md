@@ -10,7 +10,7 @@
 
 ## Step 2: Create the OIDC app integration.
 
-* Once done with **signup/signin** you will be redirected to the **getting started** page of okta.
+* Once done with **signup/sign in** you will be redirected to the **getting started** page of okta.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376300-e600d100-d5a7-11eb-8ceb-e90b5e265ce9.png)
 

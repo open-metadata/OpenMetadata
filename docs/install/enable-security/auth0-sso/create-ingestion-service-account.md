@@ -26,7 +26,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190048-7c19da03-6d05-4217-ab7f-5e5348561174.png)
 
-* Now scroll further down util you see `Addition Settings`.
+* Now scroll further down until you see `Addition Settings`.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190051-a3b7e740-6e4a-4dad-b95b-33eb7568f496.png)
 
@@ -58,7 +58,7 @@ description: This is a guide to create ingestion bot service account.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190088-a4a1931d-a6e7-48ee-a9ed-201bca85f2f3.png)
 
-* You will see you application listed below
+* You will see your application listed below
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/130190073-ad31b0aa-fcf1-494c-9313-6eb6ddc86858.png)
 
