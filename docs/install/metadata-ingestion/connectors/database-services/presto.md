@@ -11,7 +11,7 @@ description: This guide will help install Presto connector and run manually
 2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}

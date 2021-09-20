@@ -11,7 +11,7 @@ description: This guide will help install Hive connector and run manually
 2. Library: **libsasl2-dev** Hive connector uses `pyhive` to connect and fetch metadata. Pyhive has python sasl dependency and which requires libsasl2-dev to be installed. In some cases, you may need to set LD\_LIBRARY\_PATH to point to where libsasl2-dev is installed. Please check on how to install libsasl2 for your Linux Distro.
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}

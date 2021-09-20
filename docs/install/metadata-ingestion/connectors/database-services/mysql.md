@@ -12,7 +12,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -25,7 +25,7 @@ pip install 'openmetadata-ingestion[mysql]'
 ### Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/mysql.json
+metadata ingest -c ./examples/workflows/mysql.json
 ```
 
 ### Configuration

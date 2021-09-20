@@ -12,15 +12,15 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-## Install from PyPI or Source <a id="install-from-pypi-or-source"></a>
+## Install from PyPI <a id="install-from-pypi-or-source"></a>
 
-```text
+```javascript
 pip install 'openmetadata-ingestion[redshift]'
 ```
 
 ## Run Manually <a id="run-manually"></a>
 
-```text
+```javascript
 metadata ingest -c ./examples/workflows/redshift.json
 ```
 
@@ -58,7 +58,7 @@ Below is the configuration to publish Redshift data into the OpenMetadata servic
 Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
 
 {% code title="redshift.json" %}
-```text
+```javascript
 {
   "source": {
     "type": "redshift",
