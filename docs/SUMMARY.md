@@ -89,6 +89,8 @@
       * [Vertica](install/metadata-ingestion/connectors/database-services/vertica.md)
     * [Messaging Services](install/metadata-ingestion/connectors/messaging-services/README.md)
       * [Kafka](install/metadata-ingestion/connectors/messaging-services/kafka.md)
+    * [Processors](install/metadata-ingestion/connectors/processors/README.md)
+      * [PII](install/metadata-ingestion/connectors/processors/pii.md)
   * [Scheduler](install/metadata-ingestion/scheduler.md)
   * [Airflow](install/metadata-ingestion/airflow.md)
 

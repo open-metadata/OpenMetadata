@@ -8,3 +8,7 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 {% page-ref page="messaging-services/" %}
 
+{% page-ref page="processors/" %}
+
+
+
