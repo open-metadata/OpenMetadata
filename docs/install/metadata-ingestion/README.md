@@ -4,8 +4,10 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 
 ## Guides
 
-* [Ingest Sample Data](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/ingest-sample-data)
-* [Explore Connectors & Install](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/connectors/)
-* [Run Simple Scheduler](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/scheduler)
-* [Configure Airflow](https://docs.open-metadata.org/v/docs/install/metadata-ingestion/airflow)
+* [Ingest Sample Data](ingest-sample-data.md)
+* [Explore Connectors & Install](connectors/)
+* [Run Simple Scheduler](scheduler.md)
+* [Configure Airflow](airflow.md)
+
+
 
