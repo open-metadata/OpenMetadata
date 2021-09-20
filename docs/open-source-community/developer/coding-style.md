@@ -61,7 +61,7 @@ description: >-
    ```
 
 3. Logging statements should be complete sentences with proper capitalization that are written to be read by a person not necessarily familiar with the source code.
-4. String appending using StringBuilders should not be used for building log messages.
+4. String appending using StringBuilder should not be used for building log messages.
 
    Formatting should be used. For example:
 

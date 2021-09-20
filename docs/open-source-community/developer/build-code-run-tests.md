@@ -10,7 +10,7 @@ The following commands must be run from the top-level directory.
 
 `mvn clean install`
 
-If you wish to skip the unit tests you can do this by adding `-DskipTests` to the command line.
+If you wish to skip the unit tests you can do this by adding`-DskipTests`to the command line.
 
 ## Create a distribution \(packaging\)
 

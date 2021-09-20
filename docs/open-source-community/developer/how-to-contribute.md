@@ -6,13 +6,13 @@ We ❤️ all contributions, big and small!
 
 ## Github issues
 
-Look for issues under [github/issues tab](https://github.com/open-metadata/OpenMetadata/issues) . If you have a feature request or found a bug please file an issue. This will help us track and will help community overall as well.
+Look for issues under [Github/issues tab](https://github.com/open-metadata/OpenMetadata/issues). If you have a feature request or found a bug please file an issue. This will help us track and will help the community overall as well.
 
 ![./images/new-issue.png](../../.gitbook/assets/new-issue.png)
 
 ## Fork Github project
 
-OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) .
+OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata).
 
 ![./images/fork-github.png](../../.gitbook/assets/fork-github%20%281%29.png)
 
@@ -22,7 +22,7 @@ Create a local clone of your fork
 git clone https://github.com/<username>/OpenMetadata.git
 ```
 
-Set a new remote repository that points to the OpenMetadata repository to pull changes from the open source OpenMetadata codebase into your clone
+Set a new remote repository that points to the OpenMetadata repository to pull changes from the open-source OpenMetadata codebase into your clone
 
 ```bash
 cd OpenMetadata/
@@ -36,7 +36,7 @@ git remote -v
 git checkout -b ISSUE-200
 ```
 
-Make changes. Follow the [Coding Style](coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to setup Intellij, Maven
+Make changes. Follow the [Coding Style](coding-style.md) Guide on best practices and [Build the code & run tests](build-code-run-tests.md) on how to set up IntelliJ, Maven.
 
 ## Push your changes to Github
 
@@ -59,5 +59,5 @@ git push origin HEAD:refs/heads/issue-200
 
 ## We are here to help
 
-Please reach out to us anytime you need any help. [Slack](https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email) would be fastest way to get a response.
+Please reach out to us anytime you need any help. [Slack](https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email) would be the fastest way to get a response.
 

@@ -12,7 +12,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
-### Install from PyPi
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPi" %}
