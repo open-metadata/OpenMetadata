@@ -255,7 +255,7 @@ public class DashboardResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Dashboard dashboard = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(dashboard));
+            dao.getOwnerReference(dashboard));
     dashboard = dao.patch(id, patch);
     return addHref(uriInfo, dashboard);
   }

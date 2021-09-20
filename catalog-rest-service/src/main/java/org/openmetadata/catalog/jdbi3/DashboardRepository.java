@@ -207,6 +207,11 @@ public abstract class DashboardRepository {
     relationshipDAO().deleteAll(id);
   }
 
+  @Transaction
+  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
+    return EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner());
+  }
+
   public static List<EntityReference> toEntityReference(List<Chart> charts) {
     List<EntityReference> refList = new ArrayList<>();
     for (Chart chart: charts) {
