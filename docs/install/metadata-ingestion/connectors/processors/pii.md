@@ -18,10 +18,8 @@ pip install 'openmetadata-ingestion[pii-processor]'
 
 ```javascript
   "processor": {
-    "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "type": "pii",
+    "config": {}
   },
 ```
 
@@ -53,10 +51,8 @@ Following is the example for mysql.json
     }
   },
   "processor": {
-    "type": "query-parser",
-    "config": {
-      "filter": ""
-    }
+    "type": "pii",
+    "config": {}
   },
   "sink": {
     "type": "metadata-rest",
