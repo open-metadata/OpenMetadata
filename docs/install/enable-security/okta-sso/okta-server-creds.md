@@ -34,13 +34,13 @@
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376314-e9945800-d5a7-11eb-866b-5af5ca003f1e.png)
 
 * Once selected, click **Next**.
-* Provide the necessary input and click **Save**.
+* Select **Refresh token**, **Implicit\(Hybrid\)**. Once selected Implicit option, select **Allow ID token with implicit grant type**. In Refresh token behavior. Select **Use persistent token**. Provide the necessary input and click **Save**.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376319-eac58500-d5a7-11eb-9167-a0d1cb8aedce.png)
+![](../../../.gitbook/assets/screenshot-from-2021-09-20-14-14-14.png)
 
 * The app is now configured.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
+![](../../../.gitbook/assets/screenshot-from-2021-09-20-14-11-53%20%281%29.png)
 
 ## Step 4: Where to find the credentials
 
