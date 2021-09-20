@@ -21,6 +21,7 @@ import React, { FunctionComponent, useState } from 'react';
 import ChangeLogs from './ChangeLogs';
 import FeaturesCarousel from './FeaturesCarousel';
 import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from './whatsNewData';
+import { getReleaseVersionExpiry } from './WhatsNewModal.util';
 // import { Button } from '../../buttons/Button/Button';
 
 type Props = {
@@ -56,7 +57,9 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
   };
 
   const handleCancel = () => {
-    cookieStorage.setItem(COOKIE_VERSION, 'true');
+    cookieStorage.setItem(COOKIE_VERSION, 'true', {
+      expires: getReleaseVersionExpiry(),
+    });
     onCancel();
   };
 
