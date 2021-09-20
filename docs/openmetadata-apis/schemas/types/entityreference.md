@@ -18,7 +18,7 @@ Type: `object`
   * Name of the entity instance. For entities such as tables, databases where the name is not unique, fullyQualifiedName is returned in this field.
   * Type: `string`
 * **description**
-  * Optional description of entity.
+  * Optional description of the entity.
   * Type: `string`
 * **href**
   * Link to the entity resource.

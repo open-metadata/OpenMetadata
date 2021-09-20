@@ -16,7 +16,7 @@ Type: `object`
   * Type: `string`
   * Length: between 1 and 64
 * **displayName**
-  * Display Name that identifies this Dashboard. It could be title or label from the source services.
+  * Display Name that identifies this Dashboard. It could be a title or label from the source services.
   * Type: `string`
 * **fullyQualifiedName**
   * A unique name that identifies a dashboard in the format 'ServiceName.DashboardName'.
@@ -30,7 +30,7 @@ Type: `object`
   * Type: `string`
   * String format must be a "uri"
 * **charts**
-  * All the charts included in this Dashboard.
+  * All the charts are included in this Dashboard.
   * Type: `array`
     * **Items**
     * $ref: [../../type/entityReference.json](../types/entityreference.md)

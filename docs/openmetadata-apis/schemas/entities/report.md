@@ -9,7 +9,7 @@ Type: `object`
 ## Properties
 
 * **id** `required`
-  * Unique identifier that identifies this report.
+  * The Unique identifier that identifies this report.
   * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies this report instance uniquely.

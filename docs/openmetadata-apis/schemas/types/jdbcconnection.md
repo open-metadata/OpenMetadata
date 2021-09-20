@@ -25,12 +25,12 @@ Type: `object`
 
 ### driverClass
 
-* Type used for JDBC driver class.
+* The Type used for the JDBC driver class.
 * Type: `string`
 
 ### connectionUrl
 
-* Type used for JDBC connection URL.
+* The Type used for JDBC connection URL.
 * Type: `string`
 * String format must be a "uri"
 

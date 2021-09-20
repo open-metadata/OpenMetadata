@@ -1,6 +1,6 @@
 # Topic
 
-This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.
+This schema defines the Topic entity. A topic is a feed into which messages are published by publishers and read from by consumers in a messaging service.
 
 **$id:** [https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)
 
@@ -24,11 +24,11 @@ Type: `object`
   * Link to the messaging cluster/service where this topic is hosted in.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **partitions** `required`
-  * Number of partitions into which the topic is divided.
+  * A number of partitions into which the topic is divided.
   * Type: `integer`
   * Range:  ≥ 1
 * **schemaText**
-  * Schema used for message serialization. Optional as some topics may not have associated schemas.
+  * The Schema is used for message serialization. Optional as some topics may not have associated schemas.
   * Type: `string`
 * **schemaType**
   * Schema used for message serialization.
@@ -48,7 +48,7 @@ Type: `object`
   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
   * Type: `integer`
 * **minimumInSyncReplicas**
-  * Minimum number replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration.
+  * The minimum number of replicas in sync to control durability. For Kafka - `min.insync.replicas` configuration.
   * Type: `integer`
 * **retentionSize**
   * Maximum size of a partition in bytes before old data is discarded. For Kafka - `retention.bytes` configuration.
@@ -89,7 +89,7 @@ Type: `object`
 
 ### cleanupPolicy
 
-* Topic clean up policy. For Kafka - `cleanup.policy` configuration.
+* Topic cleans up policy. For Kafka - `cleanup.policy` configuration.
 * The value is restricted to the following: 
   1. _"delete"_
   2. _"compact"_

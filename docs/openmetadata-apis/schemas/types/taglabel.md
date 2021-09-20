@@ -1,6 +1,6 @@
 # Tag Label
 
-This schema defines the type for labeling an entity with a Tag.
+This schema defines the type for labelling an entity with a Tag.
 
 **$id:** [https://open-metadata.org/schema/type/tagLabel.json](https://open-metadata.org/schema/type/tagLabel.json)
 
@@ -21,7 +21,7 @@ Type: `object`
     4. _"Derived"_
   * Default: _"Manual"_
 * **state**
-  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.
+  * 'Suggested' state is used when a tag label is suggested by users or tools. The owner of the entity must confirm the suggested labels before it is marked as 'Confirmed'.
   * Type: `string`
   * The value is restricted to the following: 
     1. _"Suggested"_

@@ -163,7 +163,7 @@ Type: `object`
 
 ### fullyQualifiedColumnName
 
-* Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
+* The Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
 * Type: `string`
 * Length: between 1 and 256
 
@@ -260,7 +260,7 @@ Type: `object`
     * No. of unique values in the column.
     * Type: `number`
   * **uniqueProportion**
-    * Proportion of number of unique values in a column.
+    * The Proportion of a number of unique values in a column.
     * Type: `number`
   * **nullCount**
     * No.of null values in a column.
@@ -269,19 +269,19 @@ Type: `object`
     * No.of null value proportion in columns.
     * Type: `number`
       * **min**
-        * Minimum value in a column.
+        * The minimum value in a column.
         * Type: `string`
       * **max**
-        * Maximum value in a column.
+        * The maximum value in a column.
         * Type: `string`
       * **mean**
         * Avg value in a column.
         * Type: `string`
       * **median**
-        * Median value in a column.
+        * The Median value in a column.
         * Type: `string`
       * **stddev**
-        * Standard deviation of a column.
+        * The Standard deviation of a column.
         * Type: `number`
 
 ### tableProfile

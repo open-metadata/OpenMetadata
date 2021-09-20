@@ -16,7 +16,7 @@ Type: `object`
   * Type: `string`
   * Length: between 1 and 64
 * **serviceType** `required`
-  * Type of messaging service such as Kafka or Pulsar...
+  * Type of messaging services such as Kafka or Pulsar...
   * $ref: [\#/definitions/messagingServiceType](messagingservice.md#messagingservicetype)
 * **description**
   * Description of a messaging service instance.

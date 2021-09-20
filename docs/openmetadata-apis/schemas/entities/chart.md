@@ -1,6 +1,6 @@
 # Chart
 
-This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.
+This schema defines the Chart entity. Charts are built using tables or SQL queries by analyzing the data. Charts can be part of Dashboard.
 
 **$id:** [https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)
 
@@ -16,7 +16,7 @@ Type: `object`
   * Type: `string`
   * Length: between 1 and 64
 * **displayName**
-  * Display Name that identifies this Chart. It could be title or label from the source services.
+  * Display Name that identifies this Chart. It could be a title or label from the source services.
   * Type: `string`
 * **fullyQualifiedName**
   * A unique name that identifies a dashboard in the format 'ServiceName.ChartName'.

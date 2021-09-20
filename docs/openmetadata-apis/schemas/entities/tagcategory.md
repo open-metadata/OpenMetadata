@@ -21,7 +21,7 @@ This schema does not accept additional properties.
   * Link to the resource corresponding to the tag category.
   * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
 * **usageCount**
-  * Count of how many times the tags from this tag category are used.
+  * Count how many times the tags from this tag category are used.
   * Type: `integer`
 * **children**
   * Tags under this category.

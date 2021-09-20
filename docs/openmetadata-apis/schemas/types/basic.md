@@ -16,7 +16,7 @@ This schema defines basic common types that are used by other schemas.
 
 * Email address of a user or other entities.
 * Type: `string`
-* String format must be a "email"
+* String format must be an "email"
 * The value must match this pattern: `^\S+@\S+\.\S+$`
 * Length: between 6 and 127
 

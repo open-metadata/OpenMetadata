@@ -43,7 +43,7 @@ Type: `object`
       * Type: `string`
       * String format must be a "date-time"
       * **from** `required`
-        * ID of User \(regular user or a bot\) posting the message.
+        * The ID of the User \(regular user or a bot\) posting the message.
         * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
 
 _This document was updated on: Thursday, September 16, 2021_

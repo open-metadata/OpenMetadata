@@ -25,7 +25,7 @@ This schema does not accept additional properties.
   * Link to the resource corresponding to this entity.
   * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
 * **timezone**
-  * Timezone of the user.
+  * The Timezone of the user.
   * Type: `string`
   * String format must be a "timezone"
 * **deactivated**
@@ -35,7 +35,7 @@ This schema does not accept additional properties.
   * When true indicates a special type of user called Bot.
   * Type: `boolean`
 * **isAdmin**
-  * When true indicates user is an administrator for the system with superuser privileges.
+  * When true indicates the user is an administrator for the system with superuser privileges.
   * Type: `boolean`
 * **profile**
   * Profile of the user.
@@ -54,7 +54,7 @@ This schema does not accept additional properties.
 
 ### userName
 
-* A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
+* A unique name of the user, typically the user ID from an identity provider. Example - uuid from LDAP.
 * Type: `string`
 * Length: between 1 and 64
 

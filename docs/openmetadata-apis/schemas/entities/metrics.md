@@ -26,7 +26,7 @@ Type: `object`
   * Link to the resource corresponding to this entity.
   * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
 * **owner**
-  * Owner of this metrics.
+  * Owner of these metrics.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **service** `required`
   * Link to service where this metrics is hosted in.

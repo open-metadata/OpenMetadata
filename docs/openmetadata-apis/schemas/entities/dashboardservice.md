@@ -16,7 +16,7 @@ Type: `object`
   * Type: `string`
   * Length: between 1 and 64
 * **serviceType** `required`
-  * Type of dashboard service such as Looker or Superset...
+  * Type of dashboard services such as Looker or Superset...
   * $ref: [\#/definitions/dashboardServiceType](dashboardservice.md#dashboardservicetype)
 * **description**
   * Description of a dashboard service instance.
@@ -26,10 +26,10 @@ Type: `object`
   * Type: `string`
   * String format must be a "uri"
 * **username**
-  * Username to log-into Dashboard Service.
+  * Username to log in to Dashboard Service.
   * Type: `string`
 * **password**
-  * Password to log-into Dashboard Service.
+  * Password to log in to Dashboard Service.
   * Type: `string`
 * **ingestionSchedule**
   * Schedule for running metadata ingestion jobs.

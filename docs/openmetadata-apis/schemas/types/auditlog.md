@@ -17,7 +17,7 @@ Type: `object`
     3. _"PATCH"_
     4. _"DELETE"_
 * **responseCode** `required`
-  * HTTP response code for the api requested.
+  * HTTP response code for the api request.
   * Type: `integer`
 * **path** `required`
   * Requested API Path.
@@ -29,7 +29,7 @@ Type: `object`
   * Date when the API call is made.
   * $ref: [basic.json\#/definitions/dateTime](basic.md#datetime)
 * **entityId** `required`
-  * Identifier of entity that was modified by the operation.
+  * Identifier of an entity that was modified by the operation.
   * $ref: [basic.json\#/definitions/uuid](basic.md#uuid)
 * **entityType** `required`
   * Type of Entity that is modified by the operation.
