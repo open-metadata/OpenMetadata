@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -183,6 +184,11 @@ public abstract class TopicRepository {
     Topic updated = JsonUtils.applyPatch(original, patch, Topic.class);
     patch(original, updated);
     return updated;
+  }
+
+  @Transaction
+  public EntityReference getOwnerReference(Topic topic) throws IOException {
+    return EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner());
   }
 
   public Topic createInternal(Topic topic, EntityReference service, EntityReference owner) throws IOException {
