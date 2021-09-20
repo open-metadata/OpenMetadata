@@ -45,6 +45,9 @@ Following is the example for mysql.json
       "password": "openmetadata_password",
       "database": "openmetadata_db",
       "service_name": "local_mysql",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
