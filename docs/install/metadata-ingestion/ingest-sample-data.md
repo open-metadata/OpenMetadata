@@ -35,6 +35,8 @@ Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
 metadata ingest -c ./examples/workflows/sample_data.json
+metadata ingest -c ./examples/workflows/sample_usage.json
+metadata ingest -c ./examples/workflows/sample_users.json
 ```
 
 ### Index Sample Data into ElasticSearch
