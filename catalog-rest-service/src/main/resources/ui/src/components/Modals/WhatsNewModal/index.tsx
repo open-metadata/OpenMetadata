@@ -66,7 +66,9 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
   return (
     <dialog className="tw-modal">
       <div className="tw-modal-backdrop" />
-      <div className="tw-modal-container tw-pb-0">
+      <div
+        className="tw-modal-container tw-pb-0"
+        style={{ maxWidth: '1050px' }}>
         <div className="tw-modal-header">
           <p className="tw-modal-title">{header}</p>
 
@@ -89,7 +91,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
         </div>
         <div
           className="tw-modal-body tw-p-0 tw-overflow-hidden"
-          style={{ height: '550px' }}>
+          style={{ height: '720px' }}>
           {/* body */}
           <div className="tw-flex tw-w-auto tw-h-full">
             <div
