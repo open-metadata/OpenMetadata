@@ -70,7 +70,7 @@
   * [Connectors](install/metadata-ingestion/connectors/README.md)
     * [Dashboard Services](install/metadata-ingestion/connectors/dashboard-services/README.md)
       * [Looker](install/metadata-ingestion/connectors/dashboard-services/looker.md)
-      * [Salesforce](install/metadata-ingestion/connectors/dashboard-services/salesforce.md)
+      * [Salesforce](install/metadata-ingestion/connectors/database-services/salesforce.md)
       * [Superset](install/metadata-ingestion/connectors/dashboard-services/superset.md)
       * [Tableau](install/metadata-ingestion/connectors/dashboard-services/tableau.md)
     * [Database Services](install/metadata-ingestion/connectors/database-services/README.md)

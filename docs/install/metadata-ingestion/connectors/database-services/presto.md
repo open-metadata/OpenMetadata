@@ -16,8 +16,7 @@ description: This guide will help install Presto connector and run manually
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[tableau]'
-python -m spacy download en_core_web_sm
+pip install 'openmetadata-ingestion[presto]'
 ```
 {% endtab %}
 {% endtabs %}
