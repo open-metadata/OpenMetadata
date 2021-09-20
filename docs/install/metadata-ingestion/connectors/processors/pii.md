@@ -1,5 +1,5 @@
 ---
-description: This guide will help install
+description: This guide will help process the data using different pipelines
 ---
 
 # PII
