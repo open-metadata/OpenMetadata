@@ -56,7 +56,7 @@ metadata ingest -c ./examples/workflows/looker.json
 
 Below is the configuration to publish Looker data into the OpenMetadata service.
 
-Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally`pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="looker.json" %}
 ```javascript

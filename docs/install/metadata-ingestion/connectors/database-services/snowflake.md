@@ -68,7 +68,7 @@ metadata ingest -c ./examples/workflows/snowflake.json
 
 Below is the configuration to publish Snowflake data into the OpenMetadata service.
 
-Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="snowflake.json" %}
 ```javascript

@@ -31,7 +31,7 @@ We can use this in different [Database Services](../database-services/)
 
 Below is the configuration to publish MySQL data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 Following is the example for mysql.json
 

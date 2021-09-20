@@ -52,7 +52,7 @@ metadata ingest -c ./examples/workflows/presto.json
 
 Below is the configuration to publish Presto data into the OpenMeatadata service.
 
-add `metadata-rest-tables` sink along with `metadata-server` config
+add `metadata-rest` sink along with `metadata-server` config
 
 {% code title="presto.json" %}
 ```javascript
