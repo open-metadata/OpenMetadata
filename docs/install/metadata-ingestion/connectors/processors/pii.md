@@ -10,6 +10,7 @@ description: This guide will help process the data using different pipelines
 {% tab title="Install from PyPI" %}
 ```javascript
 pip install 'openmetadata-ingestion[pii-processor]'
+python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 {% endtabs %}
