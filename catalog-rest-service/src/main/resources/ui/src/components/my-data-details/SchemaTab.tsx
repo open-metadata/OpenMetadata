@@ -16,18 +16,20 @@
 */
 
 import { lowerCase } from 'lodash';
-import { ColumnJoins, SampleData, TableColumn } from 'Models';
+import { ColumnJoins, SampleData, TableColumn, TableDetail } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
 import Searchbar from '../common/searchbar/Searchbar';
 import SampleDataTable from './SampleDataTable';
 import SchemaTable from './SchemaTable';
 
 type Props = {
+  owner: TableDetail['owner'];
   columns: Array<TableColumn>;
   joins: Array<ColumnJoins>;
   onUpdate: (columns: Array<TableColumn>) => void;
   sampleData: SampleData;
   columnName: string;
+  hasEditAccess: boolean;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -36,6 +38,8 @@ const SchemaTab: FunctionComponent<Props> = ({
   onUpdate,
   sampleData,
   columnName,
+  hasEditAccess,
+  owner,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
   const [checkedValue, setCheckedValue] = useState('schema');
@@ -90,7 +94,7 @@ const SchemaTab: FunctionComponent<Props> = ({
         </div>
         <div className="tw-col-span-2 tw-text-right tw-mb-4">
           <div
-            className="tw-w-60 tw-inline-flex tw-border tw-border-main 
+            className="tw-w-60 tw-inline-flex tw-border tw-border-main
             tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
             <button
               className={getToggleButtonClasses('schema')}
@@ -115,7 +119,9 @@ const SchemaTab: FunctionComponent<Props> = ({
             <SchemaTable
               columnName={columnName}
               columns={columns}
+              hasEditAccess={hasEditAccess}
               joins={joins}
+              owner={owner}
               searchText={lowerCase(searchText)}
               onUpdate={onUpdate}
             />

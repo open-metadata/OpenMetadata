@@ -17,7 +17,13 @@
 
 import classNames from 'classnames';
 import { lowerCase, upperCase } from 'lodash';
-import { ColumnJoin, ColumnJoins, ColumnTags, TableColumn } from 'Models';
+import {
+  ColumnJoin,
+  ColumnJoins,
+  ColumnTags,
+  TableColumn,
+  TableDetail,
+} from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -28,6 +34,7 @@ import React, {
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
 import {
+  getHtmlForNonAdminAction,
   getPartialNameFromFQN,
   getTableFQNFromColumnFQN,
   isEven,
@@ -35,6 +42,7 @@ import {
 import SVGIcons from '../../utils/SvgUtils';
 import { getConstraintIcon } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 // import { EditSchemaColumnModal } from '../Modals/EditSchemaColumnModal/EditSchemaColumnModal';
@@ -43,11 +51,13 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 
 type Props = {
+  owner: TableDetail['owner'];
   columns: Array<TableColumn>;
   joins: Array<ColumnJoins>;
   searchText?: string;
   onUpdate: (columns: Array<TableColumn>) => void;
   columnName: string;
+  hasEditAccess: boolean;
 };
 
 const SchemaTable: FunctionComponent<Props> = ({
@@ -56,6 +66,8 @@ const SchemaTable: FunctionComponent<Props> = ({
   searchText = '',
   onUpdate,
   columnName,
+  hasEditAccess,
+  owner,
 }: Props) => {
   const [editColumn, setEditColumn] = useState<{
     column: TableColumn;
@@ -374,35 +386,41 @@ const SchemaTable: FunctionComponent<Props> = ({
                         handleEditColumnTag(column, index);
                       }
                     }}>
-                    <TagsContainer
-                      editable={editColumnTag?.index === index}
-                      selectedTags={column.tags}
-                      tagList={allTags}
-                      onCancel={() => {
-                        handleTagSelection();
-                      }}
-                      onSelectionChange={(tags) => {
-                        handleTagSelection(tags);
-                      }}>
-                      {column.tags.length ? (
-                        <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="10px"
-                          />
-                        </button>
-                      ) : (
-                        <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                          <Tags
-                            className="tw-border-main"
-                            tag="+ Add tag"
-                            type="outlined"
-                          />
-                        </span>
-                      )}
-                    </TagsContainer>
+                    <NonAdminAction
+                      html={getHtmlForNonAdminAction(Boolean(owner))}
+                      isOwner={hasEditAccess}
+                      position="left"
+                      trigger="click">
+                      <TagsContainer
+                        editable={editColumnTag?.index === index}
+                        selectedTags={column.tags}
+                        tagList={allTags}
+                        onCancel={() => {
+                          handleTagSelection();
+                        }}
+                        onSelectionChange={(tags) => {
+                          handleTagSelection(tags);
+                        }}>
+                        {column.tags.length ? (
+                          <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="10px"
+                            />
+                          </button>
+                        ) : (
+                          <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                            <Tags
+                              className="tw-border-main"
+                              tag="+ Add tag"
+                              type="outlined"
+                            />
+                          </span>
+                        )}
+                      </TagsContainer>
+                    </NonAdminAction>
                   </td>
                 </tr>
               );
