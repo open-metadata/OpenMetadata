@@ -78,7 +78,7 @@ const FeaturesCarousel = ({ data }: Props) => {
                   allowFullScreen
                   className="tw-w-full"
                   frameBorder={0}
-                  height={278}
+                  height={476}
                   src={d.path}
                 />
               )

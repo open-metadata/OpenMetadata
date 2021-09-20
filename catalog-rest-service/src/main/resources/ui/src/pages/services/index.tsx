@@ -190,7 +190,7 @@ const ServicesPage = () => {
   const getServiceLogo = (serviceType: string): JSX.Element | null => {
     const logo = serviceTypeLogo(serviceType);
     if (!isNull(logo)) {
-      return <img alt="" className="tw-h-10 tw-w-10" src={logo} />;
+      return <img alt="" className="tw-h-8 tw-w-8" src={logo} />;
     }
 
     return null;
