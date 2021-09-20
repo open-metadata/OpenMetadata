@@ -10,14 +10,14 @@ Following REST API conventions are followed for Resource URIs:
 
 * Operations for an entity are available through the Resource URI as a collection `.../api/<version>/entities`. Plural of the entity name is used as the collection name -  example`.../api/v1/users`.
 * Trailing forward slash is not used in the endpoint URI. Example use `.../api/v1/databases` instead of `.../api/v1/databases/`.
-* Resource URI for an entity instance by entity `id` is `.../api/v1/entities/{id}`. Resource URI for an entity instance by name is `.../api/v1/entities/name/{name}`. 
+* Resource URI for an entity instance by the entity `id` is `.../api/v1/entities/{id}`. Resource URI for an entity instance by name is `.../api/v1/entities/name/{name}`. 
 
 ## Resource representation
 
 * The REST API calls return a response with JSON `Content-Type` and `Content-Length`  that includes the length of the response.
-* All responses include the Resource ID field even though the `id` was provided in the request to simplify the consumption of the response at the client.
+* All responses include the Resource ID field even though the`id`was provided in the request to simplify the consumption of the response at the client.
 * Entity names and field names use camelCase per Javascript naming convention.
-* All resources include an attribute  `href` with Resource URI. All relationship fields of an entity will also include `href` link to the related resource for easy access.
+* All resources include an attribute`href`with Resource URI. All relationship fields of an entity will also include`href`links to the related resource for easy access.
 * Unknown fields sent by the client in API requests **are not ignored** to ensure the data sent by the client is not dropped at the server without the user being aware of it. 
 
 ## HTTP methods
@@ -90,8 +90,8 @@ GET /v1/tables?limit=10&after=2yXqpvzRNGUE
 }
 ```
 
-* `before`: This cursor points to the start of the page of data that has been returned. Use the `before` cursor returned in the result in a subsequent request to scroll backward. When response returns `before` as `null`, backward scrolling stops and you are at the beginning of the list.
-* `after`: This cursor points to the end of the page of data that has been returned. Use the `after` cursor returned in the result in a subsequent request to scroll backward. When response returns `after` as `null`, forward scrolling stops and you are at the end of the list.
+* `before`: This cursor points to the start of the page of data that has been returned. Use the`before`cursor returned in the result in a subsequent request to scroll backwards. When response returns `before` as `null`, backward scrolling stops and you are at the beginning of the list.
+* `after`: This cursor points to the end of the page of data that has been returned. Use the`after`cursor returned in the result in a subsequent request to scroll backwards. When response returns `after` as `null`, forward scrolling stops and you are at the end of the list.
 * `limit`: This is the maximum number of objects that may be returned. 
 
 ### Getting an entity by `id` or `name`
@@ -127,7 +127,7 @@ GET /v1/tables/name/service.database.dim_user
 
 ### Getting entities with only necessary fields
 
-To GET an entity with only necessary fields, pass `fields` query parameter while listing or getting an entity. This helps clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
+To GET an entity with only necessary fields, pass`fields`query parameter while listing or getting an entity. This helps clients control the amount of data returned in the response. Some fields may be included by default whether `fields` specifies them or not \(example - id and name fields below\):
 
 ```text
 GET /v1/tables/123e4567-e89b-42d3-a456-556642440000?fields=columns,tableConstraints,usage
@@ -169,7 +169,7 @@ content-type: application/json
 
 * POST request usually takes a simpler **request object** with a smaller subset of fields compared to the entity object that could include lot more fields to keep the APIs simple.
 * Required fields in the request object are marked in the corresponding JSON schema.
-* When an entity is created, `201 Created` response is returned along with Entity data as JSON content.
+* When an entity is created, `201 Created` the response is returned along with Entity data as JSON content.
 
 ## PUT
 
@@ -196,7 +196,7 @@ content-type: application/json
 
 * PUT request usually takes a simpler **request object** with a smaller subset of fields compared to the entity object that could include lot more fields to keep the APIs simple.
 * Required fields in the request object are marked in the JSON schema.
-* When an entity is created, `201 Created` response is returned. If the entity already exists, the entity is replaced based on the PUT request and `200 OK` response is returned. Both responses include entity data as JSON content.
+* When an entity is created, `201 Created` the response is returned. If the entity already exists, the entity is replaced based on the PUT request and`200 OK`the response is returned. Both responses include entity data as JSON content.
 
 ## PATCH
 
