@@ -32,7 +32,10 @@ pip install 'openmetadata-ingestion[hive]'
     "type": "hive",
     "config": {
       "service_name": "local_hive",
-      "host_port": "localhost:10000"
+      "host_port": "localhost:10000",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   ...
@@ -41,6 +44,9 @@ pip install 'openmetadata-ingestion[hive]'
 
 1. **service\_name** - Service Name for this Hive cluster. If you added the Hive cluster through OpenMetadata UI, make sure the service name matches the same.
 2. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+3. **data\_profiler\_enabled** - Enable data-profiling \(Optional\). It will provide you the newly ingested data.
+4. **data\_profiler\_offset** - Specify offset.
+5. **data\_profiler\_limit** - Specify limit.
 
 ## Publish to OpenMetadata
 
@@ -55,7 +61,10 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "type": "hive",
     "config": {
       "service_name": "local_hive",
-      "host_port": "localhost:10000"
+      "host_port": "localhost:10000",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   "sink": {

@@ -57,6 +57,9 @@ metadata ingest -c ./examples/workflows/bigquery.json
       "host_port": "bigquery.googleapis.com",
       "username": "username",
       "service_name": "gcp_bigquery",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
@@ -77,6 +80,9 @@ metadata ingest -c ./examples/workflows/bigquery.json
 3. **service\_name** - Service Name for this Bigquery cluster. If you added the Bigquery cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
+6. **data\_profiler\_enabled** - Enable data-profiling \(Optional\). It will provide you the newly ingested data.
+7. **data\_profiler\_offset** - Specify offset.
+8. **data\_profiler\_limit** - Specify limit.
 
 ### Publish to OpenMetadata
 
@@ -94,6 +100,9 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
       "host_port": "bigquery.googleapis.com",
       "username": "username",
       "service_name": "gcp_bigquery",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },

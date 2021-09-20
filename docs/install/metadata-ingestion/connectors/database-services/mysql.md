@@ -40,6 +40,9 @@ metadata ingest -c ./examples/workflows/mysql.json
       "password": "openmetadata_password",
       "database": "openmetadata_db",
       "service_name": "local_mysql",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
@@ -53,6 +56,9 @@ metadata ingest -c ./examples/workflows/mysql.json
 2. **password** - password for the username
 3. **service\_name** - Service Name for this MySQL cluster. If you added MySQL cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+5. **data\_profiler\_enabled** - Enable data-profiling \(Optional\). It will provide you the newly ingested data.
+6. **data\_profiler\_offset** - Specify offset.
+7. **data\_profiler\_limit** - Specify limit.
 
 ## Publish to OpenMetadata
 
@@ -70,6 +76,9 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "password": "openmetadata_password",
       "database": "openmetadata_db",
       "service_name": "local_mysql",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "filter_pattern": {
         "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
