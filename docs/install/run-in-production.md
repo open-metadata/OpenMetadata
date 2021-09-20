@@ -21,7 +21,7 @@ Please refer to the previous section [Run Openmetadata](https://github.com/open-
 OpenMetadata release ships with `./bin/openmetadata` init.d style script.
 
 ```text
-cd openmetdata-0.3.0
+cd openmetdata-0.4.0
 ./bin/openmetdata start
 ```
 
