@@ -1,0 +1,37 @@
+{
+  "source": {
+    "type": "redshift",
+    "config": {
+      "host_port": "cluster.name.region.redshift.amazonaws.com:5439",
+      "username": "username",
+      "password": "strong_password",
+      "database": "warehouse",
+      "service_name": "aws_redshift",
+      "filter_pattern": {
+        "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
+      }
+    }
+  },
+  "processor": {
+    "type": "pii",
+    "config": {}
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
