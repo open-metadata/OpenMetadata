@@ -21,7 +21,8 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-python3 -m pip install 'openmetadata-ingestion[sample-data, elasticsearch]'
+python3 -m pip install 'openmetadata-ingestion[sample-tables, elasticsearch]'
+python3 -m spacy download en_core_web_sm
 
 git clone https://github.com/open-metadata/OpenMetadata.git
 cd OpenMetadata/ingestion
@@ -34,6 +35,11 @@ cd OpenMetadata/ingestion
 Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
+metadata ingest -c ./pipelines/sample_tables.json
+metadata ingest -c ./pipelines/sample_usage.json
+metadata ingest -c ./pipelines/sample_users.json
+metadata ingest -c ./pipelines/sample_topics.json
+metadata ingest -c ./pipelines/sample_dashboards.json
 metadata ingest -c ./pipelines/sample_data.json
 ```
 
