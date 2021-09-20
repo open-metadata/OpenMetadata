@@ -25,7 +25,6 @@ pip install 'openmetadata-ingestion[bigquery]'
 ## Run Manually
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
 metadata ingest -c ./examples/workflows/bigquery.json
 ```
 
