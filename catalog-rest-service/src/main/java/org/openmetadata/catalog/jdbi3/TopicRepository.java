@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;

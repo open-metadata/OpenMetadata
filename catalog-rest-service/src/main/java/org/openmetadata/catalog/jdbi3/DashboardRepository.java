@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
