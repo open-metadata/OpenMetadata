@@ -4,7 +4,7 @@ OpenMetadata supports connectors to some popular dashboard services. We will con
 
 {% page-ref page="looker.md" %}
 
-{% page-ref page="salesforce.md" %}
+{% page-ref page="../database-services/salesforce.md" %}
 
 {% page-ref page="superset.md" %}
 
