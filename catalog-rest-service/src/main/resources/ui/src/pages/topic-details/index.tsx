@@ -306,7 +306,7 @@ const MyTopicDetailPage = () => {
       { key: 'Replication Factor', value: replicationFactor },
       { key: 'Retention Size', value: bytesToSize(retentionSize) },
       { key: 'CleanUp Policies', value: cleanupPolicies.join(',') },
-      { key: 'Max Message Size', value: maximumMessageSize },
+      { key: 'Max Message Size', value: bytesToSize(maximumMessageSize) },
     ];
   };
 
