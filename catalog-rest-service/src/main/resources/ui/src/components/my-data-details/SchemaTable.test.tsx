@@ -20,6 +20,10 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import SchemaTable from './SchemaTable';
 
+jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 const mockColumns = [
   {
     name: 'testId',

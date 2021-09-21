@@ -2,6 +2,10 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import TableDataCardBody from './TableDataCardBody';
 
+jest.mock('../rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
+
 describe('Test TableDataCardBody Component', () => {
   const extraInfo = [
     { key: 'Owner', value: 'owner' },

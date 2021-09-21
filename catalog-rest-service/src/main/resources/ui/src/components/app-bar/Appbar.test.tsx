@@ -30,6 +30,10 @@ jest.mock('../../hooks/authHooks', () => ({
   },
 }));
 
+jest.mock('../Modals/WhatsNewModal', () => ({
+  WhatsNewModal: jest.fn().mockReturnValue(<p>WhatsNewModal</p>),
+}));
+
 describe('Test Appbar Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(<Appbar />, {
@@ -58,6 +62,6 @@ describe('Test Appbar Component', () => {
     });
     const items = getAllByTestId('dropdown-item');
 
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
   });
 });
