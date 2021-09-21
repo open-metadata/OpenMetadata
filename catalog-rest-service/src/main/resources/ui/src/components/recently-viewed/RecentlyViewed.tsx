@@ -42,7 +42,7 @@ const RecentlyViewed: FunctionComponent = () => {
         case EntityType.DATASET: {
           const res = await getTableDetailsByFQN(
             oData.fqn,
-            'database, usageSummary, tags, owner'
+            'database, usageSummary, tags, owner,columns'
           );
 
           const {
@@ -53,6 +53,7 @@ const RecentlyViewed: FunctionComponent = () => {
             owner,
             usageSummary,
             fullyQualifiedName,
+            tags,
           } = res.data;
           const tableTags = getTableTags(columns || []);
           arrData.push({
@@ -63,8 +64,11 @@ const RecentlyViewed: FunctionComponent = () => {
             name,
             owner: getOwnerFromId(owner?.id)?.name || '--',
             serviceType: oData.serviceType,
-            tags: tableTags.map((tag) => tag.tagFQN),
-            tier: getTierFromTableTags(tableTags),
+            tags: [
+              getTierFromTableTags(tags),
+              ...tableTags.map((tag) => tag.tagFQN),
+            ].filter((tag) => tag),
+            tier: getTierFromTableTags(tags),
             weeklyPercentileRank: usageSummary?.weeklyStats.percentileRank || 0,
           });
 
