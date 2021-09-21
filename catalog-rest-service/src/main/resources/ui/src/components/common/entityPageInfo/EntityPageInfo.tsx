@@ -13,6 +13,7 @@ import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.inter
 type ExtraInfo = {
   key?: string;
   value: string | number;
+  isLink?: boolean;
 };
 
 type Props = {
@@ -108,7 +109,25 @@ const EntityPageInfo = ({
                   {info.key} :
                 </span>{' '}
                 <span className="tw-pl-1 tw-font-normal">
-                  {info.value || '--'}
+                  {info.isLink ? (
+                    <a
+                      className="link-text"
+                      href={info.value as string}
+                      rel="noopener noreferrer"
+                      target="_blank">
+                      <>
+                        <span className="tw-mr-1">{info.value}</span>
+                        <SVGIcons
+                          alt="external-link"
+                          className="tw-align-middle"
+                          icon="external-link"
+                          width="12px"
+                        />
+                      </>
+                    </a>
+                  ) : (
+                    info.value || '--'
+                  )}
                 </span>
                 {extraInfo.length !== 1 && index < extraInfo.length - 1 ? (
                   <span className="tw-mx-3 tw-inline-block tw-text-gray-400">
