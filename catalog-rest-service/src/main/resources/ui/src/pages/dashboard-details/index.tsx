@@ -68,6 +68,7 @@ const MyDashBoardPage = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [dashboardUrl, setDashboardUrl] = useState<string>('');
   // const [usage, setUsage] = useState('');
   // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
@@ -117,6 +118,7 @@ const MyDashBoardPage = () => {
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Dashboard Url', value: dashboardUrl, isLink: true },
     // { key: 'Usage', value: usage },
     // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
@@ -178,6 +180,7 @@ const MyDashBoardPage = () => {
         owner,
         displayName,
         charts,
+        dashboardUrl,
         // usageSummary,
       } = res.data;
       setDashboardDetails(res.data);
@@ -218,6 +221,7 @@ const MyDashBoardPage = () => {
           });
         }
       );
+      setDashboardUrl(dashboardUrl);
       fetchCharts(charts).then((charts) => setCharts(charts));
       // if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
       //   const percentile = getUsagePercentile(
