@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
@@ -26,6 +27,7 @@ import {
   useRouteMatch,
 } from 'react-router-dom';
 import appState from '../../AppState';
+import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
   // navLinkDevelop,
@@ -52,9 +54,8 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser } = useAuth(
-    location.pathname
-  );
+  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
+    useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
@@ -64,6 +65,9 @@ const Appbar: React.FC = (): JSX.Element => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(() => {
     return !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true';
   });
+
+  const [version, setVersion] = useState<string>('');
+  const [hash, setHash] = useState<string>('');
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -73,9 +77,6 @@ const Appbar: React.FC = (): JSX.Element => {
   const openModal = () => {
     setIsFeatureModalOpen(true);
   };
-  useEffect(() => {
-    setSearchValue(searchQuery);
-  }, [searchQuery]);
 
   const supportLinks = [
     {
@@ -121,11 +122,36 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUserDisplayName = () => {
+    const name = isAuthDisabled
+      ? appState.users?.length > 0
+        ? appState.users[0].displayName
+        : 'User'
+      : appState.userDetails.displayName || appState.userDetails.name;
+
+    return (
+      <p className="tw-cursor-text">
+        {name} <hr className="tw--mr-8 tw--ml-2 tw-border-t-2 tw-mt-1" />{' '}
+      </p>
+    );
+  };
+
+  useEffect(() => {
+    setSearchValue(searchQuery);
+  }, [searchQuery]);
+
   useEffect(() => {
     setIsFeatureModalOpen(
       !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true'
     );
   }, [isFirstTimeUser]);
+
+  useEffect(() => {
+    getVersion().then((res: AxiosResponse) => {
+      setVersion(res.data.version);
+      setHash(res.data.revision);
+    });
+  }, []);
 
   return (
     <>
@@ -232,6 +258,28 @@ const Appbar: React.FC = (): JSX.Element => {
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
+                  {
+                    name: getUserDisplayName(),
+                    to: '',
+                    disabled: false,
+                    icon: <></>,
+                  },
+                  {
+                    name: (
+                      <p className="tw-text-grey-muted tw-text-xs tw-cursor-text">{`Version ${
+                        version.split('-')[0]
+                      }`}</p>
+                    ),
+                    to: '',
+                    disabled: false,
+                    icon: <></>,
+                  },
+                  {
+                    name: `${hash.slice(0, 7)}`,
+                    to: 'https://github.com/open-metadata/OpenMetadata/commit/7f10cfb22b8c9f9583986905119de11c6feb20ae',
+                    disabled: false,
+                    isOpenNewTab: true,
+                  },
                   {
                     name: 'Logout',
                     to: '#/action-1',

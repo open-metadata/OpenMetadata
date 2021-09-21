@@ -24,7 +24,7 @@ export enum DropDownType {
 }
 
 export type DropDownListItem = {
-  name: string;
+  name: string | React.ReactElement;
   value?: string;
   group?: string;
   to?: string;
