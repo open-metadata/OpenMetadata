@@ -86,6 +86,16 @@ const MyTopicDetailPage = () => {
       position: 1,
     },
     {
+      name: 'Config',
+      icon: {
+        alt: 'config',
+        name: 'icon-config',
+        title: 'Config',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -95,16 +105,6 @@ const MyTopicDetailPage = () => {
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
       position: 2,
-    },
-    {
-      name: 'Config',
-      icon: {
-        alt: 'config',
-        name: 'icon-config',
-        title: 'Config',
-      },
-      isProtected: false,
-      position: 3,
     },
   ];
   const fetchTags = () => {
