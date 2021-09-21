@@ -14,11 +14,13 @@ import {
   POSTGRES,
   PRESTO,
   PULSAR,
+  REDASH,
   REDSHIFT,
   serviceTypes,
   SERVICE_DEFAULT,
   SNOWFLAKE,
   SUPERSET,
+  TABLEAU,
 } from '../constants/services.const';
 import {
   DashboardServiceType,
@@ -71,6 +73,12 @@ export const serviceTypeLogo = (type: string) => {
     case DashboardServiceType.LOOKER:
       return LOOKER;
 
+    case DashboardServiceType.TABLEAU:
+      return TABLEAU;
+
+    case DashboardServiceType.REDASH:
+      return REDASH;
+
     default:
       return SERVICE_DEFAULT;
   }
@@ -112,11 +120,13 @@ const getAllServiceList = (
       promiseArr = allServiceCollectionArr.map((obj) => {
         return getServices(obj.value);
       });
-      Promise.all(promiseArr)
-        .then((result: AxiosResponse[]) => {
+      Promise.allSettled(promiseArr)
+        .then((result: PromiseSettledResult<AxiosResponse>[]) => {
           if (result.length) {
             let serviceArr = [];
-            serviceArr = result.map((service) => service?.data?.data || []);
+            serviceArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
             // converted array of arrays to array
             const allServices = serviceArr.reduce(
               (acc, el) => acc.concat(el),
@@ -195,6 +205,8 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
         break;
       case DashboardServiceType.SUPERSET:
       case DashboardServiceType.LOOKER:
+      case DashboardServiceType.TABLEAU:
+      case DashboardServiceType.REDASH:
         entityCounts.dashboardCount += bucket.doc_count;
 
         break;

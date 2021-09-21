@@ -26,6 +26,7 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
@@ -92,6 +93,28 @@ const getCurrentTab = (tab: string) => {
   return currentTab;
 };
 
+const getCurrentIndex = (tab: string) => {
+  let currentIndex = SearchIndex.TABLE;
+  switch (tab) {
+    case 'topics':
+      currentIndex = SearchIndex.TOPIC;
+
+      break;
+    case 'dashboards':
+      currentIndex = SearchIndex.DASHBOARD;
+
+      break;
+
+    case 'tables':
+    default:
+      currentIndex = SearchIndex.TABLE;
+
+      break;
+  }
+
+  return currentIndex;
+};
+
 const ExplorePage: React.FC = (): React.ReactElement => {
   const location = useLocation();
   const history = useHistory();
@@ -113,7 +136,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('last_updated_timestamp');
   const [sortOrder, setSortOrder] = useState<string>('desc');
-  const [searchIndex, setSearchIndex] = useState<string>(SearchIndex.TABLE);
+  const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
@@ -249,19 +272,21 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       emptyValue,
       SearchIndex.DASHBOARD
     );
-    Promise.all([tableCount, topicCount, dashboardCount])
-      .then(([table, topic, dashboard]: Array<SearchResponse>) => {
-        setTableCount(table.data.hits.total.value);
-        setTopicCount(topic.data.hits.total.value);
-        setDashboardCount(dashboard.data.hits.total.value);
-      })
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
-      });
+    Promise.allSettled([tableCount, topicCount, dashboardCount]).then(
+      ([table, topic, dashboard]: PromiseSettledResult<SearchResponse>[]) => {
+        setTableCount(
+          table.status === 'fulfilled' ? table.value.data.hits.total.value : 0
+        );
+        setTopicCount(
+          topic.status === 'fulfilled' ? topic.value.data.hits.total.value : 0
+        );
+        setDashboardCount(
+          dashboard.status === 'fulfilled'
+            ? dashboard.value.data.hits.total.value
+            : 0
+        );
+      }
+    );
   };
 
   const fetchTableData = (forceSetAgg: boolean) => {
@@ -447,6 +472,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
+      AppState.explorePageTab = tabsInfo[selectedTab - 1].path;
       resetFilters();
       history.push({
         pathname: getExplorePathWithSearch(
@@ -487,14 +513,18 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
-    setFilters(filterObject);
     setSearchText(searchQuery || '');
     setCurrentPage(1);
-    setCurrentTab(getCurrentTab(tab));
-    setSearchIndex(tabsInfo[getCurrentTab(tab) - 1].index);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
-  }, [searchQuery, tab]);
+    setCurrentTab(getCurrentTab(tab));
+    setSearchIndex(getCurrentIndex(tab));
+    setCurrentPage(1);
+  }, [tab]);
 
   useEffect(() => {
     if (getFilterString(filters)) {
@@ -507,7 +537,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, searchIndex]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === searchIndex) {
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
       fetchTableData(false);
     }
   }, [currentPage, filters, sortField, sortOrder]);

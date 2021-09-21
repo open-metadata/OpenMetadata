@@ -39,9 +39,11 @@ def get_filter_name(filter_obj):
 def get_owners(owners_obj):
     owners = []
     for owner in owners_obj:
-        dashboard_owner = DashboardOwner(first_name=owner['first_name'],
-                                         last_name=owner['last_name'],
-                                         username=owner['username'])
+        dashboard_owner = DashboardOwner(
+            first_name=owner['first_name'],
+            last_name=owner['last_name'],
+            username=owner['username']
+        )
         owners.append(dashboard_owner)
     return owners
 
@@ -84,19 +86,23 @@ class SupersetSource(Source):
     platform = "superset"
     service_type = "Superset"
 
-    def __init__(self, config: SupersetConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
+    def __init__(
+            self, config: SupersetConfig, metadata_config: MetadataServerConfig,
+            ctx: WorkflowContext
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.status = SourceStatus()
         self.client = SupersetAPIClient(self.config)
-        self.service = get_dashboard_service_or_create(config.service_name,
-                                                       DashboardServiceType.Superset.name,
-                                                       config.username,
-                                                       config.password,
-                                                       config.url,
-                                                       metadata_config)
-
+        self.service = get_dashboard_service_or_create(
+            config.service_name,
+            DashboardServiceType.Superset.name,
+            config.username,
+            config.password,
+            config.url,
+            metadata_config
+        )
 
     @classmethod
     def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
@@ -115,7 +121,9 @@ class SupersetSource(Source):
         dashboard_id = dashboard_json['id']
         name = dashboard_json['dashboard_title']
         dashboard_url = f"{self.config.url[:-1]}{dashboard_json['url']}"
-        last_modified = dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp() * 1000
+        last_modified = dateparser.parse(
+            dashboard_json.get("changed_on_utc", "now")
+        ).timestamp() * 1000
         owners = get_owners(dashboard_json['owners'])
         raw_position_data = dashboard_json.get("position_json", "{}")
         charts = []
@@ -127,14 +135,16 @@ class SupersetSource(Source):
                 chart_id = value.get('meta', {}).get('chartId', 'unknown')
                 charts.append(chart_id)
 
-        return Dashboard(name=dashboard_id,
-                         displayName=name,
-                         description="",
-                         url=dashboard_url,
-                         owners=owners,
-                         charts=charts,
-                         service=EntityReference(id=self.service.id, type="dashboardService"),
-                         lastModified=last_modified)
+        return Dashboard(
+            name=dashboard_id,
+            displayName=name,
+            description="",
+            url=dashboard_url,
+            owners=owners,
+            charts=charts,
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+            lastModified=last_modified
+        )
 
     def _fetch_dashboards(self) -> Iterable[Record]:
         current_page = 0
@@ -174,7 +184,9 @@ class SupersetSource(Source):
     def _build_chart(self, chart_json) -> Chart:
         chart_id = chart_json['id']
         name = chart_json['slice_name']
-        last_modified = dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
+        last_modified = dateparser.parse(
+            chart_json.get("changed_on_utc", "now")
+        ).timestamp() * 1000
         chart_type = chart_json["viz_type"]
         chart_url = f"{self.config.url}{chart_json['url']}"
         datasource_id = chart_json["datasource_id"]
@@ -198,16 +210,18 @@ class SupersetSource(Source):
             "Dimensions": ", ".join(group_bys),
         }
 
-        chart = Chart(name=chart_id,
-                      displayName=name,
-                      description="",
-                      chart_type=chart_type,
-                      url=chart_url,
-                      owners=owners,
-                      datasource_fqn=datasource_fqn,
-                      lastModified=last_modified,
-                      service=EntityReference(id=self.service.id, type="dashboardService"),
-                      custom_props=custom_properties)
+        chart = Chart(
+            name=chart_id,
+            displayName=name,
+            description="",
+            chart_type=chart_type,
+            url=chart_url,
+            owners=owners,
+            datasource_fqn=datasource_fqn,
+            lastModified=last_modified,
+            service=EntityReference(id=self.service.id, type="dashboardService"),
+            custom_props=custom_properties
+        )
         return chart
 
     def _fetch_charts(self):

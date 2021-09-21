@@ -1,4 +1,4 @@
-import { AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { flatten } from 'lodash';
 import { ColumnTags, TableColumn } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
@@ -20,18 +20,23 @@ export const getTagCategories = async (fields?: Array<string> | string) => {
         return getCategory(category.name, fields);
       });
 
-      await Promise.all(promiseArr).then((res: Array<AxiosResponse>) => {
-        if (res.length) {
-          listOfCategories = res.map((category) => {
-            return category.data;
-          });
+      await Promise.allSettled(promiseArr).then(
+        (res: PromiseSettledResult<AxiosResponse>[]) => {
+          if (res.length) {
+            listOfCategories = res
+              .filter((category) => category.status === 'fulfilled')
+              .map((category) => {
+                return (category as PromiseFulfilledResult<AxiosResponse>).value
+                  ?.data;
+              });
+          }
         }
-      });
+      );
     }
 
     return Promise.resolve({ data: listOfCategories });
   } catch (error) {
-    return Promise.reject({ data: error.response });
+    return Promise.reject({ data: (error as AxiosError).response });
   }
 };
 

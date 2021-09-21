@@ -48,7 +48,10 @@ import {
   PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
-import { ServiceCategory } from '../../enums/service.enum';
+import {
+  DashboardServiceType,
+  ServiceCategory,
+} from '../../enums/service.enum';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -86,29 +89,25 @@ const ServicesPage = () => {
       promiseArr = allServiceCollectionArr.map((obj) => {
         return getServices(obj.value);
       });
-      Promise.all(promiseArr).then((result: AxiosResponse[]) => {
-        if (result.length) {
-          let serviceArr = [];
-          const serviceRecord = {} as ServiceRecord;
-          serviceArr = result.map((service) => service?.data?.data || []);
-          for (let i = 0; i < serviceArr.length; i++) {
-            serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
-              serviceArr[i].map((s: ApiData) => {
-                return { ...s, ...s.jdbc };
-              });
+      Promise.allSettled(promiseArr).then(
+        (result: PromiseSettledResult<AxiosResponse>[]) => {
+          if (result.length) {
+            let serviceArr = [];
+            const serviceRecord = {} as ServiceRecord;
+            serviceArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
+            for (let i = 0; i < serviceArr.length; i++) {
+              serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
+                serviceArr[i].map((s: ApiData) => {
+                  return { ...s, ...s.jdbc };
+                });
+            }
+            setServices(serviceRecord);
+            setServiceList(serviceRecord[serviceName]);
           }
-          // // converted array of arrays to array
-          // const allServices = serviceArr.reduce(
-          //   (acc, el) => acc.concat(el),
-          //   []
-          // );
-          // listArr = allServices.map((s: ApiData) => {
-          //   return { ...s, ...s.jdbc };
-          // });
-          setServices(serviceRecord);
-          setServiceList(serviceRecord[serviceName]);
         }
-      });
+      );
     }
   };
 
@@ -191,7 +190,7 @@ const ServicesPage = () => {
   const getServiceLogo = (serviceType: string): JSX.Element | null => {
     const logo = serviceTypeLogo(serviceType);
     if (!isNull(logo)) {
-      return <img alt="" className="tw-h-10 tw-w-10" src={logo} />;
+      return <img alt="" className="tw-h-8 tw-w-8" src={logo} />;
     }
 
     return null;
@@ -243,7 +242,11 @@ const ServicesPage = () => {
         return (
           <>
             <div className="tw-mb-1">
-              <label className="tw-mb-0">Dashboard URL:</label>
+              <label className="tw-mb-0">
+                {service.serviceType === DashboardServiceType.TABLEAU
+                  ? 'Site URL:'
+                  : 'Dashboard URL:'}
+              </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {service.dashboardUrl}
               </span>

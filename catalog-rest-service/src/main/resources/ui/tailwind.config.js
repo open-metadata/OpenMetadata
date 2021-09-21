@@ -19,6 +19,7 @@ const defaultTheme = require('tailwindcss/defaultTheme');
 
 // Primary colors for text and controls
 const primary = '#7147E8';
+const primaryII = '#8D6AF1';
 const primaryHover = '#5523E0';
 const primaryActive = '#450DE2';
 const primaryHoverLite = '#DBD1F9';
@@ -80,6 +81,7 @@ module.exports = {
         'grey-backdrop': backdropBG,
         'primary-lite': primaryBG,
         primary: primary,
+        'primary-II': primaryII,
         'primary-hover': primaryHover,
         'primary-active': primaryActive,
         'primary-hover-lite': primaryHoverLite,

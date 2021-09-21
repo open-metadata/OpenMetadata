@@ -32,6 +32,7 @@ class AppState {
   userTeams: Array<UserTeam> = [];
 
   inPageSearchText = '';
+  explorePageTab = 'tables';
 
   constructor() {
     makeAutoObservable(this);

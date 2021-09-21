@@ -36,9 +36,11 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -53,7 +55,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -81,6 +85,9 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
+  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
+  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -437,21 +444,22 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
     dashboard = getDashboard(dashboard.getId(), "service,owner,usageSummary", adminAuthHeaders());
     dashboard.getService().setHref(null); // href is readonly and not patchable
+    List<TagLabel> dashboardTags = singletonList(TIER_1);
 
     // Add description, owner when previously they were null
     dashboard = patchDashboardAttributesAndCheck(dashboard, "description",
-            TEAM_OWNER1, adminAuthHeaders());
+            TEAM_OWNER1, dashboardTags, adminAuthHeaders());
     dashboard.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-
+    dashboardTags = singletonList(USER_ADDRESS_TAG_LABEL);
     // Replace description, tier, owner
     dashboard = patchDashboardAttributesAndCheck(dashboard, "description1",
-            USER_OWNER1, adminAuthHeaders());
+            USER_OWNER1, dashboardTags, adminAuthHeaders());
     dashboard.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchDashboardAttributesAndCheck(dashboard, null, null, adminAuthHeaders());
+    patchDashboardAttributesAndCheck(dashboard, null, null, dashboardTags, adminAuthHeaders());
   }
 
   @Test
@@ -541,7 +549,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
                                                   Map<String, String> authHeaders) throws HttpResponseException {
     create.withCharts(charts);
     Dashboard dashboard = createDashboard(create, authHeaders);
-    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), charts);
+    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            charts);
     return getAndValidate(dashboard.getId(), create, authHeaders);
   }
 
@@ -643,7 +652,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription,
                                              EntityReference expectedOwner, EntityReference expectedService,
-                                              List<EntityReference> charts) {
+                                              List<TagLabel> expectedTags,
+                                              List<EntityReference> charts) throws HttpResponseException {
     assertNotNull(dashboard.getId());
     assertNotNull(dashboard.getHref());
     assertEquals(expectedDescription, dashboard.getDescription());
@@ -663,6 +673,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getType(), dashboard.getService().getType());
     }
     validateDashboardCharts(dashboard, charts);
+    validateTags(expectedTags, dashboard.getTags());
     return dashboard;
   }
 
@@ -681,22 +692,45 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     }
   }
 
+  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+          throws HttpResponseException {
+    if (expectedList == null) {
+      return;
+    }
+    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
+    // So add to the expectedList, the derived tags before validating the tags
+    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
+    for (TagLabel expected : expectedList) {
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
+              adminAuthHeaders()));
+      updatedExpectedList.addAll(derived);
+    }
+    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+
+    assertTrue(actualList.containsAll(updatedExpectedList));
+    assertTrue(updatedExpectedList.containsAll(actualList));
+  }
+
   private Dashboard patchDashboardAttributesAndCheck(Dashboard dashboard, String newDescription,
-                                                EntityReference newOwner, Map<String, String> authHeaders)
+                                                     EntityReference newOwner, List<TagLabel> tags,
+                                                     Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     String dashboardJson = JsonUtils.pojoToJson(dashboard);
 
     // Update the table attributes
     dashboard.setDescription(newDescription);
     dashboard.setOwner(newOwner);
+    dashboard.setTags(tags);
 
     // Validate information returned in patch response has the updates
     Dashboard updatedDashboard = patchDashboard(dashboardJson, dashboard, authHeaders);
-    validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null);
+    validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null, tags,
+            dashboard.getCharts());
 
     // GET the table and Validate information returned
     Dashboard getDashboard = getDashboard(dashboard.getId(), "service,owner", authHeaders);
-    validateDashboard(getDashboard, dashboard.getDescription(), newOwner, null);
+    validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null, tags,
+            dashboard.getCharts());
     return updatedDashboard;
   }
 

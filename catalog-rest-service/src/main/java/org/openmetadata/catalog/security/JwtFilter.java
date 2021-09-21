@@ -88,7 +88,7 @@ public class JwtFilter implements ContainerRequestFilter {
       throw new AuthenticationException("Invalid token");
     }
     String authorizedEmail;
-    if (jwt.getClaim("email") != null) {
+    if (jwt.getClaims().get("email") != null) {
        authorizedEmail = jwt.getClaim("email").as(TextNode.class).asText();
     } else if (jwt.getClaim("sub") != null){
       authorizedEmail = jwt.getClaim("sub").as(TextNode.class).asText();
@@ -118,5 +118,4 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     return source;
   }
-
 }

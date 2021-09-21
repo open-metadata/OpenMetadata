@@ -18,12 +18,12 @@ import time
 from datetime import datetime
 from typing import Any, Iterable, Optional
 
-from great_expectations.core.expectation_validation_result import (
+from data_profiler.core.expectation_validation_result import (
     ExpectationSuiteValidationResult,
     ExpectationValidationResult,
 )
-from great_expectations.data_context import BaseDataContext
-from great_expectations.data_context.types.base import (
+from data_profiler.data_context import BaseDataContext
+from data_profiler.data_context.types.base import (
     DataContextConfig,
     DatasourceConfig,
     InMemoryStoreBackendDefaults,
@@ -31,7 +31,6 @@ from great_expectations.data_context.types.base import (
 
 from metadata.generated.schema.entity.data.table import TableProfile, ColumnProfile
 from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.models.table_metadata import DatasetProfile, DatasetColumnProfile,  ValueFrequency
 from metadata.profiler.util import group_by
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -71,17 +70,21 @@ class DataProfiler:
             offset: int = None,
             **kwargs: Any,
     ) -> TableProfile:
-        profile_test_results = self._profile_data_asset(
-            {
-                "schema": schema,
-                "table": table,
-                "limit": limit,
-                "offset": offset,
-                **kwargs,
-            }
-        )
-        profile = self._parse_test_results_to_table_profile(profile_test_results, dataset_name=dataset_name)
-        return profile
+        try:
+            profile_test_results = self._profile_data_asset(
+                {
+                    "schema": schema,
+                    "table": table,
+                    "limit": limit,
+                    "offset": offset,
+                    **kwargs,
+                }
+            )
+            profile = self._parse_test_results_to_table_profile(profile_test_results, dataset_name=dataset_name)
+            return profile
+        except Exception as err:
+            logger.error(err)
+            pass
 
     def _profile_data_asset(
             self,
@@ -128,7 +131,6 @@ class DataProfiler:
             table_test_results: Iterable[ExpectationValidationResult],
             dataset_name: str,
     ) -> TableProfile:
-        logger.info("generating table stats")
         profile = TableProfile(profileDate=datetime.now(). strftime("%Y-%m-%d"))
         for table_result in table_test_results:
             expectation: str = table_result.expectation_config.expectation_type
@@ -149,7 +151,6 @@ class DataProfiler:
             col_test_results: Iterable[ExpectationValidationResult],
             dataset_name: str,
     ) -> ColumnProfile:
-        logger.info(f"Generating Column Stats for {column}")
         column_profile = ColumnProfile(name=column)
         for col_result in col_test_results:
             expectation: str = col_result.expectation_config.expectation_type

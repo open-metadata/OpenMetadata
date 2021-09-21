@@ -92,7 +92,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 
   return (
     <>
-      <PageContainer leftPanelContent={fetchLeftPanel && fetchLeftPanel()}>
+      <PageContainer leftPanelContent={fetchLeftPanel?.()}>
         <div className="container-fluid" data-testid="fluid-container">
           {isLoading ? (
             <Loader />
@@ -127,7 +127,10 @@ const SearchedData: React.FC<SearchedDataProp> = ({
                   ) : null}
                 </>
               ) : (
-                <ErrorPlaceHolderES type="noData" />
+                <>
+                  {children}
+                  <ErrorPlaceHolderES type="noData" />
+                </>
               )}
             </>
           )}
