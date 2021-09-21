@@ -93,7 +93,7 @@ const MyTopicDetailPage = () => {
         title: 'Config',
       },
       isProtected: false,
-      position: 3,
+      position: 2,
     },
     {
       name: 'Manage',
@@ -104,7 +104,7 @@ const MyTopicDetailPage = () => {
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 2,
+      position: 3,
     },
   ];
   const fetchTags = () => {
