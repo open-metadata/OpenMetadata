@@ -12,7 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import re
 from datetime import datetime, timedelta
 from typing import List
 
@@ -22,7 +22,6 @@ from metadata.generated.schema.api.services.createMessagingService import Create
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 
@@ -94,3 +93,47 @@ def get_dashboard_service_or_create(service_name: str,
         )
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
+
+
+def _hive_struct_to_json(hive_str):
+    """
+    Expands embedded Hive struct strings to Python dictionaries
+    Args:
+        Hive struct format as string
+    Returns
+        JSON object
+    """
+    r = re.compile(r'(.*?)(struct<|array<|[:,>])(.*)')
+    root = dict()
+
+    to_parse = hive_str
+    parents = []
+    curr_elem = root
+
+    key = None
+    while to_parse:
+        left, operator, to_parse = r.match(to_parse).groups()
+
+        if operator == 'struct<' or operator == 'array<':
+            parents.append(curr_elem)
+            new_elem = dict() if operator == 'struct<' else list()
+            if key:
+                curr_elem[key] = new_elem
+                curr_elem = new_elem
+            elif isinstance(curr_elem, list):
+                curr_elem.append(new_elem)
+                curr_elem = new_elem
+            key = None
+        elif operator == ':':
+            key = left
+        elif operator == ',' or operator == '>':
+            if left:
+                if isinstance(curr_elem, dict):
+                    curr_elem[key] = left
+                elif isinstance(curr_elem, list):
+                    curr_elem.append(left)
+
+            if operator == '>':
+                curr_elem = parents.pop()
+
+    return root
