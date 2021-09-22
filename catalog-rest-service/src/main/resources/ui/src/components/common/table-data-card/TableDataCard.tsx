@@ -70,7 +70,7 @@ const TableDataCard: FunctionComponent<Props> = ({
       <div>
         <div className="tw-flex">
           {getEntityIcon(indexType)}
-          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading">
+          <h6 className="tw-flex tw-items-center tw-m-0 tw-heading tw-pl-2">
             <Link
               data-testid="table-link"
               to={getEntityLink(indexType, fullyQualifiedName)}>
