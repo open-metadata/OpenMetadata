@@ -39,7 +39,7 @@ export interface CreateChart {
 }
 
 /**
- * This schema defines the type used for describing different types of charts
+ * This schema defines the type used for describing different types of charts.
  */
 export enum ChartType {
   Area = 'Area',

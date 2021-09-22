@@ -349,11 +349,11 @@ export interface ColumnProfile {
    */
   name?: string;
   /**
-   * No.of null values in a column
+   * No.of null values in a column.
    */
   nullCount?: number;
   /**
-   * No.of null value proportion in columns
+   * No.of null value proportion in columns.
    */
   nullProportion?: number;
   /**
@@ -361,11 +361,11 @@ export interface ColumnProfile {
    */
   stddev?: number;
   /**
-   * No. of unique values in the column
+   * No. of unique values in the column.
    */
   uniqueCount?: number;
   /**
-   * Proportion of number of unique values in a column
+   * Proportion of number of unique values in a column.
    */
   uniqueProportion?: number;
 }
