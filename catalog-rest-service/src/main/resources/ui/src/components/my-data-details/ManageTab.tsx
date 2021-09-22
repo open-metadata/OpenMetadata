@@ -109,7 +109,7 @@ const ManageTab: FunctionComponent<Props> = ({
     }
   });
   const [owner, setOwner] = useState(currentUser);
-  const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [, setIsLoadingTierData] = useState<boolean>(false);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';

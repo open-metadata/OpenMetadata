@@ -59,6 +59,13 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
   updateService: jest.fn(),
 }));
 
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+  }
+);
+
 describe('Test Service page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<ServicesPage />, {

@@ -62,6 +62,6 @@ describe('Test Appbar Component', () => {
     });
     const items = getAllByTestId('dropdown-item');
 
-    expect(items).toHaveLength(2);
+    expect(items).toHaveLength(3);
   });
 });

@@ -16,6 +16,7 @@
 */
 
 import { getAllByTestId, render } from '@testing-library/react';
+import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import SchemaTable from './SchemaTable';
@@ -44,13 +45,20 @@ const mockjoins = [
 
 const mockUpdate = jest.fn();
 
+const mockOwner: TableDetail['owner'] = {
+  id: 'string',
+  type: 'user',
+};
+
 describe('Test QueryDetails Component', () => {
   it('Renders all the columns sent to the component', () => {
     const { container } = render(
       <SchemaTable
+        hasEditAccess
         columnName="testColumn"
         columns={mockColumns}
         joins={mockjoins}
+        owner={mockOwner}
         onUpdate={mockUpdate}
       />,
       {
