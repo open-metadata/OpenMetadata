@@ -3,7 +3,7 @@
  */
 export interface DashboardService {
   /**
-   * Dashboard Service URL. This will be used to make REST API calls to Dashboard Service
+   * Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.
    */
   dashboardUrl: string;
   /**
@@ -27,15 +27,15 @@ export interface DashboardService {
    */
   name: string;
   /**
-   * Password to log-into Dashboard Service
+   * Password to log-into Dashboard Service.
    */
   password?: string;
   /**
-   * Type of dashboard service such as Lookr or Superset...
+   * Type of dashboard service such as Looker or Superset...
    */
   serviceType: DashboardServiceType;
   /**
-   * Username to log-into Dashboard Service
+   * Username to log-into Dashboard Service.
    */
   username?: string;
 }
@@ -58,11 +58,13 @@ export interface Schedule {
 }
 
 /**
- * Type of dashboard service such as Lookr or Superset...
+ * Type of dashboard service such as Looker or Superset...
  *
- * Type of Dashboard service - Superset or Lookr
+ * Type of Dashboard service - Superset, Looker, Redash or Tableau.
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Redash = 'Redash',
   Superset = 'Superset',
+  Tableau = 'Tableau',
 }
