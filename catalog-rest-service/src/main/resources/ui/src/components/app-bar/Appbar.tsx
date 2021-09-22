@@ -130,11 +130,6 @@ const Appbar: React.FC = (): JSX.Element => {
         : 'User'
       : appState.userDetails.displayName || appState.userDetails.name;
 
-    // return (
-    //   <p className="tw-cursor-text">
-    //     {name} <hr className="tw--mr-8 tw--ml-2 tw-border-t-2 tw-mt-1" />{' '}
-    //   </p>
-    // );
     return (
       <span>
         Welcome, <span className="tw-font-medium">{name.split(' ')[0]}</span>
@@ -276,22 +271,6 @@ const Appbar: React.FC = (): JSX.Element => {
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
-                  // {
-                  //   name: getUserDisplayName(),
-                  //   to: '',
-                  //   disabled: false,
-                  //   icon: <></>,
-                  // },
-                  // {
-                  //   name: (
-                  //     <p className="tw-text-grey-muted tw-text-xs tw-cursor-text">{`Version ${
-                  //       version.split('-')[0]
-                  //     }`}</p>
-                  //   ),
-                  //   to: '',
-                  //   disabled: false,
-                  //   icon: <></>,
-                  // },
                   {
                     name: `${hash.slice(0, 7)}`,
                     to: 'https://github.com/open-metadata/OpenMetadata/commit/7f10cfb22b8c9f9583986905119de11c6feb20ae',
