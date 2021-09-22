@@ -76,7 +76,9 @@ const SigninPage = () => {
 
   return (
     <PageContainer>
-      <div className="tw-w-screen tw-h-screen tw-flex tw-justify-center">
+      <div
+        className="tw-w-screen tw-h-screen tw-flex tw-justify-center"
+        data-testid="signin-page">
         <div className="tw-flex tw-flex-col tw-items-center signin-box">
           <div className="tw-flex tw-justify-center tw-items-center tw-mb-7 tw-mt-20">
             <SVGIcons

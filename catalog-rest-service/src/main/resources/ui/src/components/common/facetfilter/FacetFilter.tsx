@@ -134,7 +134,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
             {aggregation.buckets.length > 0 ? (
               <>
                 <div className="tw-flex tw-justify-between">
-                  <h6 className="tw-heading">
+                  <h6 className="tw-heading" data-testid="filter-heading">
                     {
                       facetFilterPlaceholder.find(
                         (filter) => filter.name === aggregation.title

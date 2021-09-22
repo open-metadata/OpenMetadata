@@ -20,6 +20,16 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Appbar from './Appbar';
 
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: () => {
+    return {
+      isSignedIn: true,
+      isSignedOut: false,
+      isAuthenticatedRoute: true,
+    };
+  },
+}));
+
 describe('Test Appbar Component', () => {
   it('Component should render', () => {
     const { getByTestId } = render(<Appbar />, {
@@ -38,12 +48,8 @@ describe('Test Appbar Component', () => {
     });
     const items = getAllByTestId('appbar-item');
 
-    expect(items).toHaveLength(3);
-    expect(items.map((i) => i.textContent)).toEqual([
-      '',
-      'Explore',
-      'Scorecard',
-    ]);
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.textContent)).toEqual(['', 'Explore']);
   });
 
   it('Check for render dropdown item', () => {
@@ -52,6 +58,6 @@ describe('Test Appbar Component', () => {
     });
     const items = getAllByTestId('dropdown-item');
 
-    expect(items).toHaveLength(3);
+    expect(items).toHaveLength(2);
   });
 });

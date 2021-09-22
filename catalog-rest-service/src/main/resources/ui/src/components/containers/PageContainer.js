@@ -31,7 +31,8 @@ const PageContainer = ({ children, leftPanelContent, className }) => {
         'page-container',
         className || '',
         !isAuthenticatedRoute ? 'full-page' : null
-      )}>
+      )}
+      data-testid="container">
       {leftPanelContent && <div className="side-panel">{leftPanelContent}</div>}
       {children}
     </div>

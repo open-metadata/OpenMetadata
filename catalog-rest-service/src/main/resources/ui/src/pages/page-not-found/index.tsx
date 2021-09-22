@@ -24,9 +24,13 @@ import PageContainer from '../../components/containers/PageContainer';
 const PageNotFound = () => {
   return (
     <PageContainer>
-      <div className="tw-flex tw-flex-col tw-place-items-center tw-mt-24">
+      <div
+        className="tw-flex tw-flex-col tw-place-items-center tw-mt-24"
+        data-testid="no-page-found">
         <ErrorPlaceHolder />
-        <div className="tw-flex tw-mt-3 tw-justify-around">
+        <div
+          className="tw-flex tw-mt-3 tw-justify-around"
+          data-testid="route-links">
           <Link className="tw-mr-2" to="/">
             <Button size="regular" theme="primary" variant="contained">
               Go to Home

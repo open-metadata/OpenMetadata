@@ -15,45 +15,50 @@
   * limitations under the License.
 */
 
-import { fireEvent, getByTestId, render } from '@testing-library/react';
+import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { schemaDetails } from '../../pages/my-data-details/index.mock';
+import { MemoryRouter } from 'react-router-dom';
 import SchemaTab from './SchemaTab';
+
+const mockColumns = [
+  {
+    name: 'testId',
+    columnDataType: 'string',
+    description: 'string',
+    fullyQualifiedName: 'string',
+    tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],
+    ordinalPosition: 2,
+  },
+];
+
+const mockjoins = [
+  {
+    columnName: 'testId',
+    joinedWith: [{ fullyQualifiedName: 'joinedTable', joinCount: 1 }],
+  },
+];
+
+const mockUpdate = jest.fn();
 
 describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
-      <SchemaTab columns={schemaDetails.columns} data={schemaDetails.data} />
+      <SchemaTab
+        columns={mockColumns}
+        joins={mockjoins}
+        onUpdate={mockUpdate}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
     );
     const searchBar = getByTestId(container, 'search-bar-container');
 
     expect(searchBar).toBeInTheDocument();
 
-    const schemaToggle = getByTestId(container, 'schema-button');
-
-    expect(schemaToggle).toBeInTheDocument();
-
-    const sampleDataToggle = getByTestId(container, 'sample-data-button');
-
-    expect(sampleDataToggle).toBeInTheDocument();
-
     const schemaTable = getByTestId(container, 'schema-table');
 
     expect(schemaTable).toBeInTheDocument();
     expect(queryByTestId('sample-data-table')).toBeNull();
-  });
-
-  it('Renders the sample data table when toggle is clicked', () => {
-    const { queryByTestId, container } = render(
-      <SchemaTab columns={schemaDetails.columns} data={schemaDetails.data} />
-    );
-
-    expect(queryByTestId('sample-data-table')).toBeNull();
-
-    const sampleDataToggle = getByTestId(container, 'sample-data-button');
-    fireEvent.click(sampleDataToggle);
-    const sampleDataTable = getByTestId(container, 'sample-data-table');
-
-    expect(sampleDataTable).toBeInTheDocument();
   });
 });

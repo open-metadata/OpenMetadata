@@ -35,7 +35,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
   tags,
 }: Props) => {
   return (
-    <>
+    <div data-testid="table-body">
       <div className="tw-mb-1 description-text">
         {description.trim() ? (
           <RichTextEditorPreviewer markdown={description} />
@@ -59,7 +59,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         )}
       </p>
       {Boolean(tags?.length) && (
-        <div className="tw-mt-1">
+        <div className="tw-mt-1" data-testid="tags-container">
           <span>
             <i className="fas fa-tags tw-px-1 tw-text-xs tw-text-grey-muted" />
           </span>
@@ -73,7 +73,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 };
 
