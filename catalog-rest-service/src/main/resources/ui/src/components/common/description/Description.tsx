@@ -1,5 +1,6 @@
 import { TableDetail } from 'Models';
 import React from 'react';
+import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
@@ -33,12 +34,7 @@ const Description = ({
         </span>
         <div className="tw-flex-initial">
           <NonAdminAction
-            html={
-              <>
-                <p>You need to be owner to perform this action</p>
-                {!owner ? <p>Claim ownership in Manage </p> : null}
-              </>
-            }
+            html={getHtmlForNonAdminAction(Boolean(owner))}
             isOwner={hasEditAccess}>
             <button
               className="focus:tw-outline-none"

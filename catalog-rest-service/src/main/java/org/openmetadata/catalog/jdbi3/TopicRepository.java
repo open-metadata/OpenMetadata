@@ -185,6 +185,11 @@ public abstract class TopicRepository {
     return updated;
   }
 
+  @Transaction
+  public EntityReference getOwnerReference(Topic topic) throws IOException {
+    return EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner());
+  }
+
   public Topic createInternal(Topic topic, EntityReference service, EntityReference owner) throws IOException {
     topic.setFullyQualifiedName(getFQN(service, topic));
     EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner

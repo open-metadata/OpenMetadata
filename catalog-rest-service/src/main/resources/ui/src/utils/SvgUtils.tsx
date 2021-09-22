@@ -1,5 +1,8 @@
 import React, { FunctionComponent } from 'react';
-import IconGoogle from '../assets/img/google-icon.png';
+import IconAuth0 from '../assets/img/icon-auth0.png';
+import IconGithub from '../assets/img/icon-github.png';
+import IconGoogle from '../assets/img/icon-google.png';
+import IconOkta from '../assets/img/icon-okta.png';
 import IconWelcomePopper from '../assets/img/welcome-popper-icon.png';
 import IconAPI from '../assets/svg/api.svg';
 import IconSuccess from '../assets/svg/check.svg';
@@ -9,6 +12,7 @@ import IconDashboard from '../assets/svg/dashboard.svg';
 import IconAsstest from '../assets/svg/data-assets.svg';
 import IconDoc from '../assets/svg/doc.svg';
 import IconError from '../assets/svg/error.svg';
+import IconExternalLink from '../assets/svg/external-link.svg';
 import IconCheckCircle from '../assets/svg/ic-check-circle.svg';
 import IconDelete from '../assets/svg/ic-delete.svg';
 import IconDownArrow from '../assets/svg/ic-down-arrow.svg';
@@ -70,6 +74,9 @@ export const Icons = {
   LOGO_SMALL: 'logo-small',
   WELCOME_POPPER: 'welcome-popper',
   GOOGLE_ICON: 'google-icon',
+  OKTA_ICON: 'okta-icon',
+  GITHUB_ICON: 'github-icon',
+  AUTH0_ICON: 'auth0-icon',
   EDIT: 'icon-edit',
   EXPLORE: 'icon-explore',
   MY_DATA: 'icon-my-data',
@@ -126,6 +133,7 @@ export const Icons = {
   DASHBOARD_GREY: 'dashboard-grey',
   CONFIG: 'icon-config',
   SLACK: 'slack',
+  EXTERNAL_LINK: 'external-link',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -182,6 +190,18 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.GOOGLE_ICON:
       IconComponent = IconGoogle;
+
+      break;
+    case Icons.OKTA_ICON:
+      IconComponent = IconOkta;
+
+      break;
+    case Icons.GITHUB_ICON:
+      IconComponent = IconGithub;
+
+      break;
+    case Icons.AUTH0_ICON:
+      IconComponent = IconAuth0;
 
       break;
     case Icons.MENU:
@@ -374,6 +394,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SLACK:
       IconComponent = IconSlack;
+
+      break;
+    case Icons.EXTERNAL_LINK:
+      IconComponent = IconExternalLink;
 
       break;
 

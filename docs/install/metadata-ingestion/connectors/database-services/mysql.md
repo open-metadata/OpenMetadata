@@ -18,18 +18,6 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[mysql]'
-python -m spacy download en_core_web_sm
-```
-{% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[mysql]'
 ```
 {% endtab %}
 {% endtabs %}
@@ -50,9 +38,10 @@ metadata ingest -c ./pipelines/mysql.json
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
+      "database": "openmetadata_db",
       "service_name": "local_mysql",
       "filter_pattern": {
-        "deny": ["mysql.*", "information_schema.*"]
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
     }
   },
@@ -79,29 +68,22 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
+      "database": "openmetadata_db",
       "service_name": "local_mysql",
-      "service_type": "MySQL",
       "filter_pattern": {
-        "excludes": ["mysql.*", "information_schema.*"]
+        "excludes": ["mysql.*", "information_schema.*", "performance_schema.*", "sys.*"]
       }
-    }
-  },
-  "processor": {
-    "type": "pii",
-    "config": {
-      "api_endpoint": "http://localhost:8585/api"
     }
   },
   "sink": {
     "type": "metadata-rest",
-    "config": {
-    }
+    "config": {}
   },
   "metadata_server": {
     "type": "metadata-server",
     "config": {
       "api_endpoint": "http://localhost:8585/api",
-        "auth_provider_type": "no-auth"
+      "auth_provider_type": "no-auth"
     }
   },
   "cron": {
@@ -112,6 +94,7 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
+
 ```
 {% endcode %}
 

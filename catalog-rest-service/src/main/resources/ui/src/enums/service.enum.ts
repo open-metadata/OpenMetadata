@@ -42,4 +42,6 @@ export enum MessagingServiceType {
 export enum DashboardServiceType {
   SUPERSET = 'Superset',
   LOOKER = 'Looker',
+  TABLEAU = 'Tableau',
+  REDASH = 'Redash',
 }

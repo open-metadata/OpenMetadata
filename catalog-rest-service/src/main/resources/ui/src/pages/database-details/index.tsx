@@ -312,7 +312,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         </Link>
                       </td>
                       <td className="tableBody-cell">
-                        {table.description ? (
+                        {table.description.trim() ? (
                           <RichTextEditorPreviewer
                             markdown={table.description}
                           />

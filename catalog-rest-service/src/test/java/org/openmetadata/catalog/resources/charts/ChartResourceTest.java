@@ -89,6 +89,8 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
+
 
 
   @BeforeAll
@@ -401,7 +403,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
     assertNull(chart.getDescription());
     assertNull(chart.getOwner());
     assertNotNull(chart.getService());
-    List<TagLabel> chartTags = singletonList(USER_ADDRESS_TAG_LABEL);
+    List<TagLabel> chartTags = List.of(USER_ADDRESS_TAG_LABEL);
 
     chart = getChart(chart.getId(), "service,owner,tags", adminAuthHeaders());
     chart.getService().setHref(null); // href is readonly and not patchable
@@ -410,14 +412,13 @@ public class ChartResourceTest extends CatalogApplicationTest {
     chart = patchChartAttributesAndCheck(chart, "description", TEAM_OWNER1, chartTags, adminAuthHeaders());
     chart.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-    chart.setTags(singletonList(USER_ADDRESS_TAG_LABEL));
-
+    chartTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
     // Replace description, tier, owner
     chart = patchChartAttributesAndCheck(chart, "description1", USER_OWNER1, chartTags,
             adminAuthHeaders());
     chart.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-
+    chartTags = List.of(TIER_1);
     // Remove description, tier, owner
     patchChartAttributesAndCheck(chart, null, null, chartTags, adminAuthHeaders());
   }

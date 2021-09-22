@@ -254,7 +254,7 @@ public class TopicResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(topic));
+            dao.getOwnerReference(topic));
     topic = dao.patch(id, patch);
     return addHref(uriInfo, topic);
   }

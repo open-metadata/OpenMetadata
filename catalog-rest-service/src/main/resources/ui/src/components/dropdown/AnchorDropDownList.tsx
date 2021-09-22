@@ -18,6 +18,7 @@
 import classNames from 'classnames';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import SVGIcons from '../../utils/SvgUtils';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
@@ -54,9 +55,37 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                   setIsOpen && setIsOpen(false);
                 }}>
                 {item.icon ? (
-                  <button className="tw-text-grey-body">{item.name}</button>
+                  <button className="tw-text-grey-body">
+                    {item.isOpenNewTab ? (
+                      <span className="tw-flex">
+                        <span className="tw-mr-1">{item.name}</span>
+                        <SVGIcons
+                          alt="external-link"
+                          className="tw-align-middle"
+                          icon="external-link"
+                          width="12px"
+                        />
+                      </span>
+                    ) : (
+                      item.name
+                    )}{' '}
+                  </button>
                 ) : (
-                  item.name
+                  <>
+                    {item.isOpenNewTab ? (
+                      <span className="tw-flex">
+                        <span className="tw-mr-1">{item.name}</span>
+                        <SVGIcons
+                          alt="external-link"
+                          className="tw-align-middle"
+                          icon="external-link"
+                          width="12px"
+                        />
+                      </span>
+                    ) : (
+                      item.name
+                    )}
+                  </>
                 )}
               </Link>
             </div>

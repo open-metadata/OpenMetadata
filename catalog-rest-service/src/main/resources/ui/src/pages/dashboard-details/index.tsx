@@ -1,9 +1,10 @@
 import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail } from 'Models';
+import { ColumnTags, TableDetail, User } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
 import {
   addFollower,
@@ -14,6 +15,7 @@ import {
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -27,9 +29,11 @@ import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
+import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
   getCurrentUserId,
+  getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
@@ -46,6 +50,9 @@ type ChartType = {
 } & Chart;
 const MyDashBoardPage = () => {
   const USERId = getCurrentUserId();
+
+  const { isAuthDisabled } = useAuth();
+
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { dashboardFQN } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
@@ -54,7 +61,8 @@ const MyDashBoardPage = () => {
   const [dashboardId, setDashboardId] = useState<string>('');
   const [isLoading, setLoading] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<number>(0);
+  const [followers, setFollowers] = useState<Array<User>>([]);
+  const [followersCount, setFollowersCount] = useState<number>(0);
   const [isFollowing, setIsFollowing] = useState(false);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
@@ -62,6 +70,9 @@ const MyDashBoardPage = () => {
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [charts, setCharts] = useState<ChartType[]>([]);
+  const [dashboardUrl, setDashboardUrl] = useState<string>('');
+  // const [usage, setUsage] = useState('');
+  // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -109,6 +120,9 @@ const MyDashBoardPage = () => {
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
+    { key: 'Dashboard Url', value: dashboardUrl, isLink: true },
+    // { key: 'Usage', value: usage },
+    // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
   const fetchTags = () => {
     getTagCategories().then((res) => {
@@ -125,14 +139,27 @@ const MyDashBoardPage = () => {
       promiseArr = charts.map((chart) =>
         getChartById(chart.id, ['service', 'tags'])
       );
-      await Promise.all(promiseArr).then((res: Array<AxiosResponse>) => {
-        if (res.length) {
-          chartsData = res.map((chart) => chart.data);
+      await Promise.allSettled(promiseArr).then(
+        (res: PromiseSettledResult<AxiosResponse>[]) => {
+          if (res.length) {
+            chartsData = res
+              .filter((chart) => chart.status === 'fulfilled')
+              .map(
+                (chart) =>
+                  (chart as PromiseFulfilledResult<AxiosResponse>).value.data
+              );
+          }
         }
-      });
+      );
     }
 
     return chartsData;
+  };
+
+  const setFollowersData = (followers: Array<User>) => {
+    // need to check if already following or not with logedIn user id
+    setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
+    setFollowersCount(followers?.length);
   };
 
   const fetchDashboardDetail = (dashboardFQN: string) => {
@@ -155,15 +182,17 @@ const MyDashBoardPage = () => {
         owner,
         displayName,
         charts,
+        dashboardUrl,
+        // usageSummary,
       } = res.data;
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');
-      setFollowers(followers?.length);
+      setFollowers(followers);
+      setFollowersData(followers);
       setOwner(getOwnerFromId(owner?.id));
       setTier(getTierFromTableTags(tags));
       setTags(getTagsWithoutTier(tags));
-      setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
       getServiceById('dashboardServices', service?.id).then(
         (serviceRes: AxiosResponse) => {
           setSlashedDashboardName([
@@ -194,7 +223,19 @@ const MyDashBoardPage = () => {
           });
         }
       );
+      setDashboardUrl(dashboardUrl);
       fetchCharts(charts).then((charts) => setCharts(charts));
+      // if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
+      //   const percentile = getUsagePercentile(
+      //     usageSummary.weeklyStats.percentileRank
+      //   );
+      //   setUsage(percentile);
+      // } else {
+      //   setUsage('--');
+      // }
+      // setWeeklyUsageCount(
+      //   usageSummary?.weeklyStats.count.toLocaleString() || '--'
+      // );
 
       setLoading(false);
     });
@@ -203,12 +244,12 @@ const MyDashBoardPage = () => {
   const followDashboard = (): void => {
     if (isFollowing) {
       removeFollower(dashboardId, USERId).then(() => {
-        setFollowers((preValu) => preValu - 1);
+        setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
       addFollower(dashboardId, USERId).then(() => {
-        setFollowers((preValu) => preValu + 1);
+        setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
     }
@@ -371,6 +412,12 @@ const MyDashBoardPage = () => {
   }, [dashboardFQN]);
 
   useEffect(() => {
+    if (isAuthDisabled && AppState.users.length && followers.length) {
+      setFollowersData(followers);
+    }
+  }, [AppState.users, followers]);
+
+  useEffect(() => {
     fetchTags();
   }, []);
 
@@ -383,9 +430,11 @@ const MyDashBoardPage = () => {
           <EntityPageInfo
             isTagEditable
             extraInfo={extraInfo}
-            followers={followers}
+            followers={followersCount}
             followHandler={followDashboard}
+            hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
+            owner={owner}
             tagList={tagList}
             tags={tags}
             tagsHandler={onTagUpdate}
@@ -437,7 +486,17 @@ const MyDashBoardPage = () => {
                               <Link
                                 target="_blank"
                                 to={{ pathname: chart.chartUrl }}>
-                                {chart.displayName}
+                                <span className="tw-flex">
+                                  <span className="tw-mr-1">
+                                    {chart.displayName}
+                                  </span>
+                                  <SVGIcons
+                                    alt="external-link"
+                                    className="tw-align-middle"
+                                    icon="external-link"
+                                    width="12px"
+                                  />
+                                </span>
                               </Link>
                             </td>
                             <td className="tableBody-cell">
@@ -476,35 +535,41 @@ const MyDashBoardPage = () => {
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
-                              <TagsContainer
-                                editable={editChartTags?.index === index}
-                                selectedTags={chart.tags as ColumnTags[]}
-                                tagList={tagList}
-                                onCancel={() => {
-                                  handleChartTagSelection();
-                                }}
-                                onSelectionChange={(tags) => {
-                                  handleChartTagSelection(tags);
-                                }}>
-                                {chart.tags?.length ? (
-                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                ) : (
-                                  <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                    <Tags
-                                      className="tw-border-main"
-                                      tag="+ Add tag"
-                                      type="outlined"
-                                    />
-                                  </span>
-                                )}
-                              </TagsContainer>
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess()}
+                                position="left"
+                                trigger="click">
+                                <TagsContainer
+                                  editable={editChartTags?.index === index}
+                                  selectedTags={chart.tags as ColumnTags[]}
+                                  tagList={tagList}
+                                  onCancel={() => {
+                                    handleChartTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleChartTagSelection(tags);
+                                  }}>
+                                  {chart.tags?.length ? (
+                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                      <Tags
+                                        className="tw-border-main"
+                                        tag="+ Add tag"
+                                        type="outlined"
+                                      />
+                                    </span>
+                                  )}
+                                </TagsContainer>
+                              </NonAdminAction>
                             </td>
                           </tr>
                         ))}

@@ -1,75 +1,87 @@
-# Basic Types
+# Basic
 
 This schema defines basic common types that are used by other schemas.
 
-**$id:** [**https://open-metadata.org/schema/type/basic.json**](https://open-metadata.org/schema/type/basic.json)
+**$id: https://open-metadata.org/schema/type/basic.json**
+
+
 
 ## Type definitions in this schema
-
 ### uuid
 
-* Unique id used to identify an entity.
-* Type: `string`
-* String format must be a "uuid"
+ - Unique id used to identify an entity.
+ - Type: `string`
+ - String format must be a "uuid"
+
 
 ### email
 
-* Email address of a user or other entities.
-* Type: `string`
-* String format must be a "email"
-* The value must match this pattern: `^\S+@\S+\.\S+$`
-* Length: between 6 and 127
+ - Email address of a user or other entities.
+ - Type: `string`
+ - String format must be a "email"
+ - The value must match this pattern: `^\S+@\S+\.\S+$`
+ - Length: between 6 and 127
+
 
 ### entityLink
 
-* Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
-* Type: `string`
-* The value must match this pattern: `^<#E/\S+/\S+>$`
+ - Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
+ - Type: `string`
+ - The value must match this pattern: `^<#E/\S+/\S+>$`
+
 
 ### timestamp
 
-* Timestamp in unixTimeMillis.
-* Type: `string`
-* String format must be a "utc-millisec"
+ - Timestamp in unixTimeMillis.
+ - Type: `string`
+ - String format must be a "utc-millisec"
+
 
 ### href
 
-* URI that points to a resource.
-* Type: `string`
-* String format must be a "uri"
+ - URI that points to a resource.
+ - Type: `string`
+ - String format must be a "uri"
+
 
 ### timeInterval
 
-* Type: `object`
-* **Properties**
-  * **start**
-    * Start time in unixTimeMillis.
-    * Type: `integer`
-  * **end**
-    * End time in unixTimeMillis.
-    * Type: `integer`
+ - Time interval in unixTimeMillis.
+ - Type: `object`
+ - **Properties**
+   - **start**
+     - Start time in unixTimeMillis.
+     - Type: `integer`
+   - **end**
+     - End time in unixTimeMillis.
+     - Type: `integer`
+
 
 ### duration
 
-* Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.
-* Type: `string`
+ - Duration in ISO 8601 format in UTC. Example - 'P23DT23H'.
+ - Type: `string`
+
 
 ### date
 
-* Date in ISO 8601 format in UTC. Example - '2018-11-13'.
-* Type: `string`
-* String format must be a "date"
+ - Date in ISO 8601 format in UTC. Example - '2018-11-13'.
+ - Type: `string`
+ - String format must be a "date"
+
 
 ### dateTime
 
-* Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.
-* Type: `string`
-* String format must be a "date-time"
+ - Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.
+ - Type: `string`
+ - String format must be a "date-time"
+
 
 ### sqlQuery
 
-* SQL query statement. Example - 'select \* from orders'.
-* Type: `string`
+ - SQL query statement. Example - 'select * from orders'.
+ - Type: `string`
 
-_This document was updated on: Thursday, August 26, 2021_
 
+
+_This document was updated on: Thursday, September 16, 2021_

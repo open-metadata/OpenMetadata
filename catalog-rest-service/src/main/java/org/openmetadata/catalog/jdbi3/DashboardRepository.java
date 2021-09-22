@@ -207,6 +207,11 @@ public abstract class DashboardRepository {
     relationshipDAO().deleteAll(id);
   }
 
+  @Transaction
+  public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
+    return EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner());
+  }
+
   public static List<EntityReference> toEntityReference(List<Chart> charts) {
     List<EntityReference> refList = new ArrayList<>();
     for (Chart chart: charts) {
@@ -291,6 +296,8 @@ public abstract class DashboardRepository {
     EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
 
     EntityReference newService = updated.getService();
+    // Remove previous tags. Merge tags from the update and the existing tags
+    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
 
     updated.setHref(null);
     updated.setOwner(null);

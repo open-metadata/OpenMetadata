@@ -106,9 +106,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
     }
 
     return (
-      <div className="tw-flex tw-gap-2 tw-px-2 tw-py-2">
-        <SVGIcons alt="icon" className="tw-h-4 tw-w-4" icon={icon} />
-        <p className="tw-text-grey-muted tw-text-xs">{label}</p>
+      <div className="tw-flex tw-items-center">
+        <SVGIcons alt="icon" className="tw-h-4 tw-w-4 tw-ml-2" icon={icon} />
+        <p className="tw-px-2 tw-py-2 tw-text-grey-muted tw-text-xs">{label}</p>
       </div>
     );
   };
@@ -129,7 +129,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
           src={serviceTypeLogo(serviceType)}
         />
         <Link
-          className="tw-block tw-px-4 tw-pl-2 tw-py-2 tw-text-sm"
+          className="tw-block tw-px-4 tw-py-2 tw-text-sm"
           data-testid="data-name"
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>

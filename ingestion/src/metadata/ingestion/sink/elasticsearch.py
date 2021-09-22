@@ -37,7 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 class ElasticSearchConfig(ConfigModel):
-    es_host_port: str
+    es_host: str
+    es_port: int = 9200
     index_tables: Optional[bool] = True
     index_topics: Optional[bool] = False
     index_dashboards: Optional[bool] = False
@@ -68,7 +69,8 @@ class ElasticsearchSink(Sink):
         self.rest = OpenMetadataAPIClient(self.metadata_config)
         self.elasticsearch_doc_type = '_doc'
         self.elasticsearch_client = Elasticsearch([
-            {'host': self.config.es_host_port},
+            {'host': self.config.es_host,
+             'port': self.config.es_port},
         ])
         if self.config.index_tables:
             self._check_or_create_index(self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING)
@@ -241,7 +243,14 @@ class ElasticsearchSink(Sink):
                                             tags=list(tags),
                                             fqdn=fqdn,
                                             owner=dashboard_owner,
-                                            followers=dashboard_followers)
+                                            followers=dashboard_followers,
+                                            monthly_stats=dashboard.usageSummary.monthlyStats.count,
+                                            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
+                                            weekly_stats=dashboard.usageSummary.weeklyStats.count,
+                                            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
+                                            daily_stats=dashboard.usageSummary.dailyStats.count,
+                                            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
+                                            )
 
         return dashboard_doc
 

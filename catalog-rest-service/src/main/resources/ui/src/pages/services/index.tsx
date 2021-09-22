@@ -32,6 +32,7 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
@@ -41,14 +42,20 @@ import {
   EditObj,
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import {
   arrServiceTypes,
   NOSERVICE,
   PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
-import { ServiceCategory } from '../../enums/service.enum';
+import {
+  DashboardServiceType,
+  ServiceCategory,
+} from '../../enums/service.enum';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -86,29 +93,25 @@ const ServicesPage = () => {
       promiseArr = allServiceCollectionArr.map((obj) => {
         return getServices(obj.value);
       });
-      Promise.all(promiseArr).then((result: AxiosResponse[]) => {
-        if (result.length) {
-          let serviceArr = [];
-          const serviceRecord = {} as ServiceRecord;
-          serviceArr = result.map((service) => service?.data?.data || []);
-          for (let i = 0; i < serviceArr.length; i++) {
-            serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
-              serviceArr[i].map((s: ApiData) => {
-                return { ...s, ...s.jdbc };
-              });
+      Promise.allSettled(promiseArr).then(
+        (result: PromiseSettledResult<AxiosResponse>[]) => {
+          if (result.length) {
+            let serviceArr = [];
+            const serviceRecord = {} as ServiceRecord;
+            serviceArr = result.map((service) =>
+              service.status === 'fulfilled' ? service.value?.data?.data : []
+            );
+            for (let i = 0; i < serviceArr.length; i++) {
+              serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
+                serviceArr[i].map((s: ApiData) => {
+                  return { ...s, ...s.jdbc };
+                });
+            }
+            setServices(serviceRecord);
+            setServiceList(serviceRecord[serviceName]);
           }
-          // // converted array of arrays to array
-          // const allServices = serviceArr.reduce(
-          //   (acc, el) => acc.concat(el),
-          //   []
-          // );
-          // listArr = allServices.map((s: ApiData) => {
-          //   return { ...s, ...s.jdbc };
-          // });
-          setServices(serviceRecord);
-          setServiceList(serviceRecord[serviceName]);
         }
-      });
+      );
     }
   };
 
@@ -191,7 +194,7 @@ const ServicesPage = () => {
   const getServiceLogo = (serviceType: string): JSX.Element | null => {
     const logo = serviceTypeLogo(serviceType);
     if (!isNull(logo)) {
-      return <img alt="" className="tw-h-10 tw-w-10" src={logo} />;
+      return <img alt="" className="tw-h-8 tw-w-8" src={logo} />;
     }
 
     return null;
@@ -243,7 +246,11 @@ const ServicesPage = () => {
         return (
           <>
             <div className="tw-mb-1">
-              <label className="tw-mb-0">Dashboard URL:</label>
+              <label className="tw-mb-0">
+                {service.serviceType === DashboardServiceType.TABLEAU
+                  ? 'Site URL:'
+                  : 'Dashboard URL:'}
+              </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {service.dashboardUrl}
               </span>
@@ -350,26 +357,34 @@ const ServicesPage = () => {
                     </div>
                     <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                       <div className="tw-flex tw-justify-end">
-                        <button
-                          className="tw-pr-3 focus:tw-outline-none"
-                          onClick={() => handleEdit(service)}>
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="12px"
-                          />
-                        </button>
-                        <button
-                          className="focus:tw-outline-none"
-                          onClick={() => handleDelete(service.id)}>
-                          <SVGIcons
-                            alt="delete"
-                            icon="icon-delete"
-                            title="Delete"
-                            width="12px"
-                          />
-                        </button>
+                        <NonAdminAction
+                          position="top"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="tw-pr-3 focus:tw-outline-none"
+                            onClick={() => handleEdit(service)}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
+                        <NonAdminAction
+                          position="top"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="focus:tw-outline-none"
+                            onClick={() => handleDelete(service.id)}>
+                            <SVGIcons
+                              alt="delete"
+                              icon="icon-delete"
+                              title="Delete"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
                       </div>
                       <div className="tw-flex tw-justify-end">
                         {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
@@ -384,14 +399,20 @@ const ServicesPage = () => {
                     </div>
                   </div>
                 ))}
-                <div
-                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
-                  onClick={() => handleAddService()}>
-                  <img alt="Add service" src={PLUS} />
-                  <p className="tw-text-base tw-font-normal tw-mt-4">
-                    Add new {servicesDisplayName[serviceName]}
-                  </p>
-                </div>
+                <NonAdminAction
+                  position="right"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <div className="tw-inline-block" style={{ width: '361px' }}>
+                    <div
+                      className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
+                      onClick={() => handleAddService()}>
+                      <img alt="Add service" src={PLUS} />
+                      <p className="tw-text-base tw-font-normal tw-mt-4">
+                        Add new {servicesDisplayName[serviceName]}
+                      </p>
+                    </div>
+                  </div>
+                </NonAdminAction>
               </div>
             ) : (
               <div className="tw-flex tw-items-center tw-flex-col">

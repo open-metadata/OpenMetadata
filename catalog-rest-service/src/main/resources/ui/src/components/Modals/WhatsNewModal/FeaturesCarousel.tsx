@@ -69,18 +69,20 @@ const FeaturesCarousel = ({ data }: Props) => {
         <div className="tw-px-1" key={uniqueId()}>
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
           <p className="tw-text-sm tw-mb-3">{d.description}</p>
-          <div className="tw-max-w-3xl">
-            {d.isImage ? (
-              <img alt="feature" className="tw-w-full" src={d.path} />
-            ) : (
-              <iframe
-                allowFullScreen
-                className="tw-w-full"
-                frameBorder={0}
-                height={278}
-                src={`https://www.youtube.com/embed/${d.path}`}
-              />
-            )}
+          <div>
+            {d.path ? (
+              d.isImage ? (
+                <img alt="feature" className="tw-w-full" src={d.path} />
+              ) : (
+                <iframe
+                  allowFullScreen
+                  className="tw-w-full"
+                  frameBorder={0}
+                  height={476}
+                  src={d.path}
+                />
+              )
+            ) : null}
           </div>
         </div>
       ))}

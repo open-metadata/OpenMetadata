@@ -20,17 +20,6 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 pip install 'openmetadata-ingestion[snowflake-usage]'
 ```
 {% endtab %}
-
-{% tab title="Build from source " %}
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
-python3 -m venv env
-source env/bin/activate
-pip install '.[snowflake-usage]'
-```
-{% endtab %}
 {% endtabs %}
 
 ## Run Manually
@@ -53,7 +42,6 @@ metadata ingest -c ./examples/workflows/snowflake_usage.json
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "service_type": "Snowflake",
       "duration": 2
     }
   },
@@ -84,7 +72,6 @@ Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage
       "database": "SNOWFLAKE_SAMPLE_DATA",
       "account": "account_name",
       "service_name": "snowflake",
-      "service_type": "Snowflake",
       "duration": 2
     }
   },

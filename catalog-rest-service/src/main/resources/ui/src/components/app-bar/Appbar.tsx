@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { CookieStorage } from 'cookie-storage';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -41,21 +42,28 @@ import { activeLink, normalLink } from '../../utils/styleconstant';
 import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
+import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
 
+const cookieStorage = new CookieStorage();
+
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn } = useAuth(location.pathname);
+  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser } = useAuth(
+    location.pathname
+  );
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
   const searchQuery = match?.params?.searchQuery;
   const [searchValue, setSearchValue] = useState(searchQuery);
   const [isOpen, setIsOpen] = useState<boolean>(true);
-  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(false);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(() => {
+    return !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true';
+  });
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -98,7 +106,7 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
     {
-      name: `Slack Channel`,
+      name: `Slack`,
       to: 'https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email',
       disabled: false,
       isOpenNewTab: true,
@@ -112,6 +120,12 @@ const Appbar: React.FC = (): JSX.Element => {
       ),
     },
   ];
+
+  useEffect(() => {
+    setIsFeatureModalOpen(
+      !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true'
+    );
+  }, [isFirstTimeUser]);
 
   return (
     <>
@@ -141,7 +155,15 @@ const Appbar: React.FC = (): JSX.Element => {
                     const target = e.target as HTMLInputElement;
                     if (e.key === 'Enter') {
                       setIsOpen(false);
-                      history.push(getExplorePathWithSearch(target.value));
+                      history.push(
+                        getExplorePathWithSearch(
+                          target.value,
+                          // this is for if user is searching from another page
+                          location.pathname.startsWith(ROUTES.EXPLORE)
+                            ? appState.explorePageTab
+                            : 'tables'
+                        )
+                      );
                     }
                   }}
                 />
@@ -198,7 +220,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 icon={
                   <SVGIcons
                     alt="Doc icon"
-                    className="tw-align-middle tw-mr-1"
+                    className="tw-align-middle tw-mt-0.5 tw-mr-1"
                     icon={Icons.HELP_CIRCLE}
                     width="16"
                   />
@@ -218,14 +240,25 @@ const Appbar: React.FC = (): JSX.Element => {
                   },
                 ]}
                 icon={
-                  <IconDefaultUserProfile
-                    className=""
-                    style={{
-                      height: '24px',
-                      width: '24px',
-                      borderRadius: '50%',
-                    }}
-                  />
+                  <>
+                    {appState.userDetails.profile?.images.image512 ? (
+                      <div className="profile-image">
+                        <img
+                          alt="user"
+                          src={appState.userDetails.profile.images.image512}
+                        />
+                      </div>
+                    ) : (
+                      <IconDefaultUserProfile
+                        className=""
+                        style={{
+                          height: '22px',
+                          width: '22px',
+                          borderRadius: '50%',
+                        }}
+                      />
+                    )}
+                  </>
                 }
                 label=""
                 type="link"

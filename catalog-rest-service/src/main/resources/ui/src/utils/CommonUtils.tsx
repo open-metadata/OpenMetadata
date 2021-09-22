@@ -3,7 +3,10 @@ import { RecentlyViewed, RecentlyViewedData, UserTeam } from 'Models';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
-import { LOCALSTORAGE_RECENTLY_VIEWED } from '../constants/constants';
+import {
+  LOCALSTORAGE_RECENTLY_VIEWED,
+  TITLE_FOR_NON_OWNER_ACTION,
+} from '../constants/constants';
 import { countBackground } from './styleconstant';
 
 export const arraySorterByKey = (
@@ -145,4 +148,13 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
   }
 
   return [];
+};
+
+export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
+  return (
+    <>
+      <p>{TITLE_FOR_NON_OWNER_ACTION}</p>
+      {!isClaimOwner ? <p>Claim ownership in Manage </p> : null}
+    </>
+  );
 };

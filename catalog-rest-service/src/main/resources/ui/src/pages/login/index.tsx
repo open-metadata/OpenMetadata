@@ -33,30 +33,41 @@ const SigninPage = () => {
   };
 
   const getSignInButton = (): JSX.Element => {
+    let ssoBrandName = '';
+    let ssoBrandLogo = '';
     switch (appState.authProvider.provider) {
       case AuthTypes.GOOGLE: {
-        return (
-          <button className="tw-signin-button">
-            <SVGIcons alt="Google Logo" icon={Icons.GOOGLE_ICON} width="22" />
-            <span className="tw-ml-3">Sign in with Google</span>
-          </button>
-        );
+        ssoBrandLogo = Icons.GOOGLE_ICON;
+        ssoBrandName = 'Google';
+
+        break;
       }
       case AuthTypes.OKTA: {
-        return (
-          <button className="tw-signin-button tw-text-white tw-bg-blue-700 hover:tw-bg-blue-600">
-            Sign in with Okta
-          </button>
-        );
+        ssoBrandLogo = Icons.OKTA_ICON;
+        ssoBrandName = 'Okta';
+
+        break;
       }
       case AuthTypes.AUTH0: {
-        return <button className="tw-signin-button">Sign in with Auth0</button>;
+        ssoBrandLogo = Icons.AUTH0_ICON;
+        ssoBrandName = 'Auth0';
+
+        break;
       }
       // TODO: Add "case AuthTypes.GITHUB" after adding support for Github SSO
       default: {
-        return <></>;
+        break;
       }
     }
+
+    return ssoBrandName ? (
+      <button className="tw-signin-button">
+        <SVGIcons alt={`${ssoBrandName} Logo`} icon={ssoBrandLogo} width="22" />
+        <span className="tw-ml-3">Sign in with {ssoBrandName}</span>
+      </button>
+    ) : (
+      <></>
+    );
   };
 
   if (appState.authDisabled || !isEmpty(appState.userDetails)) {
