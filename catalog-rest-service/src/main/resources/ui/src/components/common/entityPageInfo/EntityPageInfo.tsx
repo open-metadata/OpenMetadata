@@ -1,11 +1,13 @@
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { ColumnTags } from 'Models';
+import { ColumnTags, TableDetail } from 'Models';
 import React, { useState } from 'react';
 import { LIST_SIZE } from '../../../constants/constants';
+import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import Tags from '../../tags/tags';
+import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
@@ -26,6 +28,8 @@ type Props = {
   tags: Array<ColumnTags>;
   isTagEditable?: boolean;
   tagList?: Array<string>;
+  owner?: TableDetail['owner'];
+  hasEditAccess?: boolean;
   tagsHandler?: (selectedTags?: Array<string>) => void;
 };
 
@@ -39,6 +43,8 @@ const EntityPageInfo = ({
   tags,
   isTagEditable = false,
   tagList = [],
+  owner,
+  hasEditAccess,
   tagsHandler,
 }: Props) => {
   const [isEditable, setIsEditable] = useState<boolean>(false);
@@ -193,38 +199,46 @@ const EntityPageInfo = ({
           </>
         )}
         {isTagEditable && (
-          <div onClick={() => setIsEditable(true)}>
-            <TagsContainer
-              editable={isEditable}
-              selectedTags={getSelectedTags()}
-              showTags={!isTagEditable}
-              tagList={tagList}
-              onCancel={() => {
-                handleTagSelection();
-              }}
-              onSelectionChange={(tags) => {
-                handleTagSelection(tags);
-              }}>
-              {tags.length || tier ? (
-                <button className=" tw-ml-1 focus:tw-outline-none">
-                  <SVGIcons
-                    alt="edit"
-                    icon="icon-edit"
-                    title="Edit"
-                    width="12px"
-                  />
-                </button>
-              ) : (
-                <span className="">
-                  <Tags
-                    className="tw-border-main tw-text-primary"
-                    tag="+ Add tag"
-                    type="outlined"
-                  />
-                </span>
-              )}
-            </TagsContainer>
-          </div>
+          <NonAdminAction
+            html={getHtmlForNonAdminAction(Boolean(owner))}
+            isOwner={hasEditAccess}
+            position="bottom"
+            trigger="click">
+            <div
+              className="tw-inline-block"
+              onClick={() => setIsEditable(true)}>
+              <TagsContainer
+                editable={isEditable}
+                selectedTags={getSelectedTags()}
+                showTags={!isTagEditable}
+                tagList={tagList}
+                onCancel={() => {
+                  handleTagSelection();
+                }}
+                onSelectionChange={(tags) => {
+                  handleTagSelection(tags);
+                }}>
+                {tags.length || tier ? (
+                  <button className=" tw-ml-1 focus:tw-outline-none">
+                    <SVGIcons
+                      alt="edit"
+                      icon="icon-edit"
+                      title="Edit"
+                      width="12px"
+                    />
+                  </button>
+                ) : (
+                  <span className="">
+                    <Tags
+                      className="tw-border-main tw-text-primary"
+                      tag="+ Add tag"
+                      type="outlined"
+                    />
+                  </span>
+                )}
+              </TagsContainer>
+            </div>
+          </NonAdminAction>
         )}
       </div>
     </div>

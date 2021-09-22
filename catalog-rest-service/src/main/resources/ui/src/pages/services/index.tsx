@@ -32,6 +32,7 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
@@ -41,7 +42,10 @@ import {
   EditObj,
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import {
   arrServiceTypes,
   NOSERVICE,
@@ -351,26 +355,34 @@ const ServicesPage = () => {
                     </div>
                     <div className="tw-flex tw-flex-col tw-justify-between tw-flex-none">
                       <div className="tw-flex tw-justify-end">
-                        <button
-                          className="tw-pr-3 focus:tw-outline-none"
-                          onClick={() => handleEdit(service)}>
-                          <SVGIcons
-                            alt="edit"
-                            icon="icon-edit"
-                            title="Edit"
-                            width="12px"
-                          />
-                        </button>
-                        <button
-                          className="focus:tw-outline-none"
-                          onClick={() => handleDelete(service.id)}>
-                          <SVGIcons
-                            alt="delete"
-                            icon="icon-delete"
-                            title="Delete"
-                            width="12px"
-                          />
-                        </button>
+                        <NonAdminAction
+                          position="top"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="tw-pr-3 focus:tw-outline-none"
+                            onClick={() => handleEdit(service)}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
+                        <NonAdminAction
+                          position="top"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="focus:tw-outline-none"
+                            onClick={() => handleDelete(service.id)}>
+                            <SVGIcons
+                              alt="delete"
+                              icon="icon-delete"
+                              title="Delete"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
                       </div>
                       <div className="tw-flex tw-justify-end">
                         {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
@@ -385,14 +397,20 @@ const ServicesPage = () => {
                     </div>
                   </div>
                 ))}
-                <div
-                  className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
-                  onClick={() => handleAddService()}>
-                  <img alt="Add service" src={PLUS} />
-                  <p className="tw-text-base tw-font-normal tw-mt-4">
-                    Add new {servicesDisplayName[serviceName]}
-                  </p>
-                </div>
+                <NonAdminAction
+                  position="right"
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
+                  <div className="tw-inline-block" style={{ width: '361px' }}>
+                    <div
+                      className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
+                      onClick={() => handleAddService()}>
+                      <img alt="Add service" src={PLUS} />
+                      <p className="tw-text-base tw-font-normal tw-mt-4">
+                        Add new {servicesDisplayName[serviceName]}
+                      </p>
+                    </div>
+                  </div>
+                </NonAdminAction>
               </div>
             ) : (
               <div className="tw-flex tw-items-center tw-flex-col">

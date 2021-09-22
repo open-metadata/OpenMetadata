@@ -15,6 +15,7 @@ import {
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
+import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -32,6 +33,7 @@ import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
   getCurrentUserId,
+  getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
@@ -430,7 +432,9 @@ const MyDashBoardPage = () => {
             extraInfo={extraInfo}
             followers={followersCount}
             followHandler={followDashboard}
+            hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
+            owner={owner}
             tagList={tagList}
             tags={tags}
             tagsHandler={onTagUpdate}
@@ -531,35 +535,41 @@ const MyDashBoardPage = () => {
                                   handleEditChartTag(chart, index);
                                 }
                               }}>
-                              <TagsContainer
-                                editable={editChartTags?.index === index}
-                                selectedTags={chart.tags as ColumnTags[]}
-                                tagList={tagList}
-                                onCancel={() => {
-                                  handleChartTagSelection();
-                                }}
-                                onSelectionChange={(tags) => {
-                                  handleChartTagSelection(tags);
-                                }}>
-                                {chart.tags?.length ? (
-                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                ) : (
-                                  <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                    <Tags
-                                      className="tw-border-main"
-                                      tag="+ Add tag"
-                                      type="outlined"
-                                    />
-                                  </span>
-                                )}
-                              </TagsContainer>
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess()}
+                                position="left"
+                                trigger="click">
+                                <TagsContainer
+                                  editable={editChartTags?.index === index}
+                                  selectedTags={chart.tags as ColumnTags[]}
+                                  tagList={tagList}
+                                  onCancel={() => {
+                                    handleChartTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleChartTagSelection(tags);
+                                  }}>
+                                  {chart.tags?.length ? (
+                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                      <Tags
+                                        className="tw-border-main"
+                                        tag="+ Add tag"
+                                        type="outlined"
+                                      />
+                                    </span>
+                                  )}
+                                </TagsContainer>
+                              </NonAdminAction>
                             </td>
                           </tr>
                         ))}

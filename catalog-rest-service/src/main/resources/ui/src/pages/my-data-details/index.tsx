@@ -493,7 +493,9 @@ const MyDataDetailsPage = () => {
                       '.'
                     )}
                     columns={columns}
+                    hasEditAccess={hasEditAccess()}
                     joins={tableJoinData.columnJoins}
+                    owner={owner}
                     sampleData={sampleData}
                     onUpdate={onColumnsUpdate}
                   />

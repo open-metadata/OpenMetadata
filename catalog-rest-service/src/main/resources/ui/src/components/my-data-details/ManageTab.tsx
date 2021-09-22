@@ -22,7 +22,10 @@ import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { getCategory } from '../../axiosAPIs/tagAPI';
-import { getUserTeams } from '../../utils/CommonUtils';
+import {
+  getHtmlForNonAdminAction,
+  getUserTeams,
+} from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
@@ -246,12 +249,7 @@ const ManageTab: FunctionComponent<Props> = ({
         ) : (
           tierData.map((card, i) => (
             <NonAdminAction
-              html={
-                <>
-                  <p>You need to be owner to perform this action</p>
-                  <p>Claim ownership from above </p>
-                </>
-              }
+              html={getHtmlForNonAdminAction(Boolean(owner))}
               isOwner={hasEditAccess || Boolean(owner)}
               key={i}
               position="left">

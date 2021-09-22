@@ -17,6 +17,7 @@
 
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import {
   getEntityIcon,
@@ -54,7 +55,10 @@ const TableDataCard: FunctionComponent<Props> = ({
     { key: 'Service', value: serviceType },
     {
       key: 'Usage',
-      value: usage !== undefined ? getUsagePercentile(usage) : usage,
+      value:
+        indexType !== SearchIndex.DASHBOARD && usage !== undefined
+          ? getUsagePercentile(usage)
+          : undefined,
     },
     { key: 'Tier', value: tier },
   ];

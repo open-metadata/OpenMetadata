@@ -36,7 +36,10 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { ERROR404 } from '../../constants/constants';
+import {
+  ERROR404,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
@@ -174,9 +177,7 @@ const TeamsPage = () => {
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>there are not any users added yet.</p>
           <p>would like to start adding some ?</p>
-          <NonAdminAction
-            position="bottom"
-            title="Only Admin is allowed for the action">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-8 tw-rounded tw-mb-2"
               size="small"
@@ -253,9 +254,7 @@ const TeamsPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Teams</h6>
-          <NonAdminAction
-            position="bottom"
-            title="Only Admin is allowed for the action">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-7 tw-px-2"
               size="small"
@@ -354,7 +353,7 @@ const TeamsPage = () => {
                 </div>
                 <NonAdminAction
                   position="bottom"
-                  title="Only Admin is allowed for the action">
+                  title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-8 tw-rounded tw-mb-2"
                     size="small"
@@ -373,7 +372,7 @@ const TeamsPage = () => {
                   <div className="tw-flex-initial">
                     <NonAdminAction
                       position="bottom"
-                      title="Only Admin is allowed for the action">
+                      title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <button
                         className="focus:tw-outline-none"
                         onClick={onDescriptionEdit}>

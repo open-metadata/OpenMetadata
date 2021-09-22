@@ -349,7 +349,9 @@ const MyTopicDetailPage = () => {
             ]}
             followers={followersCount}
             followHandler={followTopic}
+            hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
+            owner={owner}
             tagList={tagList}
             tags={tags}
             tagsHandler={onTagUpdate}

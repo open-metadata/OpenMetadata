@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { ColumnTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -35,7 +35,10 @@ import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
-import { getExplorePathWithSearch } from '../../constants/constants';
+import {
+  getExplorePathWithSearch,
+  TITLE_FOR_NON_ADMIN_ACTION,
+} from '../../constants/constants';
 import { isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
@@ -76,7 +79,7 @@ const TagsPage = () => {
         setCurrentCategory(currentCategory.data);
         setIsLoading(false);
       } catch (err) {
-        if (err.response.data.code) {
+        if ((err as AxiosError).response?.data.code) {
           setError('No Data Found');
         }
         setIsLoading(false);
@@ -173,9 +176,7 @@ const TagsPage = () => {
       <>
         <div className="tw-flex tw-justify-between tw-items-baseline tw-mb-3 tw-border-b">
           <h6 className="tw-heading">Tag Categories</h6>
-          <NonAdminAction
-            position="bottom"
-            title="Only Admin is allowed for the action">
+          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-7 tw-px-2"
               size="small"
@@ -359,41 +360,48 @@ const TagsPage = () => {
                               onClick={() => {
                                 setEditTag(tag);
                               }}>
-                              <TagsContainer
-                                editable={
-                                  editTag?.name === tag.name && !isEditTag
-                                }
-                                selectedTags={tag.associatedTags.map((tag) => ({
-                                  tagFQN: tag,
-                                }))}
-                                tagList={
-                                  getTaglist(categories) as Array<string>
-                                }
-                                onCancel={() => {
-                                  handleTagSelection();
-                                }}
-                                onSelectionChange={(tags) => {
-                                  handleTagSelection(tags);
-                                }}>
-                                {tag.associatedTags.length ? (
-                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                ) : (
-                                  <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                    <Tags
-                                      className="tw-border-main"
-                                      tag="+ Add tag"
-                                      type="outlined"
-                                    />
-                                  </span>
-                                )}
-                              </TagsContainer>
+                              <NonAdminAction
+                                position="left"
+                                title={TITLE_FOR_NON_ADMIN_ACTION}
+                                trigger="click">
+                                <TagsContainer
+                                  editable={
+                                    editTag?.name === tag.name && !isEditTag
+                                  }
+                                  selectedTags={tag.associatedTags.map(
+                                    (tag) => ({
+                                      tagFQN: tag,
+                                    })
+                                  )}
+                                  tagList={
+                                    getTaglist(categories) as Array<string>
+                                  }
+                                  onCancel={() => {
+                                    handleTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleTagSelection(tags);
+                                  }}>
+                                  {tag.associatedTags.length ? (
+                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                      <Tags
+                                        className="tw-border-main"
+                                        tag="+ Add tag"
+                                        type="outlined"
+                                      />
+                                    </span>
+                                  )}
+                                </TagsContainer>
+                              </NonAdminAction>
                             </td>
                           </tr>
                         );
