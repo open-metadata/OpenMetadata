@@ -1,0 +1,28 @@
+{
+  "source": {
+    "type": "redash",
+    "config": {
+      "api_key": "api_key",
+      "uri": "http://localhost:5000",
+      "service_name": "redash"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
+  }
+}
