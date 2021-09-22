@@ -54,7 +54,7 @@ export type DropDownListProp = {
 
 export type DropDownProp = {
   className?: string;
-  label?: string;
+  label?: string | React.ReactElement;
   type: string;
   icon?: React.ReactElement | string;
 } & DropDownListProp;

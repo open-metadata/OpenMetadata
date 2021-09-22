@@ -17,6 +17,7 @@
 
 import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -129,10 +130,15 @@ const Appbar: React.FC = (): JSX.Element => {
         : 'User'
       : appState.userDetails.displayName || appState.userDetails.name;
 
+    // return (
+    //   <p className="tw-cursor-text">
+    //     {name} <hr className="tw--mr-8 tw--ml-2 tw-border-t-2 tw-mt-1" />{' '}
+    //   </p>
+    // );
     return (
-      <p className="tw-cursor-text">
-        {name} <hr className="tw--mr-8 tw--ml-2 tw-border-t-2 tw-mt-1" />{' '}
-      </p>
+      <span>
+        Welcome, <span className="tw-font-medium">{name.split(' ')[0]}</span>
+      </span>
     );
   };
 
@@ -147,11 +153,20 @@ const Appbar: React.FC = (): JSX.Element => {
   }, [isFirstTimeUser]);
 
   useEffect(() => {
-    getVersion().then((res: AxiosResponse) => {
-      setVersion(res.data.version);
-      setHash(res.data.revision);
-    });
-  }, []);
+    if (isAuthDisabled) {
+      getVersion().then((res: AxiosResponse) => {
+        setVersion(res.data.version);
+        setHash(res.data.revision);
+      });
+    } else {
+      if (!isEmpty(appState.userDetails)) {
+        getVersion().then((res: AxiosResponse) => {
+          setVersion(res.data.version);
+          setHash(res.data.revision);
+        });
+      }
+    }
+  }, [appState.userDetails, isAuthDisabled]);
 
   return (
     <>
@@ -239,6 +254,9 @@ const Appbar: React.FC = (): JSX.Element => {
                 width="16"
               />
               <span>What&#39;s new</span>
+              <span className="tw-inline-block tw-py-0.5 tw-px-2 tw-border tw-border-primary-hover tw-text-primary-hover tw-rounded-2xl tw-text-xs tw-ml-1">{`v ${
+                version.split('-')[0]
+              }`}</span>
             </button>
             <div>
               <DropDown
@@ -258,22 +276,22 @@ const Appbar: React.FC = (): JSX.Element => {
             <div data-testid="dropdown-profile">
               <DropDown
                 dropDownList={[
-                  {
-                    name: getUserDisplayName(),
-                    to: '',
-                    disabled: false,
-                    icon: <></>,
-                  },
-                  {
-                    name: (
-                      <p className="tw-text-grey-muted tw-text-xs tw-cursor-text">{`Version ${
-                        version.split('-')[0]
-                      }`}</p>
-                    ),
-                    to: '',
-                    disabled: false,
-                    icon: <></>,
-                  },
+                  // {
+                  //   name: getUserDisplayName(),
+                  //   to: '',
+                  //   disabled: false,
+                  //   icon: <></>,
+                  // },
+                  // {
+                  //   name: (
+                  //     <p className="tw-text-grey-muted tw-text-xs tw-cursor-text">{`Version ${
+                  //       version.split('-')[0]
+                  //     }`}</p>
+                  //   ),
+                  //   to: '',
+                  //   disabled: false,
+                  //   icon: <></>,
+                  // },
                   {
                     name: `${hash.slice(0, 7)}`,
                     to: 'https://github.com/open-metadata/OpenMetadata/commit/7f10cfb22b8c9f9583986905119de11c6feb20ae',
@@ -290,7 +308,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 icon={
                   <>
                     {appState.userDetails.profile?.images.image512 ? (
-                      <div className="profile-image">
+                      <div className="profile-image tw-mr-1">
                         <img
                           alt="user"
                           src={appState.userDetails.profile.images.image512}
@@ -298,7 +316,7 @@ const Appbar: React.FC = (): JSX.Element => {
                       </div>
                     ) : (
                       <IconDefaultUserProfile
-                        className=""
+                        className="tw-mr-1"
                         style={{
                           height: '22px',
                           width: '22px',
@@ -308,7 +326,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
-                label=""
+                label={getUserDisplayName()}
                 type="link"
               />
             </div>
