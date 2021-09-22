@@ -48,7 +48,7 @@ const Description = ({ description, miscDetails, tags }) => {
           })}
         </p>
       )}
-      {tags.length > 0 && (
+      {tags && tags.length > 0 && (
         <div>
           <span>Tags: </span>
           {tags.map((tag, index) => (

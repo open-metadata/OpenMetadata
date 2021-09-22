@@ -20,12 +20,35 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import FrequentlyJoinedTables from './FrequentlyJoinedTables';
 
+const mockTableList = [
+  {
+    name: 'dim_customer',
+    fqn: 'string',
+    joinCount: 1,
+  },
+  {
+    name: 'fact_sale',
+    fqn: 'string',
+    joinCount: 1,
+  },
+  {
+    name: 'dim_product',
+    fqn: 'string',
+    joinCount: 1,
+  },
+  {
+    name: 'dim_address',
+    fqn: 'string',
+    joinCount: 1,
+  },
+];
+
 describe('Test QueryDetails Component', () => {
   it('Renders the proper header sent to the component', () => {
     const { container } = render(
       <FrequentlyJoinedTables
         header="Related Tables"
-        tableList={['dim_customer', 'fact_sale', 'dim_product', 'dim_address']}
+        tableList={mockTableList}
       />,
       { wrapper: MemoryRouter }
     );
@@ -38,7 +61,7 @@ describe('Test QueryDetails Component', () => {
     const { container } = render(
       <FrequentlyJoinedTables
         header="Related Tables"
-        tableList={['dim_customer', 'fact_sale', 'dim_product', 'dim_address']}
+        tableList={mockTableList}
       />,
       { wrapper: MemoryRouter }
     );
@@ -46,9 +69,9 @@ describe('Test QueryDetails Component', () => {
 
     expect(tableData.length).toBe(4);
     expect(tableData.map((tableName) => tableName.textContent)).toStrictEqual([
-      'dim_customer',
-      'fact_sale',
-      'dim_product',
+      'dim_customer1',
+      'fact_sale1',
+      'dim_product1',
       '+ 1 more',
     ]);
   });

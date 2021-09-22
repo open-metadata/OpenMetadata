@@ -27,9 +27,12 @@ type Prop = {
 
 const NextPrevious = ({ paging, pagingHandler }: Prop) => {
   return (
-    <div className="tw-my-4 tw-flex tw-justify-center tw-items-center  tw-gap-2">
+    <div
+      className="tw-my-4 tw-flex tw-justify-center tw-items-center tw-gap-2"
+      data-testid="pagination">
       <Button
         className="tw-rounded tw-w-24  tw-px-3 tw-py-1.5 tw-text-sm"
+        data-testid="previous"
         disabled={paging.before ? false : true}
         size="custom"
         theme="primary"
@@ -40,6 +43,7 @@ const NextPrevious = ({ paging, pagingHandler }: Prop) => {
       </Button>
       <Button
         className="tw-rounded tw-w-24 tw-px-3 tw-py-1.5 tw-text-sm"
+        data-testid="next"
         disabled={paging.after ? false : true}
         size="custom"
         theme="primary"

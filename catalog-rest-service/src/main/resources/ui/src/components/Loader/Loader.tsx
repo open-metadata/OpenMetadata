@@ -54,7 +54,7 @@ const Loader: FunctionComponent<Props> = ({
       break;
   }
 
-  return <div className={classes} />;
+  return <div className={classes} data-testid="loader" />;
 };
 
 export default Loader;

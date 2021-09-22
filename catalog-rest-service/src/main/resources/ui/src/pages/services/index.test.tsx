@@ -20,13 +20,52 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import ServicesPage from './index';
 
+const mockServiceDetails = {
+  data: [
+    {
+      collection: {
+        name: 'databaseServices',
+        documentation: 'Database service collection',
+        href: 'http://test',
+      },
+    },
+  ],
+};
+const mockService = {
+  data: {
+    data: [
+      {
+        id: '847deda6-5342-42ed-b392-f0178a502c13',
+        name: 'bigquery',
+        serviceType: 'BigQuery',
+        description: 'BigQuery service used for shopify data',
+        href: 'http://localhost:8585/api/v1/services/databaseServices/847deda6-5342-42ed-b392-f0178a502c13',
+        jdbc: {
+          driverClass: 'jdbc',
+          connectionUrl: 'jdbc://localhost',
+        },
+      },
+    ],
+  },
+};
+
+jest.mock('../../axiosAPIs/serviceAPI', () => ({
+  deleteService: jest.fn(),
+  getServiceDetails: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockServiceDetails })),
+  getServices: jest.fn().mockImplementation(() => Promise.resolve(mockService)),
+  postService: jest.fn(),
+  updateService: jest.fn(),
+}));
+
 describe('Test Service page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<ServicesPage />, {
       wrapper: MemoryRouter,
     });
-    const pageContainer = await findByTestId(container, 'add-service');
+    const services = await findByTestId(container, 'services-container');
 
-    expect(pageContainer).toBeInTheDocument();
+    expect(services).toBeInTheDocument();
   });
 });

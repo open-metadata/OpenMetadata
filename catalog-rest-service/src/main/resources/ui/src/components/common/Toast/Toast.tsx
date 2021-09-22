@@ -41,7 +41,9 @@ const Toast = (props: ToastProps) => {
   return (
     <>
       {show && (
-        <div className={`tw-notification ${position} ${variantStyle}`}>
+        <div
+          className={`tw-notification ${position} ${variantStyle}`}
+          data-testid="toast">
           <div className="tw-font-semibold tw-flex-shrink-0">
             <SVGIcons
               alt={variant}
@@ -52,7 +54,10 @@ const Toast = (props: ToastProps) => {
           </div>
 
           <div className="tw-font-semibold tw-self-center tw-px-1">{body}</div>
-          <button className="tw-font-semibold" onClick={() => setShow(false)}>
+          <button
+            className="tw-font-semibold"
+            data-testid="dismiss"
+            onClick={() => setShow(false)}>
             <i aria-hidden="true" className="fa fa-times" />
           </button>
         </div>
