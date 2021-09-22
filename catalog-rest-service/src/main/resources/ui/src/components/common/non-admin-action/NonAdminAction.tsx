@@ -8,6 +8,7 @@ type Props = {
   position?: 'top' | 'right' | 'bottom' | 'left';
   isOwner?: boolean;
   html?: React.ReactElement;
+  trigger?: 'mouseenter' | 'focus' | 'click' | 'manual';
 };
 
 const NonAdminAction = ({
@@ -16,6 +17,7 @@ const NonAdminAction = ({
   title,
   isOwner = false,
   html,
+  trigger = 'mouseenter',
 }: Props) => {
   const { isAuthDisabled, isAdminUser } = useAuth();
 
@@ -35,7 +37,7 @@ const NonAdminAction = ({
           html={html}
           position={position}
           title={title}
-          trigger="mouseenter">
+          trigger={trigger}>
           <span className="disable-cta">
             <span
               onClickCapture={handleCapturedEvent}

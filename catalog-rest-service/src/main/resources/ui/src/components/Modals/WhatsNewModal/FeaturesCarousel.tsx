@@ -69,7 +69,7 @@ const FeaturesCarousel = ({ data }: Props) => {
         <div className="tw-px-1" key={uniqueId()}>
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
           <p className="tw-text-sm tw-mb-3">{d.description}</p>
-          <div className="tw-max-w-3xl">
+          <div>
             {d.path ? (
               d.isImage ? (
                 <img alt="feature" className="tw-w-full" src={d.path} />

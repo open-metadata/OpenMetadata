@@ -25,9 +25,9 @@ import DropDownList from '../dropdown/DropDownList';
 import Tags from '../tags/tags';
 import { TagsContainerProps } from './tags-container.interface';
 
-const INPUT_COLLAPED = '1px';
-const INPUT_EXPANDED = '150px';
-const INPUT_AUTO = 'auto';
+// const INPUT_COLLAPED = '1px';
+// const INPUT_EXPANDED = '150px';
+// const INPUT_AUTO = 'auto';
 
 const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   children,
@@ -41,17 +41,17 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [tags, setTags] = useState<Array<ColumnTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
-  const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
-  const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
+  // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
+  // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
-  const expandInput = () => {
-    setInputWidth(INPUT_AUTO);
-    setInputMinWidth(INPUT_EXPANDED);
-  };
+  // const expandInput = () => {
+  //   setInputWidth(INPUT_AUTO);
+  //   setInputMinWidth(INPUT_EXPANDED);
+  // };
 
   const collapseInput = () => {
-    setInputWidth(INPUT_COLLAPED);
-    setInputMinWidth(INPUT_AUTO);
+    // setInputWidth(INPUT_COLLAPED);
+    // setInputMinWidth(INPUT_AUTO);
     setNewTag('');
   };
 
@@ -64,7 +64,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const getTagList = () => {
     const newTags = tagList
       .filter((tag) => {
-        return !selectedTags.some((selectedTag) => selectedTag.tagFQN === tag);
+        return !tags.some((selectedTag) => selectedTag.tagFQN === tag);
       })
       .map((tag) => {
         return {
@@ -180,7 +180,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               className="tw-flex-1 tw-border-0 tw-px-1 focus:tw-outline-none"
               placeholder="Enter tag name..."
               ref={inputRef}
-              style={{ width: inputWidth, minWidth: inputMinWidth }}
+              // style={{ width: inputWidth, minWidth: inputMinWidth }}
               value={newTag}
               onBlur={() => {
                 if (inputRef.current && !newTag) {
@@ -190,11 +190,11 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
               onChange={(event) => {
                 setNewTag(event.target.value);
               }}
-              onFocus={() => {
-                if (inputRef.current) {
-                  expandInput();
-                }
-              }}
+              // onFocus={() => {
+              //   if (inputRef.current) {
+              //     expandInput();
+              //   }
+              // }}
             />
             {newTag && (
               <DropDownList

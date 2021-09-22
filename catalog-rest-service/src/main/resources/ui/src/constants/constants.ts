@@ -198,3 +198,9 @@ export const navLinkSettings = [
   // { name: 'Marketplace', to: '/marketplace', disabled: true },
   // { name: 'Preferences', to: '/preference', disabled: true },
 ];
+
+export const TITLE_FOR_NON_OWNER_ACTION =
+  'You need to be owner to perform this action';
+
+export const TITLE_FOR_NON_ADMIN_ACTION =
+  'Only Admin is allowed for the action';

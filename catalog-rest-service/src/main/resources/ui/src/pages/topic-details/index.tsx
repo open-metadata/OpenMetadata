@@ -86,6 +86,16 @@ const MyTopicDetailPage = () => {
       position: 1,
     },
     {
+      name: 'Config',
+      icon: {
+        alt: 'config',
+        name: 'icon-config',
+        title: 'Config',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -94,16 +104,6 @@ const MyTopicDetailPage = () => {
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 2,
-    },
-    {
-      name: 'Config',
-      icon: {
-        alt: 'config',
-        name: 'icon-config',
-        title: 'Config',
-      },
-      isProtected: false,
       position: 3,
     },
   ];
@@ -306,7 +306,7 @@ const MyTopicDetailPage = () => {
       { key: 'Replication Factor', value: replicationFactor },
       { key: 'Retention Size', value: bytesToSize(retentionSize) },
       { key: 'CleanUp Policies', value: cleanupPolicies.join(',') },
-      { key: 'Max Message Size', value: maximumMessageSize },
+      { key: 'Max Message Size', value: bytesToSize(maximumMessageSize) },
     ];
   };
 
@@ -349,7 +349,9 @@ const MyTopicDetailPage = () => {
             ]}
             followers={followersCount}
             followHandler={followTopic}
+            hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
+            owner={owner}
             tagList={tagList}
             tags={tags}
             tagsHandler={onTagUpdate}

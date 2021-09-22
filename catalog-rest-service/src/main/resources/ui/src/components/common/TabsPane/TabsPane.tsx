@@ -1,4 +1,5 @@
 import React from 'react';
+import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import SVGIcons from '../../../utils/SvgUtils';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 type Tab = {
@@ -30,7 +31,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
             <NonAdminAction
               isOwner={tab.protectedState}
               key={tab.position}
-              title="You need to be owner to perform this action">
+              title={TITLE_FOR_NON_OWNER_ACTION}>
               <button
                 className={getTabClasses(tab.position, activeTab)}
                 data-testid="tab"
