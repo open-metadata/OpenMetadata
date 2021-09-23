@@ -74,7 +74,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
             <span
               className="link-text"
               onClick={() =>
-                handleTableClick(table?.fullyQualifiedName as string)
+                handleTableClick(table.fullyQualifiedName as string)
               }>
               {table.name}
             </span>
