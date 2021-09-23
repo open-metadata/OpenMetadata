@@ -9,7 +9,7 @@ export interface Dashboard {
    */
   charts?: EntityReference[];
   /**
-   * Dashboard URL
+   * Dashboard URL.
    */
   dashboardUrl?: string;
   /**
@@ -18,7 +18,7 @@ export interface Dashboard {
   description?: string;
   /**
    * Display Name that identifies this Dashboard. It could be title or label from the source
-   * services
+   * services.
    */
   displayName?: string;
   /**
