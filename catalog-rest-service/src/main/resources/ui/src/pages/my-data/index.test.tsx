@@ -15,12 +15,12 @@
   * limitations under the License.
 */
 
+/* eslint-disable @typescript-eslint/camelcase */
+
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataPage from './index';
-
-/* eslint-disable @typescript-eslint/camelcase */
 
 const mockData = {
   took: 50,
