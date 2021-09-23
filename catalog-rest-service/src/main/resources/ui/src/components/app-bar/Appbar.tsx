@@ -68,7 +68,6 @@ const Appbar: React.FC = (): JSX.Element => {
   });
 
   const [version, setVersion] = useState<string>('');
-  const [hash, setHash] = useState<string>('');
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -151,13 +150,11 @@ const Appbar: React.FC = (): JSX.Element => {
     if (isAuthDisabled) {
       getVersion().then((res: AxiosResponse) => {
         setVersion(res.data.version);
-        setHash(res.data.revision);
       });
     } else {
       if (!isEmpty(appState.userDetails)) {
         getVersion().then((res: AxiosResponse) => {
           setVersion(res.data.version);
-          setHash(res.data.revision);
         });
       }
     }
@@ -249,9 +246,6 @@ const Appbar: React.FC = (): JSX.Element => {
                 width="16"
               />
               <span>What&#39;s new</span>
-              <span className="tw-inline-block tw-py-0.5 tw-px-2 tw-border tw-border-primary-hover tw-text-primary-hover tw-rounded-2xl tw-text-xs tw-ml-1">{`v ${
-                version.split('-')[0]
-              }`}</span>
             </button>
             <div>
               <DropDown
@@ -272,10 +266,15 @@ const Appbar: React.FC = (): JSX.Element => {
               <DropDown
                 dropDownList={[
                   {
-                    name: `${hash.slice(0, 7)}`,
-                    to: 'https://github.com/open-metadata/OpenMetadata/commit/7f10cfb22b8c9f9583986905119de11c6feb20ae',
+                    name: (
+                      <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
+                        {`Version ${version.split('-')[0]}`}
+                        {/* <hr className="tw-border-t-2 tw--mr-12 tw--ml-2 tw-mt-1.5" /> */}
+                      </span>
+                    ),
+                    to: '',
                     disabled: false,
-                    isOpenNewTab: true,
+                    icon: <></>,
                   },
                   {
                     name: 'Logout',
