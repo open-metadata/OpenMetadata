@@ -47,9 +47,11 @@ export interface Schedule {
 }
 
 /**
- * Type of Dashboard service - Superset or Lookr
+ * Type of Dashboard service - Superset, Looker, Redash or Tableau.
  */
 export enum DashboardServiceType {
   Looker = 'Looker',
+  Redash = 'Redash',
   Superset = 'Superset',
+  Tableau = 'Tableau',
 }

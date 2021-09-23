@@ -75,4 +75,5 @@ export enum DatabaseServiceType {
   Presto = 'Presto',
   Redshift = 'Redshift',
   Snowflake = 'Snowflake',
+  Vertica = 'Vertica',
 }

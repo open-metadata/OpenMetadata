@@ -37,6 +37,7 @@ export type DropDownListItem = {
   string | number | boolean | undefined | Function | React.ReactElement
 >;
 
+export type GroupType = 'label' | 'tab';
 export type DropDownListProp = {
   dropDownList: Array<DropDownListItem>;
   horzPosRight?: boolean;
@@ -50,6 +51,7 @@ export type DropDownListProp = {
     value?: string
   ) => void;
   setIsOpen?: (value: boolean) => void;
+  groupType?: GroupType;
 };
 
 export type DropDownProp = {

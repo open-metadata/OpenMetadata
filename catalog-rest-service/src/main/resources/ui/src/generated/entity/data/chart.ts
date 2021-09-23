@@ -1,11 +1,11 @@
 /**
  * This schema defines the Chart entity. Charts are built using tables or sql queries by
- * analyzing the data. Charts can be part of Dashboard
+ * analyzing the data. Charts can be part of Dashboard.
  */
 export interface Chart {
   chartType?: ChartType;
   /**
-   * Chart URL, pointing to its own Service URL
+   * Chart URL, pointing to its own Service URL.
    */
   chartUrl?: string;
   /**
@@ -14,7 +14,7 @@ export interface Chart {
   description?: string;
   /**
    * Display Name that identifies this Chart. It could be title or label from the source
-   * services
+   * services.
    */
   displayName?: string;
   /**
@@ -60,7 +60,7 @@ export interface Chart {
 }
 
 /**
- * This schema defines the type used for describing different types of charts
+ * This schema defines the type used for describing different types of charts.
  */
 export enum ChartType {
   Area = 'Area',
