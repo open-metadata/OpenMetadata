@@ -18,11 +18,12 @@
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link, useHistory } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
+import { JoinedWith } from '../../generated/entity/data/table';
 import PopOver from '../common/popover/PopOver';
 
 type Props = {
   header: string;
-  tableList: Array<{ name: string; fqn: string; joinCount: number }>;
+  tableList: Array<JoinedWith & { name: string }>;
 };
 
 const viewCap = 3;
@@ -32,8 +33,8 @@ const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
     .reduce((resList, curr) => {
       let duplicates = false;
       for (const table of resList) {
-        if (table.fqn === curr.fqn) {
-          table.joinCount += curr.joinCount;
+        if (table.fullyQualifiedName === curr.fullyQualifiedName) {
+          if (table?.joinCount) table.joinCount += curr?.joinCount as number;
           duplicates = true;
 
           break;
@@ -42,7 +43,9 @@ const getUniqueTablesWithCount = (tableFQNs: Props['tableList']) => {
 
       return duplicates ? resList : [...resList, curr];
     }, [] as Props['tableList'])
-    .sort((a, b) => (a.joinCount < b.joinCount ? 1 : -1));
+    .sort((a, b) =>
+      (a?.joinCount as number) < (b?.joinCount as number) ? 1 : -1
+    );
 };
 
 const FrequentlyJoinedTables: FunctionComponent<Props> = ({
@@ -70,7 +73,9 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
             key={index}>
             <span
               className="link-text"
-              onClick={() => handleTableClick(table.fqn)}>
+              onClick={() =>
+                handleTableClick(table.fullyQualifiedName as string)
+              }>
               {table.name}
             </span>
             <span className="tw-tag tw-ml-2">{table.joinCount}</span>
@@ -101,7 +106,9 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
               className="tw-py-1"
               data-testid="related-tables-data"
               key={index}>
-              <Link className="link-text" to={getDatasetDetailsPath(table.fqn)}>
+              <Link
+                className="link-text"
+                to={getDatasetDetailsPath(table.fullyQualifiedName as string)}>
                 {table.name}
               </Link>
               <span className="tw-tag tw-ml-2">{table.joinCount}</span>
