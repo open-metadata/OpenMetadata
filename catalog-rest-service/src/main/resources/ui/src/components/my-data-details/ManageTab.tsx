@@ -237,6 +237,7 @@ const ManageTab: FunctionComponent<Props> = ({
             <DropDownList
               showSearchBar
               dropDownList={listOwners}
+              groupType="tab"
               listGroups={['Users', 'Teams']}
               value={owner}
               onSelect={handleOwnerSelection}
