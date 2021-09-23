@@ -73,9 +73,18 @@ export const getCurrentUserId = (): string => {
 };
 
 export const pluralize = (count: number, noun: string, suffix = 's') => {
-  return `${count.toLocaleString()} ${noun}${
-    count !== 1 && count !== 0 ? suffix : ''
-  }`;
+  const countString = count.toLocaleString();
+  if (count !== 1 && count !== 0 && !noun.endsWith(suffix)) {
+    return `${countString} ${noun}${suffix}`;
+  } else {
+    if (noun.endsWith(suffix)) {
+      return `${countString} ${
+        count > 1 ? noun : noun.slice(0, noun.length - 1)
+      }`;
+    } else {
+      return `${countString} ${noun}${count !== 1 ? suffix : ''}`;
+    }
+  }
 };
 
 export const getUserTeams = (): Array<UserTeam> => {

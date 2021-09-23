@@ -18,6 +18,7 @@
 import classNames from 'classnames';
 import { isNil, lowerCase } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
+import { getCountBadge } from '../../utils/CommonUtils';
 import { DropDownListItem, DropDownListProp } from './types';
 
 const DropDownList: FunctionComponent<DropDownListProp> = ({
@@ -68,6 +69,17 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     );
   };
 
+  const getActiveTab = () => {
+    let tab = 0;
+    listGroups.forEach((grp, i) => {
+      if (getSearchedListByGroup(grp).length === 0) {
+        tab = i + 1;
+      }
+    });
+
+    return tab;
+  };
+
   useEffect(() => {
     setSearchText(searchString);
   }, [searchString]);
@@ -79,6 +91,10 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
       })
     );
   }, [searchText, dropDownList]);
+
+  useEffect(() => {
+    setActiveTab(getActiveTab() + 1);
+  }, [searchText]);
 
   return (
     <>
@@ -113,6 +129,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                 />
               </div>
             )}
+
             {groupType === 'tab' && (
               <div className="tw-flex tw-justify-around tw-border-b tw-border-separator tw-mb-1">
                 {listGroups.map((grp, index) => {
@@ -123,6 +140,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
                       key={index}
                       onClick={() => setActiveTab(index + 1)}>
                       {grp}
+                      {getCountBadge(getSearchedListByGroup(grp).length)}
                     </button>
                   );
                 })}
