@@ -16,18 +16,22 @@
 */
 
 import { lowerCase } from 'lodash';
-import { ColumnJoins, SampleData, TableColumn, TableDetail } from 'Models';
 import React, { FunctionComponent, useState } from 'react';
+import {
+  ColumnJoins,
+  Table,
+  TableData,
+} from '../../generated/entity/data/table';
 import Searchbar from '../common/searchbar/Searchbar';
-import SampleDataTable from './SampleDataTable';
+import SampleDataTable, { SampleColumns } from './SampleDataTable';
 import SchemaTable from './SchemaTable';
 
 type Props = {
-  owner: TableDetail['owner'];
-  columns: Array<TableColumn>;
+  owner: Table['owner'];
+  columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  onUpdate: (columns: Array<TableColumn>) => void;
-  sampleData: SampleData;
+  onUpdate: (columns: Table['columns']) => void;
+  sampleData: TableData;
   columnName: string;
   hasEditAccess: boolean;
 };
@@ -60,7 +64,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   };
 
   const getSampleDataWithType = () => {
-    const updatedColumns = sampleData.columns.map((column) => {
+    const updatedColumns = sampleData?.columns?.map((column) => {
       const matchedColumn = columns.find((col) => col.name === column);
 
       if (matchedColumn) {
@@ -76,7 +80,10 @@ const SchemaTab: FunctionComponent<Props> = ({
       }
     });
 
-    return { columns: updatedColumns, rows: sampleData.rows };
+    return {
+      columns: updatedColumns as SampleColumns[],
+      rows: sampleData.rows,
+    };
   };
 
   return (
