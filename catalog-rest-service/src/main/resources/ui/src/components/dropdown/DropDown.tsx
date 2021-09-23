@@ -15,7 +15,6 @@
   * limitations under the License.
 */
 
-import PropTypes from 'prop-types';
 import React, { useState } from 'react';
 import { activeLink, normalLink } from '../../utils/styleconstant';
 import { dropdownIcon as DropdownIcon } from '../../utils/svgconstant';
@@ -31,7 +30,7 @@ const DropDown: React.FC<DropDownProp> = ({
   dropDownList,
   onSelect,
   selectedItems,
-}) => {
+}: DropDownProp) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const renderList = (type: string) => {
@@ -121,15 +120,6 @@ const DropDown: React.FC<DropDownProp> = ({
       </div>
     </>
   );
-};
-DropDown.propTypes = {
-  className: PropTypes.string,
-  label: PropTypes.string,
-  type: PropTypes.string.isRequired,
-  icon: PropTypes.element,
-  onSelect: PropTypes.func,
-  selectedItems: PropTypes.array,
-  dropDownList: PropTypes.array.isRequired,
 };
 
 export default DropDown;

@@ -387,7 +387,7 @@ const MyTopicDetailPage = () => {
                   </div>
                 </>
               )}
-              {activeTab === 2 && (
+              {activeTab === 3 && (
                 <ManageTab
                   currentTier={tier}
                   currentUser={owner?.id}
@@ -395,7 +395,7 @@ const MyTopicDetailPage = () => {
                   onSave={onSettingsUpdate}
                 />
               )}
-              {activeTab === 3 && (
+              {activeTab === 2 && (
                 <SchemaEditor value={JSON.stringify(getConfigObject())} />
               )}
             </div>

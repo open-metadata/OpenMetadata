@@ -87,7 +87,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   useEffect(() => {
     setSearchedList(
       dropDownList.filter((item) => {
-        return lowerCase(item.name).includes(lowerCase(searchText));
+        return lowerCase(item.name as string).includes(lowerCase(searchText));
       })
     );
   }, [searchText, dropDownList]);
