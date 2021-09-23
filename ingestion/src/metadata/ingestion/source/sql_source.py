@@ -41,7 +41,7 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_database_service_or_create, _hive_struct_to_json
+from metadata.utils.helpers import get_database_service_or_create, _hive_struct_to_json, _hive_nested_complex_types
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -366,9 +366,9 @@ class SQLSource(Source):
         row_order = 1
         for column in columns:
             col_type = None
-            if 'raw_data_type' in column:
-                print(column['raw_data_type'])
-                print(json.dumps(_hive_struct_to_json(column['raw_data_type']), indent=2))
+            logger.info(column)
+            if 'raw_data_type' in column and column['raw_data_type'] is not None:
+                print(json.dumps(_hive_nested_complex_types(column['raw_data_type']), indent=2))
             try:
                 col_type = get_column_type(self.status, dataset_name, column['type'])
             except Exception as err:

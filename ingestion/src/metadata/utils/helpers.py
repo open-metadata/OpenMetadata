@@ -94,6 +94,53 @@ def get_dashboard_service_or_create(service_name: str,
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
 
+def _hive_nested_complex_types(hive_str):
+    r = re.compile(r'(.*?)(uniontype<|struct<|array<|map<|[:,>])(.*)')
+    if hive_str.split('<')[0] not in ['array', 'uniontype']:
+        root = dict()
+    else:
+        root = list()
+    to_parse = hive_str
+    curr_elem = root
+    parents = []
+    key = None
+    while to_parse:
+        left, operator, to_parse = r.match(to_parse).groups()
+        if 'map' == hive_str.split('<')[0]:
+            if operator == ',' or operator == '>':
+                if key is not None and not hasattr(curr_elem, 'key'):
+                    curr_elem[key] = left
+                else:
+                    key = left
+                    curr_elem[key] = None
+        else:
+            if operator in ['array<', 'struct<', 'uniontype<']:
+                new_elem = dict() if operator == 'struct<' else list()
+                if curr_elem:
+                    parents.append(curr_elem)
+                if key and isinstance(curr_elem, dict):
+                    curr_elem[key] = new_elem
+                    curr_elem = new_elem
+                elif isinstance(curr_elem, list):
+                    curr_elem.append(new_elem)
+                    curr_elem = new_elem
+
+                key = None
+            elif operator == ':':
+                key = left
+            elif operator == ',' or operator == '>':
+                if left:
+                    if isinstance(curr_elem, dict):
+                        curr_elem[key] = left
+                    elif isinstance(curr_elem, list):
+                        curr_elem.append(left)
+                    left = None
+                    key = None
+
+                if operator == '>':
+                    if parents:
+                        curr_elem = parents.pop()
+    return root
 
 def _hive_struct_to_json(hive_str):
     """
