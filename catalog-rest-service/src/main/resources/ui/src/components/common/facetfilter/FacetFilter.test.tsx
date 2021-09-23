@@ -2,6 +2,8 @@ import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
 import FacetFilter from './FacetFilter';
 
+/* eslint-disable @typescript-eslint/camelcase */
+
 const onSelectHandler = jest.fn();
 const onClearFilter = jest.fn();
 const aggregations = [

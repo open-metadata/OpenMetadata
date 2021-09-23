@@ -20,6 +20,8 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataPage from './index';
 
+/* eslint-disable @typescript-eslint/camelcase */
+
 const mockData = {
   took: 50,
   timed_out: false,
