@@ -218,5 +218,8 @@ export const mockResponse = {
       description: 'this is the table to hold data on fact_sale',
       tableType: 'null',
     },
+    total: {
+      value: 128,
+    },
   },
 };

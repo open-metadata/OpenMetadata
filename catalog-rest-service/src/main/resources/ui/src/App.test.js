@@ -19,6 +19,14 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
 
+jest.mock('./router/AppRouter', () => {
+  return jest.fn().mockReturnValue(<p>AppRouter</p>);
+});
+
+jest.mock('./components/app-bar/Appbar', () => {
+  return jest.fn().mockReturnValue(<p>Appbar</p>);
+});
+
 it('renders learn react link', () => {
   const { getAllByTestId } = render(<App />);
   const linkElement = getAllByTestId(/content-wrapper/i);

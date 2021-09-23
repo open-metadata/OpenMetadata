@@ -19,6 +19,10 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import ReportsPage from './index';
 
+jest.mock('../../components/containers/PageContainer', () => ({ children }) => (
+  <div data-testid="PageContainer">{children}</div>
+));
+
 describe('Test Reports page', () => {
   it('Check for no. of data items to be rendered', () => {
     const { getAllByTestId } = render(<ReportsPage />);

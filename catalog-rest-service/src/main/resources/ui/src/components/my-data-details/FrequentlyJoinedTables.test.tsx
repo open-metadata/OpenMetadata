@@ -23,22 +23,22 @@ import FrequentlyJoinedTables from './FrequentlyJoinedTables';
 const mockTableList = [
   {
     name: 'dim_customer',
-    fqn: 'string',
+    fqn: 'string.1',
     joinCount: 1,
   },
   {
     name: 'fact_sale',
-    fqn: 'string',
+    fqn: 'string.2',
     joinCount: 1,
   },
   {
     name: 'dim_product',
-    fqn: 'string',
+    fqn: 'string.3',
     joinCount: 1,
   },
   {
     name: 'dim_address',
-    fqn: 'string',
+    fqn: 'string.4',
     joinCount: 1,
   },
 ];
@@ -57,7 +57,7 @@ describe('Test QueryDetails Component', () => {
     expect(header.textContent).toBe('Related Tables');
   });
 
-  it('Renders the proper table list sent to the component', () => {
+  it('Renders the proper table list sent to the component', async () => {
     const { container } = render(
       <FrequentlyJoinedTables
         header="Related Tables"
@@ -69,9 +69,9 @@ describe('Test QueryDetails Component', () => {
 
     expect(tableData.length).toBe(4);
     expect(tableData.map((tableName) => tableName.textContent)).toStrictEqual([
-      'dim_customer1',
-      'fact_sale1',
+      'dim_address1',
       'dim_product1',
+      'fact_sale1',
       '+ 1 more',
     ]);
   });

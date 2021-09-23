@@ -346,7 +346,9 @@ const TeamsPage = () => {
           {isLoading ? (
             <Loader />
           ) : (
-            <div className="container-fluid tw-pt-1 tw-pb-3">
+            <div
+              className="container-fluid tw-pt-1 tw-pb-3"
+              data-testid="team-container">
               <div className="tw-flex tw-justify-between tw-pl-1">
                 <div className="tw-heading tw-text-link tw-text-base">
                   {currentTeam?.displayName}

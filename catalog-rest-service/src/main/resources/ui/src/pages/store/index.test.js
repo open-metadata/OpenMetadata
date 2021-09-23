@@ -19,6 +19,10 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import StorePage from '.';
 
+jest.mock('../../components/containers/PageContainer', () => ({ children }) => (
+  <div data-testid="PageContainer">{children}</div>
+));
+
 describe('Test Store page', () => {
   it('Check for heading', async () => {
     const { findByText } = render(<StorePage />);

@@ -9,6 +9,7 @@ describe('Test FilterContainer Component', () => {
     const { container } = render(
       <FilterContainer
         count={5}
+        isDisabled={false}
         isSelected={false}
         name="test"
         type="service type"
@@ -23,6 +24,7 @@ describe('Test FilterContainer Component', () => {
     const { container } = render(
       <FilterContainer
         count={5}
+        isDisabled={false}
         isSelected={false}
         name="test"
         type="service type"
@@ -40,5 +42,22 @@ describe('Test FilterContainer Component', () => {
     );
 
     expect(mockSelect).toBeCalledTimes(1);
+  });
+
+  it('if disable onClick of checkbox callback function should not call', () => {
+    const { container } = render(
+      <FilterContainer
+        isDisabled
+        count={5}
+        isSelected={false}
+        name="test"
+        type="service type"
+        onSelect={mockSelect}
+      />
+    );
+
+    const checkbox = getByTestId(container, 'checkbox');
+
+    expect(checkbox).toBeDisabled();
   });
 });

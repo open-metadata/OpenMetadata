@@ -64,6 +64,19 @@ jest.mock('../../axiosAPIs/databaseAPI', () => ({
   updateService: jest.fn(),
 }));
 
+jest.mock(
+  '../../components/common/rich-text-editor/RichTextEditorPreviewer',
+  () => {
+    return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+  }
+);
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getFrequencyTime: jest.fn().mockReturnValue('FrequencyTime'),
+  getServiceCategoryFromType: jest.fn().mockReturnValue('databaseServices'),
+  serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
+}));
+
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ServicePage />, {

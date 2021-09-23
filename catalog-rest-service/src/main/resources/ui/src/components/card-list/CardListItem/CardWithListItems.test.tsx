@@ -6,9 +6,13 @@ const mockFunction = jest.fn();
 const mockCard = {
   id: 'test1',
   title: 'card',
-  description: 'description',
-  contents: [{ text: 'string1' }],
+  description: 'description*',
+  data: 'data',
 };
+
+jest.mock('../../common/rich-text-editor/RichTextEditorPreviewer', () => {
+  return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
+});
 
 describe('Test CardWithListing Component', () => {
   it('Component should render', () => {

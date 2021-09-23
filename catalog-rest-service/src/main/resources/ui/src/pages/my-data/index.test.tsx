@@ -15,7 +15,9 @@
   * limitations under the License.
 */
 
-import { findAllByTestId, findByTestId, render } from '@testing-library/react';
+/* eslint-disable @typescript-eslint/camelcase */
+
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataPage from './index';
@@ -184,27 +186,32 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
     .mockImplementation(() => Promise.resolve({ data: mockData })),
 }));
 
+jest.mock('../../components/searched-data/SearchedData', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="search-data">SearchedData</p>);
+});
+
+jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
+  return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
+});
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getAllServices: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(['test', 'test2', 'test3'])),
+  getEntityCountByService: jest
+    .fn()
+    .mockReturnValue({ tableCount: 4, topicCount: 5, dashboardCount: 6 }),
+}));
+
 describe('Test MyData page', () => {
   it('Check if there is an element in the page', async () => {
     const { container } = render(<MyDataPage />, {
       wrapper: MemoryRouter,
     });
-    const containerTab = await findByTestId(container, 'tabs');
+    const searchData = await findByTestId(container, 'search-data');
 
-    expect(containerTab).toBeInTheDocument();
-  });
-
-  it('There should be 3 tabs', async () => {
-    const { container } = render(<MyDataPage />, {
-      wrapper: MemoryRouter,
-    });
-    const tabs = await findAllByTestId(container, 'tab');
-
-    expect(tabs.length).toBe(3);
-    expect(tabs.map((t) => t.textContent)).toStrictEqual([
-      'All',
-      'Owned',
-      'Following',
-    ]);
+    expect(searchData).toBeInTheDocument();
   });
 });

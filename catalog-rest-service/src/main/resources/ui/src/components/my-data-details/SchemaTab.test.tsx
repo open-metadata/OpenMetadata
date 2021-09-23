@@ -16,6 +16,7 @@
 */
 
 import { getByTestId, render } from '@testing-library/react';
+import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import SchemaTab from './SchemaTab';
@@ -40,12 +41,40 @@ const mockjoins = [
 
 const mockUpdate = jest.fn();
 
+const mockOwner: TableDetail['owner'] = {
+  id: 'string',
+  type: 'user',
+};
+
+const mockSampleData = {
+  columns: ['column1', 'column2', 'column3'],
+  rows: [
+    ['row1', 'row2', 'row3'],
+    ['row1', 'row2', 'row3'],
+    ['row1', 'row2', 'row3'],
+  ],
+};
+
+jest.mock('./SampleDataTable', () => {
+  return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
+});
+
+jest.mock('./SchemaTable', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="schema-table">SchemaTable</p>);
+});
+
 describe('Test SchemaTab Component', () => {
   it('Renders all the parts of the schema tab', () => {
     const { queryByTestId, container } = render(
       <SchemaTab
+        hasEditAccess
+        columnName="columnName"
         columns={mockColumns}
         joins={mockjoins}
+        owner={mockOwner}
+        sampleData={mockSampleData}
         onUpdate={mockUpdate}
       />,
       {

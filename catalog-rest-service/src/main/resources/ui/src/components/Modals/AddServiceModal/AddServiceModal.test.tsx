@@ -24,13 +24,19 @@ const mockOnCancel = jest.fn();
 
 const mockServiceList = [mockData, mockData, mockData];
 
+jest.mock('../../common/editor/MarkdownWithPreview', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="description">MarkdownWithPreview</p>);
+});
+
 describe('Test AddServiceModal Component', () => {
   it('Component should render', async () => {
     const { container } = render(
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -45,7 +51,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -67,7 +73,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -89,7 +95,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="databaseServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -98,9 +104,9 @@ describe('Test AddServiceModal Component', () => {
     const selectService = await findByTestId(container, 'selectService');
     const name = await findByTestId(container, 'name');
     const url = await findByTestId(container, 'url');
-    const port = await findByTestId(container, 'port');
-    const userName = await findByTestId(container, 'userName');
-    const password = await findByTestId(container, 'password');
+    // const port = await findByTestId(container, 'port');
+    // const userName = await findByTestId(container, 'userName');
+    // const password = await findByTestId(container, 'password');
     const database = await findByTestId(container, 'database');
     const driverClass = await findByTestId(container, 'driverClass');
     const description = await findByTestId(container, 'description');
@@ -110,9 +116,9 @@ describe('Test AddServiceModal Component', () => {
     expect(selectService).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(url).toBeInTheDocument();
-    expect(port).toBeInTheDocument();
-    expect(userName).toBeInTheDocument();
-    expect(password).toBeInTheDocument();
+    // expect(port).toBeInTheDocument();
+    // expect(userName).toBeInTheDocument();
+    // expect(password).toBeInTheDocument();
     expect(database).toBeInTheDocument();
     expect(driverClass).toBeInTheDocument();
     expect(description).toBeInTheDocument();
@@ -127,7 +133,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -156,7 +162,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="dashboardServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -179,7 +185,7 @@ describe('Test AddServiceModal Component', () => {
       <AddServiceModal
         header="Test"
         serviceList={mockServiceList}
-        serviceName="testService"
+        serviceName="databaseServices"
         onCancel={mockOnCancel}
         onSave={mockOnSave}
       />
@@ -188,7 +194,7 @@ describe('Test AddServiceModal Component', () => {
     const selectService = await findByTestId(container, 'selectService');
 
     fireEvent.change(selectService, {
-      target: { value: 'MYSQL' },
+      target: { value: 'MySQL' },
     });
 
     const name = await findByTestId(container, 'name');
@@ -203,23 +209,23 @@ describe('Test AddServiceModal Component', () => {
       target: { value: 'test.123' },
     });
 
-    const port = await findByTestId(container, 'port');
+    // const port = await findByTestId(container, 'port');
 
-    fireEvent.change(port, {
-      target: { value: 123 },
-    });
+    // fireEvent.change(port, {
+    //   target: { value: 123 },
+    // });
 
-    const userName = await findByTestId(container, 'userName');
+    // const userName = await findByTestId(container, 'userName');
 
-    fireEvent.change(userName, {
-      target: { value: 'testUser' },
-    });
+    // fireEvent.change(userName, {
+    //   target: { value: 'testUser' },
+    // });
 
-    const password = await findByTestId(container, 'password');
+    // const password = await findByTestId(container, 'password');
 
-    fireEvent.change(password, {
-      target: { value: 'testPwd' },
-    });
+    // fireEvent.change(password, {
+    //   target: { value: 'testPwd' },
+    // });
 
     const database = await findByTestId(container, 'database');
 
@@ -231,12 +237,6 @@ describe('Test AddServiceModal Component', () => {
 
     fireEvent.change(driverClass, {
       target: { value: 'jdbc' },
-    });
-
-    const description = await findByTestId(container, 'description');
-
-    fireEvent.change(description, {
-      target: { value: 'testdescription' },
     });
 
     const ingestionSwitch = await findByTestId(container, 'ingestion-switch');
@@ -267,15 +267,14 @@ describe('Test AddServiceModal Component', () => {
       target: { value: 1 },
     });
 
-    expect(selectService).toHaveValue('MYSQL');
+    expect(selectService).toHaveValue('MySQL');
     expect(name).toHaveValue('test');
     expect(url).toHaveValue('test.123');
-    expect(port).toHaveValue(123);
-    expect(userName).toHaveValue('testUser');
-    expect(password).toHaveValue('testPwd');
+    // expect(port).toHaveValue(123);
+    // expect(userName).toHaveValue('testUser');
+    // expect(password).toHaveValue('testPwd');
     expect(database).toHaveValue('testdb');
     expect(driverClass).toHaveValue('jdbc');
-    expect(description).toHaveValue('testdescription');
     expect(frequency).toHaveValue('1');
     expect(hour).toHaveValue('1');
     expect(minute).toHaveValue('1');

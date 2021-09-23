@@ -35,13 +35,21 @@ jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
 }));
 
+jest.mock('../../components/searched-data/SearchedData', () => {
+  return jest.fn().mockReturnValue(<p>SearchedData</p>);
+});
+
+jest.mock('../../hooks/useToastContext', () => {
+  return () => jest.fn();
+});
+
 describe('Test Explore page', () => {
   it('Should Call Search API', async () => {
     await act(async () => {
       render(<ExplorePage />);
     });
 
-    expect(await screen.findByTestId('no-data-found')).toBeInTheDocument();
+    expect(await screen.findByText('SearchedData')).toBeInTheDocument();
   });
 
   it('getFilterString should return filter as string', async () => {

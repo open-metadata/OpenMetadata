@@ -22,10 +22,7 @@ import { TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import appState from '../../AppState';
 import { getCategory } from '../../axiosAPIs/tagAPI';
-import {
-  getHtmlForNonAdminAction,
-  getUserTeams,
-} from '../../utils/CommonUtils';
+import { getUserTeams } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { Button } from '../buttons/Button/Button';
 import CardListItem from '../card-list/CardListItem/CardWithListItems';
@@ -112,7 +109,7 @@ const ManageTab: FunctionComponent<Props> = ({
     }
   });
   const [owner, setOwner] = useState(currentUser);
-  const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
+  const [, setIsLoadingTierData] = useState<boolean>(false);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -246,23 +243,24 @@ const ManageTab: FunctionComponent<Props> = ({
         </span>
       </div>
       <div className="tw-flex tw-flex-col" data-testid="cards">
-        {isLoadingTierData ? (
-          <Loader />
-        ) : (
-          tierData.map((card, i) => (
-            <NonAdminAction
-              html={getHtmlForNonAdminAction(Boolean(owner))}
-              isOwner={hasEditAccess || Boolean(owner)}
-              key={i}
-              position="left">
-              <CardListItem
-                card={card}
-                isActive={activeTier === card.id}
-                onSelect={handleCardSelection}
-              />
-            </NonAdminAction>
-          ))
-        )}
+        {tierData.map((card, i) => (
+          <NonAdminAction
+            html={
+              <>
+                <p>You need to be owner to perform this action</p>
+                <p>Claim ownership from above </p>
+              </>
+            }
+            isOwner={hasEditAccess || Boolean(owner)}
+            key={i}
+            position="left">
+            <CardListItem
+              card={card}
+              isActive={activeTier === card.id}
+              onSelect={handleCardSelection}
+            />
+          </NonAdminAction>
+        ))}
       </div>
       <div className="tw-mt-6 tw-text-right" data-testid="buttons">
         <Button

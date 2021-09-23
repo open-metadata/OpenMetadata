@@ -1,67 +1,88 @@
 import {
+  findAllByTestId,
+  findByTestId,
+  findByText,
   fireEvent,
-  getByTestId,
-  getByText,
   render,
 } from '@testing-library/react';
 import React from 'react';
 import ManageTab from './ManageTab';
 
-const mockFunction = jest.fn();
-jest.mock('../../jsons/tiersData.ts', () => ({
-  data: [
+const mockTierData = {
+  children: [
     {
-      title: 'Tier 1',
-      id: 'Tier.Tier1',
-      description:
-        'Critical Source of Truth business data assets of an organization',
-      contents: [
-        {
-          text: 'Used in critical metrics and dashboards to drive business and product decisions',
-        },
-      ],
+      fullyQualifiedName: 'Tier.Tier1',
+      description: 'description for card 1',
     },
     {
-      title: 'Tier 1',
-      id: 'Tier.Tier1',
-      description:
-        'Critical Source of Truth business data assets of an organization',
-      contents: [
-        {
-          text: 'Used in critical metrics and dashboards to drive business and product decisions',
-        },
-      ],
+      fullyQualifiedName: 'Tier.Tier2',
+      description: 'description for card 2',
+    },
+    {
+      fullyQualifiedName: 'Tier.Tier3',
+      description: 'description for card 3',
     },
   ],
+};
+
+const mockFunction = jest.fn().mockImplementation(() => Promise.resolve());
+
+jest.mock('../card-list/CardListItem/CardWithListItems', () => {
+  return jest.fn().mockReturnValue(<p data-testid="card">CardWithListItems</p>);
+});
+
+jest.mock('../../axiosAPIs/tagAPI', () => ({
+  getCategory: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: mockTierData })),
 }));
 
 describe('Test Manage tab Component', () => {
-  it('Component should render', () => {
-    const { container } = render(<ManageTab onSave={mockFunction} />);
-    const manageTab = getByTestId(container, 'manage-tab');
-    const ownerDropdown = getByTestId(container, 'owner-dropdown');
+  it('Component should render', async () => {
+    const { container } = render(
+      <ManageTab hasEditAccess onSave={mockFunction} />
+    );
+    const manageTab = await findByTestId(container, 'manage-tab');
+    const ownerDropdown = await findByTestId(container, 'owner-dropdown');
 
     expect(manageTab).toBeInTheDocument();
     expect(ownerDropdown).toBeInTheDocument();
   });
 
-  it('Number of card visible is same as data', () => {
-    const { container } = render(<ManageTab onSave={mockFunction} />);
-    const cards = getByTestId(container, 'cards');
+  it('Number of card visible is same as data', async () => {
+    const { container } = render(
+      <ManageTab hasEditAccess onSave={mockFunction} />
+    );
+    const card = await findAllByTestId(container, 'card');
 
-    expect(cards.childElementCount).toBe(2);
+    expect(card.length).toBe(3);
   });
 
-  it('there should be 2 buttons', () => {
-    const { container } = render(<ManageTab onSave={mockFunction} />);
-    const buttons = getByTestId(container, 'buttons');
+  it('there should be 2 buttons', async () => {
+    const { container } = render(
+      <ManageTab hasEditAccess onSave={mockFunction} />
+    );
+    const buttons = await findByTestId(container, 'buttons');
 
     expect(buttons.childElementCount).toBe(2);
   });
 
-  it('Onclick of save, onSave function also called', () => {
-    const { container } = render(<ManageTab onSave={mockFunction} />);
-    const save = getByText(container, /Save/i);
+  it('Onclick of save, onSave function also called', async () => {
+    const { container } = render(
+      <ManageTab hasEditAccess onSave={mockFunction} />
+    );
+    const card = await findAllByTestId(container, 'card');
+
+    fireEvent.click(
+      card[1],
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    const save = await findByText(container, /Save/i);
+
     fireEvent.click(
       save,
       new MouseEvent('click', {
