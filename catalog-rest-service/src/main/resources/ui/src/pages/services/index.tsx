@@ -17,12 +17,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isNull } from 'lodash';
-import {
-  ServiceCollection,
-  ServiceData,
-  ServiceRecord,
-  ServiceTypes,
-} from 'Models';
+import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -52,13 +47,22 @@ import {
   PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
+import { ServiceCategory } from '../../enums/service.enum';
 import {
+  DashboardService,
   DashboardServiceType,
-  ServiceCategory,
-} from '../../enums/service.enum';
+} from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { MessagingService } from '../../generated/entity/services/messagingService';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
+
+type ServiceRecord = {
+  databaseServices: Array<DatabaseService>;
+  messagingServices: Array<MessagingService>;
+  dashboardServices: Array<DashboardService>;
+};
 
 export type ApiData = {
   description: string;
@@ -86,8 +90,7 @@ const ServicesPage = () => {
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
   ) => {
-    // let listArr = [];
-    //   fetch services of all individual collection
+    // fetch services of all individual collection
     if (allServiceCollectionArr.length) {
       let promiseArr = [];
       promiseArr = allServiceCollectionArr.map((obj) => {
@@ -103,12 +106,12 @@ const ServicesPage = () => {
             );
             for (let i = 0; i < serviceArr.length; i++) {
               serviceRecord[allServiceCollectionArr[i].value as ServiceTypes] =
-                serviceArr[i].map((s: ApiData) => {
-                  return { ...s, ...s.jdbc };
-                });
+                serviceArr[i];
             }
             setServices(serviceRecord);
-            setServiceList(serviceRecord[serviceName]);
+            setServiceList(
+              serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
+            );
           }
         }
       );
@@ -219,40 +222,46 @@ const ServicesPage = () => {
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
+        const databaseService = service as unknown as DatabaseService;
+
         return (
           <>
             <div className="tw-mb-1">
               <label className="tw-mb-0">Driver Class:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {service.driverClass}
+                {databaseService.jdbc.driverClass}
               </span>
             </div>
           </>
         );
       }
       case ServiceCategory.MESSAGING_SERVICES: {
+        const messagingService = service as unknown as MessagingService;
+
         return (
           <>
             <div className="tw-mb-1">
               <label className="tw-mb-0">Brokers:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {service.brokers?.join(', ')}
+                {messagingService.brokers.join(', ')}
               </span>
             </div>
           </>
         );
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
+        const dashboardService = service as unknown as DashboardService;
+
         return (
           <>
             <div className="tw-mb-1">
               <label className="tw-mb-0">
-                {service.serviceType === DashboardServiceType.TABLEAU
+                {dashboardService.serviceType === DashboardServiceType.Tableau
                   ? 'Site URL:'
                   : 'Dashboard URL:'}
               </label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                {service.dashboardUrl}
+                {dashboardService.dashboardUrl}
               </span>
             </div>
           </>
@@ -298,7 +307,9 @@ const ServicesPage = () => {
                     key={index}
                     onClick={() => {
                       setServiceName(tab.name);
-                      setServiceList(services[tab.name]);
+                      setServiceList(
+                        services[tab.name] as unknown as Array<ServiceDataObj>
+                      );
                     }}>
                     {tab.displayName}
                     {getCountBadge(services[tab.name].length)}
@@ -318,7 +329,7 @@ const ServicesPage = () => {
                       <Link
                         to={getServiceDetailsPath(
                           service.name,
-                          service.serviceType
+                          service.serviceType || ''
                         )}>
                         <button>
                           <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
@@ -341,7 +352,7 @@ const ServicesPage = () => {
                       <div className="tw-mb-1">
                         <label className="tw-mb-0">Ingestion:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
-                          {service.ingestionSchedule
+                          {service.ingestionSchedule?.repeatFrequency
                             ? getFrequencyTime(
                                 service.ingestionSchedule.repeatFrequency
                               )
@@ -376,7 +387,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="focus:tw-outline-none"
-                            onClick={() => handleDelete(service.id)}>
+                            onClick={() => handleDelete(service.id || '')}>
                             <SVGIcons
                               alt="delete"
                               icon="icon-delete"
@@ -394,7 +405,7 @@ const ServicesPage = () => {
                             src={serviceTypeLogo(service.serviceType)}
                           />
                         )} */}
-                        {getServiceLogo(service.serviceType)}
+                        {getServiceLogo(service.serviceType || '')}
                       </div>
                     </div>
                   </div>
