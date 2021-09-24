@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import re
+import json
 from datetime import datetime, timedelta
 from typing import List
 
@@ -94,93 +95,46 @@ def get_dashboard_service_or_create(service_name: str,
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
 
-def _hive_nested_complex_types(hive_str):
-    r = re.compile(r'(.*?)(uniontype<|struct<|array<|map<|[:,>])(.*)')
-    if hive_str.split('<')[0] not in ['array', 'uniontype']:
-        root = dict()
-    else:
-        root = list()
-    to_parse = hive_str
-    curr_elem = root
-    parents = []
-    key = None
-    while to_parse:
-        left, operator, to_parse = r.match(to_parse).groups()
-        if 'map' == hive_str.split('<')[0]:
-            if operator == ',' or operator == '>':
-                if key is not None and not hasattr(curr_elem, 'key'):
-                    curr_elem[key] = left
-                else:
-                    key = left
-                    curr_elem[key] = None
-        else:
-            if operator in ['array<', 'struct<', 'uniontype<']:
-                new_elem = dict() if operator == 'struct<' else list()
-                if curr_elem:
-                    parents.append(curr_elem)
-                if key and isinstance(curr_elem, dict):
-                    curr_elem[key] = new_elem
-                    curr_elem = new_elem
-                elif isinstance(curr_elem, list):
-                    curr_elem.append(new_elem)
-                    curr_elem = new_elem
+    def replace_str(variable, old, new):
+        return variable.replace(old, new)
 
-                key = None
-            elif operator == ':':
-                key = left
-            elif operator == ',' or operator == '>':
-                if left:
-                    if isinstance(curr_elem, dict):
-                        curr_elem[key] = left
-                    elif isinstance(curr_elem, list):
-                        curr_elem.append(left)
-                    left = None
-                    key = None
+    def get_last_index(hive_str):
+        counter = 1
+        for index, i in enumerate(hive_str):
+            if i == '>':
+                counter -= 1
+            elif i == '<':
+                counter += 1
+            if counter == 0:
+                break
+        return index
 
-                if operator == '>':
-                    if parents:
-                        curr_elem = parents.pop()
-    return root
+    def _handle_complex_data_types(hive_str):
+        while '>' in hive_str:
+            check_datatype = re.match(
+                r'(.*?)(array<|uniontype<|map<|struct<.*?)(.*)', hive_str
+                ).groups()
+            a, b, c = check_datatype
+            if b == 'struct<':
+                b = replace_str(b, 'struct<', '{')
+                hive_str = a + b + c
+                index = get_last_index(hive_str)
+                hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
+            elif b == 'array<' or b == 'uniontype<':
+                b = replace_str(b, 'array<' if b == 'array<' else 'uniontype<', '[')
+                hive_str = a + b + c
+                index = get_last_index(hive_str)
+                hive_str = hive_str[:index] + ']' + hive_str[index + 1:]
+            elif b == 'map<':
+                get_colon_index = hive_str.index(",", (hive_str.index('map<')))
+                b = replace_str(b, 'map<', '{')
+                hive_str = a + b + c
+                hive_str = hive_str[:get_colon_index - 3] + ':' + hive_str[get_colon_index - 2:]
+                index = get_last_index(hive_str)
+                hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
 
-def _hive_struct_to_json(hive_str):
-    """
-    Expands embedded Hive struct strings to Python dictionaries
-    Args:
-        Hive struct format as string
-    Returns
-        JSON object
-    """
-    r = re.compile(r'(.*?)(struct<|array<|[:,>])(.*)')
-    root = dict()
-
-    to_parse = hive_str
-    parents = []
-    curr_elem = root
-
-    key = None
-    while to_parse:
-        left, operator, to_parse = r.match(to_parse).groups()
-
-        if operator == 'struct<' or operator == 'array<':
-            parents.append(curr_elem)
-            new_elem = dict() if operator == 'struct<' else list()
-            if key:
-                curr_elem[key] = new_elem
-                curr_elem = new_elem
-            elif isinstance(curr_elem, list):
-                curr_elem.append(new_elem)
-                curr_elem = new_elem
-            key = None
-        elif operator == ':':
-            key = left
-        elif operator == ',' or operator == '>':
-            if left:
-                if isinstance(curr_elem, dict):
-                    curr_elem[key] = left
-                elif isinstance(curr_elem, list):
-                    curr_elem.append(left)
-
-            if operator == '>':
-                curr_elem = parents.pop()
-
-    return root
+        hive_str = re.sub(r'([\w\s\(\)]+)', r'"\1"', hive_str)
+        try:
+            return json.loads(hive_str)
+        except Exception as err:
+            print(err)
