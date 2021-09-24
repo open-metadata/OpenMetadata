@@ -321,8 +321,6 @@ declare module 'Models' {
     | 'messagingServices'
     | 'dashboardServices';
 
-  export type ServiceRecord = Record<ServiceTypes, Array<ServiceDataObj>>;
-
   export type SampleData = {
     columns: Array<string>;
     rows: Array<Array<string>>;

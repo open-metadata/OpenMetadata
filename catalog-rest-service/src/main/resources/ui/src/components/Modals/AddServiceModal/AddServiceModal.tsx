@@ -24,6 +24,9 @@ import {
   MessagingServiceType,
   ServiceCategory,
 } from '../../../enums/service.enum';
+// import { DashboardService } from '../../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -56,18 +59,17 @@ export type DataObj = {
   env?: string;
 };
 
-type DatabaseService = {
-  connectionUrl: string;
-  driverClass: string;
-  jdbc: { driverClass: string; connectionUrl: string };
-};
-
-type MessagingService = {
-  brokers: Array<string>;
-  schemaRegistry: string;
-};
+// type DataObj = CreateDatabaseService &
+//   Partial<CreateMessagingService> &
+//   Partial<CreateDashboardService>;
 
 type DashboardService = {
+  description: string;
+  href: string;
+  id: string;
+  name: string;
+  serviceType: string;
+  ingestionSchedule?: { repeatFrequency: string; startDate: string };
   dashboardUrl?: string;
   username?: string;
   password?: string;
@@ -79,14 +81,7 @@ type DashboardService = {
   env?: string;
 };
 
-export type ServiceDataObj = {
-  description: string;
-  href: string;
-  id: string;
-  name: string;
-  serviceType: string;
-  ingestionSchedule?: { repeatFrequency: string; startDate: string };
-} & Partial<DatabaseService> &
+export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
   Partial<DashboardService>;
 
@@ -186,7 +181,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [serviceType, setServiceType] = useState(
     serviceTypes[serviceName] || []
   );
-  const [parseUrl] = useState(seprateUrl(data?.connectionUrl) || {});
+  const [parseUrl] = useState(seprateUrl(data?.jdbc?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
   const [selectService, setSelectService] = useState(data?.serviceType || '');
@@ -197,7 +192,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
   // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
-  const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
+  const [driverClass, setDriverClass] = useState(
+    data?.jdbc?.driverClass || 'jdbc'
+  );
   const [brokers, setBrokers] = useState(
     data?.brokers?.length ? data.brokers.join(', ') : ''
   );
