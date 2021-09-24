@@ -111,7 +111,7 @@ public class MessagingServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Messaging service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = MessagingService.class))),
                   @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
           })
   public MessagingService get(@Context UriInfo uriInfo,
@@ -184,17 +184,17 @@ public class MessagingServiceResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a database service", tags = "services",
-          description = "Delete a database services. If databases (and tables) belong the service, it can't be " +
+  @Operation(summary = "Delete a messaging service", tags = "services",
+          description = "Delete a messaing services. If topics belong the service, it can't be " +
                   "deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "DatabaseService service for instance {id} " +
+                  @ApiResponse(responseCode = "404", description = "MessagingService service for instance {id} " +
                           "is not found")
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Parameter(description = "Id of the database service", schema = @Schema(type = "string"))
+                         @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(id);

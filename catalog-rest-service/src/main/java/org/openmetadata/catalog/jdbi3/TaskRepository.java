@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -25,7 +24,7 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
-import org.openmetadata.catalog.resources.charts.ChartResource;
+import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -54,8 +53,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public abstract class TaskRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TaskRepository.class);
-  private static final Fields TASK_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,taskConfig");
-  private static final Fields TASK_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
+  private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
+          "taskConfig,tags");
+  private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
 
   public static String getFQN(EntityReference service, Task task) {
     return (service.getName() + "." + task.getName());

@@ -54,6 +54,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
 public class PipelineResource {
+
   public static final String COLLECTION_PATH = "/v1/pipelines/";
   private final List<String> attributes = RestUtil.getAttributes(Pipeline.class);
   private final List<String> relationships = RestUtil.getAttributes(Pipeline.class);

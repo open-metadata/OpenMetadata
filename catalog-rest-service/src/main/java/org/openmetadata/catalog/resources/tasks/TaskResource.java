@@ -123,7 +123,7 @@ public class TaskResource {
     }
   }
 
-  static final String FIELDS = "owner,service,followers,tags";
+  static final String FIELDS = "taskConfig,owner,service,followers,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 

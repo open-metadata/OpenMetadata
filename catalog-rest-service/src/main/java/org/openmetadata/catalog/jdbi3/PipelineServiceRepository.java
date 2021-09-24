@@ -20,7 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -40,54 +40,54 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class MessagingServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(MessagingServiceRepository.class);
+public abstract class PipelineServiceRepository {
+  private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepository.class);
 
   @CreateSqlObject
-  abstract MessagingServiceDAO messagingServiceDAO();
+  abstract PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
   abstract EntityRelationshipDAO relationshipDAO();
 
   @Transaction
-  public List<MessagingService> list(String name) throws IOException {
-    return JsonUtils.readObjects(messagingServiceDAO().list(name), MessagingService.class);
+  public List<PipelineService> list(String name) throws IOException {
+    return JsonUtils.readObjects(pipelineServiceDAO().list(name), PipelineService.class);
   }
 
   @Transaction
-  public MessagingService get(String id) throws IOException {
-    return EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
+  public PipelineService get(String id) throws IOException {
+    return EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
   }
 
   @Transaction
-  public MessagingService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, messagingServiceDAO().findByName(name), MessagingService.class);
+  public PipelineService getByName(String name) throws IOException {
+    return EntityUtil.validate(name, pipelineServiceDAO().findByName(name), PipelineService.class);
   }
 
   @Transaction
-  public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
+  public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
     // Validate fields
-    validateIngestionSchedule(messagingService.getIngestionSchedule());
-    messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
-    return messagingService;
+    validateIngestionSchedule(pipelineService.getIngestionSchedule());
+    pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
+    return pipelineService;
   }
 
-  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+  public PipelineService update(String id, String description, URI url,
                                  Schedule ingestionSchedule)
           throws IOException {
     validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
+    PipelineService pipelineService = EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
     // Update fields
-    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return dbService;
+    pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
+            .withUrl(url);
+    pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
+    return pipelineService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (messagingServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
+    if (pipelineServiceDAO().delete(id) <= 0) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
     relationshipDAO().deleteAll(id);
   }
@@ -117,23 +117,23 @@ public abstract class MessagingServiceRepository {
     }
   }
 
-  public interface MessagingServiceDAO {
-    @SqlUpdate("INSERT INTO messaging_service_entity (json) VALUES (:json)")
+  public interface PipelineServiceDAO {
+    @SqlUpdate("INSERT INTO pipeline_service_entity (json) VALUES (:json)")
     void insert(@Bind("json") String json);
 
-    @SqlUpdate("UPDATE messaging_service_entity SET  json = :json where id = :id")
+    @SqlUpdate("UPDATE pipeline_service_entity SET  json = :json where id = :id")
     void update(@Bind("id") String id, @Bind("json") String json);
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE id = :id")
+    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE id = :id")
     String findById(@Bind("id") String id);
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE name = :name")
+    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE name = :name")
     String findByName(@Bind("name") String name);
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE (name = :name OR :name is NULL)")
+    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE (name = :name OR :name is NULL)")
     List<String> list(@Bind("name") String name);
 
-    @SqlUpdate("DELETE FROM messaging_service_entity WHERE id = :id")
+    @SqlUpdate("DELETE FROM pipeline_service_entity WHERE id = :id")
     int delete(@Bind("id") String id);
   }
 }

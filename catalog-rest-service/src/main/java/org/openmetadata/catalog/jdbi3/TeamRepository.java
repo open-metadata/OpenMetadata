@@ -28,6 +28,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -99,6 +100,9 @@ public abstract class TeamRepository {
 
   @CreateSqlObject
   abstract ChartDAO chartDAO();
+
+  @CreateSqlObject
+  abstract TaskDAO taskDAO();
 
   @Transaction
   public Team create(Team team, List<UUID> userIds) throws IOException {
@@ -257,7 +261,7 @@ public abstract class TeamRepository {
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
     return EntityUtil.getEntityReference(relationshipDAO().findTo(teamId, OWNS.ordinal()), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO());
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO());
   }
 
   private void addUserRelationship(Team team, User user) {

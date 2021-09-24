@@ -249,14 +249,15 @@ public final class EntityUtil {
                                                          TopicDAO topicDAO, ChartDAO chartDAO,
                                                          TaskDAO taskDAO) throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
+      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO, taskDAO);
     }
     return list;
   }
 
   public static EntityReference getEntityReference(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                   TaskDAO taskDAO)
           throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
@@ -282,22 +283,27 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       Chart instance = EntityUtil.validate(id, chartDAO.findById(id), Chart.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
+    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
+      Task instance = EntityUtil.validate(id, taskDAO.findById(id), Task.class);
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
   public static EntityReference getEntityReference(String entity, UUID id, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                   TaskDAO taskDAO)
           throws IOException {
     EntityReference ref = new EntityReference().withId(id).withType(entity);
-    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
+    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO,
+            reportDAO, topicDAO, chartDAO, taskDAO);
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                          ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
-                                                         DashboardDAO dashboardDAO)
+                                                         DashboardDAO dashboardDAO, TaskDAO taskDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
@@ -326,6 +332,10 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DASHBOARD)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
+      Task instance = EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TASK)
               .withDescription(instance.getDescription());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
@@ -361,6 +371,9 @@ public final class EntityUtil {
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
       Dashboard instance = (Dashboard) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.TASK.toLowerCase())) {
+      Task instance = (Task) entity;
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
       MessagingService instance = (MessagingService) entity;
