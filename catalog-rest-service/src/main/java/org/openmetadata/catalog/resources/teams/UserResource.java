@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateUser;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.Collection;

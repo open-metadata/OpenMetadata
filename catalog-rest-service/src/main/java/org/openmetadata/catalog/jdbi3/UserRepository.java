@@ -16,9 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.eclipse.jetty.util.IO;
-import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
