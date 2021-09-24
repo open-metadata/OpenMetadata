@@ -86,7 +86,7 @@ class MetadataRestUsersSink(Sink):
                                      email=record.email,
                                      teams=teams)
         try:
-            self.client.post(self.api_users, data=metadata_user.to_json())
+            self.client.put(self.api_users, data=metadata_user.to_json())
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))
         except APIError:
