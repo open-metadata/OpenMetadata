@@ -400,11 +400,12 @@ const ServicesPage = () => {
                   </div>
                 ))}
                 <NonAdminAction
+                  className="tw-card"
                   position="right"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <div className="tw-inline-block" style={{ width: '361px' }}>
+                  <div className="tw-inline-block" style={{ width: '100%' }}>
                     <div
-                      className="tw-cursor-pointer tw-card tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
+                      className="tw-cursor-pointer tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
                       onClick={() => handleAddService()}>
                       <img alt="Add service" src={PLUS} />
                       <p className="tw-text-base tw-font-normal tw-mt-4">

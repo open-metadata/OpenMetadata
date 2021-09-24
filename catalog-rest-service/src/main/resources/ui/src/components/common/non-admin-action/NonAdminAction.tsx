@@ -4,6 +4,7 @@ import PopOver from '../popover/PopOver';
 
 type Props = {
   children: React.ReactNode;
+  className?: string;
   title?: string;
   position?: 'top' | 'right' | 'bottom' | 'left';
   isOwner?: boolean;
@@ -13,6 +14,7 @@ type Props = {
 
 const NonAdminAction = ({
   children,
+  className = '',
   position = 'top',
   title,
   isOwner = false,
@@ -29,7 +31,7 @@ const NonAdminAction = ({
   };
 
   return (
-    <span>
+    <span className={className}>
       {isAdminUser || isOwner || isAuthDisabled ? (
         <span>{children}</span>
       ) : (
