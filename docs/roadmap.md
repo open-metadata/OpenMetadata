@@ -6,7 +6,7 @@ We are doing a monthly release and we are going to evolve fast and adopt to comm
 Below roadmap is subject to change based on community needs and feedback.
 
 If you would like to prioitize any feature or would like to add a new feature thats not in
-our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://openmetadata.slack.com/join/shared_invite/zt-wksh1bww-iQGk45NTw6Tp4Q9UZd6QOw#/shared-invite/email) 
+our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://slack.open-metadata.org/) 
 
 
 ## 0.4 Release - Sep 20th, 2021
