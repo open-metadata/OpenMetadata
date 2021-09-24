@@ -9,37 +9,18 @@ If you would like to prioitize any feature or would like to add a new feature th
 our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://openmetadata.slack.com/archives/C02DZK3QH8Q) 
 
 
-## 0.4 Release - Sep 20th, 2021
+## 0.4 Release - Sep 20th, 2021 - Completed
 
-#### Theme:  Topics, Dashboards, and Data Profiler
-
-### Support for Kafka (and Pulsar WIP)
-* Support for Message Service and Topic entities in schemas, APIs, and UI
-* Kafka connector and ingestion support for Confluent Schema Registry
-
-### Support for Dashboards
-* Support for Dashboard services, Dashboards, and Charts entities in schemas, APIs, and UI
-* Looker, Superset, Tableau connector, and ingestion support
+Please check the [release notes](https://github.com/open-metadata/OpenMetadata/releases/tag/0.4.0) and
+our [blog post](https://blog.open-metadata.org/openmetadata-0-4-0-release-dashboards-topics-data-reliability-14e8672ae0f5)
 
 
-### User Interface
-* Sort search results based on Usage, Relevance, and Last updated time
-* Search string highlighted in search results
-* Support for Kafka and Dashboards from Looker, SuperSet, and Tableau 
 
-### Other features
-* Pluggable SSO integration - Auth0 support
-* Support for Presto
-
-### Work in progress
-* Salesforce CRM connector
-* Data profiler to profile tables in ingestion framework and show it table details page
-
-
+## Upcoming Releases
 
 ## 0.5 Release - Oct 19th, 2021
 
-#### Theme: Data quality and Lineage
+#### Theme: Data Reliability and Lineage
 
 
 ### Support for Lineage
@@ -55,7 +36,7 @@ our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/
 * Schema change notification
 
 ### Other features
-* Data quality - Data profiler integration work in progress
+* Data Reliability - Data profiler integration work in progress
 * Schema versioning
 
 
