@@ -15,7 +15,9 @@
   * limitations under the License.
 */
 
+import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
+import { isEmpty } from 'lodash';
 import { observer } from 'mobx-react';
 import { Match } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -26,6 +28,7 @@ import {
   useRouteMatch,
 } from 'react-router-dom';
 import appState from '../../AppState';
+import { getVersion } from '../../axiosAPIs/miscAPI';
 import {
   getExplorePathWithSearch,
   // navLinkDevelop,
@@ -52,9 +55,8 @@ const cookieStorage = new CookieStorage();
 const Appbar: React.FC = (): JSX.Element => {
   const location = useLocation();
   const history = useHistory();
-  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser } = useAuth(
-    location.pathname
-  );
+  const { isAuthenticatedRoute, isSignedIn, isFirstTimeUser, isAuthDisabled } =
+    useAuth(location.pathname);
   const match: Match | null = useRouteMatch({
     path: ROUTES.EXPLORE_WITH_SEARCH,
   });
@@ -64,6 +66,8 @@ const Appbar: React.FC = (): JSX.Element => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState<boolean>(() => {
     return !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true';
   });
+
+  const [version, setVersion] = useState<string>('');
   const navStyle = (value: boolean) => {
     if (value) return { color: activeLink };
 
@@ -73,9 +77,6 @@ const Appbar: React.FC = (): JSX.Element => {
   const openModal = () => {
     setIsFeatureModalOpen(true);
   };
-  useEffect(() => {
-    setSearchValue(searchQuery);
-  }, [searchQuery]);
 
   const supportLinks = [
     {
@@ -121,11 +122,43 @@ const Appbar: React.FC = (): JSX.Element => {
     },
   ];
 
+  const getUserDisplayName = () => {
+    const name = isAuthDisabled
+      ? appState.users?.length > 0
+        ? appState.users[0].displayName
+        : 'User'
+      : appState.userDetails.displayName || appState.userDetails.name;
+
+    return (
+      <span>
+        Welcome, <span className="tw-font-medium">{name.split(' ')[0]}</span>
+      </span>
+    );
+  };
+
+  useEffect(() => {
+    setSearchValue(searchQuery);
+  }, [searchQuery]);
+
   useEffect(() => {
     setIsFeatureModalOpen(
       !isFirstTimeUser && cookieStorage.getItem(COOKIE_VERSION) !== 'true'
     );
   }, [isFirstTimeUser]);
+
+  useEffect(() => {
+    if (isAuthDisabled) {
+      getVersion().then((res: AxiosResponse) => {
+        setVersion(res.data.version);
+      });
+    } else {
+      if (!isEmpty(appState.userDetails)) {
+        getVersion().then((res: AxiosResponse) => {
+          setVersion(res.data.version);
+        });
+      }
+    }
+  }, [appState.userDetails, isAuthDisabled]);
 
   return (
     <>
@@ -233,6 +266,17 @@ const Appbar: React.FC = (): JSX.Element => {
               <DropDown
                 dropDownList={[
                   {
+                    name: (
+                      <span className="tw-text-grey-muted tw-cursor-text tw-text-xs">
+                        {`Version ${version.split('-')[0]}`}
+                        <hr className="tw--mr-12 tw--ml-2 tw-mt-1.5" />
+                      </span>
+                    ),
+                    to: '',
+                    disabled: false,
+                    icon: <></>,
+                  },
+                  {
                     name: 'Logout',
                     to: '#/action-1',
                     disabled: false,
@@ -242,7 +286,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 icon={
                   <>
                     {appState.userDetails.profile?.images.image512 ? (
-                      <div className="profile-image">
+                      <div className="profile-image tw-mr-1">
                         <img
                           alt="user"
                           src={appState.userDetails.profile.images.image512}
@@ -250,7 +294,7 @@ const Appbar: React.FC = (): JSX.Element => {
                       </div>
                     ) : (
                       <IconDefaultUserProfile
-                        className=""
+                        className="tw-mr-1"
                         style={{
                           height: '22px',
                           width: '22px',
@@ -260,7 +304,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     )}
                   </>
                 }
-                label=""
+                label={getUserDisplayName()}
                 type="link"
               />
             </div>

@@ -19,14 +19,7 @@ import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEqual, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import {
-  ColumnTags,
-  SampleData,
-  TableColumn,
-  TableDetail,
-  TableJoinsData,
-  User,
-} from 'Models';
+import { ColumnTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -54,7 +47,15 @@ import {
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Table } from '../../generated/entity/data/table';
+import {
+  ColumnJoins,
+  JoinedWith,
+  Table,
+  TableData,
+  TableJoins,
+} from '../../generated/entity/data/table';
+import { User } from '../../generated/entity/teams/user';
+import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import {
@@ -112,23 +113,21 @@ const MyDataDetailsPage = () => {
   const [description, setDescription] = useState('');
   const [usage, setUsage] = useState('');
   const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
-  const [columns, setColumns] = useState<Array<TableColumn>>([]);
-  const [sampleData, setSampleData] = useState<SampleData>({
+  const [columns, setColumns] = useState<Table['columns']>([]);
+  const [sampleData, setSampleData] = useState<TableData>({
     columns: [],
     rows: [],
   });
   const [tableTags, setTableTags] = useState<Array<ColumnTags>>([]);
   const [isEdit, setIsEdit] = useState(false);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
-  const [tableJoinData, setTableJoinData] = useState<TableJoinsData>({
-    startDate: '',
+  const [owner, setOwner] = useState<Table['owner']>();
+  const [tableJoinData, setTableJoinData] = useState<TableJoins>({
+    startDate: new Date(),
     dayCount: 0,
     columnJoins: [],
   });
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
-  const [tableDetails, setTableDetails] = useState<TableDetail>(
-    {} as TableDetail
-  );
+  const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const [activeTab, setActiveTab] = useState<number>(1);
   const { datasetFQN: tableFQN } = useParams() as Record<string, string>;
 
@@ -200,9 +199,7 @@ const MyDataDetailsPage = () => {
     setIsEdit(false);
   };
 
-  const saveUpdatedTableData = (
-    updatedData: TableDetail
-  ): Promise<AxiosResponse> => {
+  const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
 
     return patchTableDetails(
@@ -227,7 +224,7 @@ const MyDataDetailsPage = () => {
     }
   };
 
-  const onColumnsUpdate = (updateColumns: Array<TableColumn>) => {
+  const onColumnsUpdate = (updateColumns: Table['columns']) => {
     if (!isEqual(columns, updateColumns)) {
       const updatedTableDetails = {
         ...tableDetails,
@@ -241,15 +238,19 @@ const MyDataDetailsPage = () => {
   };
 
   const onSettingsUpdate = (
-    newOwner?: TableDetail['owner'],
-    newTier?: TableDetail['tier']
+    newOwner?: Table['owner'],
+    newTier?: string
   ): Promise<void> => {
     return new Promise<void>((resolve, reject) => {
       if (newOwner || newTier) {
-        const tierTag: TableDetail['tags'] = newTier
+        const tierTag: Table['tags'] = newTier
           ? [
-              ...getTagsWithoutTier(tableDetails.tags),
-              { tagFQN: newTier, labelType: 'Manual', state: 'Confirmed' },
+              ...getTagsWithoutTier(tableDetails.tags as Array<ColumnTags>),
+              {
+                tagFQN: newTier,
+                labelType: LabelType.Manual,
+                state: State.Confirmed,
+              },
             ]
           : tableDetails.tags;
         const updatedTableDetails = {
@@ -317,28 +318,30 @@ const MyDataDetailsPage = () => {
     setIsEdit(true);
   };
 
-  const getFrequentlyJoinedWithTables = (): Array<{
-    name: string;
-    fqn: string;
-    joinCount: number;
-  }> => {
-    let freqJoin: Array<{ name: string; fqn: string; joinCount: number }> = [];
-    for (const joinData of tableJoinData.columnJoins) {
+  const getFrequentlyJoinedWithTables = (): Array<
+    JoinedWith & { name: string }
+  > => {
+    let freqJoin: Array<JoinedWith & { name: string }> = [];
+    for (const joinData of tableJoinData.columnJoins as ColumnJoins[]) {
       freqJoin = [
         ...freqJoin,
-        ...joinData.joinedWith.map((joinedCol) => {
+        ...(joinData?.joinedWith?.map((joinedCol) => {
           const tableFQN = getTableFQNFromColumnFQN(
-            joinedCol.fullyQualifiedName
+            joinedCol?.fullyQualifiedName as string
           );
 
           return {
             name: getPartialNameFromFQN(tableFQN, ['database', 'table']),
-            fqn: tableFQN,
+            fullyQualifiedName: tableFQN,
             joinCount: joinedCol.joinCount,
           };
-        }),
+        }) as Array<JoinedWith & { name: string }>),
       ].sort((a, b) =>
-        a.joinCount > b.joinCount ? 1 : b.joinCount > a.joinCount ? -1 : 0
+        (a?.joinCount as number) > (b?.joinCount as number)
+          ? 1
+          : (b?.joinCount as number) > (a?.joinCount as number)
+          ? -1
+          : 0
       );
     }
 
@@ -494,7 +497,7 @@ const MyDataDetailsPage = () => {
                     )}
                     columns={columns}
                     hasEditAccess={hasEditAccess()}
-                    joins={tableJoinData.columnJoins}
+                    joins={tableJoinData.columnJoins as ColumnJoins[]}
                     owner={owner}
                     sampleData={sampleData}
                     onUpdate={onColumnsUpdate}

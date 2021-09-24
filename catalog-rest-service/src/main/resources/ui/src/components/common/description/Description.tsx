@@ -1,5 +1,5 @@
-import { TableDetail } from 'Models';
 import React from 'react';
+import { Table } from '../../../generated/entity/data/table';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
@@ -7,7 +7,7 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
-  owner: TableDetail['owner'];
+  owner: Table['owner'];
   hasEditAccess: boolean;
   onDescriptionEdit: () => void;
   description: string;

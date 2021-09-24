@@ -17,13 +17,7 @@
 
 import classNames from 'classnames';
 import { lowerCase, upperCase } from 'lodash';
-import {
-  ColumnJoin,
-  ColumnJoins,
-  ColumnTags,
-  TableColumn,
-  TableDetail,
-} from 'Models';
+import { ColumnTags } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -33,6 +27,14 @@ import React, {
 } from 'react';
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
+import {
+  Column,
+  ColumnDataType,
+  ColumnJoins,
+  JoinedWith,
+  Table,
+} from '../../generated/entity/data/table';
+import { TagLabel } from '../../generated/type/tagLabel';
 import {
   getHtmlForNonAdminAction,
   getPartialNameFromFQN,
@@ -51,11 +53,11 @@ import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
 
 type Props = {
-  owner: TableDetail['owner'];
-  columns: Array<TableColumn>;
+  owner: Table['owner'];
+  columns: Table['columns'];
   joins: Array<ColumnJoins>;
   searchText?: string;
-  onUpdate: (columns: Array<TableColumn>) => void;
+  onUpdate: (columns: Table['columns']) => void;
   columnName: string;
   hasEditAccess: boolean;
 };
@@ -70,43 +72,41 @@ const SchemaTable: FunctionComponent<Props> = ({
   owner,
 }: Props) => {
   const [editColumn, setEditColumn] = useState<{
-    column: TableColumn;
+    column: Column;
     index: number;
   }>();
 
   const [editColumnTag, setEditColumnTag] = useState<{
-    column: TableColumn;
+    column: Column;
     index: number;
   }>();
 
-  const [searchedColumns, setSearchedColumns] = useState<Array<TableColumn>>(
-    []
-  );
+  const [searchedColumns, setSearchedColumns] = useState<Table['columns']>([]);
 
   const [allTags, setAllTags] = useState<Array<string>>([]);
   const rowRef = useRef<HTMLTableRowElement>(null);
   const getDataTypeString = (dataType: string): string => {
     switch (upperCase(dataType)) {
-      case 'STRING':
-      case 'CHAR':
-      case 'TEXT':
-      case 'VARCHAR':
-      case 'MEDIUMTEXT':
-      case 'MEDIUMBLOB':
-      case 'BLOB':
+      case ColumnDataType.String:
+      case ColumnDataType.Char:
+      case ColumnDataType.Text:
+      case ColumnDataType.Varchar:
+      case ColumnDataType.Mediumtext:
+      case ColumnDataType.Mediumblob:
+      case ColumnDataType.Blob:
         return 'varchar';
-      case 'TIMESTAMP':
-      case 'TIME':
+      case ColumnDataType.Timestamp:
+      case ColumnDataType.Time:
         return 'timestamp';
-      case 'INT':
-      case 'FLOAT':
-      case 'SMALLINT':
-      case 'BIGINT':
-      case 'NUMERIC':
-      case 'TINYINT':
+      case ColumnDataType.Int:
+      case ColumnDataType.Float:
+      case ColumnDataType.Smallint:
+      case ColumnDataType.Bigint:
+      case ColumnDataType.Numeric:
+      case ColumnDataType.Tinyint:
         return 'numeric';
-      case 'BOOLEAN':
-      case 'ENUM':
+      case ColumnDataType.Boolean:
+      case ColumnDataType.Enum:
         return 'boolean';
       default:
         return dataType;
@@ -123,7 +123,7 @@ const SchemaTable: FunctionComponent<Props> = ({
 
   const getFrequentlyJoinedWithColumns = (
     columnName: string
-  ): Array<ColumnJoin> => {
+  ): Array<JoinedWith> => {
     return (
       joins.find((join) => join.columnName === columnName)?.joinedWith || []
     );
@@ -138,24 +138,24 @@ const SchemaTable: FunctionComponent<Props> = ({
   };
 
   const updateColumnTags = (
-    column: TableColumn,
+    column: Column,
     index: number,
     selectedTags: Array<string>
   ) => {
-    const prevTags = column.tags.filter((tag) => {
-      return selectedTags.includes(tag.tagFQN);
+    const prevTags = column?.tags?.filter((tag) => {
+      return selectedTags.includes(tag?.tagFQN as string);
     });
 
     const newTags: Array<ColumnTags> = selectedTags
       .filter((tag) => {
-        return !prevTags.map((prevTag) => prevTag.tagFQN).includes(tag);
+        return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
       })
       .map((tag) => ({
         labelType: 'Manual',
         state: 'Confirmed',
         tagFQN: tag,
       }));
-    const updatedTags = [...prevTags, ...newTags];
+    const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
     const updatedColumns = [
       ...columns.slice(0, index),
       {
@@ -167,7 +167,7 @@ const SchemaTable: FunctionComponent<Props> = ({
     onUpdate(updatedColumns);
   };
 
-  const handleEditColumnTag = (column: TableColumn, index: number): void => {
+  const handleEditColumnTag = (column: Column, index: number): void => {
     setEditColumnTag({ column, index });
   };
 
@@ -183,7 +183,7 @@ const SchemaTable: FunctionComponent<Props> = ({
     setEditColumnTag(undefined);
   };
 
-  const handleEditColumn = (column: TableColumn, index: number): void => {
+  const handleEditColumn = (column: Column, index: number): void => {
     setEditColumn({ column, index });
   };
 
@@ -326,15 +326,15 @@ const SchemaTable: FunctionComponent<Props> = ({
                                   className="link-text"
                                   to={getDatasetDetailsPath(
                                     getTableFQNFromColumnFQN(
-                                      columnJoin.fullyQualifiedName
+                                      columnJoin?.fullyQualifiedName as string
                                     ),
                                     getPartialNameFromFQN(
-                                      columnJoin.fullyQualifiedName,
+                                      columnJoin?.fullyQualifiedName as string,
                                       ['column']
                                     )
                                   )}>
                                   {getPartialNameFromFQN(
-                                    columnJoin.fullyQualifiedName,
+                                    columnJoin?.fullyQualifiedName as string,
                                     ['database', 'table', 'column']
                                   )}
                                 </Link>
@@ -353,15 +353,15 @@ const SchemaTable: FunctionComponent<Props> = ({
                                           className="link-text tw-block tw-py-1"
                                           href={getDatasetDetailsPath(
                                             getTableFQNFromColumnFQN(
-                                              columnJoin.fullyQualifiedName
+                                              columnJoin?.fullyQualifiedName as string
                                             ),
                                             getPartialNameFromFQN(
-                                              columnJoin.fullyQualifiedName,
+                                              columnJoin?.fullyQualifiedName as string,
                                               ['column']
                                             )
                                           )}>
                                           {getPartialNameFromFQN(
-                                            columnJoin.fullyQualifiedName,
+                                            columnJoin?.fullyQualifiedName as string,
                                             ['database', 'table', 'column']
                                           )}
                                         </a>
@@ -393,7 +393,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                       trigger="click">
                       <TagsContainer
                         editable={editColumnTag?.index === index}
-                        selectedTags={column.tags}
+                        selectedTags={column.tags as ColumnTags[]}
                         tagList={allTags}
                         onCancel={() => {
                           handleTagSelection();
@@ -401,7 +401,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                         onSelectionChange={(tags) => {
                           handleTagSelection(tags);
                         }}>
-                        {column.tags.length ? (
+                        {column?.tags?.length ? (
                           <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                             <SVGIcons
                               alt="edit"
@@ -432,7 +432,7 @@ const SchemaTable: FunctionComponent<Props> = ({
         <ModalWithMarkdownEditor
           header={`Edit column: "${editColumn.column.name}"`}
           placeholder="Enter Column Description"
-          value={editColumn.column.description}
+          value={editColumn.column.description as string}
           onCancel={closeEditColumnModal}
           onSave={handleEditColumnChange}
         />

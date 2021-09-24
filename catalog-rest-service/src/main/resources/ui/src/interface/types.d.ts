@@ -16,6 +16,7 @@
 */
 
 declare module 'Models' {
+  import { TagLabel } from '../generated/type/tagLabel';
   export type Match = {
     params: {
       searchQuery: string;
@@ -73,11 +74,8 @@ declare module 'Models' {
   };
 
   export type ColumnTags = {
-    tagFQN: string;
-    labelType?: 'Manual' | 'Propagated' | 'Automated' | 'Derived';
-    state?: 'Suggested' | 'Confirmed';
     isRemovable?: boolean;
-  };
+  } & TagLabel;
 
   export type TableColumn = {
     name: string;

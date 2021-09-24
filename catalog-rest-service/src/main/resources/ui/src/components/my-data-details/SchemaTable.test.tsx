@@ -19,6 +19,7 @@ import { getAllByTestId, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { ColumnDataType } from '../../generated/entity/data/table';
 import SchemaTable from './SchemaTable';
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
@@ -28,7 +29,7 @@ jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
 const mockColumns = [
   {
     name: 'testId',
-    columnDataType: 'string',
+    columnDataType: ColumnDataType.String,
     description: 'string',
     fullyQualifiedName: 'string',
     tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],

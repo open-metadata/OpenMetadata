@@ -18,13 +18,15 @@
 import classNames from 'classnames';
 import { lowerCase } from 'lodash';
 import React, { FunctionComponent } from 'react';
+import { TableData } from '../../generated/entity/data/table';
 import { isEven } from '../../utils/CommonUtils';
-type Columns = { name: string; dataType: string };
+
+export type SampleColumns = { name: string; dataType: string };
 
 type Props = {
   sampleData: {
-    columns: Array<Columns>;
-    rows: Array<Array<string>>;
+    columns: Array<SampleColumns>;
+    rows: TableData['rows'];
   };
 };
 
@@ -52,7 +54,7 @@ const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
           </tr>
         </thead>
         <tbody className="tw-text-gray-600 tw-text-sm">
-          {sampleData.rows.map((row, rowIndex) => {
+          {sampleData?.rows?.map((row, rowIndex) => {
             return (
               <tr
                 className={classNames(

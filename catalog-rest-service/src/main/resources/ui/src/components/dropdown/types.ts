@@ -24,7 +24,7 @@ export enum DropDownType {
 }
 
 export type DropDownListItem = {
-  name: string;
+  name: string | React.ReactElement;
   value?: string;
   group?: string;
   to?: string;
@@ -37,6 +37,7 @@ export type DropDownListItem = {
   string | number | boolean | undefined | Function | React.ReactElement
 >;
 
+export type GroupType = 'label' | 'tab';
 export type DropDownListProp = {
   dropDownList: Array<DropDownListItem>;
   horzPosRight?: boolean;
@@ -50,11 +51,12 @@ export type DropDownListProp = {
     value?: string
   ) => void;
   setIsOpen?: (value: boolean) => void;
+  groupType?: GroupType;
 };
 
 export type DropDownProp = {
   className?: string;
-  label?: string;
+  label?: string | React.ReactElement;
   type: string;
   icon?: React.ReactElement | string;
 } & DropDownListProp;

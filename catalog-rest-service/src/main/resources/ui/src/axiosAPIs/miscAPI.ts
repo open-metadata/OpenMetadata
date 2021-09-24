@@ -61,3 +61,7 @@ export const getSuggestions: Function = (
     `
   );
 };
+
+export const getVersion: Function = () => {
+  return APIClient.get('/version');
+};
