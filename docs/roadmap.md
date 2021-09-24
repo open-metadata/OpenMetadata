@@ -1,16 +1,17 @@
 # Roadmap
 
-Here is the OpenMetadata Roadmap for the next 3 releases.
+Here is the OpenMetadata Roadmap for the next 3 releases.  
 
 We are doing a monthly release and we are going to evolve fast and adapt to community needs. Below roadmap is subject to change based on community needs and feedback.
+our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://slack.open-metadata.org/) 
 
-If you would like to prioritize any feature or would like to add a new feature that is not in our roadmap yet, please file an Issue on [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://join.slack.com/t/openmetadata/shared_invite/zt-wksh1bww-iQGk45NTw6Tp4Q9UZd6QOw).
+If you would like to prioritize any feature or would like to add a new feature that is not in our roadmap yet, please file an Issue on [Github](https://github.com/open-metadata/OpenMetadata/issues) or ping us on [Slack](https://slack.open-metadata.org).
 
 ## 0.4 Release - Sep 20th, 2021
 
 #### Theme:  Topics, Dashboards, and Data Profiler
 
-### Support for Kafka \(and Pulsar WIP\)
+### Support for Kafka (and Pulsar WIP)
 
 * Support for Message Service and Topic entities in schemas, APIs, and UI
 * Kafka connector and ingestion support for Confluent Schema Registry
@@ -36,12 +37,14 @@ If you would like to prioritize any feature or would like to add a new feature t
 * Salesforce CRM connector
 * Data profiler to profile tables in ingestion framework and show it table details page
 
+
+
 ## 0.5 Release - Oct 19th, 2021
 
 #### Theme: Data quality and Lineage
 
-### Support for Lineage
 
+### Support for Lineage
 * Lineage related schemas and APIs
 * Lineage metadata integration from AirFlow for tables
 * Lineage metadata  integration from Looker, and Superset for Dashboards
