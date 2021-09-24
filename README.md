@@ -54,7 +54,7 @@ For more details on running OpenMetadata on your local machine or in production,
 
 Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
 
-Join [our Slack Community](https://join.slack.com/t/openmetadata/shared_invite/) if you get stuck, want to chat, or are thinking of a new feature.
+Join [our Slack Community](https://join.slack.com/t/openmetadata/shared_invite/zt-wksh1bww-iQGk45NTw6Tp4Q9UZd6QOw) if you get stuck, want to chat, or are thinking of a new feature.
 
 Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
 
