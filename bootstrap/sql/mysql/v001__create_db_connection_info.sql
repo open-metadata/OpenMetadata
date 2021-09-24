@@ -156,6 +156,15 @@ CREATE TABLE IF NOT EXISTS chart_entity (
     UNIQUE KEY unique_name(fullyQualifiedName)
 );
 
+CREATE TABLE IF NOT EXISTS task_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName)
+);
+
 --
 -- Feed related tables
 --

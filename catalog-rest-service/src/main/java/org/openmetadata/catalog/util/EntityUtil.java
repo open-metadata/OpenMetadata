@@ -23,6 +23,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -40,6 +41,7 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
@@ -52,6 +54,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -136,9 +139,6 @@ public final class EntityUtil {
       case Entity.DATABASE:
         DatabaseResource.addHref(uriInfo, ref);
         break;
-      case Entity.DATABASE_SERVICE:
-        DatabaseServiceResource.addHref(uriInfo, ref);
-        break;
       case Entity.TOPIC:
         TopicResource.addHref(uriInfo, ref);
         break;
@@ -148,10 +148,19 @@ public final class EntityUtil {
       case Entity.DASHBOARD:
         DashboardResource.addHref(uriInfo, ref);
         break;
+      case Entity.TASK:
+        TaskResource.addHref(uriInfo, ref);
+        break;
+      case Entity.DATABASE_SERVICE:
+        DatabaseServiceResource.addHref(uriInfo, ref);
+        break;
       case Entity.MESSAGING_SERVICE:
         MessagingServiceResource.addHref(uriInfo, ref);
         break;
       case Entity.DASHBOARD_SERVICE:
+        DashboardServiceResource.addHref(uriInfo, ref);
+        break;
+      case Entity.PIPELINE_SERVICE:
         DashboardServiceResource.addHref(uriInfo, ref);
         break;
       default:
@@ -237,7 +246,8 @@ public final class EntityUtil {
   public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                          DashboardDAO dashboardDAO, ReportDAO reportDAO,
-                                                         TopicDAO topicDAO, ChartDAO chartDAO) throws IOException {
+                                                         TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         TaskDAO taskDAO) throws IOException {
     for (EntityReference ref : list) {
       getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
     }
@@ -401,6 +411,8 @@ public final class EntityUtil {
         return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
       case Entity.TOPIC:
         return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class));
+      case Entity.TASK:
+        return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Task.class));
       default:
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
@@ -417,6 +429,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Task task) {
+    return new EntityReference().withDescription(task.getDescription()).withId(task.getId())
+            .withName(task.getFullyQualifiedName()).withType(Entity.TASK);
   }
 
   public static EntityReference getEntityReference(Chart chart) {

@@ -1,35 +1,51 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createChart.json",
+  "$id": "https://open-metadata.org/schema/api/data/createTask.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Chart entity request",
-  "description": "Create Chart entity request",
+  "title": "Create Task entity request",
+  "description": "Create Task entity request",
   "type": "object",
   "properties" : {
     "name": {
-      "description": "Name that identifies this dashboard.",
+      "description": "Name that identifies this Task.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "displayName": {
-      "description": "Display Name that identifies this Chart. It could be title or label from the source services",
+      "description": "Display Name that identifies this Task. It could be title or label from the pipeline services",
       "type": "string"
     },
     "description": {
-      "description": "Description of the database instance. What it has and how to use it.",
+      "description": "Description of the task instance. What it has and how to use it.",
       "type": "string"
     },
     "chartType": {
       "$ref": "../../entity/data/chart.json#/definitions/chartType"
     },
-    "chartUrl" : {
-      "description": "Chart URL, pointing to its own Service URL",
+    "taskUrl" : {
+      "description": "Task URL to visit/manage. This URL points to respective pipeline service UI",
       "type": "string",
       "format": "uri"
     },
-    "tables": {
-      "description": "Link to tables used in this chart.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    "upstreamTasks": {
+      "description": "All the tasks that are upstream of this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "downstreamTasks": {
+      "description": "All the tasks that are downstream of this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "taskConfig": {
+      "description": "Task Configuration.",
+      "$ref": "../../entity/data/task.json#definitions/taskConfig"
     },
     "tags": {
       "description": "Tags for this chart",
@@ -40,11 +56,11 @@
       "default": null
     },
     "owner": {
-      "description": "Owner of this database",
+      "description": "Owner of this Task",
       "$ref": "../../type/entityReference.json"
     },
     "service" : {
-      "description": "Link to the database service where this database is hosted in",
+      "description": "Link to the pipeline service where this task is used",
       "$ref" : "../../type/entityReference.json"
     }
   },

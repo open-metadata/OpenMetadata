@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.charts;
+package org.openmetadata.catalog.resources.tasks;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -26,10 +26,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.api.data.CreateChart;
+import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
+import org.openmetadata.catalog.jdbi3.TaskRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -73,49 +75,49 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-@Path("/v1/charts")
-@Api(value = "Chart data asset collection", tags = "Chart data asset collection")
+@Path("/v1/tasks")
+@Api(value = "tasks data asset collection", tags = "Task data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository")
-public class ChartResource {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
-  private static final String CHART_COLLECTION_PATH = "v1/charts/";
-  private final ChartRepository dao;
+@Collection(name = "tasks", repositoryClass = "org.openmetadata.catalog.jdbi3.TaskRepository")
+public class TaskResource {
+  private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
+  private static final String TASK_COLLECTION_PATH = "v1/tasks/";
+  private final TaskRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, ref.getId()));
+    ref.withHref(RestUtil.getHref(uriInfo, TASK_COLLECTION_PATH, ref.getId()));
   }
 
-  public static List<Chart> addHref(UriInfo uriInfo, List<Chart> charts) {
-    Optional.ofNullable(charts).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-    return charts;
+  public static List<Task> addHref(UriInfo uriInfo, List<Task> tasks) {
+    Optional.ofNullable(tasks).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
+    return tasks;
   }
 
-  public static Chart addHref(UriInfo uriInfo, Chart chart) {
-    chart.setHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, chart.getId()));
-    EntityUtil.addHref(uriInfo, chart.getOwner());
-    EntityUtil.addHref(uriInfo, chart.getService());
-    EntityUtil.addHref(uriInfo, chart.getFollowers());
+  public static Task addHref(UriInfo uriInfo, Task task) {
+    task.setHref(RestUtil.getHref(uriInfo, TASK_COLLECTION_PATH, task.getId()));
+    EntityUtil.addHref(uriInfo, task.getOwner());
+    EntityUtil.addHref(uriInfo, task.getService());
+    EntityUtil.addHref(uriInfo, task.getFollowers());
 
-    return chart;
+    return task;
   }
 
   @Inject
-  public ChartResource(ChartRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "ChartRepository must not be null");
+  public TaskResource(TaskRepository dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "TaskRepository must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }
 
-  public static class ChartList extends ResultList<Chart> {
+  public static class TaskList extends ResultList<Task> {
     @SuppressWarnings("unused")
-    ChartList() {
+    TaskList() {
       // Empty constructor needed for deserialization
     }
 
-    public ChartList(List<Chart> data, String beforeCursor, String afterCursor, int total)
+    public TaskList(List<Task> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -127,16 +129,16 @@ public class ChartResource {
 
   @GET
   @Valid
-  @Operation(summary = "List charts", tags = "charts",
-          description = "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` " +
+  @Operation(summary = "List tasks", tags = "tasks",
+          description = "Get a list of tasks, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of charts",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = ChartList.class)))
+                                  schema = @Schema(implementation = TaskList.class)))
           })
-  public ChartList list(@Context UriInfo uriInfo,
+  public TaskList list(@Context UriInfo uriInfo,
                         @Context SecurityContext securityContext,
                         @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
@@ -144,7 +146,7 @@ public class ChartResource {
                         @Parameter(description = "Filter charts by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
+                        @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
                         @Min(1)
                         @Max(1000000)
@@ -159,31 +161,31 @@ public class ChartResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ChartList charts;
+    TaskList tasks;
     if (before != null) { // Reverse paging
-      charts = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
+      tasks = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      charts = dao.listAfter(fields, serviceParam, limitParam, after);
+      tasks = dao.listAfter(fields, serviceParam, limitParam, after);
     }
-    addHref(uriInfo, charts.getData());
-    return charts;
+    addHref(uriInfo, tasks.getData());
+    return tasks;
   }
 
   @GET
   @Path("/{id}")
-  @Operation(summary = "Get a Chart", tags = "charts",
-          description = "Get a chart by `id`.",
+  @Operation(summary = "Get a Task", tags = "tasks",
+          description = "Get a task by `id`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The chart",
+                  @ApiResponse(responseCode = "200", description = "The Task",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Dashboard.class))),
-                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
           })
-  public Chart get(@Context UriInfo uriInfo, @PathParam("id") String id,
-                      @Context SecurityContext securityContext,
-                      @Parameter(description = "Fields requested in the returned resource",
+  public Task get(@Context UriInfo uriInfo, @PathParam("id") String id,
+                  @Context SecurityContext securityContext,
+                  @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -204,9 +206,9 @@ public class ChartResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Chart chart = dao.getByName(fqn, fields);
-    addHref(uriInfo, chart);
-    return Response.ok(chart).build();
+    Task task = dao.getByName(fqn, fields);
+    addHref(uriInfo, task);
+    return Response.ok(task).build();
   }
 
   @POST
@@ -219,27 +221,28 @@ public class ChartResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateChart create) throws IOException {
+                         @Valid CreateTask create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+    Task task =
+            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
                     .withDescription(create.getDescription())
                     .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
+                    .withTaskConfig(create.getTaskConfig())
+                    .withTaskUrl(create.getTaskUrl())
+                    .withTags(create.getTags())
                     .withOwner(create.getOwner());
-    chart = addHref(uriInfo, dao.create(chart, create.getService(), create.getOwner()));
-    return Response.created(chart.getHref()).entity(chart).build();
+    task = addHref(uriInfo, dao.create(task, create.getService(), create.getOwner()));
+    return Response.created(task.getHref()).entity(task).build();
   }
 
   @PATCH
   @Path("/{id}")
-  @Operation(summary = "Update a chart", tags = "charts",
+  @Operation(summary = "Update a Task", tags = "task",
           description = "Update an existing chart using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Chart updateDescription(@Context UriInfo uriInfo,
+  public Task updateDescription(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @PathParam("id") String id,
                                  @RequestBody(description = "JsonPatch with array of operations",
@@ -250,63 +253,64 @@ public class ChartResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Chart chart = dao.get(id, fields);
+    Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(chart));
-    chart = dao.patch(id, patch);
-    return addHref(uriInfo, chart);
+            EntityUtil.getEntityReference(task));
+    task = dao.patch(id, patch);
+    return addHref(uriInfo, task);
   }
 
   @PUT
-  @Operation(summary = "Create or update chart", tags = "charts",
-          description = "Create a chart, it it does not exist or update an existing chart.",
+  @Operation(summary = "Create or update task", tags = "tasks",
+          description = "Create a task, it it does not exist or update an existing chart.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The updated chart ",
+                  @ApiResponse(responseCode = "200", description = "The updated task ",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Chart.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateChart create) throws IOException {
+                                 @Valid CreateTask create) throws IOException {
 
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+    Task task =
+            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
                     .withDescription(create.getDescription())
                     .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
+                    .withTaskUrl(create.getTaskUrl())
+                    .withTaskConfig(create.getTaskConfig())
+                    .withTags(create.getTags())
                     .withOwner(create.getOwner());
-    PutResponse<Chart> response = dao.createOrUpdate(chart, create.getService(), create.getOwner());
-    chart = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(chart).build();
+    PutResponse<Task> response = dao.createOrUpdate(task, create.getService(), create.getOwner());
+    task = addHref(uriInfo, response.getEntity());
+    return Response.status(response.getStatus()).entity(task).build();
   }
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "charts",
+  @Operation(summary = "Add a follower", tags = "tasks",
           description = "Add a user identified by `userId` as followed of this chart",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
           })
   public Response addFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the chart", schema = @Schema(type = "string"))
+                              @Parameter(description = "Id of the task", schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
-    Chart chart = dao.get(id, fields);
-    return Response.status(status).entity(chart).build();
+    Task task = dao.get(id, fields);
+    return Response.status(status).entity(task).build();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "charts",
           description = "Remove the user identified `userId` as a follower of the chart.")
-  public Chart deleteFollower(@Context UriInfo uriInfo,
+  public Task deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the chart",
                                       schema = @Schema(type = "string"))
@@ -316,15 +320,15 @@ public class ChartResource {
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
-    Chart chart = dao.get(id, fields);
-    return addHref(uriInfo, chart);
+    Task task = dao.get(id, fields);
+    return addHref(uriInfo, task);
   }
 
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Chart", tags = "charts",
-          description = "Delete a chart by `id`.",
+  @Operation(summary = "Delete a Task", tags = "tasks",
+          description = "Delete a task by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")

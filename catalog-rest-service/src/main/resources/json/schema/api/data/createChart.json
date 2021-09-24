@@ -6,7 +6,7 @@
   "type": "object",
   "properties" : {
     "name": {
-      "description": "Name that identifies this dashboard.",
+      "description": "Name that identifies this Chart.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
@@ -16,7 +16,7 @@
       "type": "string"
     },
     "description": {
-      "description": "Description of the database instance. What it has and how to use it.",
+      "description": "Description of the chart instance. What it has and how to use it.",
       "type": "string"
     },
     "chartType": {

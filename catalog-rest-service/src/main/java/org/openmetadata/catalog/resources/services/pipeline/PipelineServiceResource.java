@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.services.messaging;
+package org.openmetadata.catalog.resources.services.pipeline;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
@@ -56,12 +56,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-@Path("/v1/services/messagingServices")
-@Api(value = "Messaging service collection", tags = "Services -> Messaging service collection")
+@Path("/v1/services/pipelineServices")
+@Api(value = "Pipeline service collection", tags = "Services -> Pipeline service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices", repositoryClass = "org.openmetadata.catalog.jdbi3.MessagingServiceRepository")
-public class MessagingServiceResource {
+public class PipelineServiceResource {
   private final MessagingServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
@@ -80,7 +80,7 @@ public class MessagingServiceResource {
   }
 
   @Inject
-  public MessagingServiceResource(MessagingServiceRepository dao, CatalogAuthorizer authorizer) {
+  public PipelineServiceResource(MessagingServiceRepository dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
     this.dao = dao;
     this.authorizer = authorizer;

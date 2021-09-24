@@ -2,61 +2,44 @@
   "$id": "https://open-metadata.org/schema/entity/services/messagingService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Messaging Service",
-  "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
+  "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
   "definitions": {
-    "messagingServiceType": {
-      "description": "Type of messaging service - Kafka or Pulsar.",
+    "pipelineServiceType": {
+      "description": "Type of pipeline service - Airflow or Prefect.",
       "type": "string",
       "enum": [
-        "Kafka",
-        "Pulsar"
+        "Airflow",
+        "Prefect"
       ],
       "javaEnums": [
         {
-          "name": "Kafka"
+          "name": "Airflow"
         },
         {
-          "name": "Pulsar"
+          "name": "Prefect"
         }
       ]
-    },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      },
-      "default": null
     }
   },
   "properties": {
     "id": {
-      "description": "Unique identifier of this messaging service instance.",
+      "description": "Unique identifier of this pipeline service instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this messaging service.",
+      "description": "Name that identifies this pipeline service.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "serviceType": {
-      "description": "Type of messaging service such as Kafka or Pulsar...",
-      "$ref": "#/definitions/messagingServiceType"
+      "description": "Type of pipeline service such as Airflow or Prefect...",
+      "$ref": "#/definitions/pipelineServiceType"
     },
     "description": {
       "description": "Description of a messaging service instance.",
       "type": "string"
-    },
-    "brokers": {
-      "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
-      "$ref" : "#/definitions/brokers"
-    },
-    "schemaRegistry" : {
-      "description": "Schema registry URL.",
-      "type": "string",
-      "format": "uri"
     },
     "ingestionSchedule": {
       "description": "Schedule for running metadata ingestion jobs.",
@@ -69,8 +52,6 @@
   },
   "required": [
     "id",
-    "name",
-    "serviceType",
-    "brokers"
+    "name"
   ]
 }
