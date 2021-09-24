@@ -149,9 +149,12 @@ const TeamsPage = () => {
   const getTabs = () => {
     return (
       <div className="tw-mb-3 ">
-        <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
+        <nav
+          className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+          data-testid="tabs">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
+            data-testid="users"
             onClick={() => {
               setCurrentTab(1);
             }}>
@@ -160,6 +163,7 @@ const TeamsPage = () => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
+            data-testid="assets"
             onClick={() => {
               setCurrentTab(2);
             }}>
@@ -193,7 +197,9 @@ const TeamsPage = () => {
 
     return (
       <>
-        <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
+        <div
+          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
+          data-testid="user-card-container">
           {currentTeam?.users.map((user, index) => {
             const User = {
               description: user.description,
@@ -236,7 +242,9 @@ const TeamsPage = () => {
 
     return (
       <>
-        <div className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4">
+        <div
+          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
+          data-testid="dataset-card">
           {' '}
           {currentTeam?.owns.map((dataset, index) => {
             const Dataset = { description: dataset.name, name: dataset.type };
@@ -257,6 +265,7 @@ const TeamsPage = () => {
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-7 tw-px-2"
+              data-testid="add-teams"
               size="small"
               theme="primary"
               variant="contained"
@@ -349,7 +358,9 @@ const TeamsPage = () => {
             <div
               className="container-fluid tw-pt-1 tw-pb-3"
               data-testid="team-container">
-              <div className="tw-flex tw-justify-between tw-pl-1">
+              <div
+                className="tw-flex tw-justify-between tw-pl-1"
+                data-testid="header">
                 <div className="tw-heading tw-text-link tw-text-base">
                   {currentTeam?.displayName}
                 </div>
@@ -358,6 +369,7 @@ const TeamsPage = () => {
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <Button
                     className="tw-h-8 tw-rounded tw-mb-2"
+                    data-testid="add-new-user-button"
                     size="small"
                     theme="primary"
                     variant="contained"
@@ -366,7 +378,9 @@ const TeamsPage = () => {
                   </Button>
                 </NonAdminAction>
               </div>
-              <div className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
+              <div
+                className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
+                data-testid="description-container">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
                   <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
                     Description
@@ -377,6 +391,7 @@ const TeamsPage = () => {
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <button
                         className="focus:tw-outline-none"
+                        data-testid="add-description"
                         onClick={onDescriptionEdit}>
                         <SVGIcons
                           alt="edit"
