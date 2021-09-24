@@ -45,6 +45,7 @@
         "SMALLINT",
         "INT",
         "BIGINT",
+        "BYTEINT",
         "FLOAT",
         "DOUBLE",
         "DECIMAL",
@@ -110,7 +111,7 @@
       }
     },
     "columnName": {
-      "description": "Local name (not fully qualified name) of the column.",
+      "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct columnDataType. For example, BigQuery supports struct with unnamed fields",
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
@@ -124,7 +125,7 @@
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.",
+      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for columnDataType struct fields, `field_#` where `#` is field index is used. For map columnDataType, for key the field name `key` is used and for the value field `value` is used.",
       "type": "string",
       "minLength": 1,
       "maxLength": 256
@@ -140,6 +141,16 @@
         "columnDataType": {
           "description": "Data type of the column (int, date etc.).",
           "$ref": "#/definitions/columnDataType"
+        },
+        "arrayDataType" : {
+          "description": "Data type used array in columnDataType. For example, `array<int>` has columnDataType as `array` and arrayDataType as `int`."
+        },
+        "dataLength" : {
+          "description": "Length of `char`, `varchar`, `binary`, `varbinary` `columnDataTypes`, else null. For example, `varchar(20)` has columnDataType as `varchar` and dataLength as `20`.",
+          "type": "integer"
+        },
+        "columnDataTypeDisplay" : {
+          "description" : "Display name used for columnDataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types."
         },
         "description": {
           "description": "Description of the column.",
@@ -163,12 +174,24 @@
         "ordinalPosition": {
           "description": "Ordinal position of the column.",
           "type": "integer"
+        },
+        "jsonSchema" : {
+          "description": "Json schema only if the columnDataType is JSON else null.",
+          "type": "string"
+        },
+        "children" : {
+          "description": "Child columns if columnDataType or arrayDataType is `map`, `struct`, or `union` else `null`.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/column"
+          }
         }
       },
       "required": [
         "name",
         "columnDataType"
-      ]
+      ],
+      "additionalProperties": false
     },
     "columnJoins": {
       "type": "object",
