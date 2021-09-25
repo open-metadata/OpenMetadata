@@ -30,7 +30,6 @@ import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Task;
-import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;

@@ -468,16 +468,16 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     // Ensure Pipeline ID can't be changed using patch
     Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
     UUID pipelineId = pipeline.getId();
-    String PipelineJson = JsonUtils.pojoToJson(pipeline);
+    String pipelineJson = JsonUtils.pojoToJson(pipeline);
     pipeline.setId(UUID.randomUUID());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineId, PipelineJson, pipeline, adminAuthHeaders()));
+            patchPipeline(pipelineId, pipelineJson, pipeline, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "id"));
 
     // ID can't be deleted
     pipeline.setId(null);
     exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineId, PipelineJson, pipeline, adminAuthHeaders()));
+            patchPipeline(pipelineId, pipelineJson, pipeline, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "id"));
   }
 
@@ -566,11 +566,11 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   }
 
   // Make sure in GET operations the returned Pipeline has all the required information passed during creation
-  public static Pipeline getAndValidate(UUID PipelineId,
+  public static Pipeline getAndValidate(UUID pipelineId,
                                         CreatePipeline create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
     // GET the newly created Pipeline by ID and validate
-    Pipeline pipeline = getPipeline(PipelineId, "service,owner,tasks", authHeaders);
+    Pipeline pipeline = getPipeline(pipelineId, "service,owner,tasks", authHeaders);
     validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService());
 
     // GET the newly created Pipeline by name and validate
@@ -653,7 +653,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   private static Pipeline validatePipeline(Pipeline pipeline, String expectedDescription,
                                              EntityReference expectedOwner, EntityReference expectedService,
                                               List<TagLabel> expectedTags,
-                                              List<EntityReference> TASKs) throws HttpResponseException {
+                                              List<EntityReference> tasks) throws HttpResponseException {
     assertNotNull(pipeline.getId());
     assertNotNull(pipeline.getHref());
     assertEquals(expectedDescription, pipeline.getDescription());
@@ -672,16 +672,16 @@ public class PipelineResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), pipeline.getService().getId());
       assertEquals(expectedService.getType(), pipeline.getService().getType());
     }
-    validatePipelineTASKs(pipeline, TASKs);
+    validatePipelineTASKs(pipeline, tasks);
     validateTags(expectedTags, pipeline.getTags());
     return pipeline;
   }
 
-  private static void validatePipelineTASKs(Pipeline pipeline, List<EntityReference> Tasks) {
-    if (Tasks != null) {
+  private static void validatePipelineTASKs(Pipeline pipeline, List<EntityReference> tasks) {
+    if (tasks != null) {
       List<UUID> expectedTASKReferences = new ArrayList<>();
-      for (EntityReference Task: Tasks) {
-        expectedTASKReferences.add(Task.getId());
+      for (EntityReference task: tasks) {
+        expectedTASKReferences.add(task.getId());
       }
       List<UUID> actualTaskReferences = new ArrayList<>();
       for (EntityReference task: pipeline.getTasks()) {
@@ -715,7 +715,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
                                                      EntityReference newOwner, List<TagLabel> tags,
                                                      Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
-    String PipelineJson = JsonUtils.pojoToJson(pipeline);
+    String pipelineJson = JsonUtils.pojoToJson(pipeline);
 
     // Update the table attributes
     pipeline.setDescription(newDescription);
@@ -723,14 +723,14 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     pipeline.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Pipeline updatedPipeline = patchPipeline(PipelineJson, pipeline, authHeaders);
+    Pipeline updatedPipeline = patchPipeline(pipelineJson, pipeline, authHeaders);
     validatePipeline(updatedPipeline, pipeline.getDescription(), newOwner, null, tags,
             pipeline.getTasks());
 
     // GET the table and Validate information returned
     Pipeline getPipeline = getPipeline(pipeline.getId(), "service,owner", authHeaders);
-    validatePipeline(updatedPipeline, pipeline.getDescription(), newOwner, null, tags,
-            pipeline.getTasks());
+    validatePipeline(updatedPipeline, getPipeline.getDescription(), newOwner, null, tags,
+            getPipeline.getTasks());
     return updatedPipeline;
   }
 

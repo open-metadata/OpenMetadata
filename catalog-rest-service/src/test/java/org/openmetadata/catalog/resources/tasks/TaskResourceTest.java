@@ -330,7 +330,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
     // Update null description with a new description
     Task task = updateAndCheckTask(request.withDescription("newDescription").withDisplayName("newTask")
-            , OK, adminAuthHeaders());
+            ,OK, adminAuthHeaders());
     assertEquals("newDescription", task.getDescription());
     assertEquals("newTask", task.getDisplayName());
   }
@@ -394,7 +394,8 @@ public class TaskResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void patch_taskAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException, URISyntaxException {
+  public void patch_taskAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException,
+          URISyntaxException {
     // Create task without description, owner
     Task task = createTask(create(test), adminAuthHeaders());
     assertNull(task.getDescription());
