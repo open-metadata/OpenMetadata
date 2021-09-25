@@ -238,7 +238,7 @@ public class TaskResource {
   @PATCH
   @Path("/{id}")
   @Operation(summary = "Update a Task", tags = "task",
-          description = "Update an existing chart using JsonPatch.",
+          description = "Update an existing task using JsonPatch.",
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
@@ -262,11 +262,11 @@ public class TaskResource {
 
   @PUT
   @Operation(summary = "Create or update task", tags = "tasks",
-          description = "Create a task, it it does not exist or update an existing chart.",
+          description = "Create a task, it it does not exist or update an existing task.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated task ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class)))
+                                  schema = @Schema(implementation = Task.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
@@ -288,7 +288,7 @@ public class TaskResource {
   @PUT
   @Path("/{id}/followers")
   @Operation(summary = "Add a follower", tags = "tasks",
-          description = "Add a user identified by `userId` as followed of this chart",
+          description = "Add a user identified by `userId` as followed of this task",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
                   @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
@@ -308,11 +308,11 @@ public class TaskResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "charts",
-          description = "Remove the user identified `userId` as a follower of the chart.")
+  @Operation(summary = "Remove a follower", tags = "tasks",
+          description = "Remove the user identified `userId` as a follower of the task.")
   public Task deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the chart",
+                              @Parameter(description = "Id of the task",
                                       schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
@@ -331,7 +331,7 @@ public class TaskResource {
           description = "Delete a task by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "task for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(id);

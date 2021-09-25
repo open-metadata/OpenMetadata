@@ -18,7 +18,7 @@
     "serviceType": {
       "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineServiceType"
     },
-    "url": {
+    "pipelineUrl": {
       "description": "Pipeline UI URL",
       "type": "string",
       "format": "uri"

@@ -10,7 +10,7 @@
       "description": "Description of Pipeline service entity.",
       "type": "string"
     },
-    "url" : {
+    "pipelineUrl" : {
       "description": "Pipeline Service UI URL.",
       "type": "string",
       "format": "uri"

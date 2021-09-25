@@ -157,7 +157,7 @@ public class PipelineServiceResource {
     PipelineService service = new PipelineService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
             .withServiceType(create.getServiceType())
-            .withUrl(create.getUrl())
+            .withPipelineUrl(create.getPipelineUrl())
             .withIngestionSchedule(create.getIngestionSchedule());
     addHref(uriInfo, dao.create(service));
     return Response.created(service.getHref()).entity(service).build();
@@ -180,7 +180,7 @@ public class PipelineServiceResource {
                          @Valid UpdatePipelineService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getUrl(), update.getIngestionSchedule()));
+            dao.update(id, update.getDescription(), update.getPipelineUrl(), update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
 

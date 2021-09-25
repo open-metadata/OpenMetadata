@@ -79,7 +79,7 @@ public abstract class PipelineServiceRepository {
     PipelineService pipelineService = EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
     // Update fields
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withUrl(url);
+            .withPipelineUrl(url);
     pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }

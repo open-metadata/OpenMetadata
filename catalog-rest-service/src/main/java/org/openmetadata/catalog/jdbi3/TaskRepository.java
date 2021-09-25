@@ -18,10 +18,10 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Task;
-import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.tasks.TaskResource;
@@ -74,7 +74,7 @@ public abstract class TaskRepository {
   abstract TeamDAO teamDAO();
 
   @CreateSqlObject
-  abstract DashboardServiceDAO dashboardServiceDAO();
+  abstract PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
@@ -141,11 +141,11 @@ public abstract class TaskRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
-      throw new IllegalArgumentException("Chart is not empty");
+    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
+      throw new IllegalArgumentException("Task is not empty");
     }
     if (taskDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.TASK, id));
     }
     relationshipDAO().deleteAll(id);
   }
@@ -157,10 +157,10 @@ public abstract class TaskRepository {
 
     String fqn = getFQN(service, updatedTask);
     Task storedDB = JsonUtils.readValue(taskDAO().findByFQN(fqn), Task.class);
-    if (storedDB == null) {  // Chart does not exist. Create a new one
+    if (storedDB == null) {  // Task does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updatedTask, service, newOwner));
     }
-    // Update the existing chart
+    // Update the existing Task
     EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
     if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
       storedDB.withDescription(updatedTask.getDescription());
@@ -177,7 +177,7 @@ public abstract class TaskRepository {
     updateOwner(storedDB, storedDB.getOwner(), newOwner);
 
     // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new chart under the new service
+    // change to a different service will result in a different FQN and creation of a new task under the new service
     storedDB.setService(service);
     applyTags(updatedTask);
 
@@ -196,7 +196,7 @@ public abstract class TaskRepository {
     task.setFullyQualifiedName(getFQN(service, task));
     EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
 
-    // Query 1 - insert chart into chart_entity table
+    // Query 1 - insert task into task_entity table
     taskDAO().insert(JsonUtils.pojoToJson(task));
     setService(task, service);
     setOwner(task, owner);
@@ -205,21 +205,21 @@ public abstract class TaskRepository {
   }
 
   private void applyTags(Task task) throws IOException {
-    // Add chart level tags by adding tag to chart relationship
+    // Add task level tags by adding tag to task relationship
     EntityUtil.applyTags(tagDAO(), task.getTags(), task.getFullyQualifiedName());
     task.setTags(getTags(task.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private void patch(Task original, Task updated) throws IOException {
-    String chartId = original.getId().toString();
+    String taskId = original.getId().toString();
     if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "id"));
+      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "id"));
     }
     if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "name"));
+      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "name"));
     }
     if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "service"));
+      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "service"));
     }
     // Validate new owner
     EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
@@ -230,7 +230,7 @@ public abstract class TaskRepository {
     updated.setHref(null);
     updated.setOwner(null);
     updated.setService(null);
-    taskDAO().update(chartId, JsonUtils.pojoToJson(updated));
+    taskDAO().update(taskId, JsonUtils.pojoToJson(updated));
     updateOwner(updated, original.getOwner(), newOwner);
     updated.setService(newService);
     applyTags(updated);
@@ -281,12 +281,12 @@ public abstract class TaskRepository {
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      DashboardService serviceInstance = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
-              DashboardService.class);
+      PipelineService serviceInstance = EntityUtil.validate(id, pipelineServiceDAO().findById(id),
+              PipelineService.class);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
+      throw new IllegalArgumentException(String.format("Invalid service type %s for the task", service.getType()));
     }
     return service;
   }
@@ -295,7 +295,7 @@ public abstract class TaskRepository {
     if (service != null && task != null) {
       getService(service); // Populate service details
       relationshipDAO().insert(service.getId().toString(), task.getId().toString(), service.getType(),
-              Entity.CHART, Relationship.CONTAINS.ordinal());
+              Entity.TASK, Relationship.CONTAINS.ordinal());
       task.setService(service);
     }
   }
@@ -308,9 +308,9 @@ public abstract class TaskRepository {
   }
 
   @Transaction
-  public void deleteFollower(String chartId, String userId) {
+  public void deleteFollower(String taskId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), chartId, userId);
+    EntityUtil.removeFollower(relationshipDAO(), taskId, userId);
   }
 
   public interface TaskDAO {

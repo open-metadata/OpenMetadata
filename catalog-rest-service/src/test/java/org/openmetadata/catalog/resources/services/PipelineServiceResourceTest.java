@@ -87,7 +87,7 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
 
     // Create pipeline with mandatory brokers field empty
     exception = assertThrows(HttpResponseException.class, () ->
-            createService(create(test).withUrl(null), adminAuthHeaders()));
+            createService(create(test).withPipelineUrl(null), adminAuthHeaders()));
     TestUtils.assertResponse(exception, BAD_REQUEST, "[url must not be null]");
   }
 
@@ -195,7 +195,7 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   @Test
   public void put_updateService_as_admin_2xx(TestInfo test) throws HttpResponseException, URISyntaxException {
     PipelineService dbService = createAndCheckService(create(test).withDescription(null).withIngestionSchedule(null)
-            .withUrl(PIPELINE_SERVICE_URL), adminAuthHeaders());
+            .withPipelineUrl(PIPELINE_SERVICE_URL), adminAuthHeaders());
     String id = dbService.getId().toString();
 
     // Update pipeline description and ingestion service that are null
@@ -211,7 +211,7 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
     updateAndCheckService(id, update, OK, adminAuthHeaders());
 
     // update broker list and schema registry
-    update.withUrl(new URI("http://localhost:9000"));
+    update.withPipelineUrl(new URI("http://localhost:9000"));
     updateAndCheckService(id, update, OK, adminAuthHeaders());
     PipelineService updatedService = getService(dbService.getId(), adminAuthHeaders());
     validatePipelineServiceConfig(updatedService, List.of("localhost:0"), new URI("http://localhost:9000"));
@@ -354,14 +354,14 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   public static CreatePipelineService create(TestInfo test) {
     return new CreatePipelineService().withName(getName(test))
             .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
-            .withUrl(PIPELINE_SERVICE_URL)
+            .withPipelineUrl(PIPELINE_SERVICE_URL)
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
   private static CreatePipelineService create(TestInfo test, int index) {
     return new CreatePipelineService().withName(getName(test, index))
             .withServiceType(CreatePipelineService.PipelineServiceType.Airflow)
-            .withUrl(PIPELINE_SERVICE_URL)
+            .withPipelineUrl(PIPELINE_SERVICE_URL)
             .withIngestionSchedule(new Schedule().withStartDate(new Date()).withRepeatFrequency("P1D"));
   }
 
@@ -389,6 +389,6 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   private static void validatePipelineServiceConfig(PipelineService actualService, List<String> expectedBrokers,
                                                      URI expectedUrl)
           throws HttpResponseException {
-    assertEquals(actualService.getUrl(), expectedUrl);
+    assertEquals(actualService.getPipelineUrl(), expectedUrl);
   }
 }

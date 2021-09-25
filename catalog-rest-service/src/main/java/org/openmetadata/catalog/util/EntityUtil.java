@@ -28,6 +28,7 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -399,6 +400,11 @@ public final class EntityUtil {
   public static EntityReference getEntityReference(DashboardService service) {
     return new EntityReference().withName(service.getName()).withId(service.getId())
             .withType(Entity.DASHBOARD_SERVICE);
+  }
+
+  public static EntityReference getEntityReference(PipelineService service) {
+    return new EntityReference().withName(service.getName()).withId(service.getId())
+            .withType(Entity.PIPELINE_SERVICE);
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,

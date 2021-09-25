@@ -41,7 +41,7 @@
       "description": "Description of a messaging service instance.",
       "type": "string"
     },
-    "url": {
+    "pipelineUrl": {
       "description": "Pipeline Service Management/UI URL",
       "type": "string",
       "format": "uri"
