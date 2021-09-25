@@ -329,8 +329,8 @@ public class TaskResourceTest extends CatalogApplicationTest {
     createAndCheckTask(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Task task = updateAndCheckTask(request.withDescription("newDescription").withDisplayName("newTask")
-            ,OK, adminAuthHeaders());
+    Task task = updateAndCheckTask(request.withDescription("newDescription").withDisplayName("newTask"), OK,
+            adminAuthHeaders());
     assertEquals("newDescription", task.getDescription());
     assertEquals("newTask", task.getDisplayName());
   }

@@ -57,6 +57,7 @@
   },
   "required": [
     "id",
-    "name"
+    "name",
+    "pipelineUrl"
   ]
 }
