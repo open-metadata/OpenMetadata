@@ -26,6 +26,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.joda.time.Period;
 import org.joda.time.format.ISOPeriodFormat;
+import org.openmetadata.catalog.util.Utils;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -67,14 +68,14 @@ public abstract class DatabaseServiceRepository {
   @Transaction
   public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields
-    validateIngestionSchedule(databaseService.getIngestionSchedule());
+    Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
     dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
     return databaseService;
   }
 
   public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
-    validateIngestionSchedule(ingestionSchedule);
+    Utils.validateIngestionSchedule(ingestionSchedule);
     DatabaseService dbService = EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
@@ -88,31 +89,6 @@ public abstract class DatabaseServiceRepository {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
     relationshipDAO().deleteAll(id);
-  }
-
-  private void validateIngestionSchedule(Schedule ingestion) {
-    if (ingestion == null) {
-      return;
-    }
-    String duration = ingestion.getRepeatFrequency();
-
-    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
-    String[] splits = duration.split("T");
-    if (splits[0].contains("Y") || splits[0].contains("M") ||
-            (splits.length == 2 && splits[1].contains("S"))) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " +
-              "example P{d}DT{h}H{m}M");
-    }
-
-    Period period;
-    try {
-      period = ISOPeriodFormat.standard().parsePeriod(duration);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
-    }
-    if (period.toStandardMinutes().getMinutes() < 60) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
-    }
   }
 
   public interface DatabaseServiceDAO {

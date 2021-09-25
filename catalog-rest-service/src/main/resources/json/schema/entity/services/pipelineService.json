@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/messagingService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Messaging Service",
+  "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
+  "type": "object",
+  "definitions": {
+    "pipelineServiceType": {
+      "description": "Type of pipeline service - Airflow or Prefect.",
+      "type": "string",
+      "enum": [
+        "Airflow",
+        "Prefect"
+      ],
+      "javaEnums": [
+        {
+          "name": "Airflow"
+        },
+        {
+          "name": "Prefect"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this pipeline service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this pipeline service.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "serviceType": {
+      "description": "Type of pipeline service such as Airflow or Prefect...",
+      "$ref": "#/definitions/pipelineServiceType"
+    },
+    "description": {
+      "description": "Description of a messaging service instance.",
+      "type": "string"
+    },
+    "pipelineUrl": {
+      "description": "Pipeline Service Management/UI URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "ingestionSchedule": {
+      "description": "Schedule for running metadata ingestion jobs.",
+      "$ref": "../../type/schedule.json"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this messaging service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "pipelineUrl"
+  ]
+}

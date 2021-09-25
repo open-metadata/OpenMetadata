@@ -1,0 +1,105 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/task.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task",
+  "description": "This schema defines the Task entity. A task is a unit of computation in a Pipeline. ",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Task",
+  "definitions": {
+    "taskConfig": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.TaskConfig",
+      "description": "This schema defines the type for a column in a table.",
+      "properties": {
+        "codeLocation": {
+          "description": "Location of task file",
+          "type": "string"
+        },
+        "startDate": {
+          "description": "Start Date of the task",
+          "$ref": "../../type/basic.json#/definitions/date"
+        },
+        "concurrency": {
+          "description": "Concurrency of the Task",
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "properties" : {
+    "id": {
+      "description": "Unique identifier that identifies a task instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this task instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of this Task.",
+      "type": "string"
+    },
+    "taskUrl" : {
+      "description": "Task URL to visit/manage. This URL points to respective pipeline service UI",
+      "type": "string",
+      "format": "uri"
+    },
+    "upstreamTasks": {
+      "description": "All the tasks that are upstream of this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "downstreamTasks": {
+      "description": "All the tasks that are downstream of this task.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "taskConfig": {
+      "description": "Task Configuration.",
+      "$ref": "#/definitions/taskConfig"
+    },
+    "followers": {
+      "description": "Followers of this Pipeline.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "owner": {
+      "description": "Owner of this pipeline.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to service where this pipeline is hosted in.",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["id", "name", "service"]
+}

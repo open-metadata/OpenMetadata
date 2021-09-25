@@ -1,0 +1,54 @@
+{
+  "$id": "https://github.com/open-metadata/OpenMetadata/blob/main/catalog-rest-service/src/main/resources/json/schema/api/data/createPipeline.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Pipeline entity request",
+  "description": "Create Pipeline entity request",
+  "type": "object",
+
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this pipeline instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the database instance. What it has and how to use it.",
+      "type": "string"
+    },
+    "pipelineUrl" : {
+      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI",
+      "type": "string",
+      "format": "uri"
+    },
+    "tasks": {
+      "description": "All the tasks that are part of pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "tags": {
+      "description": "Tags for this Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to the database service where this database is hosted in",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "service"]
+}

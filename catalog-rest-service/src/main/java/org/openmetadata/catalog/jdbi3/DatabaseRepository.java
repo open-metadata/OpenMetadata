@@ -244,10 +244,8 @@ public abstract class DatabaseRepository {
   }
 
   public EntityReference getOwner(Database database) throws IOException {
-    if (database == null) {
-      return null;
-    }
-    return EntityUtil.populateOwner(database.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return database != null ? EntityUtil.populateOwner(database.getId(), relationshipDAO(), userDAO(), teamDAO())
+            : null;
   }
 
   private void setOwner(Database database, EntityReference owner) {

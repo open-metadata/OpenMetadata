@@ -23,10 +23,12 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -40,6 +42,7 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
@@ -52,6 +55,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -136,9 +140,6 @@ public final class EntityUtil {
       case Entity.DATABASE:
         DatabaseResource.addHref(uriInfo, ref);
         break;
-      case Entity.DATABASE_SERVICE:
-        DatabaseServiceResource.addHref(uriInfo, ref);
-        break;
       case Entity.TOPIC:
         TopicResource.addHref(uriInfo, ref);
         break;
@@ -148,10 +149,19 @@ public final class EntityUtil {
       case Entity.DASHBOARD:
         DashboardResource.addHref(uriInfo, ref);
         break;
+      case Entity.TASK:
+        TaskResource.addHref(uriInfo, ref);
+        break;
+      case Entity.DATABASE_SERVICE:
+        DatabaseServiceResource.addHref(uriInfo, ref);
+        break;
       case Entity.MESSAGING_SERVICE:
         MessagingServiceResource.addHref(uriInfo, ref);
         break;
       case Entity.DASHBOARD_SERVICE:
+        DashboardServiceResource.addHref(uriInfo, ref);
+        break;
+      case Entity.PIPELINE_SERVICE:
         DashboardServiceResource.addHref(uriInfo, ref);
         break;
       default:
@@ -237,16 +247,18 @@ public final class EntityUtil {
   public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                          DashboardDAO dashboardDAO, ReportDAO reportDAO,
-                                                         TopicDAO topicDAO, ChartDAO chartDAO) throws IOException {
+                                                         TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         TaskDAO taskDAO) throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
+      getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO, taskDAO);
     }
     return list;
   }
 
   public static EntityReference getEntityReference(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                   TaskDAO taskDAO)
           throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
@@ -272,22 +284,27 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       Chart instance = EntityUtil.validate(id, chartDAO.findById(id), Chart.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
+    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
+      Task instance = EntityUtil.validate(id, taskDAO.findById(id), Task.class);
+      return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
   public static EntityReference getEntityReference(String entity, UUID id, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO)
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                   TaskDAO taskDAO)
           throws IOException {
     EntityReference ref = new EntityReference().withId(id).withType(entity);
-    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO);
+    return getEntityReference(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO,
+            reportDAO, topicDAO, chartDAO, taskDAO);
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                          ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
-                                                         DashboardDAO dashboardDAO)
+                                                         DashboardDAO dashboardDAO, TaskDAO taskDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
@@ -316,6 +333,10 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
       return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DASHBOARD)
+              .withDescription(instance.getDescription());
+    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
+      Task instance = EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class);
+      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TASK)
               .withDescription(instance.getDescription());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
@@ -352,6 +373,9 @@ public final class EntityUtil {
     } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
       Dashboard instance = (Dashboard) entity;
       return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.TASK.toLowerCase())) {
+      Task instance = (Task) entity;
+      return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
       MessagingService instance = (MessagingService) entity;
       return getEntityReference(instance);
@@ -378,6 +402,11 @@ public final class EntityUtil {
             .withType(Entity.DASHBOARD_SERVICE);
   }
 
+  public static EntityReference getEntityReference(PipelineService service) {
+    return new EntityReference().withName(service.getName()).withId(service.getId())
+            .withType(Entity.PIPELINE_SERVICE);
+  }
+
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
                                                    TableDAO tableDAO, DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                    DashboardDAO dashboardDAO, ReportDAO reportDAO, TopicDAO topicDAO)
@@ -401,6 +430,8 @@ public final class EntityUtil {
         return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
       case Entity.TOPIC:
         return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class));
+      case Entity.TASK:
+        return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Task.class));
       default:
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
@@ -417,6 +448,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Task task) {
+    return new EntityReference().withDescription(task.getDescription()).withId(task.getId())
+            .withName(task.getFullyQualifiedName()).withType(Entity.TASK);
   }
 
   public static EntityReference getEntityReference(Chart chart) {
