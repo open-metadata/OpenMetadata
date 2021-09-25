@@ -17,7 +17,7 @@
     }
   },
   "cron": {
-    "minute": "*/5",
+    "minute": "*/12",
     "hour": null,
     "day": null,
     "month": null,
