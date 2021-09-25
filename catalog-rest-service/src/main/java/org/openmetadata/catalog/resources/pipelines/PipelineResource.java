@@ -75,7 +75,7 @@ import java.util.UUID;
 @Api(value = "Pipelines collection", tags = "Pipelines collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "pipeliness", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
+@Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
   private final List<String> attributes = RestUtil.getAttributes(Pipeline.class);
@@ -144,7 +144,7 @@ public class PipelineResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam,
                             @Parameter(description = "Filter pipelines by service name",
-                                    schema = @Schema(type = "string", example = "superset"))
+                                    schema = @Schema(type = "string", example = "airflow"))
                             @QueryParam("service") String serviceParam,
                             @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " +
                                     "default = 10)")
@@ -175,9 +175,9 @@ public class PipelineResource {
   @GET
   @Path("/{id}")
   @Operation(summary = "Get a pipeline", tags = "pipelines",
-          description = "Get a pipelines by `id`.",
+          description = "Get a pipeline by `id`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The pipelines",
+                  @ApiResponse(responseCode = "200", description = "The pipeline",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Pipeline.class))),
                   @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")

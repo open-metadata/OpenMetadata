@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -95,7 +94,7 @@ public class PipelineServiceResource {
   }
 
   @GET
-  @Operation(summary = "List Pipeline services", tags = "services",
+  @Operation(summary = "List pipeline services", tags = "services",
           description = "Get a list of pipeline services.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of pipeline service instances",
@@ -124,13 +123,13 @@ public class PipelineServiceResource {
 
   @GET
   @Path("/name/{name}")
-  @Operation(summary = "Get messaging service by name", tags = "services",
-          description = "Get a messaging service by the service `name`.",
+  @Operation(summary = "Get pipeline service by name", tags = "services",
+          description = "Get a pipeline service by the service `name`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "Messaging service instance",
+                  @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = Dashboard.class))),
-                  @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
           })
   public PipelineService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
@@ -139,12 +138,12 @@ public class PipelineServiceResource {
   }
 
   @POST
-  @Operation(summary = "Create a messaging service", tags = "services",
-          description = "Create a new messaging service.",
+  @Operation(summary = "Create a pipeline service", tags = "services",
+          description = "Create a new pipeline service.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "Messaging service instance",
+                  @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MessagingService.class))),
+                          schema = @Schema(implementation = PipelineService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,

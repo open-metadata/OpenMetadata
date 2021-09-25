@@ -237,10 +237,7 @@ public abstract class TaskRepository {
   }
 
   public EntityReference getOwner(Task task) throws IOException {
-    if (task == null) {
-      return null;
-    }
-    return EntityUtil.populateOwner(task.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return task != null ? EntityUtil.populateOwner(task.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
   }
 
   private void setOwner(Task task, EntityReference owner) {

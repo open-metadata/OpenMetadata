@@ -17,14 +17,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.joda.time.Period;
-import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.Utils;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -67,7 +66,7 @@ public abstract class MessagingServiceRepository {
   @Transaction
   public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
     // Validate fields
-    validateIngestionSchedule(messagingService.getIngestionSchedule());
+    Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
     messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
     return messagingService;
   }
@@ -75,7 +74,7 @@ public abstract class MessagingServiceRepository {
   public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {
-    validateIngestionSchedule(ingestionSchedule);
+    Utils.validateIngestionSchedule(ingestionSchedule);
     MessagingService dbService = EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
     // Update fields
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
@@ -90,31 +89,6 @@ public abstract class MessagingServiceRepository {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
     relationshipDAO().deleteAll(id);
-  }
-
-  private void validateIngestionSchedule(Schedule ingestion) {
-    if (ingestion == null) {
-      return;
-    }
-    String duration = ingestion.getRepeatFrequency();
-
-    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
-    String[] splits = duration.split("T");
-    if (splits[0].contains("Y") || splits[0].contains("M") ||
-            (splits.length == 2 && splits[1].contains("S"))) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " +
-              "example P{d}DT{h}H{m}M");
-    }
-
-    Period period;
-    try {
-      period = ISOPeriodFormat.standard().parsePeriod(duration);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
-    }
-    if (period.toStandardMinutes().getMinutes() < 60) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
-    }
   }
 
   public interface MessagingServiceDAO {
