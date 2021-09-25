@@ -33,25 +33,26 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         SerializedDAG,
     )
     operator.log.info("Parsing Lineage for OpenMetadata")
-    dag: "DAG" = context["dag"]
-    task: "BaseOperator" = context["task"]
+    dag: DAG = context["dag"]
+    task: BaseOperator = context["task"]
 
-    base_url = conf.get("webserver", "base_url")
-    flow_url = f"{base_url}/tree?dag_id={dag.dag_id}"
-    job_url = f"{base_url}/taskinstance/list/?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
-    flow_property_bag: Dict[str, str] = {
+    pipeline_service_url = conf.get("webserver", "base_url")
+    dag_url = f"{pipeline_service_url}/tree?dag_id={dag.dag_id}"
+    task_url = f"{pipeline_service_url}/taskinstance/list/?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
+
+    dag_properties: Dict[str, str] = {
         key: repr(value) for (key, value) in SerializedDAG.serialize_dag(dag).items()
     }
     for key in dag.get_serialized_fields():
-        if key not in flow_property_bag:
-            flow_property_bag[key] = repr(getattr(dag, key))
-    job_property_bag: Dict[str, str] = {
+        if key not in dag_properties:
+            dag_properties[key] = repr(getattr(dag, key))
+    task_properties: Dict[str, str] = {
         key: repr(value)
         for (key, value) in SerializedBaseOperator.serialize_operator(task).items()
     }
     for key in task.get_serialized_fields():
-        if key not in job_property_bag:
-            job_property_bag[key] = repr(getattr(task, key))
+        if key not in task_properties:
+            task_properties[key] = repr(getattr(task, key))
 
     allowed_task_keys = [
         "_downstream_task_ids",
@@ -72,7 +73,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         "wait_for_downstream",
     ]
     job_property_bag = {
-        k: v for (k, v) in job_property_bag.items() if k in allowed_task_keys
+        k: v for (k, v) in task_properties.items() if k in allowed_task_keys
     }
     allowed_flow_keys = [
         "_access_control",
@@ -86,7 +87,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         "timezone",
     ]
     flow_property_bag = {
-        k: v for (k, v) in flow_property_bag.items() if k in allowed_flow_keys
+        k: v for (k, v) in dag_properties.items() if k in allowed_flow_keys
     }
 
     timestamp = int(dateutil.parser.parse(context["ts"]).timestamp() * 1000)
@@ -94,7 +95,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
     tags = dag.tags
     operator.log.info("OpenMetadata logging")
     operator.log.info(flow_property_bag)
-    operator.log.info(job_url)
+    operator.log.info(task_url)
     operator.log.info(owner)
     operator.log.info(tags)
     operator.log.info(job_property_bag)
