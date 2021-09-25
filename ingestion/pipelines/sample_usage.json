@@ -33,7 +33,7 @@
     }
   },
   "cron": {
-    "minute": "*/5",
+    "minute": "*/6",
     "hour": null,
     "day": null,
     "month": null,
