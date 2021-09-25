@@ -99,7 +99,7 @@ plugins: Dict[str, Set[str]] = {
     "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
-    "sample-data": {"faker~=8.1.1","pandas~=1.3.1"},
+    "sample-data": {"faker~=8.1.1", "pandas~=1.3.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"}

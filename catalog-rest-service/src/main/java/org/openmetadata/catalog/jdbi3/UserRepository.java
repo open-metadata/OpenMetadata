@@ -33,6 +33,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.common.utils.CipherText;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
+import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
@@ -169,12 +171,7 @@ public abstract class UserRepository {
 
   @Transaction
   public User create(User user, List<UUID> teamIds) throws IOException {
-    List<Team> teams = validateTeams(teamIds);
-    userDAO().insert(JsonUtils.pojoToJson(user));
-    assignTeams(user, teams);
-    List<EntityReference> entityRefs = toEntityReference(teams);
-    user.setTeams(entityRefs.isEmpty() ? null : entityRefs);
-    return user;
+    return createInternal(user, teamIds);
   }
 
   @Transaction
@@ -190,12 +187,39 @@ public abstract class UserRepository {
   }
 
   @Transaction
+  public RestUtil.PutResponse<User> createOrUpdate(User updatedUser) throws
+          IOException, ParseException {
+    User storedUser = JsonUtils.readValue(userDAO().findByName(updatedUser.getName()), User.class);
+    List<UUID> teamIds = new ArrayList<>();
+    if (updatedUser.getTeams() != null) {
+      for (EntityReference team : updatedUser.getTeams()) {
+        teamIds.add(team.getId());
+      }
+    }
+    if (storedUser == null) {
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, createInternal(updatedUser, teamIds));
+    }
+    updatedUser.setId(storedUser.getId());
+    userDAO().update(updatedUser.getId().toString(), JsonUtils.pojoToJson(updatedUser));
+    List<Team> teams = validateTeams(teamIds);
+    if (!teams.isEmpty()) {
+      assignTeams(updatedUser, teams);
+    }
+    return new RestUtil.PutResponse<>(Response.Status.OK, updatedUser);
+  }
+
+  @Transaction
   public User patch(String id, JsonPatch patch) throws IOException {
     User original = setFields(validateUser(id), USER_PATCH_FIELDS); // Query 1 - find user by Id
     JsonUtils.getJsonStructure(original);
     User updated = JsonUtils.applyPatch(original, patch, User.class);
     patch(original, updated);
     return updated;
+  }
+
+  @Transaction
+  public EntityReference getOwnerReference(User user) throws IOException {
+    return EntityUtil.getEntityReference(user);
   }
 
   private void patch(User original, User updated) throws IOException {
@@ -260,6 +284,15 @@ public abstract class UserRepository {
 
   private User validateUser(String userId) throws IOException {
     return EntityUtil.validate(userId, userDAO().findById(userId), User.class);
+  }
+
+  private User createInternal(User user, List<UUID> teamIds) throws IOException {
+    List<Team> teams = validateTeams(teamIds);
+    userDAO().insert(JsonUtils.pojoToJson(user));
+    assignTeams(user, teams);
+    List<EntityReference> entityRefs = toEntityReference(teams);
+    user.setTeams(entityRefs.isEmpty() ? null : entityRefs);
+    return user;
   }
 
 
