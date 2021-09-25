@@ -125,7 +125,7 @@ class MetadataRestSink(Sink):
             created_topic = self.client.create_or_update_topic(topic)
             logger.info(
                 'Successfully ingested topic {}'.format(created_topic.name.__root__))
-            self.status.records_written(created_topic.name)
+            self.status.records_written(created_topic.name.__root__)
         except (APIError, ValidationError) as err:
             logger.error(
                 "Failed to ingest topic {} ".format(topic.name.__root__))

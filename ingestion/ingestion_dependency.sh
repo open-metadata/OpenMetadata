@@ -17,9 +17,4 @@
 #
 
 set -euo pipefail
-pip install --upgrade setuptools openmetadata-ingestion==0.2.1 apns
-# wget https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0-py3-none-any.whl
-# pip install en_core_web_sm-3.0.0-py3-none-any.whl
-python -m spacy download en_core_web_sm
-rm -rf en_core_web_sm-3.0.0-py3-none-any.whl
-pip install "simplescheduler@git+git://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
+pip install --upgrade setuptools 'openmetadata-ingestion[sample-data, elasticsearch, scheduler]'
