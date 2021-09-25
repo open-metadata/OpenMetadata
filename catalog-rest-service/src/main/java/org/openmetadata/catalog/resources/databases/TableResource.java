@@ -17,8 +17,6 @@
 package org.openmetadata.catalog.resources.databases;
 
 import com.google.inject.Inject;
-import org.openmetadata.catalog.type.TableData;
-import org.openmetadata.catalog.type.TableJoins;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +32,11 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -71,6 +73,7 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -387,6 +390,7 @@ public class TableResource {
     table.setId(UUID.randomUUID());
     DatabaseUtil.validateConstraints(table.getColumns(), table.getTableConstraints());
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
+    DatabaseUtil.validateColumns(table);
     return table;
   }
 }

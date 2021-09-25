@@ -342,6 +342,10 @@ public abstract class TableRepository {
   }
 
   private void validateTags(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return;
+    }
+
     columns.forEach(column -> {
       EntityUtil.validateTags(tagDAO(), column.getTags());
       if (column.getChildren() != null) {
@@ -392,6 +396,9 @@ public abstract class TableRepository {
   }
 
   List<Column> cloneWithoutTags(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return columns;
+    }
     List<Column> copy = new ArrayList<>();
     columns.forEach(c -> copy.add(cloneWithoutTags(c)));
     return copy;
@@ -402,9 +409,9 @@ public abstract class TableRepository {
     return new Column().withDescription(column.getDescription()).withName(column.getName())
             .withFullyQualifiedName(column.getFullyQualifiedName())
             .withArrayDataType(column.getArrayDataType())
-            .withColumnConstraint(column.getColumnConstraint())
-            .withColumnDataTypeDisplay(column.getColumnDataTypeDisplay())
-            .withColumnDataType(column.getColumnDataType())
+            .withConstraint(column.getConstraint())
+            .withDataTypeDisplay(column.getDataTypeDisplay())
+            .withDataType(column.getDataType())
             .withDataLength(column.getDataLength())
             .withOrdinalPosition(column.getOrdinalPosition())
             .withChildren(children);
@@ -453,19 +460,10 @@ public abstract class TableRepository {
    * Update the backend database
    */
   private void patch(Table original, Table updated) throws IOException {
-    // TODO Patching field usageSummary is ignored
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TABLE, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TABLE, "name"));
-    }
-    if (updated.getDatabase() == null) {
-      throw new IllegalArgumentException("Table relationship database can't be removed");
-    }
-    if (!updated.getDatabase().getId().equals(original.getDatabase().getId())) {
-      throw new IllegalArgumentException("Table relationship database can't be replaced");
-    }
+    // Patch can't make changes to following fields. Ignore the change
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withDatabase(original.getDatabase()).withId(original.getId());
+
     validateRelationships(updated, updated.getDatabase().getId(), updated.getOwner());
 
     // Remove previous tags. Merge tags from the update and the existing tags
@@ -524,7 +522,8 @@ public abstract class TableRepository {
       // Find stored column matching name, data type and ordinal position
       Column stored = storedColumns.stream()
               .filter(s -> s.getName().equals(updated.getName()) &&
-                      s.getColumnDataType() == updated.getColumnDataType() &&
+                      s.getDataType() == updated.getDataType() &&
+                      s.getArrayDataType() == updated.getArrayDataType() &&
                       Objects.equals(s.getOrdinalPosition(), updated.getOrdinalPosition()))
               .findAny()
               .orElse(null);
@@ -551,11 +550,13 @@ public abstract class TableRepository {
       }
     }
 
+
     for (Column stored : storedColumns) {
       // Find updated column matching name, data type and ordinal position
-      Column  updated = storedColumns.stream()
+      Column  updated = updatedColumns.stream()
               .filter(s -> s.getName().equals(stored.getName()) &&
-                      s.getColumnDataType() == stored.getColumnDataType() &&
+                      s.getDataType() == stored.getDataType() &&
+                      s.getArrayDataType() == stored.getArrayDataType() &&
                       Objects.equals(s.getOrdinalPosition(), stored.getOrdinalPosition()))
               .findAny()
               .orElse(null);
