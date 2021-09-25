@@ -88,7 +88,7 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
     // Create pipeline with mandatory brokers field empty
     exception = assertThrows(HttpResponseException.class, () ->
             createService(create(test).withPipelineUrl(null), adminAuthHeaders()));
-    TestUtils.assertResponse(exception, BAD_REQUEST, "[url must not be null]");
+    TestUtils.assertResponse(exception, BAD_REQUEST, "[pipelineUrl must not be null]");
   }
 
   @Test
