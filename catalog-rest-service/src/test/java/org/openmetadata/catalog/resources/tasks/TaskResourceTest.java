@@ -62,7 +62,6 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -75,7 +74,7 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
+
 
 public class TaskResourceTest extends CatalogApplicationTest {
   private static final Logger LOG = LoggerFactory.getLogger(TaskResourceTest.class);
@@ -484,43 +483,6 @@ public class TaskResourceTest extends CatalogApplicationTest {
     deleteTask(task.getId(), adminAuthHeaders());
   }
 
-
-  @Test
-  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Task task = createAndCheckTask(create(test), adminAuthHeaders());
-
-    // Add follower to the task
-    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
-    addAndCheckFollower(task, user1.getId(), CREATED, 1, userAuthHeaders());
-
-    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
-    addAndCheckFollower(task, user1.getId(), OK, 1, userAuthHeaders());
-
-    // Add a new follower to the task
-    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
-    addAndCheckFollower(task, user2.getId(), CREATED, 2, userAuthHeaders());
-
-    // Delete followers and make sure they are deleted
-    deleteAndCheckFollower(task, user1.getId(), 1, userAuthHeaders());
-    deleteAndCheckFollower(task, user2.getId(), 0, userAuthHeaders());
-  }
-
-  @Test
-  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    Task task = createAndCheckTask(create(test), adminAuthHeaders());
-
-    // Add non existent user as follower to the task
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            addAndCheckFollower(task, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-
-    // Delete non existent user as follower to the task
-    exception = assertThrows(HttpResponseException.class, () ->
-            deleteAndCheckFollower(task, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
-
-
   @Test
   public void delete_nonExistentTask_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -726,71 +688,6 @@ public class TaskResourceTest extends CatalogApplicationTest {
   public static CreateTask create(TestInfo test, int index) throws URISyntaxException {
     return new CreateTask().withName(getTaskName(test, index)).withService(AIRFLOW_REFERENCE)
             .withTaskUrl(new URI("http://localhost:0"));
-  }
-
-  public static void addAndCheckFollower(Task task, UUID userId, Status status, int totalFollowerCount,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("tasks/%s/followers", task.getId()));
-    TestUtils.put(target, userId.toString(), status, authHeaders);
-
-    // GET .../tasks/{taskId} returns newly added follower
-    Task getTask = getTask(task.getId(), "followers", authHeaders);
-    assertEquals(totalFollowerCount, getTask.getFollowers().size());
-    TestUtils.validateEntityReference(getTask.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getTask.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertTrue(followerFound, "Follower added was not found in task get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, task.getId(), true, authHeaders);
-  }
-
-  private static void checkUserFollowing(UUID userId, UUID taskId, boolean expectedFollowing,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
-    // GET .../users/{userId} shows user as following table
-    boolean following = false;
-    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
-    for (EntityReference follows : user.getFollows()) {
-      TestUtils.validateEntityReference(follows);
-      if (follows.getId().equals(taskId)) {
-        following = true;
-        break;
-      }
-    }
-    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
-  }
-
-  private void deleteAndCheckFollower(Task task, UUID userId, int totalFollowerCount,
-                                      Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("tasks/%s/followers/%s",
-            task.getId(), userId));
-    TestUtils.delete(target, authHeaders);
-
-    Task getTask = checkFollowerDeleted(task.getId(), userId, authHeaders);
-    assertEquals(totalFollowerCount, getTask.getFollowers().size());
-  }
-
-  public static Task checkFollowerDeleted(UUID taskId, UUID userId, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    Task getTask = getTask(taskId, "followers", authHeaders);
-    TestUtils.validateEntityReference(getTask.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getTask.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertFalse(followerFound, "Follower deleted is still found in table get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, taskId, false, authHeaders);
-    return getTask;
   }
 
   private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)

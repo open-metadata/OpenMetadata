@@ -98,7 +98,6 @@ public class TaskResource {
     task.setHref(RestUtil.getHref(uriInfo, TASK_COLLECTION_PATH, task.getId()));
     EntityUtil.addHref(uriInfo, task.getOwner());
     EntityUtil.addHref(uriInfo, task.getService());
-    EntityUtil.addHref(uriInfo, task.getFollowers());
 
     return task;
   }
@@ -122,7 +121,7 @@ public class TaskResource {
     }
   }
 
-  static final String FIELDS = "taskConfig,owner,service,followers,tags";
+  static final String FIELDS = "taskConfig,owner,service,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -282,45 +281,6 @@ public class TaskResource {
     PutResponse<Task> response = dao.createOrUpdate(task, create.getService(), create.getOwner());
     task = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(task).build();
-  }
-
-  @PUT
-  @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "tasks",
-          description = "Add a user identified by `userId` as followed of this task",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "OK"),
-                  @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
-          })
-  public Response addFollower(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the task", schema = @Schema(type = "string"))
-                              @PathParam("id") String id,
-                              @Parameter(description = "Id of the user to be added as follower",
-                                      schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
-    Task task = dao.get(id, fields);
-    return Response.status(status).entity(task).build();
-  }
-
-  @DELETE
-  @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "tasks",
-          description = "Remove the user identified `userId` as a follower of the task.")
-  public Task deleteFollower(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the task",
-                                      schema = @Schema(type = "string"))
-                              @PathParam("id") String id,
-                              @Parameter(description = "Id of the user being removed as follower",
-                                      schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
-    Task task = dao.get(id, fields);
-    return addHref(uriInfo, task);
   }
 
 

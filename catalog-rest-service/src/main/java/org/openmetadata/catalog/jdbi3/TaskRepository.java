@@ -257,14 +257,10 @@ public abstract class TaskRepository {
   private Task setFields(Task task, Fields fields) throws IOException {
     task.setOwner(fields.contains("owner") ? getOwner(task) : null);
     task.setService(fields.contains("service") ? getService(task) : null);
-    task.setFollowers(fields.contains("followers") ? getFollowers(task) : null);
     task.setTags(fields.contains("tags") ? getTags(task.getFullyQualifiedName()) : null);
     return task;
   }
 
-  private List<EntityReference> getFollowers(Task task) throws IOException {
-    return task == null ? null : EntityUtil.getFollowers(task.getId(), relationshipDAO(), userDAO());
-  }
 
   private List<TagLabel> getTags(String fqn) {
     return tagDAO().getTags(fqn);
@@ -295,19 +291,6 @@ public abstract class TaskRepository {
               Entity.TASK, Relationship.CONTAINS.ordinal());
       task.setService(service);
     }
-  }
-
-  @Transaction
-  public Status addFollower(String taskId, String userId) throws IOException {
-    EntityUtil.validate(taskId, taskDAO().findById(taskId), Task.class);
-    return EntityUtil.addFollower(relationshipDAO(), userDAO(), taskId, Entity.TASK, userId, Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(String taskId, String userId) {
-    EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), taskId, userId);
   }
 
   public interface TaskDAO {
