@@ -16,6 +16,12 @@
 # limitations under the License.
 #
 
+addLicensing(){
+    dir=$1
+    txt=`cat types-licensing.txt; cat "$dir"`
+    echo "$txt" > "$dir"
+}
+
 getTypes(){
     dir=$1
     for f in $dir/*
@@ -28,6 +34,7 @@ getTypes(){
         fileTS=${f//.json/.ts}
         fileTS=${fileTS//$2/$3}
         mkdir -p "$(dirname "$fileTS")" && quicktype -s schema "$f" -o "$fileTS" --just-types
+        addLicensing "$fileTS"
     fi
     done
 }

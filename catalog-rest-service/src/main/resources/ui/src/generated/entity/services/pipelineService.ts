@@ -17,21 +17,19 @@
  */
 
 /**
- * This schema defines the Database Service entity, such as MySQL, BigQuery, Redshift,
- * Postgres, or Snowflake. Alternative terms such as Database Cluster, Database Server
- * instance are also used for database service.
+ * This schema defines the Pipeline Service entity, such as Airflow and Prefect.
  */
-export interface DatabaseService {
+export interface PipelineService {
   /**
-   * Description of a database service instance.
+   * Description of a messaging service instance.
    */
   description?: string;
   /**
-   * Link to the resource corresponding to this database service.
+   * Link to the resource corresponding to this messaging service.
    */
-  href: string;
+  href?: string;
   /**
-   * Unique identifier of this database service instance.
+   * Unique identifier of this pipeline service instance.
    */
   id: string;
   /**
@@ -39,17 +37,17 @@ export interface DatabaseService {
    */
   ingestionSchedule?: Schedule;
   /**
-   * JDBC connection information.
-   */
-  jdbc: JDBCInfo;
-  /**
-   * Name that identifies this database service.
+   * Name that identifies this pipeline service.
    */
   name: string;
   /**
-   * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
+   * Pipeline Service Management/UI URL
    */
-  serviceType: DatabaseServiceType;
+  pipelineUrl: string;
+  /**
+   * Type of pipeline service such as Airflow or Prefect...
+   */
+  serviceType?: PipelineServiceType;
 }
 
 /**
@@ -70,28 +68,11 @@ export interface Schedule {
 }
 
 /**
- * JDBC connection information.
+ * Type of pipeline service such as Airflow or Prefect...
  *
- * Type for capturing JDBC connector information.
+ * Type of pipeline service - Airflow or Prefect.
  */
-export interface JDBCInfo {
-  connectionUrl: string;
-  driverClass: string;
-}
-
-/**
- * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
- */
-export enum DatabaseServiceType {
-  Athena = 'Athena',
-  BigQuery = 'BigQuery',
-  Hive = 'Hive',
-  Mssql = 'MSSQL',
-  MySQL = 'MySQL',
-  Oracle = 'Oracle',
-  Postgres = 'Postgres',
-  Presto = 'Presto',
-  Redshift = 'Redshift',
-  Snowflake = 'Snowflake',
-  Vertica = 'Vertica',
+export enum PipelineServiceType {
+  Airflow = 'Airflow',
+  Prefect = 'Prefect',
 }

@@ -17,42 +17,67 @@
  */
 
 /**
- * Create Dashboard entity request
+ * This schema defines the Task entity. A task is a unit of computation in a Pipeline.
  */
-export interface CreateDashboard {
+export interface Task {
   /**
-   * All the charts included in this Dashboard.
-   */
-  charts?: EntityReference[];
-  /**
-   * Dashboard URL
-   */
-  dashboardUrl?: string;
-  /**
-   * Description of the database instance. What it has and how to use it.
+   * Description of this Task.
    */
   description?: string;
   /**
-   * Display Name that identifies this Dashboard. It could be title or label from the source
-   * services
+   * Display Name that identifies this Task. It could be title or label from the pipeline
+   * services.
    */
   displayName?: string;
   /**
-   * Name that identifies this dashboard.
+   * All the tasks that are downstream of this task.
+   */
+  downstreamTasks?: EntityReference[];
+  /**
+   * Followers of this Pipeline.
+   */
+  followers?: EntityReference[];
+  /**
+   * A unique name that identifies a pipeline in the format
+   * 'ServiceName.PipelineName.TaskName'.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the resource corresponding to this entity.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies a task instance.
+   */
+  id: string;
+  /**
+   * Name that identifies this task instance uniquely.
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this pipeline.
    */
   owner?: EntityReference;
   /**
-   * Link to the database service where this database is hosted in
+   * Link to service where this pipeline is hosted in.
    */
   service: EntityReference;
   /**
-   * Tags for this chart
+   * Tags for this Pipeline.
    */
   tags?: TagLabel[];
+  /**
+   * Task Configuration.
+   */
+  taskConfig?: TaskConfig;
+  /**
+   * Task URL to visit/manage. This URL points to respective pipeline service UI
+   */
+  taskUrl?: string;
+  /**
+   * All the tasks that are upstream of this task.
+   */
+  upstreamTasks?: EntityReference[];
 }
 
 /**
@@ -61,9 +86,11 @@ export interface CreateDashboard {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this database
+ * Followers of this Pipeline.
  *
- * Link to the database service where this database is hosted in
+ * Owner of this pipeline.
+ *
+ * Link to service where this pipeline is hosted in.
  */
 export interface EntityReference {
   /**
@@ -135,4 +162,24 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
+}
+
+/**
+ * Task Configuration.
+ *
+ * This schema defines the type for a column in a table.
+ */
+export interface TaskConfig {
+  /**
+   * Location of task file
+   */
+  codeLocation?: string;
+  /**
+   * Concurrency of the Task
+   */
+  concurrency?: number;
+  /**
+   * Start Date of the task
+   */
+  startDate?: Date;
 }

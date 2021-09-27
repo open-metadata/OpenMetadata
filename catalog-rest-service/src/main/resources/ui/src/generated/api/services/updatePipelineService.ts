@@ -17,28 +17,36 @@
  */
 
 /**
- * This schema defines Bot entity. A bot automates tasks, such as adding description,
- * identifying the importance of data. It runs as a special user in the system.
+ * Update pipeline service entity request
  */
-export interface Bots {
+export interface UpdatePipelineService {
   /**
-   * Description of the bot.
+   * Description of Pipeline service entity.
    */
   description?: string;
   /**
-   * Name used for display purposes. Example 'FirstName LastName'.
+   * Schedule for running metadata ingestion jobs
    */
-  displayName?: string;
+  ingestionSchedule?: Schedule;
   /**
-   * Link to the resource corresponding to this bot.
+   * Pipeline Service UI URL.
    */
-  href?: string;
+  pipelineUrl?: string;
+}
+
+/**
+ * Schedule for running metadata ingestion jobs
+ *
+ * This schema defines the type used for the schedule. The schedule has a start time and
+ * repeat frequency.
+ */
+export interface Schedule {
   /**
-   * Unique identifier of a bot instance.
+   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
    */
-  id?: string;
+  repeatFrequency?: string;
   /**
-   * Name of the bot.
+   * Start date and time of the schedule.
    */
-  name?: string;
+  startDate?: Date;
 }

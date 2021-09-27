@@ -17,6 +17,80 @@
  */
 
 /**
+ * Create Pipeline entity request
+ */
+export interface CreatePipeline {
+  /**
+   * Description of the database instance. What it has and how to use it.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this Pipeline. It could be title or label from the source
+   * services.
+   */
+  displayName?: string;
+  /**
+   * Name that identifies this pipeline instance uniquely.
+   */
+  name: string;
+  /**
+   * Owner of this database
+   */
+  owner?: EntityReference;
+  /**
+   * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI
+   */
+  pipelineUrl?: string;
+  /**
+   * Link to the database service where this database is hosted in
+   */
+  service: EntityReference;
+  /**
+   * Tags for this Pipeline.
+   */
+  tags?: TagLabel[];
+  /**
+   * All the tasks that are part of pipeline.
+   */
+  tasks?: EntityReference[];
+}
+
+/**
+ * Owner of this database
+ *
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ *
+ * Link to the database service where this database is hosted in
+ */
+export interface EntityReference {
+  /**
+   * Optional description of entity.
+   */
+  description?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
+   * `bigquery`, `snowflake`...
+   */
+  type: string;
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
