@@ -247,13 +247,13 @@ class GenerateFakeSampleData:
                 elif "country" in col_name:
                     value = fake.country()
                 if value is None:
-                    if "TIMESTAMP" in column['columnDataType'] or "date" in col_name:
+                    if "TIMESTAMP" in column['dataType'] or "date" in col_name:
                         value = fake.unix_time()
-                    elif "BOOLEAN" in column['columnDataType']:
+                    elif "BOOLEAN" in column['dataType']:
                         value = fake.pybool()
-                    elif "NUMERIC" in column['columnDataType']:
+                    elif "NUMERIC" in column['dataType']:
                         value = fake.pyint()
-                    elif "VARCHAR" in column['columnDataType']:
+                    elif "VARCHAR" in column['dataType']:
                         value = fake.text(max_nb_chars=20)
                     else:
                         value = None
