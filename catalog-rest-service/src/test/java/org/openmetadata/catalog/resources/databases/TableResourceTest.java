@@ -201,6 +201,18 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void post_duplicateColumnName_400(TestInfo test) {
+    // Duplicate column names c1
+    String repeatedColumnName = "c1";
+    List<Column> columns = Arrays.asList(getColumn(repeatedColumnName, ARRAY, "array<int>", null),
+            getColumn(repeatedColumnName, INT, null));
+    CreateTable create = create(test).withColumns(columns);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createTable(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, String.format("Column name %s is repeated", repeatedColumnName));
+  }
+
+  @Test
   public void post_tableAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateTable create = create(test);
     createTable(create, adminAuthHeaders());
@@ -227,9 +239,9 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, String dataTypeDisplay, TagLabel tag) {
-
+    List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
     return new Column().withName(name).withDataType(columnDataType)
-            .withDataTypeDisplay(dataTypeDisplay).withTags(singletonList(tag));
+            .withDataTypeDisplay(dataTypeDisplay).withTags(tags);
   }
 
   @Test
