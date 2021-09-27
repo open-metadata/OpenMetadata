@@ -98,7 +98,6 @@ def report(config: str) -> None:
             del workflow_config['cron']
         if workflow_config.get('sink'):
             del workflow_config['sink']
-
         workflow_config['sink'] = file_sink
         ### add json generation as the sink
         workflow = Workflow.create(workflow_config)
@@ -114,7 +113,7 @@ def report(config: str) -> None:
         from django.core.management import call_command
         from django.core.wsgi import get_wsgi_application
         application = get_wsgi_application()
-        call_command('runserver', '127.0.0.1:8000')
+        call_command('runserver', 'localhost:8000')
     except ImportError as exc:
         logger.error(exc)
         raise ImportError(
