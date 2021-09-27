@@ -72,6 +72,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,6 +92,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
+import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
+import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
+import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
+import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
+import static org.openmetadata.catalog.type.ColumnDataType.INT;
+import static org.openmetadata.catalog.type.ColumnDataType.STRING;
+import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -110,12 +118,9 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static final TagLabel TIER_2 = new TagLabel().withTagFQN("Tier.Tier2");
 
   public static List<Column> COLUMNS = Arrays.asList(
-          new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
-                  .withTags(singletonList(USER_ADDRESS_TAG_LABEL)),
-          new Column().withName("c2").withColumnDataType(ColumnDataType.BIGINT)
-                  .withTags(singletonList(USER_ADDRESS_TAG_LABEL)),
-          new Column().withName("c3").withColumnDataType(ColumnDataType.BIGINT)
-                  .withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)));
+          getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
+          getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
+          getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -161,6 +166,41 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void post_tableWithoutColumnDataLength_400(TestInfo test) {
+    List<Column> columns = singletonList(getColumn("c1", BIGINT, null).withOrdinalPosition(1));
+    CreateTable create = create(test).withColumns(columns);
+
+    // char, varchar, binary, and varbinary columns must have length
+    ColumnDataType[] columnDataTypes = {CHAR, ColumnDataType.VARCHAR, ColumnDataType.BINARY,
+            ColumnDataType.VARBINARY};
+
+    for (ColumnDataType dataType : columnDataTypes) {
+      create.getColumns().get(0).withDataType(dataType);
+      HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+              createTable(create, adminAuthHeaders()));
+      assertResponse(exception, BAD_REQUEST,
+              "For column data types char, varchar, binary, varbinary dataLength must not be null");
+    }
+  }
+
+  @Test
+  public void post_tableInvalidArrayColumn_400(TestInfo test) {
+    // No arrayDataType passed for array
+    List<Column> columns = singletonList(getColumn("c1", ARRAY, "array<int>", null));
+    CreateTable create = create(test).withColumns(columns);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createTable(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "For column data type array, arrayDataType must not be null");
+
+    // No dataTypeDisplay passed for array
+    columns.get(0).withArrayDataType(INT).withDataTypeDisplay(null);
+    exception = assertThrows(HttpResponseException.class, () ->
+            createTable(create, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST,
+            "For column data type array, dataTypeDisplay must be of type array<arrayDataType>");
+  }
+
+  @Test
   public void post_tableAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateTable create = create(test);
     createTable(create, adminAuthHeaders());
@@ -179,6 +219,85 @@ public class TableResourceTest extends CatalogApplicationTest {
     // Optional fields tableType
     create.withName(getTableName(test, 1)).withTableType(TableType.View);
     createAndCheckTable(create, adminAuthHeaders());
+  }
+
+  private static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
+
+    return getColumn(name, columnDataType, null, tag);
+  }
+
+  private static Column getColumn(String name, ColumnDataType columnDataType, String dataTypeDisplay, TagLabel tag) {
+
+    return new Column().withName(name).withDataType(columnDataType)
+            .withDataTypeDisplay(dataTypeDisplay).withTags(singletonList(tag));
+  }
+
+  @Test
+  public void post_put_patch_complexColumnTypes(TestInfo test) throws HttpResponseException, JsonProcessingException {
+    Column c1 = getColumn("c1", ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL).withArrayDataType(INT);
+    Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
+    Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
+    Column c2_c = getColumn("c", STRUCT, "struct<int: d>>>", USER_ADDRESS_TAG_LABEL)
+            .withChildren(new ArrayList<>(Arrays.asList(c2_c_d)));
+
+    // Column struct<a: int, b:char, c: struct<int: d>>>
+    Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>>",USER_BANK_ACCOUNT_TAG_LABEL)
+            .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
+
+    // Test POST operation can create complex types
+    CreateTable create1 = create(test, 1).withColumns(Arrays.asList(c1, c2));
+    Table table1 = createAndCheckTable(create1, adminAuthHeaders());
+
+    // Test PUT operation
+    CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2));
+    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.CREATED, adminAuthHeaders());
+    // Update without any change
+    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders());
+
+    //
+    // Update the complex columns
+    //
+    // c1 from array<int> to array<char> and also change the tag
+    c1.withArrayDataType(CHAR).withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)).withDataTypeDisplay("array<char>");
+
+    // c2 from -> to
+    // struct<a:int, b:char, c:struct<d:int>>>
+    // struct<-----, b:char, c:struct<d:int, e:char>, f:char>
+    c2_b.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // Change c2.b tag
+    c2_c.getChildren().add(getColumn("e", INT,USER_ADDRESS_TAG_LABEL)); // Add c2.c.e
+    c2.getChildren().remove(0); // Remove c2.a from struct
+    c2.getChildren().add(getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL)); // Add c2.f
+    create2 = create2.withColumns(Arrays.asList(c1, c2));
+
+    // Update the columns with put operation and validate update
+    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders());
+
+
+    //
+    // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only tags and
+    // description can be changed
+    //
+    String tableJson = JsonUtils.pojoToJson(table1);
+    c1 = table1.getColumns().get(0);
+    c1.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c1 tag changed
+
+    c2 = table1.getColumns().get(1);
+    c2.withTags(Arrays.asList(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // c2 new tag added
+
+    c2_a = c2.getChildren().get(0);
+    c2_a.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.a tag changed
+
+    c2_b = c2.getChildren().get(1);
+    c2_b.withTags(new ArrayList<>()); // c2.b tag removed
+
+    c2_c = c2.getChildren().get(2);
+    c2_c.withTags(new ArrayList<>()); // c2.c tag removed
+
+    c2_c_d = c2_c.getChildren().get(0);
+    c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
+    table1 = patchTable(tableJson, table1, adminAuthHeaders());
+    validateColumns(Arrays.asList(c1, c2), table1.getColumns());
   }
 
   @Test
@@ -313,8 +432,9 @@ public class TableResourceTest extends CatalogApplicationTest {
     // Create a table with column c1, type BIGINT, description c1 and tag USER_ADDRESS_TAB_LABEL
     //
     List<TagLabel> tags = new ArrayList<>(singletonList(USER_ADDRESS_TAG_LABEL));
-    List<Column> columns = singletonList(new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
+    List<Column> columns = singletonList(new Column().withName("c1").withDataType(BIGINT)
             .withOrdinalPosition(1).withDescription("c1").withTags(tags));
+
     CreateTable request = create(test).withColumns(columns);
     Table table = createAndCheckTable(request, adminAuthHeaders());
     columns.get(0).setFullyQualifiedName(table.getFullyQualifiedName() + ".c1");
@@ -331,7 +451,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     //
     tags.add(USER_BANK_ACCOUNT_TAG_LABEL);
     List<Column> updatedColumns = new ArrayList<>();
-    updatedColumns.add(new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
+    updatedColumns.add(new Column().withName("c1").withDataType(BIGINT)
             .withTags(tags).withOrdinalPosition(1));
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
 
@@ -343,8 +463,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     //
     // Add a new column and make sure it is added by PUT
     //
-    updatedColumns.add(new Column().withName("c2").withColumnDataType(ColumnDataType.BINARY).withOrdinalPosition(2)
-            .withFullyQualifiedName(table.getFullyQualifiedName() + ".c2").withTags(tags));
+    updatedColumns.add(new Column().withName("c2").withDataType(ColumnDataType.BINARY).withOrdinalPosition(2)
+            .withDataLength(10).withFullyQualifiedName(table.getFullyQualifiedName() + ".c2").withTags(tags));
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
     assertEquals(2, table.getColumns().size());
     validateTags(updatedColumns.get(0).getTags(), table.getColumns().get(0).getTags());
@@ -515,6 +635,20 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(expected, actual.getColumnJoins());
   }
 
+  public static class TagLabelComparator implements Comparator<TagLabel> {
+    @Override
+    public int compare(TagLabel label, TagLabel t1) {
+      return label.getTagFQN().compareTo(t1.getTagFQN());
+    }
+  }
+
+  public static class ColumnComparator implements Comparator<Column> {
+    @Override
+    public int compare(Column column, Column t1) {
+      return column.getName().compareTo(t1.getName());
+    }
+  }
+
   public static class ColumnJoinComparator implements Comparator<ColumnJoin> {
     @Override
     public int compare(ColumnJoin columnJoin, ColumnJoin t1) {
@@ -596,7 +730,7 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_viewDefinition_invalid_table_4xx(TestInfo test) throws HttpResponseException {
+  public void put_viewDefinition_invalid_table_4xx(TestInfo test) {
     CreateTable createTable = create(test);
     createTable.setTableType(TableType.Regular);
     String query = "sales_vw\n" +
@@ -615,7 +749,6 @@ public class TableResourceTest extends CatalogApplicationTest {
   @Test
   public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
     Table table = createAndCheckTable(create(test), adminAuthHeaders());
-    List<String> columns = Arrays.asList("c1", "c2", "c3");
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0")
             .withMin("10.0").withUniqueCount(100.0);
     ColumnProfile c2Profile = new ColumnProfile().withName("c2").withMax("99.0").withMin("20.0").withUniqueCount(89.0);
@@ -765,7 +898,7 @@ public class TableResourceTest extends CatalogApplicationTest {
 
   /**
    * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList#ResultList(List, int, String, String)
+   * @see org.openmetadata.catalog.util.ResultList#ResultList
    *
    * The tests and various CASES referenced are base on that.
    */
@@ -886,79 +1019,20 @@ public class TableResourceTest extends CatalogApplicationTest {
   @Test
   public void patch_tableColumnTags_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without description, table tags, tier, owner, tableType, and tableConstraints
-    Table table = createTable(create(test).withTableConstraints(null), adminAuthHeaders());
-    assertNull(table.getDescription());
-    assertNull(table.getOwner());
-    assertNull(table.getTableType());
-    assertNull(table.getTableConstraints());
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL));
+    columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
+    columns.add(getColumn("c3", FLOAT, USER_BANK_ACCOUNT_TAG_LABEL));
 
+    Table table = createTable(create(test).withColumns(columns), adminAuthHeaders());
 
-    Map<String, List<TagLabel>> columnTagMap = new HashMap<>();
-    columnTagMap.put("c1", singletonList(USER_ADDRESS_TAG_LABEL));
-    columnTagMap.put("c2", singletonList(USER_ADDRESS_TAG_LABEL));
-    columnTagMap.put("c3", singletonList(USER_BANK_ACCOUNT_TAG_LABEL));
+    // Update the columns
+    columns.get(0).setTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add a tag
+    columns.get(1).setTags(List.of(USER_ADDRESS_TAG_LABEL));                              // No change in tag
+    columns.get(2).setTags(new ArrayList<>());                                            // Remove tag
 
-    validateColumnTags(table, columnTagMap);
-
-    List<Column> updatedColumns = Arrays.asList(
-            new Column().withName("c1").withColumnDataType(ColumnDataType.BIGINT)
-                    .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)),
-            new Column().withName("c2").withColumnDataType(ColumnDataType.BIGINT)
-                    .withTags(singletonList(USER_ADDRESS_TAG_LABEL)),
-            new Column().withName("c3").withColumnDataType(ColumnDataType.BIGINT)
-                    .withTags(new ArrayList<>()));
-
-    table = patchTableColumnAttributesAndCheck(table, updatedColumns, adminAuthHeaders());
-    table.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    columnTagMap.put("c1", List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL));
-    columnTagMap.put("c2", singletonList(USER_ADDRESS_TAG_LABEL));
-    columnTagMap.put("c3", new ArrayList<>());
-    validateColumnTags(table, columnTagMap);
-  }
-
-  @Test
-  public void patch_tableIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure table ID can't be changed using patch
-    Table table = createTable(create(test), adminAuthHeaders());
-    UUID oldTableId = table.getId();
-    String tableJson = JsonUtils.pojoToJson(table);
-    table.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTable(oldTableId, tableJson, table, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(Entity.TABLE, "id"));
-  }
-
-  @Test
-  public void patch_tableNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure table name can't be changed using patch
-    Table table = createTable(create(test), adminAuthHeaders());
-    String tableJson = JsonUtils.pojoToJson(table);
-    table.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTable(tableJson, table, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute(Entity.TABLE, "name"));
-  }
-
-  @Test
-  public void patch_tableRemoveDatabase_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure table database it belongs to can't be removed
-    Table table = createTable(create(test).withDatabase(DATABASE.getId()), adminAuthHeaders());
-    String tableJson = JsonUtils.pojoToJson(table);
-    table.setDatabase(null);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTable(tableJson, table, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Table relationship database can't be removed");
-  }
-
-  @Test
-  public void patch_tableReplaceDatabase_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure table database it belongs to can't be removed
-    Table table = createTable(create(test).withDatabase(DATABASE.getId()), adminAuthHeaders());
-    String tableJson = JsonUtils.pojoToJson(table);
-    table.getDatabase().setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTable(tableJson, table, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Table relationship database can't be replaced");
+    table = patchTableColumnAttributesAndCheck(table, columns, adminAuthHeaders());
+    validateColumns(columns, table.getColumns());
   }
 
   @Test
@@ -1011,12 +1085,12 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Table updatedTable = patchTable(tableJson, table, authHeaders);
-    validateTable(updatedTable, table.getDescription(), owner, null, tableType,
+    validateTable(updatedTable, table.getDescription(), table.getColumns(), owner, null, tableType,
             tableConstraints, tags);
 
     // GET the table and Validate information returned
     Table getTable = getTable(table.getId(), "owner,tableConstraints,columns, tags", authHeaders);
-    validateTable(getTable, table.getDescription(), owner, null, tableType, tableConstraints, tags);
+    validateTable(getTable, table.getDescription(), table.getColumns(), owner, null, tableType, tableConstraints, tags);
     return updatedTable;
   }
 
@@ -1028,8 +1102,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     table.setColumns(columns);
 
     // Validate information returned in patch response has the updates
-    Table updatedTable = patchTable(tableJson, table, authHeaders);
-    return updatedTable;
+    return patchTable(tableJson, table, authHeaders);
   }
 
   // TODO disallow changing href, usage
@@ -1041,13 +1114,12 @@ public class TableResourceTest extends CatalogApplicationTest {
           throws HttpResponseException {
     // Validate table created has all the information set in create request
     Table table = createTable(create, authHeaders);
-    validateTable(table, create.getDescription(), create.getOwner(),
+    validateTable(table, create.getDescription(), create.getColumns(), create.getOwner(),
             create.getDatabase(), create.getTableType(), create.getTableConstraints(), create.getTags());
-    validateTags(create.getTags(), table.getTags());
 
     // GET table created and ensure it has all the information set in create request
-    Table getTable = getTable(table.getId(), "owner,database,tags,tableConstraints", authHeaders);
-    validateTable(getTable, create.getDescription(), create.getOwner(),
+    Table getTable = getTable(table.getId(), "columns,owner,database,tags,tableConstraints", authHeaders);
+    validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(),
             create.getDatabase(), create.getTableType(), create.getTableConstraints(), create.getTags());
 
     // If owner information is set, GET and make sure the user or team has the table in owns list
@@ -1129,24 +1201,28 @@ public class TableResourceTest extends CatalogApplicationTest {
     }
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>();
-    updatedExpectedList.addAll(expectedList);
+    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
     for (TagLabel expected : expectedList) {
       List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
               adminAuthHeaders()));
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+    updatedExpectedList.sort(new TagLabelComparator());
+    actualList.sort(new TagLabelComparator());
 
-    assertTrue(actualList.containsAll(updatedExpectedList));
-    assertTrue(updatedExpectedList.containsAll(actualList));
+    assertEquals(updatedExpectedList.size(), actualList.size());
+    for (int i = 0; i < actualList.size(); i++) {
+      assertEquals(updatedExpectedList.get(i), actualList.get(i));
+    }
   }
 
   public static Table createTable(CreateTable create, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("tables"), create, Table.class, authHeaders);
   }
 
-  private static void validateTable(Table table, String expectedDescription, EntityReference expectedOwner,
+  private static void validateTable(Table table, String expectedDescription,
+                                    List<Column> expectedColumns, EntityReference expectedOwner,
                                     UUID expectedDatabaseId, TableType expectedTableType,
                                     List<TableConstraint> expectedTableConstraints, List<TagLabel> expectedTags)
           throws HttpResponseException {
@@ -1155,6 +1231,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertNotNull(table.getFullyQualifiedName());
     assertEquals(expectedDescription, table.getDescription());
     assertEquals(expectedTableType, table.getTableType());
+
+    validateColumns(expectedColumns, table.getColumns());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -1170,17 +1248,37 @@ public class TableResourceTest extends CatalogApplicationTest {
       assertEquals(expectedDatabaseId, table.getDatabase().getId());
     }
 
+
     // Validate table constraints
     assertEquals(expectedTableConstraints, table.getTableConstraints());
     validateTags(expectedTags, table.getTags());
     TestUtils.validateEntityReference(table.getFollowers());
   }
 
-  private static void validateColumnTags(Table table, Map<String, List<TagLabel>> columnTagMap)
-          throws HttpResponseException {
-    for (Column column: table.getColumns()) {
-      List<TagLabel> expectedTags = columnTagMap.get(column.getName());
-      validateTags(expectedTags, column.getTags());
+  private static void validateColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
+    assertNotNull(actualColumn.getFullyQualifiedName());
+    assertEquals(expectedColumn.getName(), actualColumn.getName());
+    assertEquals(expectedColumn.getDataType(), actualColumn.getDataType());
+    assertEquals(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
+    if (expectedColumn.getDataTypeDisplay() != null) {
+      assertEquals(expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT), actualColumn.getDataTypeDisplay());
+    }
+    validateTags(expectedColumn.getTags(), actualColumn.getTags());
+
+    // Check the nested columns
+    validateColumns(expectedColumn.getChildren(), actualColumn.getChildren());
+  }
+
+  private static void validateColumns(List<Column> expectedColumns, List<Column> actualColumns) throws HttpResponseException {
+    if (expectedColumns == null && actualColumns == null) {
+      return;
+    }
+    // Sort columns by name
+    expectedColumns.sort(new ColumnComparator());
+    actualColumns.sort(new ColumnComparator());
+    assertEquals(expectedColumns.size(), actualColumns.size());
+    for (int i = 0; i < expectedColumns.size(); i++) {
+      validateColumn(expectedColumns.get(i), actualColumns.get(i));
     }
   }
 
@@ -1249,13 +1347,13 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static Table updateAndCheckTable(CreateTable create, Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
     Table updatedTable = updateTable(create, status, authHeaders);
-    validateTable(updatedTable, create.getDescription(), create.getOwner(), create.getDatabase(),
+    validateTable(updatedTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
             create.getTableType(), create.getTableConstraints(), create.getTags());
 
     // GET the newly updated database and validate
-    Table getTable = getTable(updatedTable.getId(), "database,owner,tableConstraints,tags", authHeaders);
-    validateTable(getTable, create.getDescription(), create.getOwner(), create.getDatabase(), create.getTableType(),
-            create.getTableConstraints(), create.getTags());
+    Table getTable = getTable(updatedTable.getId(), "columns,database,owner,tableConstraints,tags", authHeaders);
+    validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
+            create.getTableType(), create.getTableConstraints(), create.getTags());
     // TODO columns check
     return updatedTable;
   }
@@ -1297,7 +1395,6 @@ public class TableResourceTest extends CatalogApplicationTest {
                            Map<String, String> authHeaders) throws JsonProcessingException, HttpResponseException {
     String updateTableJson = JsonUtils.pojoToJson(updatedTable);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTableJson);
-    LOG.info("Applying patch ", patch);
     return TestUtils.patch(CatalogApplicationTest.getResource("tables/" + tableId),
             patch, Table.class, authHeaders);
   }
