@@ -94,7 +94,7 @@ const UserCard = ({
     }
 
     return (
-      <Link to={link}>
+      <Link data-testid="dataset-link" to={link}>
         <button className="tw-font-normal tw-text-grey-body">
           {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
         </button>
@@ -107,7 +107,8 @@ const UserCard = ({
       className={classNames(
         'tw-card tw-flex tw-justify-between tw-py-2 tw-px-3 tw-group',
         { 'tw-py-5': isDataset }
-      )}>
+      )}
+      data-testid="user-card-container">
       <div className={`tw-flex ${isCheckBoxes ? 'tw-mr-2' : 'tw-gap-1'}`}>
         {isIconVisible && !isDataset ? (
           <Avatar name={item.description} />
@@ -118,7 +119,8 @@ const UserCard = ({
         <div
           className={classNames('tw-flex tw-flex-col', {
             'tw-pl-2': !isDataset,
-          })}>
+          })}
+          data-testid="data-container">
           {isDataset ? (
             <>{getDatasetTitle(item.name, item.description)}</>
           ) : (
@@ -140,7 +142,9 @@ const UserCard = ({
               }}
             />
           ) : (
-            <span onClick={() => onRemove?.(item.id as string)}>
+            <span
+              data-testid="remove"
+              onClick={() => onRemove?.(item.id as string)}>
               <SVGIcons
                 alt="delete"
                 className="tw-text-gray-500 tw-cursor-pointer tw-opacity-0 hover:tw-text-gray-700 group-hover:tw-opacity-100"

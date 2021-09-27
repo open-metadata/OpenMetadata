@@ -409,6 +409,7 @@ const SVGIcons: FunctionComponent<Props> = ({
     <img
       alt={alt}
       className={`svg-icon ${className}`}
+      data-testid="image"
       src={IconComponent}
       // eslint-disable-next-line react/jsx-props-no-spreading
       {...props}

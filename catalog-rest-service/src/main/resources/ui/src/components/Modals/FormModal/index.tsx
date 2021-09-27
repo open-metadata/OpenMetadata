@@ -49,17 +49,21 @@ const FormModal = ({
   };
 
   return (
-    <dialog className="tw-modal">
+    <dialog className="tw-modal" data-testid="modal-container">
       <div className="tw-modal-backdrop" onClick={() => onCancel()} />
       <div className="tw-modal-container tw-overflow-y-auto tw-max-h-screen">
         <form action="." method="POST" onSubmit={onSubmitHandler}>
           <div className="tw-modal-header">
-            <p className="tw-modal-title tw-text-grey-body">{header}</p>
+            <p
+              className="tw-modal-title tw-text-grey-body"
+              data-testid="header">
+              {header}
+            </p>
           </div>
           <div className="tw-modal-body">
             <Form initialData={initialData} ref={formRef} saveData={setData} />
           </div>
-          <div className="tw-modal-footer">
+          <div className="tw-modal-footer" data-testid="cta-container">
             <Button
               size="regular"
               theme="primary"
