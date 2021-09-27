@@ -79,11 +79,22 @@ public final class DatabaseUtil {
   }
 
   public static void validateColumns(Table table) {
+    validateColumnNames(table.getColumns());
     for (Column c : table.getColumns()) {
       validateColumnDataTypeDisplay(c);
       validateColumnDataLength(c);
       validateArrayColumn(c);
       validateStructColumn(c);
+    }
+  }
+
+  public static void validateColumnNames(List<Column> columns) {
+    List<String> columnNames = new ArrayList<>();
+    for (Column c : columns) {
+      if (columnNames.contains(c.getName())) {
+        throw new IllegalArgumentException(String.format("Column name %s is repeated", c.getName()));
+      }
+      columnNames.add(c.getName());
     }
   }
 
@@ -143,6 +154,7 @@ public final class DatabaseUtil {
                 "must not be null");
       }
 
+      validateColumnNames(column.getChildren());
       if (!column.getDataTypeDisplay().startsWith("struct<")) {
         throw new IllegalArgumentException("For column data type struct, dataTypeDisplay must be of type " +
                 "stuct<member fields>");
