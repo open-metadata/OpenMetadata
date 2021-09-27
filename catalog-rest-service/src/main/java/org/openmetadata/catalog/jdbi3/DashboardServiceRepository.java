@@ -17,14 +17,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.joda.time.Period;
-import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.Utils;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -67,7 +66,7 @@ public abstract class DashboardServiceRepository {
   @Transaction
   public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
-    validateIngestionSchedule(dashboardService.getIngestionSchedule());
+    Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
     dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
@@ -75,7 +74,7 @@ public abstract class DashboardServiceRepository {
   public DashboardService update(String id, String description, URI dashboardUrl, String username, String password,
                                  Schedule ingestionSchedule)
           throws IOException {
-    validateIngestionSchedule(ingestionSchedule);
+    Utils.validateIngestionSchedule(ingestionSchedule);
     DashboardService dashboardService = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
             DashboardService.class);
     // Update fields
@@ -91,31 +90,6 @@ public abstract class DashboardServiceRepository {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
     relationshipDAO().deleteAll(id);
-  }
-
-  private void validateIngestionSchedule(Schedule ingestion) {
-    if (ingestion == null) {
-      return;
-    }
-    String duration = ingestion.getRepeatFrequency();
-
-    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
-    String[] splits = duration.split("T");
-    if (splits[0].contains("Y") || splits[0].contains("M") ||
-            (splits.length == 2 && splits[1].contains("S"))) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " +
-              "example P{d}DT{h}H{m}M");
-    }
-
-    Period period;
-    try {
-      period = ISOPeriodFormat.standard().parsePeriod(duration);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
-    }
-    if (period.toStandardMinutes().getMinutes() < 60) {
-      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
-    }
   }
 
   public interface DashboardServiceDAO {

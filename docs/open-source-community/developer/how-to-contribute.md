@@ -59,5 +59,5 @@ git push origin HEAD:refs/heads/issue-200
 
 ## We are here to help
 
-Please reach out to us anytime you need any help. [Slack](https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email) would be fastest way to get a response.
+Please reach out to us anytime you need any help. [Slack](https://slack.open-metadata.org/) would be fastest way to get a response.
 

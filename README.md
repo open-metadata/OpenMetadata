@@ -6,7 +6,7 @@
 [![Release](https://img.shields.io/github/release/open-metadata/OpenMetadata/all.svg)](https://github.com/open-metadata/OpenMetadata/releases)
 [![Commit](https://img.shields.io/github/commit-activity/m/open-metadata/OpenMetadata)](Commit)
 [![Twitter Follow](https://img.shields.io/twitter/follow/open_metadata?style=social)](https://twitter.com/intent/follow?screen_name=open_metadata)
-<a href="https://join.slack.com/t/openmetadata/shared_invite/zt-oiq9s1qd-dHHvw4xjpnoRV1QQrq6vUg"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
+<a href="https://slack.open-metadata.org/"><img src="https://img.shields.io/badge/slack-join-E01E5A?logo=slack" alt="Join us on Slack" height="22"/></a>
 [![License](https://img.shields.io/github/license/open-metadata/OpenMetadata.svg)](LICENSE)
 
 </div>
@@ -54,7 +54,7 @@ For more details on running OpenMetadata on your local machine or in production,
 
 Check out [OpenMetadata documentation](https://docs.open-metadata.org/) for a complete description of OpenMetadata's features.
 
-Join [our Slack Community](https://join.slack.com/t/openmetadata/shared_invite/) if you get stuck, want to chat, or are thinking of a new feature.
+Join [our Slack Community](https://slack.open-metadata.org/) if you get stuck, want to chat, or are thinking of a new feature.
 
 Or join the group at [https://groups.google.com/g/openmetadata-users](https://groups.google.com/g/openmetadata-users)
 
@@ -66,7 +66,7 @@ We ❤️ all contributions, big and small!
 
 Read [Build Code and Run Tests](https://docs.open-metadata.org/open-source-community/developer/build-code-run-tests) for how to setup your local development environment.
 
-If you want to, you can reach out via [Slack](https://openmetadata.slack.com/) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
+If you want to, you can reach out via [Slack](https://openmetadata.slack.com/join/shared_invite/zt-wksh1bww-iQGk45NTw6Tp4Q9UZd6QOw#/shared-invite/email) or [email](mailto:dev@open-metadata.org) and we'll set up a pair programming session to get you started.
 
 ## License
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)

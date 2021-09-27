@@ -200,7 +200,7 @@ public class DashboardResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class))),
+                                  schema = @Schema(implementation = Dashboard.class))),
                   @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
           })
   public Dashboard getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,

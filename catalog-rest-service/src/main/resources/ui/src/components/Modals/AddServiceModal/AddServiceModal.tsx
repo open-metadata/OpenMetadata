@@ -24,6 +24,9 @@ import {
   MessagingServiceType,
   ServiceCategory,
 } from '../../../enums/service.enum';
+// import { DashboardService } from '../../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../../generated/entity/services/databaseService';
+import { MessagingService } from '../../../generated/entity/services/messagingService';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -56,18 +59,17 @@ export type DataObj = {
   env?: string;
 };
 
-type DatabaseService = {
-  connectionUrl: string;
-  driverClass: string;
-  jdbc: { driverClass: string; connectionUrl: string };
-};
-
-type MessagingService = {
-  brokers: Array<string>;
-  schemaRegistry: string;
-};
+// type DataObj = CreateDatabaseService &
+//   Partial<CreateMessagingService> &
+//   Partial<CreateDashboardService>;
 
 type DashboardService = {
+  description: string;
+  href: string;
+  id: string;
+  name: string;
+  serviceType: string;
+  ingestionSchedule?: { repeatFrequency: string; startDate: string };
   dashboardUrl?: string;
   username?: string;
   password?: string;
@@ -79,14 +81,7 @@ type DashboardService = {
   env?: string;
 };
 
-export type ServiceDataObj = {
-  description: string;
-  href: string;
-  id: string;
-  name: string;
-  serviceType: string;
-  ingestionSchedule?: { repeatFrequency: string; startDate: string };
-} & Partial<DatabaseService> &
+export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
   Partial<DashboardService>;
 
@@ -114,7 +109,6 @@ type ErrorMsg = {
   dashboardUrl?: boolean;
   username?: boolean;
   password?: boolean;
-  redashUrl?: boolean;
   apiKey?: boolean;
   siteName?: boolean;
   apiVersion?: boolean;
@@ -187,7 +181,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [serviceType, setServiceType] = useState(
     serviceTypes[serviceName] || []
   );
-  const [parseUrl] = useState(seprateUrl(data?.connectionUrl) || {});
+  const [parseUrl] = useState(seprateUrl(data?.jdbc?.connectionUrl) || {});
   const [existingNames] = useState(generateName(serviceList));
   const [ingestion, setIngestion] = useState(!!data?.ingestionSchedule);
   const [selectService, setSelectService] = useState(data?.serviceType || '');
@@ -198,7 +192,9 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [url, setUrl] = useState(parseUrl?.connectionUrl || '');
   // const [port, setPort] = useState(parseUrl?.port || '');
   const [database, setDatabase] = useState(parseUrl?.database || '');
-  const [driverClass, setDriverClass] = useState(data?.driverClass || 'jdbc');
+  const [driverClass, setDriverClass] = useState(
+    data?.jdbc?.driverClass || 'jdbc'
+  );
   const [brokers, setBrokers] = useState(
     data?.brokers?.length ? data.brokers.join(', ') : ''
   );
@@ -208,7 +204,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [dashboardUrl, setDashboardUrl] = useState(data?.dashboardUrl || '');
   const [username, setUsername] = useState(data?.username || '');
   const [password, setPassword] = useState(data?.password || '');
-  const [redashUrl, setRedashUrl] = useState(data?.url || '');
   const [apiKey, setApiKey] = useState(data?.api_key || '');
   const [siteName, setSiteName] = useState(data?.site_name || '');
   const [apiVersion, setApiVersion] = useState(data?.api_version || '');
@@ -227,7 +222,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     dashboardUrl: false,
     username: false,
     password: false,
-    redashUrl: false,
     apiKey: false,
     siteName: false,
     apiVersion: false,
@@ -314,7 +308,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       dashboardUrl,
       username,
       password,
-      redashUrl,
       apiKey,
       siteName,
       apiVersion,
@@ -331,7 +324,6 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       !dashboardUrl &&
       !username &&
       !password &&
-      !redashUrl &&
       !apiKey &&
       !siteName &&
       !apiVersion &&
@@ -371,7 +363,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               {
                 setMsg = {
                   ...setMsg,
-                  redashUrl: !redashUrl,
+                  dashboardUrl: !dashboardUrl,
                   apiKey: !apiKey,
                 };
               }
@@ -457,7 +449,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
                 {
                   dataObj = {
                     ...dataObj,
-                    url: redashUrl,
+                    dashboardUrl: dashboardUrl,
                     // eslint-disable-next-line @typescript-eslint/camelcase
                     api_key: apiKey,
                   };
@@ -610,19 +602,19 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         elemFields = (
           <>
             <div className="tw-mt-4">
-              <label className="tw-block tw-form-label" htmlFor="url">
-                {requiredField('Url:')}
+              <label className="tw-block tw-form-label" htmlFor="dashboard-url">
+                {requiredField('Dashboard Url:')}
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
-                id="url"
-                name="url"
+                id="dashboard-url"
+                name="dashboard-url"
                 placeholder="http(s)://hostname:port"
                 type="text"
-                value={redashUrl}
-                onChange={(e) => setRedashUrl(e.target.value)}
+                value={dashboardUrl}
+                onChange={(e) => setDashboardUrl(e.target.value)}
               />
-              {showErrorMsg.redashUrl && errorMsg('Url is required')}
+              {showErrorMsg.dashboardUrl && errorMsg('Url is required')}
             </div>
             <div className="tw-mt-4">
               <label className="tw-block tw-form-label" htmlFor="api-key">

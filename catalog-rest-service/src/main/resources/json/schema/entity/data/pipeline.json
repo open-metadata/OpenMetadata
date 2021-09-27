@@ -4,7 +4,6 @@
   "title": "Pipeline",
   "description": "This schema defines the Pipeline entity. A pipeline enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.",
   "type": "object",
-
   "properties" : {
     "id": {
       "description": "Unique identifier that identifies a pipeline instance.",
@@ -16,6 +15,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this Pipeline. It could be title or label from the source services.",
+      "type": "string"
+    },
     "fullyQualifiedName": {
       "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.",
       "type": "string",
@@ -23,8 +26,33 @@
       "maxLength": 64
     },
     "description": {
-      "description": "Description of this pipeline.",
+      "description": "Description of this Pipeline.",
       "type": "string"
+    },
+    "pipelineUrl" : {
+      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI",
+      "type": "string",
+      "format": "uri"
+    },
+    "tasks": {
+      "description": "All the tasks that are part of pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this Pipeline.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this Pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
     },
     "href": {
       "description": "Link to the resource corresponding to this entity.",

@@ -50,6 +50,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -235,6 +236,30 @@ public class UserResource {
             .withProfile(create.getProfile()).withTimezone(create.getTimezone());
     addHref(uriInfo, dao.create(user, create.getTeams()));
     return Response.created(user.getHref()).entity(user).build();
+  }
+
+  @PUT
+  @Operation(summary = "Create or Update a user", tags = "users",
+          description = "Create or Update a user.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "The user ",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = User.class))),
+                  @ApiResponse(responseCode = "400", description = "Bad request")
+          })
+  public Response createOrUpdateUser(@Context UriInfo uriInfo,
+                                     @Context SecurityContext securityContext,
+                                     @Valid CreateUser create) throws IOException, ParseException {
+    if (create.getIsAdmin() != null && create.getIsAdmin()) {
+      SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    }
+    User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
+            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
+            .withProfile(create.getProfile()).withTimezone(create.getTimezone());
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(user));
+    RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
+    user = addHref(uriInfo, response.getEntity());
+    return Response.status(response.getStatus()).entity(user).build();
   }
 
   @PATCH

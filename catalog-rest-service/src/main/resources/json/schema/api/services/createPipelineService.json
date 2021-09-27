@@ -1,0 +1,36 @@
+{
+  "$id": "https://open-metadata.org/schema/api/services/createPipelineService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Pipeline service entity request",
+  "description": "Create Pipeline service entity request",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies the this entity instance uniquely",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "description": {
+      "description": "Description of pipeline service entity.",
+      "type": "string"
+    },
+    "serviceType": {
+      "$ref": "../../entity/services/pipelineService.json#/definitions/pipelineServiceType"
+    },
+    "pipelineUrl": {
+      "description": "Pipeline UI URL",
+      "type": "string",
+      "format": "uri"
+    },
+    "ingestionSchedule": {
+      "description": "Schedule for running pipeline ingestion jobs",
+      "$ref": "../../type/schedule.json"
+    }
+  },
+  "required": [
+    "name",
+    "serviceType",
+    "pipelineUrl"
+  ]
+}

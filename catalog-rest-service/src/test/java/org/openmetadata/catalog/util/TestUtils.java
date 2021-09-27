@@ -50,6 +50,7 @@ public final class TestUtils {
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
   public static JdbcInfo JDBC_INFO;
   public static URI DASHBOARD_URL;
+  public static URI PIPELINE_URL;
 
   static {
     try {
@@ -65,6 +66,15 @@ public final class TestUtils {
       DASHBOARD_URL = new URI("http://localhost:8088");
     } catch (URISyntaxException e) {
       DASHBOARD_URL = null;
+      e.printStackTrace();
+    }
+  }
+
+  static {
+    try {
+      PIPELINE_URL = new URI("http://localhost:8080");
+    } catch (URISyntaxException e) {
+      PIPELINE_URL = null;
       e.printStackTrace();
     }
   }

@@ -237,10 +237,7 @@ public abstract class TopicRepository {
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
-    if (topic == null) {
-      return null;
-    }
-    return EntityUtil.populateOwner(topic.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return topic != null ? EntityUtil.populateOwner(topic.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
   }
 
   private void setOwner(Topic topic, EntityReference owner) {

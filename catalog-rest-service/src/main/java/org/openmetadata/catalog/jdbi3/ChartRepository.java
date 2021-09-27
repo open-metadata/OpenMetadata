@@ -236,10 +236,7 @@ public abstract class ChartRepository {
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
-    if (chart == null) {
-      return null;
-    }
-    return EntityUtil.populateOwner(chart.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return chart != null ? EntityUtil.populateOwner(chart.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
   }
 
   private void setOwner(Chart chart, EntityReference owner) {

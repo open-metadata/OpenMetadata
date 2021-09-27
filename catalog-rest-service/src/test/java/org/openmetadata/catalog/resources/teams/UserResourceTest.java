@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import javax.ws.rs.core.Response;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,6 +55,7 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.OK;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -155,6 +157,18 @@ public class UserResourceTest extends CatalogApplicationTest {
     create = create(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
     createAndCheckUser(create, adminAuthHeaders());
   }
+
+  @Test
+  public void put_validUser_200_ok(TestInfo test) throws HttpResponseException {
+    // Create user with different optional fields
+    CreateUser create = create(test, 1);
+    User user = createOrUpdateAndCheckUser(create, CREATED, adminAuthHeaders());
+    CreateUser update = new CreateUser().withName(user.getName()).withEmail("test1@email.com")
+            .withDisplayName("displayName1");
+    createOrUpdateAndCheckUser(update, OK, adminAuthHeaders());
+  }
+
+
 
   @Test
   public void post_validAdminUser_Non_Admin_401(TestInfo test) {
@@ -485,6 +499,12 @@ public class UserResourceTest extends CatalogApplicationTest {
     assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
+  public static User putUser(CreateUser user, Response.Status expectedStatus, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("users");
+    return TestUtils.put(target, user, User.class, expectedStatus, authHeaders);
+  }
+
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
           throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
@@ -526,6 +546,24 @@ public class UserResourceTest extends CatalogApplicationTest {
   public static User createAndCheckUser(CreateUser create, Map<String, String> authHeaders)
           throws HttpResponseException {
     final User user = createUser(create, authHeaders);
+    List<Team> expectedTeams = new ArrayList<>();
+    for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
+      expectedTeams.add(new Team().withId(teamId));
+    }
+    validateUser(user, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+
+    // GET the newly created user and validate
+    User getUser = getUser(user.getId(), "profile,teams", authHeaders);
+    validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+    return user;
+  }
+
+  public static User createOrUpdateAndCheckUser(CreateUser create, Response.Status expectedStatus,
+                                                Map<String, String> authHeaders)
+          throws HttpResponseException {
+    final User user = putUser(create, expectedStatus, authHeaders);
     List<Team> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new Team().withId(teamId));
