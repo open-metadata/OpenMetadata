@@ -89,19 +89,19 @@ const MyDataHeader: FunctionComponent<Props> = ({
       },
       service: {
         icon: Icons.SERVICE,
-        data: `${countServices} of Services`,
+        data: `${countServices} Services`,
         link: `/services`,
         dataTestId: 'service',
       },
       user: {
         icon: Icons.USERS,
-        data: `${users.length} of Users`,
+        data: `${users.length} Users`,
         link: `/teams`,
         dataTestId: 'user',
       },
       terms: {
         icon: Icons.TERMS,
-        data: `${userTeams.length} of Teams`,
+        data: `${userTeams.length} Teams`,
         link: `/teams`,
         dataTestId: 'terms',
       },
