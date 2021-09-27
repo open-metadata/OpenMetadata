@@ -9,87 +9,97 @@
       "columns": [
         {
           "name": "address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Unique identifier for the address.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "first_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "First name of the customer.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 3
         },
         {
           "name": "last_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Last name of the customer.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 4
         },
         {
           "name": "address1",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The first address line. For example, 150 Elgin St.",
+          "dataLength": 500,
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "address2",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The second address line. For example, Suite 800.",
+          "dataLength": 500,
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "company",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the customer's business, if one exists.",
+          "dataLength": 100,
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "city",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the city. For example, Palo Alto.",
+          "dataLength": 100,
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "region",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.",
+          "dataLength": 512,
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "zip",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The ZIP or postal code. For example, 90210.",
+          "dataLength": 10,
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "country",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The full name of the country. For example, Canada.",
           "tags": null,
+          "dataLength": 50,
           "ordinalPosition": 11
         },
         {
           "name": "phone",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The phone number of the customer.",
           "tags": null,
+          "dataLength": 15,
           "ordinalPosition": 12
         }
       ],
@@ -109,16 +119,17 @@
       "columns": [
         {
           "name": "api_client_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.",
           "tags": null,
           "ordinalPosition": 1
         },
         {
           "name": "title",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Full name of the app or channel. For example, Point of Sale, Online Store.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 2
         }
       ],
@@ -139,183 +150,191 @@
       "columns": [
         {
           "name": "customer_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the customer. This is the primary key column for this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "average_order_size",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The average amount of money that the customer spends on orders from the store. The value is formatted in the store's currency and it is calculated using the following formula: total_order_value / total_order_count.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "total_order_count",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The total number of orders that the customer has made from this store across their lifetime.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "total_order_value",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "first_order_date",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "last_order_date",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "rank",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "A numeric ranking of the customer's lifetime value for the store relative to all customers.",
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "new",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true if the customer made their first order in the last 30 days. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "returning",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer has made more than one order. Returns false when the customer has made one order only. Returns Null when the customer exists in Shopify, but they have not made any orders. For example, this column can be null because the customer provided their contact information and then abandoned the checkout. Customers can also be created manually in the Shopify admin and by apps that use the Admin API.",
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "loyal",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer has a high probability of returning, and has placed more orders than the average customer. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 11
         },
         {
           "name": "at_risk",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true for repeat customers, who have a medium probability of returning and have not placed an order in a while. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 12
         },
         {
           "name": "dormant",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer has a very low probability of returning to make another purchase. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 13
         },
         {
           "name": "promising",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer has a high probability of returning and becoming a loyal customer. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 14
         },
         {
           "name": "predicted_average_number_of_days_between_orders",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The predicated number of days between future orders.",
           "tags": null,
           "ordinalPosition": 15
         },
         {
           "name": "expected_purchase_value_in_next_30_days",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The total purchase amount of the orders that the customer is expected to make in the next 30 days. The value is formatted in the store's currency.",
           "tags": null,
           "ordinalPosition": 16
         },
         {
           "name": "first_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The first name of the customer.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 17
         },
         {
           "name": "last_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The last name of the customer.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 18
         },
         {
           "name": "city",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The city from the customer's billing address. For example, Topeka.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 19
         },
         {
           "name": "region",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the region, such as the province or state, from the customer's billing address. For example, Alberta, Florida. This column is the same as CustomerAddress.province in the Admin API.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 20
         },
         {
           "name": "country",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The country from the customer's billing address. For example, United States.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 21
         },
         {
           "name": "email",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The email of the customer.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 22
         },
         {
           "name": "phone",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The phone number of the customer.",
           "tags": null,
+          "dataLength": 15,
           "ordinalPosition": 23
         },
         {
           "name": "verified_email",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer's email has been verified. Otherwise returns false.",
           "tags": null,
+          "dataLength": 15,
           "ordinalPosition": 24
         },
         {
           "name": "created_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the customer was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2018-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 25
         },
         {
           "name": "accepts_marketing",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Returns true when the customer has agreed to accept marketing. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 26
@@ -337,24 +356,25 @@
       "columns": [
         {
           "name": "location_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the POS location as provided by the merchant. For example, 150 Elgin Street or Downtown Boutique.",
           "tags": null,
-          "ordinalPosition": 3
+          "ordinalPosition": 3,
+          "dataLength": 100
         }
       ],
       "database": {
@@ -373,43 +393,45 @@
       "columns": [
         {
           "name": "product_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Unique identifier for the product. This column is the primary key for this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "title",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the product.",
           "tags": null,
-          "ordinalPosition": 3
+          "ordinalPosition": 3,
+          "dataLength": 100
         },
         {
           "name": "vendor",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the manufacturer, wholesaler, or other vendor of the product.",
           "tags": null,
-          "ordinalPosition": 4
+          "ordinalPosition": 4,
+          "dataLength": 100
         },
         {
           "name": "created_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "Date (ISO 8601) and time (UTC) when the product was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "deleted_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "Date (ISO 8601) and time (UTC) when the product was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 6
@@ -431,71 +453,74 @@
       "columns": [
         {
           "name": "product_variant_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the product variant. This column is the primary key for this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "product_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the product. This column is a foreign key reference to the product_id column in dim_product table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "title",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The title of the product variant.",
           "tags": null,
-          "ordinalPosition": 4
+          "ordinalPosition": 4,
+          "dataLength": 100
         },
         {
           "name": "barcode",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The Barcode, UPC, or ISBN number of the product variant.",
           "tags": null,
-          "ordinalPosition": 5
+          "ordinalPosition": 5,
+          "dataLength": 100
         },
         {
           "name": "sku",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The SKU of the product variant.",
           "tags": null,
-          "ordinalPosition": 6
+          "ordinalPosition": 6,
+          "dataLength": 100
         },
         {
           "name": "price",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The price of the product variant, in your store's currency.",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "grams",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Number of grams that the product variant weighs.",
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "created_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the product variant was added to the store. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "deleted_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the product variant was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 10
@@ -517,25 +542,27 @@
       "columns": [
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Unique identifier for the store. This column is the primary key for this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of your store.",
           "tags": null,
-          "ordinalPosition": 2
+          "ordinalPosition": 2,
+          "dataLength": 100
         },
         {
           "name": "domain",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Primary domain specified for your online store. Your primary domain is the one that your customers and search engines see. For example, www.mycompany.com.",
           "tags": null,
-          "ordinalPosition": 3
+          "ordinalPosition": 3,
+          "dataLength": 1000
         }
       ],
       "database": {
@@ -554,38 +581,41 @@
       "columns": [
         {
           "name": "user_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Unique identifier for the user of your Shopify POS or your Shopify admin.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "first_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "First name of the staff member.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 3
         },
         {
           "name": "last_name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Last name of the staff member.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 4
         },
         {
           "name": "email",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Email address of the staff member.",
           "tags": null,
+          "dataLength": 100,
           "ordinalPosition": 5
         }
       ],
@@ -605,121 +635,125 @@
       "columns": [
         {
           "name": "line_item_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the line item. This column is the primary key for the this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "billing_address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "order_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the order. This column is a foreign key reference to the orders_id column in the fact_order table.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "product_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the product ordered, unless the line item is for shipping costs (you can add custom items using a draft order). This column is a foreign key reference to the product_id column in the dim_product table.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "product_variant_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the line item. This name combines the product title and the variant title into the following format: product-title - variant-title. If there is no variant title, then the format is product-title. This column is the same as order.line_items.name\"in the Admin API.",
           "tags": null,
-          "ordinalPosition": 7
+          "ordinalPosition": 7,
+          "dataLength": 100
         },
         {
           "name": "product_title",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the product ordered. This column is the same as order.line_items.title in the Admin API.",
           "tags": null,
-          "ordinalPosition": 8
+          "ordinalPosition": 8,
+          "dataLength": 150
         },
         {
           "name": "price",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Price of the product variant.",
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "quantity",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Number of product variant items ordered in the line item.",
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "requires_shipping",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Whether the product variant requires fulfillment (shipping). For example, online gift cards don't require shipping.",
           "tags": null,
           "ordinalPosition": 11
         },
         {
           "name": "taxable",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Whether taxes are charged for the product variant, otherwise contains 0. For example, when the line item is a gift card, taxes are not charged.",
           "tags": null,
           "ordinalPosition": 12
         },
         {
           "name": "gift_card",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Whether the product variant is a gift card.",
           "tags": null,
           "ordinalPosition": 13
         },
         {
           "name": "grams",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Weight of a single unit of the product variant. Contains 0 when the product variant is a gift card.",
           "tags": null,
           "ordinalPosition": 14
         },
         {
           "name": "product_vendor",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the manufacturer, wholesaler, or other vendor of the product.",
           "tags": null,
-          "ordinalPosition": 15
+          "ordinalPosition": 15,
+          "dataLength": 200
         },
         {
           "name": "fulfillable_quantity",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Number of product variant items in the line item that require fulfillment. Some product variants, such as gift cards and digital products, do not need to be fulfilled.",
           "tags": null,
           "ordinalPosition": 16
         },
         {
           "name": "fulfillment_service",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Name of the fulfillment service provider that fulfilled (shipped) the variant ordered. Contains manual when there is no fulfillment service specified for the variant.",
           "tags": null,
-          "ordinalPosition": 17
+          "ordinalPosition": 17,
+          "dataLength": 100
         }
       ],
       "database": {
@@ -738,103 +772,105 @@
       "columns": [
         {
           "name": "order_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Unique numeric identifier for the order across Shopify stores. In your Shopify admin, this ID is used internally. Most merchants are familiar with the other ID that appears on orders in the Shopify admin. This ID can be found in the Name column.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "api_client_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the API client that called the Shopify API. This column is a foreign key reference to the api_client_id column in the dim_api_client table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "billing_address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "customer_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "location_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "shipping_address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "user_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the staff member who created the order. This column is a foreign key reference to the ID in the dim_staff table. This column applies to Shopify POS orders and to orders that were converted from draft orders.",
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "name",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The identifier of the order that the merchant and customer sees. This is the ID that appears on the order in the Shopify admin. For example, #1001. By default, this identifier is unique to one store. If you have multiple stores, then use the order_id column to guarantee uniqueness across multiple stores.",
           "tags": null,
-          "ordinalPosition": 9
+          "ordinalPosition": 9,
+          "dataLength": 100
         },
         {
           "name": "total_price",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The total price of the order, including shipping and taxes. This column includes gift card sales, but does not include returns. This value may not be accurate for API-imported orders. Do not use this column for financial calculations. Instead, use the total_price column in the sales table.",
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "discount_code",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The discount code that was applied to the order.",
           "tags": null,
-          "ordinalPosition": 11
+          "ordinalPosition": 11,
+          "dataLength": 100
         },
         {
           "name": "processed_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the order was created. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 12
         },
         {
           "name": "canceled_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "If the order was canceled, then this column contains the date (ISO 8601) and time (UTC) when the order was canceled. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 13
         },
         {
           "name": "deleted_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "If the order was deleted, then this column contains the date (ISO 8601) and time (UTC) when the order was deleted. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 14
         },
         {
           "name": "test",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when the order is a test order, False otherwise.",
           "tags": null,
           "ordinalPosition": 15
@@ -856,190 +892,191 @@
       "columns": [
         {
           "name": "sale_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the sale row. This column is the primary key for this table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
+          "constraint": "PRIMARY_KEY",
           "ordinalPosition": 1
         },
         {
           "name": "billing_address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the billing address of the customer. This column is a foreign key reference to the address_id column in the dim_address table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "api_client_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the API client from which the adjustment was made. This column is a foreign key reference to the ID of the API client in the dim_api_client table.",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "customer_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the customer. This column is a foreign key reference to the customer_id column in the dim_customer table.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "line_item_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the line item. This column is a foreign key reference to line_item_id column in the fact_line_item table. When the row describes a shipping charge, there is no line_item_id value.",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "location_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the Shopify POS location. This column is a foreign key reference to the location_id column in the dim_location table. When the order is not a POS order, then there is no location ID.",
           "tags": null,
           "ordinalPosition": 6
         },
         {
           "name": "order_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the order. This column is a foreign key reference to order_id column in the fact_order table.",
           "tags": null,
           "ordinalPosition": 7
         },
         {
           "name": "product_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the product sold or returned. This column is a foreign key reference to the product_id column in the dim_product table. When the line item describes a shipping charge, then there is no product ID.",
           "tags": null,
           "ordinalPosition": 8
         },
         {
           "name": "product_variant_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the product variant sold or returned. This column is a foreign key reference to the product_variant_id column in the dim_product_variant table. When the row describes a shipping charge, then there is no product variant ID.",
           "tags": null,
           "ordinalPosition": 9
         },
         {
           "name": "shipping_address_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the shipping address of the customer who made the order. This column is a foreign key reference to the address_id column in the dim_address table. Some sales, such as those made using Shopify POS, do not have a customer's shipping address associated with them.",
           "tags": null,
           "ordinalPosition": 10
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of your store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 11
         },
         {
           "name": "user_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "ID of the staff member who is associated with the sale. This column is a foreign key reference to the user_id column in the dim_staff table. Not all sales have a staff member associated with them.",
           "tags": null,
           "ordinalPosition": 12
         },
         {
           "name": "gross_sales",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Price of the product purchased multiplied by the quantity ordered. This value is formatted in the currency of your store. If the product purchased is a gift card, then 0 is returned because gift cards are not included in gross sales calculations. The gross sales amount also does not include any discounts, returns, taxes or shipping charges. The gross_sales column is calculated using the following formula: product (excluding gift cards) price x quantity (before taxes, shipping, discounts, and returns). Canceled, pending, and unpaid orders will have a value for this column, but test and deleted orders will not.",
           "tags": null,
           "ordinalPosition": 13
         },
         {
           "name": "net_sales",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Net sales of the line item. The value of the line item's gross sales minus any discounts minus the value of any returned items. Net sales does not include taxes or shipping costs, or the sale of gift cards. If the line item contains gift cards, then the field contains 0. Net sales is calculated by using the following formula: gross_sales - discounts - returns.",
           "tags": null,
           "ordinalPosition": 14
         },
         {
           "name": "total_sales",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Total sales of the line item. This value does not include gift cards. Total sales is calculated using the following formula: net_sales + shipping + taxes.",
           "tags": null,
           "ordinalPosition": 15
         },
         {
           "name": "returns",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Value of the products returned by the customer regardless of the amount that the merchant actually receives from the customer. This value is usually a negative number, but it can also be zero (for example, if the item being returned was a free gift with purchase). Taxes and shipping charges are not included. The returns amount is calculated by using the following formula: 0 - (product variant price * quantity) + discounts.",
           "tags": null,
           "ordinalPosition": 16
         },
         {
           "name": "discounts",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Total amount discounted from the line item. The discounts column contains the sum of any line item discounts plus the line item's portion of any order-level discount. The value of the discount is either negative or zero. The discounts column is calculated using the following formula: line item discount + order level discount share.",
           "tags": null,
           "ordinalPosition": 17
         },
         {
           "name": "shipping",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "When the line item is for a shipping charge, this column contains the amount charged for shipping the order or the amount of the shipping charge that is refunded when an item is returned. This value is positive for a shipping charge, and negative for the value returned. Any applicable taxes charged for shipping costs are recorded in the Taxes column. This column is calculated using the following formula: shipping charge or refund - shipping discount..",
           "tags": null,
           "ordinalPosition": 18
         },
         {
           "name": "taxes",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The amount of taxes charged or returned for the line item. This value will be positive for a sale and negative for a return. Tax on an order is split proportionally amongst the line items to which it applies. Gift cards are not taxed. If multiple taxes are applied (for example, State and City sales taxes), then this column contains the sum of those tax amounts. This column can include taxes charged on shipping, if they are applicable.",
           "tags": null,
           "ordinalPosition": 19
         },
         {
           "name": "gift_card_discounts",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Total amount discounted from gift card sales. For example, if a $50 gift card is sold at a $10 discount for $40, then this column will contain $10.",
           "tags": null,
           "ordinalPosition": 20
         },
         {
           "name": "gift_card_gross_sales",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Total face value of gift cards sold. For example, a $50 gift card is sold at a $10 discount for $40. In this example, the gift_card_gross_sales column will contain $50. Use this column to measure the increase in liabilities due to gift cards being issued (even though this value will not balance against the actual payments that you receive).",
           "tags": null,
           "ordinalPosition": 21
         },
         {
           "name": "gift_cards_issued",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Net amount that the gift cards sold for, after discounts. For example, for a $50 gift card sold at a $10 discount for $40, this column will contain $40. Use this column to balance against the payments that you receive.",
           "tags": null,
           "ordinalPosition": 22
         },
         {
           "name": "quantity",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "Quantity of the items sold or returned. This value will be negative for returns and zero for line items that contain shipping charges.",
           "tags": null,
           "ordinalPosition": 23
         },
         {
           "name": "currency",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "Three-letter ISO currency code of the payment. For example, USD is the code for United States Dollar. This is the currency of the store at the time of the order.",
           "tags": null,
-          "ordinalPosition": 24
+          "ordinalPosition": 24,
+          "dataLength": 200
         },
         {
           "name": "is_deleted",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Contains 1 when the sale's order was deleted, otherwise contains 0.",
           "tags": null,
           "ordinalPosition": 25
         },
         {
           "name": "test",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "Whether the sale is a test order. Returns True when the sale is a test sale. See Test orders.",
           "tags": null,
           "ordinalPosition": 26
         },
         {
           "name": "happened_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "Date (ISO 8601) and time (UTC) when the order was created for a sale or when the order was returned.",
           "tags": null,
           "ordinalPosition": 27
@@ -1061,222 +1098,236 @@
       "columns": [
         {
           "name": "derived_session_token",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The ID of the visitor session. This column is the primary key for the table.",
           "tags": null,
-          "columnConstraint": "PRIMARY_KEY",
-          "ordinalPosition": 1
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1,
+          "dataLength": 200
         },
         {
           "name": "shop_id",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
           "tags": null,
           "ordinalPosition": 2
         },
         {
           "name": "session_duration",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The time that the visitor spent in your store during the session. This value is the sum of the time spent on each page view (except for the last page viewed) during the session. The maximum value is 1800 seconds (30 minutes).",
           "tags": null,
           "ordinalPosition": 3
         },
         {
           "name": "count_of_pageviews",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The number of pages viewed during the session.",
           "tags": null,
           "ordinalPosition": 4
         },
         {
           "name": "session_started_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when this visitor session begins. It is the timestamp when the visitor first visits the store during this session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 5
         },
         {
           "name": "session_token",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The ID of the session token that is created by the browser. A session token expires after 30 minutes of inactivity.",
           "tags": null,
-          "ordinalPosition": 6
+          "ordinalPosition": 6,
+          "dataLength": 200
         },
         {
           "name": "user_token",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The unique token assigned to the user. A user token expires after 2 years of inactivity.",
           "tags": null,
-          "columnConstraint": "UNIQUE",
-          "ordinalPosition": 7
+          "constraint": "UNIQUE",
+          "ordinalPosition": 7,
+          "dataLength": 20
         },
         {
           "name": "landing_page_url",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The full URL of the first page visited during the session. For example, https://www.myshop.com/products/cool-tshirt?utm_source=Shop&utm_medium=....",
           "tags": null,
-          "ordinalPosition": 8
+          "ordinalPosition": 8,
+          "dataLength": 1000
         },
         {
           "name": "exit_page_path",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The path portion of the URL of the last page that the visitor visited during the session. This field is the same as exit_page_url except that it doesn\u2019t contain the name of the store or any parameters. For example, /products/cool-tshirt.",
           "tags": null,
-          "ordinalPosition": 9
+          "ordinalPosition": 9,
+          "dataLength": 1000
         },
         {
           "name": "exit_page_url",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The full URL of the last page that the visitor visited during the session. For example, https://www.myshop.com/products/cool-tshirt?utm_source=Shop&utm_medium=....",
           "tags": null,
-          "ordinalPosition": 10
+          "ordinalPosition": 10,
+          "dataLength": 1000
         },
         {
           "name": "referrer_tld",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The top-level domain of the referring website. For example, if the hostname is www.facebook.com, then the referrer_tld is com.",
           "tags": null,
-          "ordinalPosition": 11
+          "ordinalPosition": 11,
+          "dataLength": 100
         },
         {
           "name": "ua_browser",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the browser that the visitor used. For example, Mobile Safari, Chrome.",
           "tags": null,
-          "ordinalPosition": 12
+          "ordinalPosition": 12,
+          "dataLength": 200
         },
         {
           "name": "ua_raw",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The string that identifies the user agent of the user. User agent shows data about the operating system and device that a visitor uses to browse your store.",
           "tags": null,
-          "ordinalPosition": 13
+          "ordinalPosition": 13,
+          "dataLength": 2000
         },
         {
           "name": "count_of_orders_completed",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The number of orders created during the session.",
           "tags": null,
           "ordinalPosition": 14
         },
         {
           "name": "completed_first_order_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the visitor completes their first order during this session. Contains NULL if the visitor never completes an order during this session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 15
         },
         {
           "name": "hit_first_checkout_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the visitor first visits the checkout page during this session. Contains NULL if the visitor never visits the checkout page during the session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 16
         },
         {
           "name": "started_first_checkout_at",
-          "columnDataType": "TIMESTAMP",
+          "dataType": "TIMESTAMP",
           "description": "The date (ISO 8601) and time (UTC) when the visitor first starts entering their information into the checkout fields. Contains NULL if the visitor never enters their information during the session. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
           "tags": null,
           "ordinalPosition": 17
         },
         {
           "name": "count_of_cart_additions",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The number of items added to the cart during the session. For example, if a customer adds 5 t-shirts and 1 lipstick to their cart, and then removes one of the t-shirts, then the value in this column is 6.",
           "tags": null,
           "ordinalPosition": 18
         },
         {
           "name": "count_of_distinct_products_added_to_cart",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The number of distinct products added to the cart during the session. For example, if a customer adds 5 t-shirts and 1 lipstick are added to the cart, then the value in this column is 2.",
           "tags": null,
           "ordinalPosition": 19
         },
         {
           "name": "count_of_distinct_product_variants_added_to_cart",
-          "columnDataType": "NUMERIC",
+          "dataType": "NUMERIC",
           "description": "The number of distinct product variants added to the cart during the session. For example, if a customer adds 2 small and 3 large t-shirts and 1 lipstick to the cart, then the value in this column is 3.",
           "tags": null,
           "ordinalPosition": 20
         },
         {
           "name": "had_error",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when an an error appears during the checkout that is not a payment error, False otherwise.",
           "tags": null,
           "ordinalPosition": 21
         },
         {
           "name": "had_payment_error",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when a payment error occurs during the checkout, False otherwise.",
           "tags": null,
           "ordinalPosition": 22
         },
         {
           "name": "had_out_of_stock_warning",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when an out-of-stock warning appears on the checkout page, False otherwise.",
           "tags": null,
           "ordinalPosition": 23
         },
         {
           "name": "had_credit_card_info_error",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when a payment error occurs because of a credit card error, False otherwise.",
           "tags": null,
           "ordinalPosition": 24
         },
         {
           "name": "had_discount",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when a checkout error occurs because of a discount error, False otherwise.",
           "tags": null,
           "ordinalPosition": 25
         },
         {
           "name": "had_free_shipping",
-          "columnDataType": "BOOLEAN",
+          "dataType": "BOOLEAN",
           "description": "True when the order has no shipping cost, False otherwise.",
           "tags": null,
           "ordinalPosition": 26
         },
         {
           "name": "location_city",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the city where the visitor is located. For example, Topeka.",
           "tags": null,
-          "ordinalPosition": 27
+          "ordinalPosition": 27,
+          "dataLength": 100
         },
         {
           "name": "location_region",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the region, such as a province or state, where the visitor is located. For example, Kansas.",
           "tags": null,
-          "ordinalPosition": 28
+          "ordinalPosition": 28,
+          "dataLength": 100
         },
         {
           "name": "location_region_code",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The code for the region, such as a province or state, where the visitor is located. For example, KS.",
           "tags": null,
-          "ordinalPosition": 29
+          "ordinalPosition": 29,
+          "dataLength": 200
         },
         {
           "name": "location_country",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The name of the country where the visitor is located. For example, United States.",
           "tags": null,
-          "ordinalPosition": 30
+          "ordinalPosition": 30,
+          "dataLength": 100
         },
         {
           "name": "location_country_code",
-          "columnDataType": "VARCHAR",
+          "dataType": "VARCHAR",
           "description": "The two-digit ISO country code where the visitor is located. For example, US.",
           "tags": null,
-          "ordinalPosition": 31
+          "ordinalPosition": 31,
+          "dataLength": 100
         }
       ],
       "database": {
