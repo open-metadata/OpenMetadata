@@ -5,6 +5,7 @@
       "name": "dim_address",
       "tableType": "Regular",
       "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
+      "fullyQualifiedName": "bigquery.shopify.dim_address",
       "columns": [
         {
           "name": "address_id",
@@ -104,6 +105,7 @@
       "name": "dim_api_client",
       "tableType": "Regular",
       "description": "This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.",
+      "fullyQualifiedName": "bigquery.shopify.dim_api_client",
       "columns": [
         {
           "name": "api_client_id",
@@ -133,6 +135,7 @@
       "name": "dim_customer",
       "tableType": "Regular",
       "description": "The dimension table contains data about your customers. The customers table contains one row per customer. It includes historical metrics (such as the total amount that each customer has spent in your store) as well as forward-looking metrics (such as the predicted number of days between future orders and the expected order value in the next 30 days). This table also includes columns that segment customers into various categories (such as new, returning, promising, at risk, dormant, and loyal), which you can use to target marketing activities.",
+      "fullyQualifiedName": "bigquery.shopify.dim_customer",
       "columns": [
         {
           "name": "customer_id",
@@ -330,6 +333,7 @@
       "name": "dim_location",
       "tableType": "Regular",
       "description": "The dimension table contains metrics about your Shopify POS. This table contains one row per Shopify POS location. You can use this table to generate a list of the Shopify POS locations or you can join the table with the sales table to measure sales performance.",
+      "fullyQualifiedName": "bigquery.shopify.dim_location",
       "columns": [
         {
           "name": "location_id",
@@ -365,6 +369,7 @@
       "name": "dim_product",
       "tableType": "Regular",
       "description": "This dimension table contains information about each of the products in your store. This table contains one row per product. This table reflects the current state of products in your Shopify admin.",
+      "fullyQualifiedName": "bigquery.shopify.dim_product",
       "columns": [
         {
           "name": "product_id",
@@ -422,6 +427,7 @@
       "name": "dim_product_variant",
       "tableType": "Regular",
       "description": "This dimension table contains current information about each of the product variants in your store. This table contains one row per product variant.",
+      "fullyQualifiedName": "bigquery.shopify.dim_product_variant",
       "columns": [
         {
           "name": "product_variant_id",
@@ -507,6 +513,7 @@
       "name": "dim_shop",
       "tableType": "Regular",
       "description": "This dimension table contains online shop information. This table contains one shop per row.",
+      "fullyQualifiedName": "bigquery.shopify.dim_shop",
       "columns": [
         {
           "name": "shop_id",
@@ -543,6 +550,7 @@
       "name": "dim_staff",
       "tableType": "Regular",
       "description": "This dimension table contains information about the staff accounts in the store. It contains one row per staff account. Use this table to generate a list of your staff accounts, or join it with the sales, API clients and locations tables to analyze staff performance at Shopify POS locations.",
+      "fullyQualifiedName": "bigquery.shopify.dim_staff",
       "columns": [
         {
           "name": "user_id",
@@ -593,6 +601,7 @@
       "name": "fact_line_item",
       "tableType": "Regular",
       "description": "The fact table contains information about the line items in orders. Each row in the table is a line item in an order. It contains product and product variant details as they were at the time of the order. This table does not include information about returns. Join this table with the TODO fact_sales table to get the details of the product on the day it was sold. This data will match what appears on the order in your Shopify admin as well as the in the Sales reports.",
+      "fullyQualifiedName": "bigquery.shopify.fact_line_item",
       "columns": [
         {
           "name": "line_item_id",
@@ -725,6 +734,7 @@
       "name": "fact_order",
       "tableType": "Regular",
       "description": "The orders table contains information about each order in your store. Although this table is good for generating order lists and joining with the dim_customer, use the sales table instead for computing financial or other metrics.",
+      "fullyQualifiedName": "bigquery.shopify.fact_order",
       "columns": [
         {
           "name": "order_id",
@@ -842,6 +852,7 @@
       "name": "fact_sale",
       "tableType": "Regular",
       "description": "The fact table captures the value of products sold or returned, as well as the values of other charges such as taxes and shipping costs. The sales table contains one row per order line item, one row per returned line item, and one row per shipping charge. Use this table when you need financial metrics.",
+      "fullyQualifiedName": "bigquery.shopify.fact_sale",
       "columns": [
         {
           "name": "sale_id",
@@ -1046,6 +1057,7 @@
       "name": "fact_session",
       "tableType": "Regular",
       "description": "This fact table contains information about the visitors to your online store. This table has one row per session, where one session can contain many page views. If you use Urchin Traffic Module (UTM) parameters in marketing campaigns, then you can use this table to track how many customers they direct to your store.",
+      "fullyQualifiedName": "bigquery.shopify.fact_session",
       "columns": [
         {
           "name": "derived_session_token",

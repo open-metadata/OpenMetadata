@@ -257,13 +257,14 @@ class SQLSource(Source):
                 self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
 
                 description = _get_table_description(schema, table_name, inspector)
-
+                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table_name,
                     tableType='Regular',
                     description=description if description is not None else ' ',
+                    fullyQualifiedName=fqn,
                     columns=table_columns
                 )
                 if self.sql_config.generate_sample_data:
@@ -314,11 +315,13 @@ class SQLSource(Source):
 
                 description = _get_table_description(schema, view_name, inspector)
                 table_columns = self._get_columns(schema, view_name, inspector)
+                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{view_name}"
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
                     tableType='View',
                     description=description if description is not None else ' ',
+                    fullyQualifiedName=fqn,
                     columns=table_columns,
                     viewDefinition=view_definition
                 )

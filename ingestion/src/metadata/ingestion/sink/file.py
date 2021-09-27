@@ -57,7 +57,7 @@ class FileSink(Sink):
         if self.wrote_something:
             self.file.write(",\n")
 
-        self.file.write(record.to_json())
+        self.file.write(record.json())
         self.wrote_something = True
         self.report.records_written(record)
 

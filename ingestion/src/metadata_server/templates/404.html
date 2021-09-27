@@ -1,0 +1,9 @@
+{% extends 'layout/base.html' %}
+{% load static %}
+{% block content %}
+<div class="tw-flex tw-flex-col tw-place-items-center tw-mt-24" data-testid="no-page-found">
+   <div class="tw-flex tw-flex-col tw-mt-24 tw-place-items-center" data-testid="error"> <img data-testid="no-data-found" src="{% static 'img/no-data-found.svg' %}" width="500"></div>
+   <div class="tw-flex tw-mt-3 tw-justify-around" data-testid="route-links"><a class="tw-mr-2" href="/"><button class="tw-align-bottom tw-inline-flex tw-items-center tw-justify-center tw-cursor-pointer 
+      tw-leading-5 tw-transition-colors tw-duration-150 tw-font-medium focus:tw-outline-none tw-px-4 tw-py-2 tw-rounded-lg tw-text-sm tw-text-white tw-bg-primary tw-border tw-border-transparent active:tw-bg-primary-active hover:tw-bg-primary-hover focus:tw-bg-primary-active focus:tw-ring focus:tw-ring-purple-300  " type="button">Go to Home</button></a></div>
+</div>
+{% endblock content %}

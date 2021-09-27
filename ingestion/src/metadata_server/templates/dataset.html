@@ -1,0 +1,157 @@
+{% extends 'layout/base.html' %} 
+{% load static %}
+{% block title %} Openmetadata - Dataset details{% endblock title %}
+{% block content %}
+
+{% if error %}
+    <h3>{{error}}</h3>
+{% else %}
+
+<div class="tw-px-4 w-full">
+    <div>
+        <div class="tw-flex tw-flex-col">
+            <div class="tw-flex tw-flex-initial tw-justify-between tw-items-center">
+                <nav class="" data-testid="breadcrumb">
+                    <ol class="list-reset tw-py-2 tw-rounded tw-flex">
+                        <li data-testid="breadcrumb-link"><img alt="" class="tw-inline tw-h-5 tw-w-5 tw-mr-2" src="{% static 'img/bigquery.png' %}"><a class="link-title" href="/service/BigQuery/bigquery">{{dataset.service|lower}}</a><span class="tw-px-2"><i class="fas fa-angle-double-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"></i></span></li>
+                        <li data-testid="breadcrumb-link"><a class="link-title" href="/database/bigquery.shopify">{{dataset.database.name}}</a><span class="tw-px-2"><i class="fas fa-angle-double-right tw-text-xs tw-cursor-default tw-text-gray-400 tw-align-middle"></i></span></li>
+                        <li data-testid="breadcrumb-link"><span class="link-title tw-font-normal tw-cursor-text hover:tw-text-primary hover:tw-no-underline" data-testid="inactive-link">{{dataset.name}}</span></li>
+                    </ol>
+                </nav>
+                <div class="tw-flex tw-h-6 tw-ml-2 tw-mt-2"><span class="tw-flex tw-border tw-border-primary tw-rounded tw-text-primary"><button class="tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none tw-border-primary" data-testid="follow-button"><i class="far fa-star"></i> Follow</button><span class="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r">0</span></span></div>
+            </div>
+        </div>
+        
+        <div class="tw-flex tw-gap-1 tw-mb-2 tw-mt-1"><span><span class="tw-text-grey-muted tw-font-normal">Owner :</span> <span class="tw-pl-1 tw-font-normal">{{dataset.owner.name|default:"--"}}</span><span class="tw-mx-3 tw-inline-block tw-text-gray-400">•</span></span><span><span class="tw-text-grey-muted tw-font-normal">Tier :</span> <span class="tw-pl-1 tw-font-normal">
+        {% if dataset.tags %}
+            Tier2
+        
+        {% else %}
+        --
+        {% endif %}
+            </span><span class="tw-mx-3 tw-inline-block tw-text-gray-400">•</span></span><span><span class="tw-text-grey-muted tw-font-normal">Usage :</span> <span class="tw-pl-1 ">{% if dataset.usageSummary.weeklyStats.percentileRank %}{% cycle 'Medium - ' 'Low - ' %} {% endif %}{{dataset.usageSummary.weeklyStats.percentileRank|default:"--"}}{% if dataset.usageSummary.weeklyStats.percentileRank %}th pctile
+                  {% endif %} 
+ </span><span class="tw-mx-3 tw-inline-block tw-text-gray-400">•</span></span><span><span class="tw-text-grey-muted tw-font-normal">Queries :</span> <span class="tw-pl-1 tw-font-normal">85 past week</span><span class="tw-mx-3 tw-inline-block tw-text-gray-400">•</span></span><span><span class="tw-text-grey-muted tw-font-normal">Rows :</span> <span class="tw-pl-1 tw-font-normal">--</span><span class="tw-mx-3 tw-inline-block tw-text-gray-400">•</span></span><span><span class="tw-text-grey-muted tw-font-normal">Columns :</span> <span class="tw-pl-1 tw-font-normal">--</span></span></div>
+        <div class="tw-flex tw-flex-wrap tw-pt-1 tw-group"></div>
+    </div>
+    <div class="tw-block tw-mt-1">
+        <div class="tw-bg-transparent tw--mx-4">
+            <nav class="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"><button class="tw-gh-tabs active" data-testid="tab"><img alt="schema" class="svg-icon " src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjI2MjEgMy4wNjQ5N0MxNC4wMzIxIDMuNTc0OTMgMTUuMDY4NiAzLjM2NDk1IDE1LjU3ODYgMi41OTVDMTYuMDg4NiAxLjgyNTA0IDE1Ljg3ODYgMC43ODg0NTIgMTUuMTA4NiAwLjI3ODQ4NEMxNC4zMzg3IC0wLjIzMTQ4NCAxMy4zMDIxIC0wLjAyMTQ5NzMgMTIuNzkyMSAwLjc0ODQ1NUMxMi40MjIyIDEuMzA4NDIgMTIuNDIyMiAyLjAzNTAzIDEyLjc5MjEgMi41OTVMOS45NDU2NSA1LjQ0MTQ3QzkuOTI5IDUuNDU4MTMgOS45MTU2NSA1LjQ3ODEzIDkuOTA1NjUgNS41MDE0N0M4LjcxMjM5IDQuMzY0ODkgNi44MjI1IDQuNDExNTQgNS42ODU5MiA1LjYwODEyQzUuNjYyNTggNS42MzQ3NyA1LjYzOTI3IDUuNjU4MTIgNS42MTU5MiA1LjY4NDc3TDMuNDQ5NCA0LjQ0ODE5QzMuNDkyNzQgNC4zMDQ4NiAzLjUxMjc0IDQuMTYxNTUgMy41MTYwNSA0LjAxMTU2QzMuNTI2MDUgMy4wODE2MiAyLjc3OTQ0IDIuMzE1MDEgMS44NDk1IDIuMzA1MDFDMC45MTk1NiAyLjI5NTAxIDAuMTUyOTIxIDMuMDQxNjYgMC4xNDI5MjIgMy45NzE2QzAuMTMyOTIyIDQuOTAxNTQgMC44Nzk1MzIgNS42NjgxNSAxLjgwOTQ3IDUuNjc4MTVDMi4zMjk0NCA1LjY4NDggMi44MjYwNyA1LjQ0ODE2IDMuMTQ5MzkgNS4wNDE1M0w1LjIyNTkyIDYuMjI4MTFDNC41OTU5NiA3LjM2NDcgNC43NzI2IDguNzc3OTUgNS42NjU4OSA5LjcyNDU1TDMuNTY2MDIgMTEuODE3OEMzLjM5NjAzIDExLjcyNDQgMy4yMDYwNCAxMS42NzQ0IDMuMDE2MDUgMTEuNjc0NEMyLjM3Mjc1IDExLjY3NDQgMS44NDk0NyAxMi4xOTc3IDEuODQ5NDcgMTIuODQxQzEuODQ5NDcgMTMuNDg0MyAyLjM3Mjc4IDE0LjAwNzYgMy4wMTYwNSAxNC4wMDc2QzMuNjU5MzMgMTQuMDA3NiA0LjE4MjY0IDEzLjQ4NDMgNC4xODI2NCAxMi44NDFDNC4xODI2NCAxMi42NDc3IDQuMTMyNjQgMTIuNDU3NyA0LjAzOTMgMTIuMjkxTDYuMTY5MTcgMTAuMTU3OEM3LjI1MjQ1IDEwLjg5MTEgOC42ODU2NyAxMC44Mzc4IDkuNzA4OTUgMTAuMDIxMkwxMS40NzU1IDEyLjA4NDRDMTAuNTk4OSAxMy4wMjc3IDEwLjY1NTUgMTQuNTAwOSAxMS41OTg4IDE1LjM3NzVDMTIuNTQyMSAxNi4yNTQxIDE0LjAxNTMgMTYuMTk3NSAxNC44OTIgMTUuMjU0MkMxNS43Njg2IDE0LjMxMDkgMTUuNzExOSAxMi44Mzc3IDE0Ljc2ODYgMTEuOTYxMUMxNC4zMzUzIDExLjU2MTEgMTMuNzY4NyAxMS4zNDExIDEzLjE4MjEgMTEuMzQxMUMxMi43NjU0IDExLjM0MTEgMTIuMzU1NSAxMS40NTQ0IDExLjk5NTUgMTEuNjY3N0wxMC4xODIzIDkuNTU0NTNDMTEuMDE1NiA4LjUyNDU5IDExLjA2ODkgNy4wNjgwMyAxMC4zMTU2IDUuOTc4MUMxMC4zNTIzIDUuOTYxNDQgMTAuMzg1NiA1LjkzODEgMTAuNDE1NiA1LjkxMTQ0TDEzLjI2MjEgMy4wNjQ5N1pNMTQuMTgyIDAuNjc1MTE1QzE0LjczNTQgMC42NzUxMTUgMTUuMTgyIDEuMTIxNzQgMTUuMTgyIDEuNjc1MDVDMTUuMTgyIDIuMjI4MzYgMTQuNzM1NCAyLjY3NDk5IDE0LjE4MiAyLjY3NDk5QzEzLjYyODcgMi42NzQ5OSAxMy4xODIxIDIuMjI4MzYgMTMuMTgyMSAxLjY3NTA1QzEzLjE4MjEgMS4xMjE3NCAxMy42Mjg3IDAuNjc1MTE1IDE0LjE4MiAwLjY3NTExNVpNMS44NDk0NyA1LjAwODE5QzEuMjk2MTYgNS4wMDgxOSAwLjg0OTUzNCA0LjU2MTU2IDAuODQ5NTM0IDQuMDA4MjVDMC44NDk1MzQgMy40NTQ5NCAxLjI5NjE2IDMuMDA4MzEgMS44NDk0NyAzLjAwODMxQzIuNDAyNzggMy4wMDgzMSAyLjg0OTQxIDMuNDU0OTQgMi44NDk0MSA0LjAwODI1QzIuODQ5NDEgNC41NjE1NiAyLjM5OTQ0IDUuMDA4MTkgMS44NDk0NyA1LjAwODE5Wk0zLjAxNjA5IDEzLjM0MUMyLjczOTQ1IDEzLjM0MSAyLjUxNjEyIDEzLjExNzcgMi41MTYxMiAxMi44NDFDMi41MTYxMiAxMi41NjQ0IDIuNzM5NDUgMTIuMzQxMSAzLjAxNjA5IDEyLjM0MTFDMy4yOTI3MiAxMi4zNDExIDMuNTE2MDUgMTIuNTY0NCAzLjUxNjA1IDEyLjg0MUMzLjUxNjA1IDEzLjExNzcgMy4yODkzOCAxMy4zNDEgMy4wMTYwOSAxMy4zNDFaTTEzLjE4MjEgMTIuMDA3OEMxNC4xMDIgMTIuMDA3OCAxNC44NDg3IDEyLjc1NDQgMTQuODQ4NyAxMy42NzQzQzE0Ljg0NTMgMTQuNTk0MiAxNC4xMDIgMTUuMzM3NSAxMy4xODIxIDE1LjM0MDlDMTIuMjYyMiAxNS4zNDA5IDExLjUxNTYgMTQuNTk0MiAxMS41MTU2IDEzLjY3NDNDMTEuNTE1NiAxMi43NTQ0IDEyLjI2MjIgMTIuMDA3OCAxMy4xODIxIDEyLjAwNzhaTTcuODQ5MSAxMC4wMDc5QzYuNTU5MTggMTAuMDA3OSA1LjUxNTkgOC45NjQ2IDUuNTE1OSA3LjY3NDY4QzUuNTE1OSA2LjM4NDc2IDYuNTU5MTggNS4zNDE0OCA3Ljg0OTEgNS4zNDE0OEM5LjEzOTAyIDUuMzQxNDggMTAuMTgyMyA2LjM4NDc2IDEwLjE4MjMgNy42NzQ2OEMxMC4xNzkgOC45NjEyOSA5LjEzNTcgMTAuMDA0NSA3Ljg0OTEgMTAuMDA3OVoiIGZpbGw9IiM3Njc0NkYiLz4KPC9zdmc+Cg==" title="Schema" width="16"> Schema</button><span><span><button class="tw-gh-tabs" data-testid="tab"><img alt="manage" class="svg-icon " src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyLjc2NzYgNy42ODAxNEMxMi40NzM4IDcuNjAxOTUgMTIuMjYyMiA3LjQxMDA4IDEyLjE1NTggNy4xMjUyN0MxMi4xMDk5IDcuMDAyMTQgMTIuMDU4OCA2Ljg3ODk2IDEyLjAwNCA2Ljc1OTE4QzExLjg3NzUgNi40ODIzNyAxMS44OTEzIDYuMTk2ODEgMTIuMDQ0IDUuOTMzNDZDMTIuMzcyOCA1LjM2NjI1IDEyLjI3OTIgNC42NDY3NiAxMS44MTYzIDQuMTgzODVDMTEuMzUzMyAzLjcyMDg5IDEwLjYzMzkgMy42MjcyNiAxMC4wNjY2IDMuOTU2MTdDOS44MDMzIDQuMTA4ODUgOS41MTc4IDQuMTIyNjcgOS4yNDA5NiAzLjk5NjE0QzkuMTIxMzQgMy45NDE0NSA4Ljk5ODE1IDMuODkwMzkgOC44NzQ5IDMuODQ0MzZDOC41OTAwNiAzLjczODAxIDguMzk4MTggMy41MjY0NSA4LjMxOTk3IDMuMjMyNTVDOC4xNTE0MSAyLjU5ODk5IDcuNTc2NDcgMi4xNTY0OSA2LjkyMTgyIDIuMTU2NDlDNi4yNjcxNyAyLjE1NjQ5IDUuNjkyMjEgMi41OTg5OSA1LjUyMzY4IDMuMjMyNTVDNS40NDU0OSAzLjUyNjQyIDUuMjUzNTggMy43Mzc5NSA0Ljk2ODc3IDMuODQ0MzJDNC44NDU2MiAzLjg5MDMyIDQuNzIyNDMgMy45NDEzNiA0LjYwMjY4IDMuOTk2MUM0LjMyNTkgNC4xMjI2NyA0LjA0MDM3IDQuMTA4ODUgMy43NzcgMy45NTYxNEMzLjIwOTc5IDMuNjI3MjMgMi40OTAyOSAzLjcyMDg5IDIuMDI3MzYgNC4xODM4NUMxLjQ2MzM2IDQuNzQ3ODIgMS40NjMzNiA1LjY2NTUgMi4wMjczNiA2LjIyOTQ2TDIuMDgzOCA2LjI4NTlDMS44MzgzNiA2LjcwOTQzIDEuNjUxNTggNy4xNTk4OSAxLjUyNTY4IDcuNjMxNzlIMS40NDY0OUMwLjY0ODkwMSA3LjYzMTc5IDAgOC4yODA2NiAwIDkuMDc4MjhDMCA5LjczMjkzIDAuNDQyNDk2IDEwLjMwNzkgMS4wNzYwMiAxMC40NzY0QzEuMzY5ODYgMTAuNTU0NiAxLjU4MTQzIDEwLjc0NjUgMS42ODc4IDExLjAzMTNDMS43MzM4IDExLjE1NDUgMS43ODQ4NiAxMS4yNzc2IDEuODM5NjEgMTEuMzk3NEMxLjk2NjE3IDExLjY3NDIgMS45NTIzNiAxMS45NTk4IDEuNzk5NjcgMTIuMjIzMUMxLjQ3MDggMTIuNzkwMyAxLjU2NDQzIDEzLjUwOTggMi4wMjczOSAxMy45NzI3QzIuNDkwMzIgMTQuNDM1NiAzLjIwOTg1IDE0LjUyOTMgMy43NzcwMyAxNC4yMDA0QzQuMDQwNDEgMTQuMDQ3NyA0LjMyNTkgMTQuMDMzOSA0LjYwMjc1IDE0LjE2MDRDNC43MjI0NiAxNC4yMTUxIDQuODQ1NjIgMTQuMjY2MiA0Ljk2ODgxIDE0LjMxMjJDNS4yNTM2NSAxNC40MTg2IDUuNDQ1NTIgMTQuNjMwMSA1LjUyMzcxIDE0LjkyNEM1LjY5MjI3IDE1LjU1NzUgNi4yNjcyIDE2LjAwMDEgNi45MjE4NSAxNi4wMDAxQzcuNTc2NSAxNi4wMDAxIDguMTUxNDcgMTUuNTU3NiA4LjMyIDE0LjkyNEM4LjM5ODE4IDE0LjYzMDEgOC41OTAwOSAxNC40MTg2IDguODc0OTYgMTQuMzEyMkM4Ljk5ODQgMTQuMjY2MSA5LjEyMTU5IDE0LjIxNSA5LjI0MDk2IDE0LjE2MDRDOS41MTc3NyAxNC4wMzM5IDkuODAzMyAxNC4wNDc3IDEwLjA2NjYgMTQuMjAwNEMxMC42MzM5IDE0LjUyOTIgMTEuMzUzMyAxNC40MzU2IDExLjgxNjMgMTMuOTcyN0MxMi4yNzkyIDEzLjUwOTggMTIuMzcyOSAxMi43OTAzIDEyLjA0NCAxMi4yMjMxQzExLjg5MTMgMTEuOTU5NyAxMS44Nzc1IDExLjY3NDIgMTIuMDA0IDExLjM5NzRDMTIuMDU4OCAxMS4yNzc2IDEyLjEwOTkgMTEuMTU0NSAxMi4xNTU4IDExLjAzMTNDMTIuMjYyMiAxMC43NDY1IDEyLjQ3MzcgMTAuNTU0NiAxMi43Njc2IDEwLjQ3NjRDMTMuNDAxMSAxMC4zMDc4IDEzLjg0MzYgOS43MzI5IDEzLjg0MzYgOS4wNzgzMkMxMy44NDM2IDguNDIzNjMgMTMuNDAxMSA3Ljg0ODcgMTIuNzY3NiA3LjY4MDE0Wk0xMi41MjY2IDkuNTcwNDdDMTEuOTM1MyA5LjcyNzg0IDExLjQ5MTcgMTAuMTMwMiAxMS4yNzc2IDEwLjcwMzNDMTEuMjM5NCAxMC44MDU3IDExLjE5NjkgMTAuOTA4MSAxMS4xNTE0IDExLjAwNzZDMTAuODk2OCAxMS41NjQ3IDEwLjkyNTcgMTIuMTYzNCAxMS4yMzMgMTIuNjkzM0MxMS4zNDkgMTIuODkzNCAxMS4zMTYzIDEzLjE0NyAxMS4xNTM0IDEzLjMwOThDMTAuOTkwNiAxMy40NzI3IDEwLjczNyAxMy41MDU0IDEwLjUzNjkgMTMuMzg5NEMxMC4wMDcgMTMuMDgyMSA5LjQwODMzIDEzLjA1MzIgOC44NTExOCAxMy4zMDc5QzguNzUxOTMgMTMuMzUzMiA4LjY0OTU2IDEzLjM5NTcgOC41NDY5NiAxMy40MzRDNy45NzM3MiAxMy42NDgxIDcuNTcxMzggMTQuMDkxNyA3LjQxNDA0IDE0LjY4MzFDNy4zNTQ1NyAxNC45MDY2IDcuMTUyMTkgMTUuMDYyNiA2LjkyMTg1IDE1LjA2MjZDNi42OTE1NCAxNS4wNjI2IDYuNDg5MTQgMTQuOTA2NiA2LjQyOTY3IDE0LjY4M0M2LjI3MjI5IDE0LjA5MTcgNS44Njk5NSAxMy42NDgxIDUuMjk2NzQgMTMuNDM0QzUuMTk0MzcgMTMuMzk1OCA1LjA5MTk5IDEzLjM1MzMgNC45OTI0OSAxMy4zMDc5QzQuNzQxMzEgMTMuMTkzIDQuNDgxNzEgMTMuMTM1OSA0LjIyMzc1IDEzLjEzNTlDMy45MDk1MyAxMy4xMzU5IDMuNTk3NzggMTMuMjIwNyAzLjMwNjc2IDEzLjM4OTRDMy4xMDY2MyAxMy41MDU0IDIuODUzMTMgMTMuNDcyNyAyLjY5MDIzIDEzLjMwOThDMi41MjczNiAxMy4xNDcgMi40OTQ2NCAxMi44OTM1IDIuNjEwNjcgMTIuNjkzNEMyLjkxNzk1IDEyLjE2MzQgMi45NDY4OCAxMS41NjQ3IDIuNjkyMjMgMTEuMDA3N0MyLjY0NjcgMTAuOTA4MSAyLjYwNDI2IDEwLjgwNTcgMi41NjYwMSAxMC43MDM0QzIuMzUxOTUgMTAuMTMwMiAxLjkwODQyIDkuNzI3ODQgMS4zMTcwNSA5LjU3MDQ3QzEuMDkzNTkgOS41MTEgMC45Mzc0OTMgOS4zMDg1OSAwLjkzNzQ5MyA5LjA3ODI4QzAuOTM3NDkzIDguNzk3NjMgMS4xNjU4MyA4LjU2OTI5IDEuNDQ2NDkgOC41NjkyOUgxLjg5ODY0QzIuMTIzMTcgOC41NjkyOSAyLjMxNjE3IDguNDEwMDcgMi4zNTg4NiA4LjE4OTZDMi40Nzc2NyA3LjU3NTc2IDIuNzE2MDcgNy4wMDA4IDMuMDY3NDggNi40ODA2MkMzLjE5MzEzIDYuMjk0NTkgMy4xNjkyNiA2LjA0NTU2IDMuMDEwNTEgNS44ODY3OEwyLjY5MDI5IDUuNTY2NTZDMi40OTE4MiA1LjM2ODA5IDIuNDkxODIgNS4wNDUxOSAyLjY5MDI5IDQuODQ2NzJDMi44NTMxNyA0LjY4Mzg4IDMuMTA2NjYgNC42NTExMyAzLjMwNjc5IDQuNzY3MTZDMy44MzY3NSA1LjA3NDQ0IDQuNDM1NDMgNS4xMDM0NCA0Ljk5MjQ2IDQuODQ4NzJDNS4wOTE5OSA0LjgwMzIyIDUuMTk0MzcgNC43NjA3OSA1LjI5Njc0IDQuNzIyNTdDNS44Njk5NSA0LjUwODUxIDYuMjcyMjkgNC4wNjQ5NSA2LjQyOTY0IDMuNDczNThDNi40ODkxMSAzLjI1MDA4IDYuNjkxNDggMy4wOTM5OSA2LjkyMTgyIDMuMDkzOTlDNy4xNTIxMyAzLjA5Mzk5IDcuMzU0NTQgMy4yNTAwOCA3LjQxNCAzLjQ3MzU4QzcuNTcxMzggNC4wNjQ5NSA3Ljk3MzcyIDQuNTA4NTQgOC41NDY5MyA0LjcyMjU3QzguNjQ5NCA0Ljc2MDgyIDguNzUxNzQgNC44MDMyOSA4Ljg1MTE4IDQuODQ4NzJDOS40MDgyNyA1LjEwMzM4IDEwLjAwNjkgNS4wNzQ0MSAxMC41MzY5IDQuNzY3MTZDMTAuNzM2OSA0LjY1MTEgMTAuOTkwNSA0LjY4Mzg1IDExLjE1MzQgNC44NDY3NUMxMS4zMTYyIDUuMDA5NiAxMS4zNDg5IDUuMjYzMTMgMTEuMjMyOSA1LjQ2MzIyQzEwLjkyNTYgNS45OTMxOCAxMC44OTY3IDYuNTkxODcgMTEuMTUxNCA3LjE0ODk2QzExLjE5NjkgNy4yNDg1NSAxMS4yMzk0IDcuMzUwOTIgMTEuMjc3NiA3LjQ1MzI3QzExLjQ5MTcgOC4wMjY0NSAxMS45MzUyIDguNDI4NzYgMTIuNTI2NSA4LjU4NjFDMTIuNzUgOC42NDU1NyAxMi45MDYxIDguODQ3OTcgMTIuOTA2MSA5LjA3ODI4QzEyLjkwNjEgOS4zMDg1OSAxMi43NTAxIDkuNTExIDEyLjUyNjYgOS41NzA0N1oiIGZpbGw9IiM3Njc0NkYiLz4KPHBhdGggZD0iTTE1LjYyOTUgMi42OTA0NkwxNS40NjQ5IDIuNjA2MjRDMTUuNDk0IDIuNDY2MDUgMTUuNTA1NSAyLjMyMzE4IDE1LjQ5OTMgMi4xODAxOEwxNS42NzUyIDIuMTIzNEMxNS45MjE2IDIuMDQzODcgMTYuMDU2OCAxLjc3OTY4IDE1Ljk3NzMgMS41MzMzNEMxNS44OTc3IDEuMjg2OTcgMTUuNjMzNSAxLjE1MTc4IDE1LjM4NzIgMS4yMzEyNUwxNS4yMTEzIDEuMjg4MDNDMTUuMTMyNyAxLjE2ODM4IDE1LjAzOTggMS4wNTkyMiAxNC45MzQzIDAuOTYyNDcxTDE1LjAxODYgMC43OTc5NDFDMTUuMTM2NSAwLjU2NzUwNSAxNS4wNDUzIDAuMjg1MDcgMTQuODE0OSAwLjE2NzA3MUMxNC41ODQ1IDAuMDQ5MDcxNSAxNC4zMDIgMC4xNDAyNTggMTQuMTg0IDAuMzcwNzI1TDE0LjA5OTUgMC41MzU3ODZDMTMuOTU4MSAwLjUwNjgxOCAxMy44MTU0IDAuNDk1ODQ5IDEzLjY3NDEgMC41MDE5NzRMMTMuNjE2OSAwLjMyNTAwN0MxMy41Mzc0IDAuMDc4NjMzNyAxMy4yNzMyIC0wLjA1NjYxNTIgMTMuMDI2OSAwLjAyMjkxNTRDMTIuNzgwNSAwLjEwMjQ0NiAxMi42NDUzIDAuMzY2NjMyIDEyLjcyNDggMC42MTI5NzNMMTIuNzgxOSAwLjc4OTkwOUMxMi42NjM3IDAuODY3NTM0IDEyLjU1NDMgMC45NTk5MzkgMTIuNDU2NSAxLjA2NjEzTDEyLjI5MTUgMC45ODE2MjdDMTIuMDYxIDAuODYzNjkgMTEuNzc4NiAwLjk1NDgxNCAxMS42NjA2IDEuMTg1MjhDMTEuNTQyNiAxLjQxNTcyIDExLjYzMzggMS42OTgxNSAxMS44NjQyIDEuODE2MTVMMTIuMDI4OCAxLjkwMDM3QzExLjk5OTcgMi4wNDA1NiAxMS45ODgyIDIuMTgzNCAxMS45OTQ0IDIuMzI2NDNMMTEuODE4NSAyLjM4MzIxQzExLjU3MjIgMi40NjI3MSAxMS40MzY5IDIuNzI2OTMgMTEuNTE2NCAyLjk3MzI3QzExLjU4MDUgMy4xNzE4IDExLjc2NDUgMy4yOTgxNCAxMS45NjI0IDMuMjk4MTRDMTIuMDEwMSAzLjI5ODE0IDEyLjA1ODYgMy4yOTA4IDEyLjEwNjUgMy4yNzUzNkwxMi4yODI0IDMuMjE4NThDMTIuMzYxIDMuMzM4MjMgMTIuNDUzOCAzLjQ0NzM5IDEyLjU1OTMgMy41NDQxNEwxMi40NzUxIDMuNzA4N0MxMi4zNTcxIDMuOTM5MTMgMTIuNDQ4MyA0LjIyMTU3IDEyLjY3ODcgNC4zMzk1NEMxMi43NDcxIDQuMzc0NTcgMTIuODIgNC4zOTExMyAxMi44OTIgNC4zOTExM0MxMy4wNjIzIDQuMzkxMTMgMTMuMjI2NiA0LjI5Nzk0IDEzLjMwOTYgNC4xMzU4OEwxMy4zOTM5IDMuOTcxMTdDMTMuNTA5NSAzLjk5NTEgMTMuNjI2OSA0LjAwNzg4IDEzLjc0NDkgNC4wMDc4OEMxMy43Njk5IDQuMDA3ODggMTMuNzk0OSA0LjAwNzIzIDEzLjgxOTkgNC4wMDYxM0wxMy44NzY2IDQuMTgxNjNDMTMuOTQwNyA0LjM4MDE2IDE0LjEyNDcgNC41MDY1MSAxNC4zMjI2IDQuNTA2NTFDMTQuMzcwMyA0LjUwNjUxIDE0LjQxODggNC40OTkxNiAxNC40NjY3IDQuNDgzNzJDMTQuNzEzIDQuNDA0MTkgMTQuODQ4MiA0LjE0MDAxIDE0Ljc2ODggMy44OTM2NEwxNC43MTIgMy43MTc3NkMxNC44MzE2IDMuNjM5MTcgMTQuOTQwOCAzLjU0NjI5IDE1LjAzNzUgMy40NDA3OUwxNS4yMDIxIDMuNTI1MDRDMTUuMjcwNSAzLjU2MDA4IDE1LjM0MzQgMy41NzY2NCAxNS40MTUzIDMuNTc2NjRDMTUuNTg1NiAzLjU3NjY0IDE1Ljc1IDMuNDgzNDUgMTUuODMyOSAzLjMyMTM5QzE1Ljk1MTEgMy4wOTA4NiAxNS44NTk5IDIuODA4NDIgMTUuNjI5NSAyLjY5MDQ2Wk0xNC40NzM0IDIuNjI1MjRDMTQuMjY4MyAzLjAyNTgzIDEzLjc3NTYgMy4xODQ5NSAxMy4zNzQ5IDIuOTc5OEMxMi45NzQ0IDIuNzc0NzEgMTIuODE1MyAyLjI4MTkzIDEzLjAyMDQgMS44ODEzNEMxMy4xNjQ3IDEuNTk5NDcgMTMuNDUxNCAxLjQzNzE5IDEzLjc0ODMgMS40MzcxOUMxMy44NzMzIDEuNDM3MTkgMTQuMDAwMSAxLjQ2NiAxNC4xMTg5IDEuNTI2NzhDMTQuNTE5NSAxLjczMTg0IDE0LjY3ODUgMi4yMjQ2MiAxNC40NzM0IDIuNjI1MjRaIiBmaWxsPSIjNzY3NDZGIi8+CjxwYXRoIGQ9Ik02LjkyMTcyIDUuNDE1NTNDNC45MDIxMSA1LjQxNTUzIDMuMjU5MDMgNy4wNTg2MSAzLjI1OTAzIDkuMDc4MjJDMy4yNTkwMyAxMS4wOTc4IDQuOTAyMTEgMTIuNzQwOSA2LjkyMTcyIDEyLjc0MDlDOC45NDEzMyAxMi43NDA5IDEwLjU4NDQgMTEuMDk3OCAxMC41ODQ0IDkuMDc4MjJDMTAuNTg0NCA3LjA1ODYxIDguOTQxMzMgNS40MTU1MyA2LjkyMTcyIDUuNDE1NTNaTTYuOTIxNzIgMTEuODAzNEM2LjQ2NTgyIDExLjgwMzQgNi4wMzU3OSAxMS42OTA3IDUuNjU3OCAxMS40OTJDNS45MjcwMSAxMS4wNTY2IDYuNDAxNzYgMTAuNzg1NSA2LjkyMTcyIDEwLjc4NTVDNy40Mzg1NiAxMC43ODU1IDcuOTE2NzggMTEuMDYzNSA4LjE4NDg3IDExLjQ5MjRDNy44MDcwMyAxMS42OTA5IDcuMzc3MjggMTEuODAzNCA2LjkyMTcyIDExLjgwMzRaTTYuMTg0NTcgOS4wNzgyMkM2LjE4NDU3IDguNjcxNzUgNi41MTUyNiA4LjM0MTEgNi45MjE3MiA4LjM0MTFDNy4zMjgxOSA4LjM0MTEgNy42NTg4NCA4LjY3MTc4IDcuNjU4ODQgOS4wNzgyMkM3LjY1ODg0IDkuNDg0NjUgNy4zMjgxNiA5LjgxNTM3IDYuOTIxNzIgOS44MTUzN0M2LjUxNTI5IDkuODE1MzcgNi4xODQ1NyA5LjQ4NDY4IDYuMTg0NTcgOS4wNzgyMlpNOC45MjkzMyAxMC45MTlDOC43Nzc0NiAxMC42OTQ3IDguNTg4NzcgMTAuNDk0NyA4LjM3MTIxIDEwLjMzMTZDOC4zMDU0MyAxMC4yODIzIDguMjM3NTIgMTAuMjM3MSA4LjE2ODEyIDEwLjE5NTFDOC40MzQxNSA5Ljg5ODU2IDguNTk2MzMgOS41MDcgOC41OTYzMyA5LjA3ODE5QzguNTk2MzMgOC4xNTQ3OSA3Ljg0NTA5IDcuNDAzNTcgNi45MjE3MiA3LjQwMzU3QzUuOTk4MzYgNy40MDM1NyA1LjI0NzA4IDguMTU0ODIgNS4yNDcwOCA5LjA3ODE5QzUuMjQ3MDggOS41MDY1MyA1LjQwODkyIDkuODk3NjUgNS42NzQ0MiAxMC4xOTQxQzUuMzczODYgMTAuMzc0OSA1LjExMzA1IDEwLjYyMDcgNC45MTI5IDEwLjkxNzdDNC40NjgzMSAxMC40MzI2IDQuMTk2NTYgOS43ODY1MyA0LjE5NjU2IDkuMDc4MTZDNC4xOTY1NiA3LjU3NTQ4IDUuNDE5MDggNi4zNTI5NiA2LjkyMTc1IDYuMzUyOTZDOC40MjQ0MyA2LjM1Mjk2IDkuNjQ2OTUgNy41NzU0OCA5LjY0Njk1IDkuMDc4MTZDOS42NDY5MiA5Ljc4NzIxIDkuMzc0NjcgMTAuNDMzNyA4LjkyOTMzIDEwLjkxOVoiIGZpbGw9IiM3Njc0NkYiLz4KPC9zdmc+Cg==" title="Manage" width="16"> Manage</button></span></span></nav>
+        </div>
+        <div class="tw-bg-white tw--mx-4 tw-p-4">
+            <div class="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+                <div class="tw-col-span-3">
+                    <div class="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-168 tw-relative tw-border tw-border-main tw-rounded-md">
+                        <div class="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
+                            <span class="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">Description</span>
+                            <div class="tw-flex-initial"><span><span><button class="focus:tw-outline-none"><img alt="edit" class="svg-icon " src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNNDk3LjkgMTQyLjFsLTQ2LjEgNDYuMWMtNC43IDQuNy0xMi4zIDQuNy0xNyAwbC0xMTEtMTExYy00LjctNC43LTQuNy0xMi4zIDAtMTdsNDYuMS00Ni4xYzE4LjctMTguNyA0OS4xLTE4LjcgNjcuOSAwbDYwLjEgNjAuMWMxOC44IDE4LjcgMTguOCA0OS4xIDAgNjcuOXpNMjg0LjIgOTkuOEwyMS42IDM2Mi40LjQgNDgzLjljLTIuOSAxNi40IDExLjQgMzAuNiAyNy44IDI3LjhsMTIxLjUtMjEuMyAyNjIuNi0yNjIuNmM0LjctNC43IDQuNy0xMi4zIDAtMTdsLTExMS0xMTFjLTQuOC00LjctMTIuNC00LjctMTcuMSAwek0xMjQuMSAzMzkuOWMtNS41LTUuNS01LjUtMTQuMyAwLTE5LjhsMTU0LTE1NGM1LjUtNS41IDE0LjMtNS41IDE5LjggMHM1LjUgMTQuMyAwIDE5LjhsLTE1NCAxNTRjLTUuNSA1LjUtMTQuMyA1LjUtMTkuOCAwek04OCA0MjRoNDh2MzYuM2wtNjQuNSAxMS4zLTMxLjEtMzEuMUw1MS43IDM3Nkg4OHY0OHoiIGZpbGw9IiM2YjcyODAiLz48L3N2Zz4=" title="Edit" width="12px"></button></span></span></div>
+                        </div>
+                        <div class="tw-px-3 tw-py-2 tw-overflow-y-auto">
+                            <div class="tw-pl-3" data-testid="description" id="description">
+                                <div class="content-container">
+                                    <p>{{dataset.description}}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
+                    <div class="tw-flex tw-flex-col tw-relative" data-testid="related-tables-container">
+                        <div class="tw-flex tw-items-center tw-border-b tw-border-main tw-py-1 tw-px-3"><span class="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal" data-testid="related-tables-header">Frequently Joined Tables</span></div>
+                        <div class="tw-flex tw-flex-col tw-px-3 tw-py-2">
+                            <div class="tw-py-1" data-testid="related-tables-data"><a class="link-text" href="/dataset/bigquery.shopify.fact_sale">shopify/fact_sale</a><span class="tw-tag tw-ml-2">550</span></div>
+                            <div class="tw-py-1" data-testid="related-tables-data"><a class="link-text" href="/dataset/bigquery.shopify.fact_order">shopify/fact_order</a><span class="tw-tag tw-ml-2">150</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="tw-col-span-full">
+                    <div>
+                        <div class="tw-grid tw-grid-cols-3 tw-gap-x-2">
+                            <div>
+                                <div class="tw-group tw-mb-4 page-search-bar" data-testid="search-bar-container">
+                                    <div class="tw-flex tw-rounded-md tw-border tw-border-main tw-bg-body-main tw-h-8 tw-px-3"><input class="tw-flex-1 tw-appearance-none  tw-text-gray-600 tw-bg-transparent tw-mr-2 focus:tw-outline-none" data-testid="searchbar" placeholder="Find in table..." type="text" value=""></div>
+                                </div>
+                            </div>
+                            <div class="tw-col-span-2 tw-text-right tw-mb-4">
+                                <div class="tw-w-60 tw-inline-flex tw-border tw-border-main
+                                    tw-text-sm tw-rounded-md tw-h-8 tw-bg-white"><button class="tw-flex-1 tw-text-primary tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none tw-bg-primary-hover-lite tw-border-main" data-testid="schema-button">Schema</button><button class="tw-flex-1 tw-text-primary tw-font-medium tw-border tw-border-transparent tw-rounded tw-py-1 tw-px-2 focus:tw-outline-none" data-testid="sample-data-button">Sample Data</button></div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="tw-table-responsive">
+                                    <table class="tw-w-full" data-testid="schema-table">
+                                        <thead>
+                                            <tr class="tableHead-row">
+                                                <th class="tableHead-cell">Column Name</th>
+                                                <th class="tableHead-cell">Data Type</th>
+                                                <th class="tableHead-cell">Description</th>
+                                                <th class="tableHead-cell tw-w-60">Tags</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="tableBody">
+                                        {% for column in dataset.columns %}
+                                          <tr class="tableBody-row odd-row" data-testid="column" id="{{column.name}}">
+                                           <td class="tw-relative tableBody-cell"><span>{{column.name}}</span></td>
+                                           <td class="tableBody-cell"><span>{{column.columnDataType|lower}}</span></td>
+                                           <td class="tw-group tableBody-cell tw-relative">
+                                                    <div>
+                                                        <div class="tw-cursor-pointer hover:tw-underline tw-flex" data-testid="description" id="column-description-0">
+                                                            <div>
+                                                                <div class="content-container">
+                                                                    <p>{{column.description}}</p>
+                                                                </div>
+                                                            </div>
+                                                            <button class="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"><img alt="edit" class="svg-icon " src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNNDk3LjkgMTQyLjFsLTQ2LjEgNDYuMWMtNC43IDQuNy0xMi4zIDQuNy0xNyAwbC0xMTEtMTExYy00LjctNC43LTQuNy0xMi4zIDAtMTdsNDYuMS00Ni4xYzE4LjctMTguNyA0OS4xLTE4LjcgNjcuOSAwbDYwLjEgNjAuMWMxOC44IDE4LjcgMTguOCA0OS4xIDAgNjcuOXpNMjg0LjIgOTkuOEwyMS42IDM2Mi40LjQgNDgzLjljLTIuOSAxNi40IDExLjQgMzAuNiAyNy44IDI3LjhsMTIxLjUtMjEuMyAyNjIuNi0yNjIuNmM0LjctNC43IDQuNy0xMi4zIDAtMTdsLTExMS0xMTFjLTQuOC00LjctMTIuNC00LjctMTcuMSAwek0xMjQuMSAzMzkuOWMtNS41LTUuNS01LjUtMTQuMyAwLTE5LjhsMTU0LTE1NGM1LjUtNS41IDE0LjMtNS41IDE5LjggMHM1LjUgMTQuMyAwIDE5LjhsLTE1NCAxNTRjLTUuNSA1LjUtMTQuMyA1LjUtMTkuOCAwek04OCA0MjRoNDh2MzYuM2wtNjQuNSAxMS4zLTMxLjEtMzEuMUw1MS43IDM3Nkg4OHY0OHoiIGZpbGw9IiM2YjcyODAiLz48L3N2Zz4=" title="Edit" width="10px"></button>
+                                                        </div>
+                                                        <div class="tw-mt-3">
+                                                            <span class="tw-text-gray-400 tw-mr-1">Frequently joined columns:</span><a class="link-text" href="/dataset/bigquery.shopify.fact_order.api_client_id">shopify/fact_order/api_client_id</a><span class="tw-mr-1">,</span><a class="link-text" href="/dataset/bigquery.shopify.fact_order.customer_id">shopify/fact_order/customer_id</a><span class="tw-mr-1">,</span><a class="link-text" href="/dataset/bigquery.shopify.fact_order.order_id">shopify/fact_order/order_id</a>
+                                                            <div class="" data-tooltipped="" aria-describedby="tippy-tooltip-9" style="display: inline;"><span class="show-more tw-ml-1">...</span></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                
+                                                {% if column.tags %}
+                                                    <td class="tw-group tw-relative tableBody-cell">
+                                                    <span>
+                                                        <span>
+                                                            <div class="tw-cursor-pointer" data-testid="tag-conatiner">
+                                                                <div class="tw-flex tw-flex-wrap">
+                                                                <div class="" data-tooltipped="" aria-describedby="tippy-tooltip-11" data-original-title="Manual" style="display: inline;"><span class="tw-relative tw-inline-flex tw-text-xs tw-font-medium 
+                                                                    tw-mr-2 tw-my-0.5 tw-rounded tw-whitespace-nowrap tw-bg-tag tw-bg-gray-200" data-testid="tags"><span class="tw-py-0.5 tw-no-underline hover:tw-no-underline tw-px-2">#PersonalData.Personal</span></span></div>
+                                                                <button class="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none"><img alt="edit" class="svg-icon " src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNNDk3LjkgMTQyLjFsLTQ2LjEgNDYuMWMtNC43IDQuNy0xMi4zIDQuNy0xNyAwbC0xMTEtMTExYy00LjctNC43LTQuNy0xMi4zIDAtMTdsNDYuMS00Ni4xYzE4LjctMTguNyA0OS4xLTE4LjcgNjcuOSAwbDYwLjEgNjAuMWMxOC44IDE4LjcgMTguOCA0OS4xIDAgNjcuOXpNMjg0LjIgOTkuOEwyMS42IDM2Mi40LjQgNDgzLjljLTIuOSAxNi40IDExLjQgMzAuNiAyNy44IDI3LjhsMTIxLjUtMjEuMyAyNjIuNi0yNjIuNmM0LjctNC43IDQuNy0xMi4zIDAtMTdsLTExMS0xMTFjLTQuOC00LjctMTIuNC00LjctMTcuMSAwek0xMjQuMSAzMzkuOWMtNS41LTUuNS01LjUtMTQuMyAwLTE5LjhsMTU0LTE1NGM1LjUtNS41IDE0LjMtNS41IDE5LjggMHM1LjUgMTQuMyAwIDE5LjhsLTE1NCAxNTRjLTUuNSA1LjUtMTQuMyA1LjUtMTkuOCAwek04OCA0MjRoNDh2MzYuM2wtNjQuNSAxMS4zLTMxLjEtMzEuMUw1MS43IDM3Nkg4OHY0OHoiIGZpbGw9IiM2YjcyODAiLz48L3N2Zz4=" title="Edit" width="10px"></button>
+                                                                </div>
+                                                            </div>
+                                                        </span>
+                                                    </span>
+                                                    </td>
+                                                    {% else %}
+                                                    
+                                                    <td class="tw-group tw-relative tableBody-cell">
+                                                        <span>
+                                                            <span>
+                                                                <div class="tw-cursor-pointer" data-testid="tag-conatiner">
+                                                                    <div class="tw-flex tw-flex-wrap"><span class="tw-opacity-0 group-hover:tw-opacity-100"><span class="tw-relative tw-inline-flex tw-text-xs tw-font-medium 
+                                                                        tw-mr-2 tw-my-0.5 tw-rounded tw-whitespace-nowrap tw-bg-transparent tw-border-main" data-testid="tags"><span class="tw-py-0.5 tw-no-underline hover:tw-no-underline tw-px-2">+ Add tag</span></span></span></div>
+                                                                </div>
+                                                            </span>
+                                                        </span>
+                                                    </td>
+                                                {% endif %}
+                                          </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+    
+{% endblock content %}
