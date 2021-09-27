@@ -95,46 +95,46 @@ def get_dashboard_service_or_create(service_name: str,
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
 
-    def replace_str(variable, old, new):
-        return variable.replace(old, new)
+def replace_str(variable, old, new):
+    return variable.replace(old, new)
 
-    def get_last_index(hive_str):
-        counter = 1
-        for index, i in enumerate(hive_str):
-            if i == '>':
-                counter -= 1
-            elif i == '<':
-                counter += 1
-            if counter == 0:
-                break
-        return index
+def get_last_index(hive_str):
+    counter = 1
+    for index, i in enumerate(hive_str):
+        if i == '>':
+            counter -= 1
+        elif i == '<':
+            counter += 1
+        if counter == 0:
+            break
+    return index
 
-    def _handle_complex_data_types(hive_str):
-        while '>' in hive_str:
-            check_datatype = re.match(
-                r'(.*?)(array<|uniontype<|map<|struct<.*?)(.*)', hive_str
-                ).groups()
-            a, b, c = check_datatype
-            if b == 'struct<':
-                b = replace_str(b, 'struct<', '{')
-                hive_str = a + b + c
-                index = get_last_index(hive_str)
-                hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
-            elif b == 'array<' or b == 'uniontype<':
-                b = replace_str(b, 'array<' if b == 'array<' else 'uniontype<', '[')
-                hive_str = a + b + c
-                index = get_last_index(hive_str)
-                hive_str = hive_str[:index] + ']' + hive_str[index + 1:]
-            elif b == 'map<':
-                get_colon_index = hive_str.index(",", (hive_str.index('map<')))
-                b = replace_str(b, 'map<', '{')
-                hive_str = a + b + c
-                hive_str = hive_str[:get_colon_index - 3] + ':' + hive_str[get_colon_index - 2:]
-                index = get_last_index(hive_str)
-                hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
+def _handle_complex_data_types(hive_str):
+    while '>' in hive_str:
+        check_datatype = re.match(
+            r'(.*?)(array<|uniontype<|map<|struct<.*?)(.*)', hive_str
+            ).groups()
+        a, b, c = check_datatype
+        if b == 'struct<':
+            b = replace_str(b, 'struct<', '{')
+            hive_str = a + b + c
+            index = get_last_index(hive_str)
+            hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
+        elif b == 'array<' or b == 'uniontype<':
+            b = replace_str(b, 'array<' if b == 'array<' else 'uniontype<', '[')
+            hive_str = a + b + c
+            index = get_last_index(hive_str)
+            hive_str = hive_str[:index] + ']' + hive_str[index + 1:]
+        elif b == 'map<':
+            get_colon_index = hive_str.index(",", (hive_str.index('map<')))
+            b = replace_str(b, 'map<', '{')
+            hive_str = a + b + c
+            hive_str = hive_str[:get_colon_index - 3] + ':' + hive_str[get_colon_index - 2:]
+            index = get_last_index(hive_str)
+            hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
 
-        hive_str = re.sub(r'([\w\s\(\)]+)', r'"\1"', hive_str)
-        try:
-            return json.loads(hive_str)
-        except Exception as err:
-            print(err)
+    hive_str = re.sub(r'([\w\s\(\)]+)', r'"\1"', hive_str)
+    try:
+        return json.loads(hive_str)
+    except Exception as err:
+        print(err)
