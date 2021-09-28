@@ -179,6 +179,7 @@ const TagsPage = () => {
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-7 tw-px-2"
+              data-testid="add-category"
               size="small"
               theme="primary"
               variant="contained"
@@ -193,6 +194,7 @@ const TagsPage = () => {
               className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${currentCategoryTab(
                 category.name
               )}`}
+              data-testid="side-panel-category"
               key={category.name}
               onClick={() => {
                 fetchCurrentCategory(category.name);
@@ -219,10 +221,14 @@ const TagsPage = () => {
           {error ? (
             <p className="tw-text-2xl tw-text-center tw-m-auto">{error}</p>
           ) : (
-            <div className="container-fluid py-3">
+            <div className="container-fluid py-3" data-testid="tags-container">
               {currentCategory && (
-                <div className="tw-flex tw-justify-between tw-pl-1">
-                  <div className="tw-heading tw-text-link tw-text-base">
+                <div
+                  className="tw-flex tw-justify-between tw-pl-1"
+                  data-testid="header">
+                  <div
+                    className="tw-heading tw-text-link tw-text-base"
+                    data-testid="category-name">
                     {currentCategory.name}
                   </div>
                   <NonAdminAction
@@ -230,6 +236,7 @@ const TagsPage = () => {
                     title="Only Admin is allowed for the action">
                     <Button
                       className="tw-h-8 tw-rounded tw-mb-2"
+                      data-testid="add-new-tag-button"
                       size="small"
                       theme="primary"
                       variant="contained"
@@ -239,7 +246,9 @@ const TagsPage = () => {
                   </NonAdminAction>
                 </div>
               )}
-              <div className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white">
+              <div
+                className="tw-flex tw-flex-col tw-border tw-border-main tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
+                data-testid="description-container">
                 <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                   <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
                     Description
@@ -250,6 +259,7 @@ const TagsPage = () => {
                       title="Only Admin is allowed for the action">
                       <button
                         className="focus:tw-outline-none"
+                        data-testid="add-description"
                         onClick={() => setIsEditCategory(true)}>
                         <SVGIcons
                           alt="edit"
@@ -287,17 +297,27 @@ const TagsPage = () => {
                 </div>
               </div>
               <div className="tw-bg-white">
-                <table className="tw-w-full tw-overflow-x-auto">
+                <table
+                  className="tw-w-full tw-overflow-x-auto"
+                  data-testid="table">
                   <thead>
                     <tr className="tableHead-row">
-                      <th className="tableHead-cell">Name</th>
-                      <th className="tableHead-cell">Description</th>
-                      <th className="tableHead-cell tw-w-60">
+                      <th className="tableHead-cell" data-testid="heading-name">
+                        Name
+                      </th>
+                      <th
+                        className="tableHead-cell"
+                        data-testid="heading-description">
+                        Description
+                      </th>
+                      <th
+                        className="tableHead-cell tw-w-60"
+                        data-testid="heading-associated-tags">
                         Associated tags
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="tw-text-sm">
+                  <tbody className="tw-text-sm" data-testid="table-body">
                     {currentCategory?.children?.map(
                       (tag: Tag, index: number) => {
                         return (
