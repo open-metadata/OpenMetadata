@@ -4,7 +4,8 @@
     "config": {
       "include_tables": "true",
       "include_topics": "true",
-      "include_dashboards": "true"
+      "include_dashboards": "true",
+      "limit_records": 10
     }
   },
   "sink": {

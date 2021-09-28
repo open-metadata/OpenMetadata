@@ -35,7 +35,7 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     include_tables: Optional[bool] = True
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
-    limit_records: int = 50000
+    limit_records: int = 1000
 
 
 @dataclass
@@ -92,28 +92,45 @@ class MetadataSource(Source):
 
     def fetch_table(self) -> Table:
         if self.config.include_tables:
-            tables = self.client.list_tables(
-                fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
-                offset=0, limit=self.config.limit_records)
-            for table in tables:
-                self.status.scanned_table(table.name.__root__)
-                yield table
+            after = None
+            while True:
+                table_entities = self.client.list_tables(
+                    fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
+                    after=after,
+                    limit=self.config.limit_records)
+                for table in table_entities.tables:
+                    self.status.scanned_table(table.name.__root__)
+                    yield table
+                if table_entities.after is None:
+                    break
+                after = table_entities.after
 
     def fetch_topic(self) -> Topic:
         if self.config.include_topics:
-            topics = self.client.list_topics(
-                fields="owner,service,tags,followers", offset=0, limit=self.config.limit_records)
-            for topic in topics:
-                self.status.scanned_topic(topic.name.__root__)
-                yield topic
+            after = None
+            while True:
+                topic_entities = self.client.list_topics(
+                    fields="owner,service,tags,followers", after=after, limit=self.config.limit_records)
+                for topic in topic_entities.topics:
+                    self.status.scanned_topic(topic.name.__root__)
+                    yield topic
+                if topic_entities.after is None:
+                    break
+                after = topic_entities.after
 
     def fetch_dashboard(self) -> Dashboard:
         if self.config.include_dashboards:
-            dashboards = self.client.list_dashboards(
-                fields="owner,service,tags,followers,charts,usageSummary", offset=0, limit=self.config.limit_records)
-            for dashboard in dashboards:
-                self.status.scanned_dashboard(dashboard.name)
-                yield dashboard
+            after = None
+            while True:
+                dashboard_entities = self.client.list_dashboards(
+                    fields="owner,service,tags,followers,charts,usageSummary", after=after,
+                    limit=self.config.limit_records)
+                for dashboard in dashboard_entities.dashboards:
+                    self.status.scanned_dashboard(dashboard.name)
+                    yield dashboard
+                if dashboard_entities.after is None:
+                    break
+                after = dashboard_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status
