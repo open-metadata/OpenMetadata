@@ -108,7 +108,7 @@ const Appbar: React.FC = (): JSX.Element => {
     },
     {
       name: `Slack`,
-      to: 'https://openmetadata.slack.com/join/shared_invite/zt-udl8ris3-Egq~YtJU_yJgJTtROo00dQ#/shared-invite/email',
+      to: 'https://slack.open-metadata.org',
       disabled: false,
       isOpenNewTab: true,
       icon: (
