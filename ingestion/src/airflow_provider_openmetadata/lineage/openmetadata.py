@@ -1,9 +1,15 @@
 import json
+import traceback
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 import dateutil
 from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
+
+from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
+from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
+from metadata.generated.schema.entity.services.pipelineService import PipelineServiceType
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 
 if TYPE_CHECKING:
     from airflow import DAG
@@ -13,21 +19,61 @@ from metadata.config.common import ConfigModel
 
 
 class OpenMetadataLineageConfig(ConfigModel):
-    openmetadata_conn_id: str = "openmetadata_api_default"
+    airflow_service_name: str = "airflow"
+    api_endpoint: str = "http://localhost:8585"
+    auth_provider_type: str = "no-auth"
+    secret_key: str = None
 
 
 def get_lineage_config() -> OpenMetadataLineageConfig:
     """Load the lineage config from airflow_provider_openmetadata.cfg."""
+    airflow_service_name = conf.get("lineage", "airflow_service_name", fallback="airflow")
+    api_endpoint = conf.get("lineage", "openmetadata_api_endpoint", fallback="http://localhost:8585")
+    auth_provider_type = conf.get("lineage", "auth_provider_type", fallback="no-auth")
+    secret_key = conf.get("lineage", "secret_key", fallback=None)
+    return OpenMetadataLineageConfig.parse_obj({'airflow_service_name': airflow_service_name,
+                                                'api_endpoint': api_endpoint,
+                                                'auth_provider_type': auth_provider_type,
+                                                'secret_key': secret_key})
 
-    openmetadata_conn_id = conf.get("lineage", "openmetadata_conn_id", fallback=None)
-    return OpenMetadataLineageConfig.parse_obj({'openmetadata_conn_id': openmetadata_conn_id})
+
+allowed_task_keys = [
+    "_downstream_task_ids",
+    "_inlets",
+    "_outlets",
+    "_task_type",
+    "_task_module",
+    "depends_on_past",
+    "email",
+    "label",
+    "execution_timeout",
+    "end_date",
+    "start_date",
+    "sla",
+    "sql",
+    "task_id",
+    "trigger_rule",
+    "wait_for_downstream",
+]
+allowed_flow_keys = [
+    "_access_control",
+    "_concurrency",
+    "_default_view",
+    "catchup",
+    "fileloc",
+    "is_paused_upon_creation",
+    "start_date",
+    "tags",
+    "timezone",
+]
 
 
 def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
                                   context: Dict,
                                   operator: "BaseOperator",
                                   inlets: List,
-                                  outlets: List):
+                                  outlets: List,
+                                  client: OpenMetadataAPIClient):
     from airflow.serialization.serialized_objects import (
         SerializedBaseOperator,
         SerializedDAG,
@@ -54,61 +100,44 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         if key not in task_properties:
             task_properties[key] = repr(getattr(task, key))
 
-    allowed_task_keys = [
-        "_downstream_task_ids",
-        "_inlets",
-        "_outlets",
-        "_task_type",
-        "_task_module",
-        "depends_on_past",
-        "email",
-        "label",
-        "execution_timeout",
-        "end_date",
-        "start_date",
-        "sla",
-        "sql",
-        "task_id",
-        "trigger_rule",
-        "wait_for_downstream",
-    ]
-    job_property_bag = {
+    task_properties = {
         k: v for (k, v) in task_properties.items() if k in allowed_task_keys
     }
-    allowed_flow_keys = [
-        "_access_control",
-        "_concurrency",
-        "_default_view",
-        "catchup",
-        "fileloc",
-        "is_paused_upon_creation",
-        "start_date",
-        "tags",
-        "timezone",
-    ]
-    flow_property_bag = {
+
+    dag_properties = {
         k: v for (k, v) in dag_properties.items() if k in allowed_flow_keys
     }
 
     timestamp = int(dateutil.parser.parse(context["ts"]).timestamp() * 1000)
     owner = dag.owner
     tags = dag.tags
-    operator.log.info("OpenMetadata logging")
-    operator.log.info(flow_property_bag)
-    operator.log.info(task_url)
-    operator.log.info(owner)
-    operator.log.info(tags)
-    operator.log.info(job_property_bag)
+    airflow_service_entity = None
+    operator.log.info("Get Airflow Service ID")
+    airflow_service_entity = client.get_pipeline_service(config.airflow_service_name)
+    if airflow_service_entity is None:
+        pipeline_service = CreatePipelineServiceEntityRequest(
+            name=config.airflow_service_name,
+            serviceType=PipelineServiceType.Airflow,
+            pipelineUrl=pipeline_service_url
+        )
+        airflow_service_entity = client.create_pipeline_service(pipeline_service)
+        operator.log.info("airflow service is created {}", airflow_service_entity)
+    operator.log.info(task_properties)
+    operator.log.info(dag_properties)
+    # task = CreateTaskEntityRequest()
+    # pipeline = CreatePipelineServiceEntityRequest()
+
 
 class OpenMetadataLineageBackend(LineageBackend):
     """
         Sends lineage data from tasks to OpenMetadata.
         Configurable via ``airflow_provider_openmetadata.cfg`` as follows: ::
-            # For REST-based:
-            airflow_provider_openmetadata connections add  --conn-type 'openmetadata_api' 'openmetadata_api_default' --conn-host 'http://localhost:8585'
-            [lineage]
-            backend = airflow_provider_openmetadata.lineage.OpenMetadataLineageBackend
-            openmetadata_conn_id = "openmetadata_api_default"
+        [lineage]
+        backend = airflow_provider_openmetadata.lineage.OpenMetadataLineageBackend
+        airflow_service_name = airflow #make sure this service_name matches the one configured in openMetadata
+        openmetadata_api_endpoint = http://localhost:8585
+        auth_provider_type = no-auth # use google here if you are configuring google as SSO
+        secret_key = google-client-secret-key # it needs to be configured only if you are using google as SSO
     """
 
     def __init__(self) -> None:
@@ -123,18 +152,18 @@ class OpenMetadataLineageBackend(LineageBackend):
             context: Dict = None,
     ) -> None:
         config = get_lineage_config()
-
+        metadata_config = MetadataServerConfig.parse_obj(
+            {
+                'api_endpoint': config.api_endpoint,
+                'auth_provider_type': config.auth_provider_type,
+                'secret_key': config.secret_key
+            }
+        )
+        client = OpenMetadataAPIClient(metadata_config)
         try:
             parse_lineage_to_openmetadata(
-                config, context, operator, operator.inlets, operator.outlets
+                config, context, operator, operator.inlets, operator.outlets, client
             )
         except Exception as e:
-            if config.graceful_exceptions:
-                operator.log.error(e)
-                operator.log.info("Supressing error because graceful_exceptions is set")
-            else:
-                raise
-
-
-
-
+            operator.log.error(e)
+            operator.log.error(traceback.print_exc())
