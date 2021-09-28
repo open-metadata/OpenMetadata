@@ -433,6 +433,48 @@
           "tags": null,
           "ordinalPosition": 3,
           "dataLength": 100
+        },
+        {
+          "name": "address",
+          "dataType": "STRUCT",
+          "dataTypeDisplay": "struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>",
+          "children": [
+            {
+              "name": "street_name",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(24)",
+              "dataLength": 24
+            },
+            {
+              "name": "zipcode",
+              "dataType": "INT",
+              "dataTypeDisplay": "int"
+            },
+            {
+              "name": "city",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(100)",
+              "dataLength": 100
+            },
+            {
+              "name": "country",
+              "dataType": "STRUCT",
+              "dataTypeDisplay": "struct<country_code:int, country_name:varchar(100)>",
+              "children": [
+                {
+                  "name": "country_code",
+                  "dataType": "INT",
+                  "dataTypeDisplay": "INT"
+                },
+                {
+                  "name": "country_name",
+                  "dataType": "VARCHAR",
+                  "dataTypeDisplay": "VARCHAR(100)",
+                  "dataLength": 100
+                }
+              ]
+            }
+          ]
         }
       ],
       "database": {
