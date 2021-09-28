@@ -78,7 +78,7 @@ class DashboardEntities(BaseModel):
 
 
 class PipelineEntities(BaseModel):
-    topics: List[Pipeline]
+    pipelines: List[Pipeline]
     total: int
     after: str = None
 
