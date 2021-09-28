@@ -338,6 +338,64 @@
           "description": "Returns true when the customer has agreed to accept marketing. Otherwise returns false.",
           "tags": null,
           "ordinalPosition": 26
+        },
+        {
+          "name": "customer",
+          "dataType": "STRUCT",
+          "description": "Customer Personal Details",
+          "dataTypeDisplay": "struct<username:varchar(32),name:varchar(32),sex:char(1),address:varchar(128),mail:varchar(64),birthdate:varchar(16)>",
+          "children": [
+            {
+              "name": "username",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(32)",
+              "dataLength": 20
+            },
+            {
+              "name": "name",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(32)",
+              "dataLength": 20
+            },
+            {
+              "name": "sex",
+              "dataType": "CHAR",
+              "dataTypeDisplay": "CHAR(1)",
+              "dataLength": 1
+            },
+            {
+              "name": "address",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(128)",
+              "dataLength": 128
+            },
+            {
+              "name": "mail",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(64)",
+              "dataLength": 64
+            },
+            {
+              "name": "birthdate",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(16)",
+              "dataLength": 16
+            }
+          ],
+          "tags": null,
+          "ordinalPosition": 27
+        },
+        {
+          "name": "shipping_address",
+          "dataType": "ARRAY",
+          "dataTypeDisplay": "array<struct<name:varchar(32),street_address:varchar(128), city:varchar(32),postcode:varchar(8)>>",
+          "arrayDataType": "STRUCT"
+        },
+        {
+          "name": "orders",
+          "dataType": "ARRAY",
+          "dataTypeDisplay": "array<struct<product_id:varchar(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:varchar(64)>>",
+          "arrayDataType": "STRUCT"
         }
       ],
       "database": {
@@ -375,6 +433,48 @@
           "tags": null,
           "ordinalPosition": 3,
           "dataLength": 100
+        },
+        {
+          "name": "address",
+          "dataType": "STRUCT",
+          "dataTypeDisplay": "struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>",
+          "children": [
+            {
+              "name": "street_name",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(24)",
+              "dataLength": 24
+            },
+            {
+              "name": "zipcode",
+              "dataType": "INT",
+              "dataTypeDisplay": "int"
+            },
+            {
+              "name": "city",
+              "dataType": "VARCHAR",
+              "dataTypeDisplay": "VARCHAR(100)",
+              "dataLength": 100
+            },
+            {
+              "name": "country",
+              "dataType": "STRUCT",
+              "dataTypeDisplay": "struct<country_code:int, country_name:varchar(100)>",
+              "children": [
+                {
+                  "name": "country_code",
+                  "dataType": "INT",
+                  "dataTypeDisplay": "INT"
+                },
+                {
+                  "name": "country_name",
+                  "dataType": "VARCHAR",
+                  "dataTypeDisplay": "VARCHAR(100)",
+                  "dataLength": 100
+                }
+              ]
+            }
+          ]
         }
       ],
       "database": {
