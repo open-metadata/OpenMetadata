@@ -402,7 +402,7 @@ class OpenMetadataAPIClient(object):
 
     def create_or_update_task(self, create_task_request: CreateTaskEntityRequest) -> Task:
         """Create or Update a Task """
-        resp = self.client.put('/charts', data=create_task_request.json())
+        resp = self.client.put('/tasks', data=create_task_request.json())
         return Task(**resp)
 
     def get_task_by_id(self, chart_id: str, fields: [] = ['tags, service']) -> Task:
@@ -413,7 +413,7 @@ class OpenMetadataAPIClient(object):
 
     def create_or_update_pipeline(self, create_pipeline_request: CreatePipelineEntityRequest) -> Pipeline:
         """Create or Update a Pipeline """
-        resp = self.client.put('/pipeline', data=create_pipeline_request.json())
+        resp = self.client.put('/pipelines', data=create_pipeline_request.json())
         return Pipeline(**resp)
 
     def list_pipelines(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Pipelines:

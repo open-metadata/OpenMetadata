@@ -6,9 +6,11 @@ import dateutil
 from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
 
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
 from metadata.generated.schema.entity.services.pipelineService import PipelineServiceType
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 
 if TYPE_CHECKING:
@@ -78,8 +80,9 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         SerializedBaseOperator,
         SerializedDAG,
     )
+    import ast
     operator.log.info("Parsing Lineage for OpenMetadata")
-    dag: DAG = context["dag"]
+    dag: "DAG" = context["dag"]
     task: BaseOperator = context["task"]
 
     pipeline_service_url = conf.get("webserver", "base_url")
@@ -124,9 +127,31 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         operator.log.info("airflow service is created {}", airflow_service_entity)
     operator.log.info(task_properties)
     operator.log.info(dag_properties)
-    # task = CreateTaskEntityRequest()
-    # pipeline = CreatePipelineServiceEntityRequest()
-
+    downstream_tasks = []
+    if '_downstream_task_ids' in task_properties:
+        downstream_tasks = ast.literal_eval(task_properties['_downstream_task_ids'])
+    operator.log.info("downstream tasks {}".format(downstream_tasks))
+    create_task = CreateTaskEntityRequest(
+        name=task_properties['task_id'],
+        displayName=task_properties['label'],
+        taskUrl=task_url,
+        upstreamTasks=None,
+        downstreamTasks=downstream_tasks,
+        service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
+    )
+    task = client.create_or_update_task(create_task)
+    operator.log.info("Created Task {}".format(task))
+    operator.log.info("Dag {}".format(dag))
+    create_pipeline = CreatePipelineEntityRequest(
+        name=dag.dag_id,
+        displayName=dag.dag_id,
+        description=dag.description,
+        pipelineUrl=dag_url,
+        tasks=[EntityReference(id=task.id, type='task')],
+        service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
+    )
+    pipeline = client.create_or_update_pipeline(create_pipeline)
+    operator.log.info("Create Pipeline {}".format(pipeline))
 
 class OpenMetadataLineageBackend(LineageBackend):
     """
