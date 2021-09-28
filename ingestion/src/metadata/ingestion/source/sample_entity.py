@@ -15,7 +15,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 from metadata.ingestion.source.sample_data import get_database_service_or_create
-from metadata.generated.schema.entity.data.table import ColumnConstraint
+from metadata.generated.schema.entity.data.table import Constraint
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.helpers import snake_to_camel
@@ -78,7 +78,7 @@ class SampleEntitySource(Source):
         self.href = lambda: self.faker.url()
         self.col_type = lambda: random.choice(['INT', 'STRING', 'VARCHAR', 'DATE'])
         self.col_constraint = lambda: random.choice(
-            [ColumnConstraint.UNIQUE, ColumnConstraint.NOT_NULL, ColumnConstraint.NULL])
+            [Constraint.UNIQUE, Constraint.NOT_NULL, Constraint.NULL])
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -116,7 +116,7 @@ class SampleEntitySource(Source):
             logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
             for i in range(self.config.no_of_databases):
                 db = Database(id=uuid.uuid4(),
-                              name=self.database_name(),
+                              name=self.database_name().replace(".", "_"),
                               description=self.description(),
                               service=EntityReference(id=create_service.id, type=self.config.service_type))
 
@@ -126,14 +126,11 @@ class SampleEntitySource(Source):
                 for j in range(self.config.no_of_tables):
                     table_columns = []
                     table_entity = Table(id=uuid.uuid4(),
-                                         name=self.table_name(),
+                                         name=self.table_name().replace(".", "_"),
                                          tableType='Regular',
                                          description=self.description(),
                                          columns=table_columns)
                     row_order = 0
-                    logger.info('Ingesting table {}/{} in database {}/{} in for service {}/{}'
-                                .format(j + 1, self.config.no_of_tables, i + 1, self.config.no_of_databases, h + 1, self.config.no_of_services))
-
                     for t in range(self.config.no_of_columns):
                         pii_tags = []
                         col_name = self.column_name()
@@ -152,14 +149,13 @@ class SampleEntitySource(Source):
                         table_columns.append(
                             Column(name=col_name,
                                    description=self.description(),
-                                   columnDataType=self.col_type(),
-                                   columnConstraint=self.col_constraint(),
+                                   dataType=self.col_type(),
+                                   constraint=self.col_constraint(),
+                                   dataLength=100,
                                    ordinalPosition=row_order,
                                    tags=tag_labels)
                         )
-                        logger.info('Ingesting column {}/{} in table {}/{} in database {}/{} for service {}/{}'
-                                    .format(t + 1, self.config.no_of_columns, j + 1, self.config.no_of_tables, i + 1,
-                                            self.config.no_of_databases, h + 1, self.config.no_of_services))
+                        table_entity.columns = table_columns
                         row_order = row_order + 1
 
                     table_and_db = OMetaDatabaseAndTable(
