@@ -111,30 +111,31 @@ def get_last_index(hive_str):
 
 def _handle_complex_data_types(hive_str):
     while '>' in hive_str:
-        check_datatype = re.match(
-            r'(.*?)(array<|uniontype<|map<|struct<.*?)(.*)', hive_str
-            ).groups()
-        a, b, c = check_datatype
+        check_datatype = re.match(r'(.*?)(array<|uniontype<|map<|struct<.*?)(.*)',hive_str).groups()
+        a,b,c = check_datatype
         if b == 'struct<':
-            b = replace_str(b, 'struct<', '{')
-            hive_str = a + b + c
+            counter = 0
+            b = replace_str(b,'struct<','{')
+            if not re.match(r'([[{}\]:,\w]*)({)((?!,)\w*)(:)(.*)(}?)([\]}:,\w]*)',a+b+c):
+                b = b + f'field_{counter}:'
+            hive_str = a+b+c
+            counter += 1
             index = get_last_index(hive_str)
             hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
         elif b == 'array<' or b == 'uniontype<':
-            b = replace_str(b, 'array<' if b == 'array<' else 'uniontype<', '[')
-            hive_str = a + b + c
+            b = replace_str(b,'array<' if b == 'array<' else 'uniontype<','[')
+            hive_str = a+b+c
             index = get_last_index(hive_str)
             hive_str = hive_str[:index] + ']' + hive_str[index + 1:]
         elif b == 'map<':
-            get_colon_index = hive_str.index(",", (hive_str.index('map<')))
-            b = replace_str(b, 'map<', '{')
-            hive_str = a + b + c
-            hive_str = hive_str[:get_colon_index - 3] + ':' + hive_str[get_colon_index - 2:]
+            get_colon_index = hive_str.index(",",(hive_str.index('map<')))
+            b = replace_str(b,'map<','{')
+            hive_str = a+b+c
+            hive_str = hive_str[:get_colon_index-3] + ':' + hive_str[get_colon_index-2:]
             index = get_last_index(hive_str)
             hive_str = hive_str[:index] + '}' + hive_str[index + 1:]
-
-    hive_str = re.sub(r'([\w\s\(\)]+)', r'"\1"', hive_str)
+    hive_str = re.sub(r'([\w\s\(\)]+)',r'"\1"',hive_str)
     try:
-        return json.loads(hive_str)
+        return json.dumps(json.loads(hive_str),indent=2)
     except Exception as err:
         print(err)
