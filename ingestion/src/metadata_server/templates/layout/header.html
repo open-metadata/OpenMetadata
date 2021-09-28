@@ -1,0 +1,54 @@
+{% load static %}
+<div class="tw-h-14 tw-py-2 tw-px-5 tw-border-b-2 tw-border-separator">
+    <div class="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
+        <div class="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-mr-auto">
+            <a aria-current="page" class="active" href="/"><img alt="OpenMetadata Logo" class="svg-icon " src="{% static 'img/logo.svg' %}" width="30"></a>
+            <div class="tw-flex-none tw-relative tw-pl-5 " data-testid="appbar-item"><span class="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-mt-2 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400"></span><input class="tw-relative search-grey tw-rounded tw-border tw-border-main tw-bg-body-main focus:tw-outline-none tw-pl-8 tw-py-1" type="text" value=""></div>
+            <div class="tw-ml-9">
+                <a class="tw-nav focus:tw-no-underline" data-testid="appbar-item" href="/explore" style="color: rgb(55, 53, 47);">Explore</a>
+                <div class="tw-relative tw-inline-block tw-text-left false" data-testid="dropdown-item">
+                    <div>
+                        <button aria-expanded="true" aria-haspopup="true" class="tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none tw-justify-center tw-nav " data-testid="menu-button" id="menu-button" type="button">
+                            <p class="hover:tw-underline" style="color: rgb(55, 53, 47);">Settings</p>
+                            <svg aria-hidden="true" class="tw-inline-block  tw-h-5 tw-w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="margin-top: 1px; color: rgb(55, 53, 47);">
+                                <path clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1
+                                    0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fill-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="tw-nav focus:tw-no-underline hover:tw-underline"><img alt="Doc icon" class="svg-icon tw-align-middle tw--mt-0.5 tw-mr-1" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMSIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHhtbG5zOnN2Z2pzPSJodHRwOi8vc3ZnanMuY29tL3N2Z2pzIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgeD0iMCIgeT0iMCIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHN0eWxlPSJlbmFibGUtYmFja2dyb3VuZDpuZXcgMCAwIDUxMiA1MTIiIHhtbDpzcGFjZT0icHJlc2VydmUiIGZpbGw9IiMzNzM1MmYiPgoJPGc+PGcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KCQk8cGF0aCBkPSJtNDUxLjA4MSAzMDEuMTcxYy01Ljg1OC01Ljg1Ny0xNS4zNTUtNS44NTctMjEuMjEzIDBzLTUuODU4IDE1LjM1NSAwIDIxLjIxM2wzMC4yNTkgMzAuMjU5YzIuOTI5IDIuOTI5IDYuNzY3IDQuMzkzIDEwLjYwNiA0LjM5M3M3LjY3OC0xLjQ2NSAxMC42MDctNC4zOTNjNS44NTgtNS44NTcgNS44NTgtMTUuMzU1IDAtMjEuMjEzeiIgZGF0YS1vcmlnaW5hbD0iIzAwMDAwMCIgc3R5bGU9IiI+PC9wYXRoPgoJCTxwYXRoIGQ9Im00NDAuNDc0IDE3Ny4wMzdjMy44MzggMCA3LjY3OC0xLjQ2NSAxMC42MDctNC4zOTNsMzAuMjU5LTMwLjI1OWM1Ljg1OC01Ljg1NyA1Ljg1OC0xNS4zNTUgMC0yMS4yMTNzLTE1LjM1NS01Ljg1OC0yMS4yMTMgMGwtMzAuMjU5IDMwLjI1OWMtNS44NTggNS44NTctNS44NTggMTUuMzU1IDAgMjEuMjEzIDIuOTI5IDIuOTI5IDYuNzY3IDQuMzkzIDEwLjYwNiA0LjM5M3oiIGRhdGEtb3JpZ2luYWw9IiMwMDAwMDAiIHN0eWxlPSIiPjwvcGF0aD4KCQk8cGF0aCBkPSJtNDk3IDIyMS45MDdoLTQyLjc5M2MtOC4yODQgMC0xNSA2LjcxNi0xNSAxNXM2LjcxNiAxNSAxNSAxNWg0Mi43OTNjOC4yODQgMCAxNS02LjcxNiAxNS0xNXMtNi43MTYtMTUtMTUtMTV6IiBkYXRhLW9yaWdpbmFsPSIjMDAwMDAwIiBzdHlsZT0iIj48L3BhdGg+CgkJPHBhdGggZD0ibTM5OS4yNDcgMjMuNTg4Yy00LjczNi0yLjY1My0xMC41MzYtMi41MzktMTUuMTY1LjI5NWwtMTcxLjc4NSAxMDUuMjA1aC03Ni4yNjFjLTE2LjI4Ny0uODYxLTMxLjc4MSA0LjgxNS00My42NzUgMTYuMDExLTQuNDI3IDQuMTY2LTguMTU5IDguOTc1LTExLjEzMyAxNC4yMTVoLTM3Ljc0MWMtMjMuOTc5IDAtNDMuNDg3IDE5LjUwOC00My40ODcgNDMuNDg3djY4LjIxMmMwIDIzLjk3OSAxOS41MDggNDMuNDg3IDQzLjQ4NyA0My40ODdoMzcuNjY2YzYuMDQgMTAuNzk4IDE1LjE1OCAxOS43NDkgMjYuMjQzIDI1LjY3M2wtNTIuMjYxIDkwLjUyYy0yLjAwNSAzLjQ3My0yLjUzNiA3LjYwNC0xLjQ3NSAxMS40NzIgMS4wNjIgMy44NjcgMy42MjggNy4xNDggNy4xMjUgOS4xMWw2Ni4xODIgMzcuMTI5YzIuMzIgMS4zMDIgNC44NCAxLjkyMSA3LjMyNiAxLjkyMSA1LjE4NyAwIDEwLjIyOC0yLjY5NSAxMy4wMDMtNy41MDNsNzQuNjI2LTEyOS4yNTggMTYyLjMzIDk2LjQ2OWMyLjM2IDEuNDAzIDUuMDExIDIuMTA1IDcuNjYzIDIuMTA1IDIuNTU4IDAgNS4xMTctLjY1MyA3LjQxOC0xLjk2MyA0LjY4Ny0yLjY2NyA3LjU4Mi03LjY0NSA3LjU4Mi0xMy4wMzd2LTQwMC40NjNjMC01LjQyOC0yLjkzMy0xMC40MzMtNy42NjgtMTMuMDg3em0tMzU1Ljc2IDI2MC45MTJjLTcuNDM3IDAtMTMuNDg3LTYuMDUtMTMuNDg3LTEzLjQ4N3YtNjguMjEyYzAtNy40MzcgNi4wNS0xMy40ODcgMTMuNDg3LTEzLjQ4N2gyOS42NTRjLS4wMDIuMjI0LS4wMTcuNDQ3LS4wMTcuNjcxdjkzLjg0NGMwIC4yMjUuMDE0LjQ0Ny4wMTcuNjcxem01OS42MzctOTQuNTE1YzAtOC43ODIgMy41NzEtMTcuMTggOS43OTctMjMuMDQgNS45MjYtNS41NzcgMTMuNjU4LTguMzgyIDIxLjc4My03Ljg4NC4zMDMuMDE4IDY2LjgyMy4wMjcgNjYuODIzLjAyN3YxNTguODJoLTY1LjQyMmMtMTguNTI5LTEuMzMxLTMyLjk4MS0xNi4yMjQtMzIuOTgxLTM0LjA4em0yNS42IDI2NS4wMDYtNDAuMDE2LTIyLjQ0OSA0Ny45NzktODMuMTAzYy4yODktLjUuNTM4LTEuMDEzLjc2My0xLjUzaDUzLjA5N3ptMjQ4LjE5MS00NC4yMTYtMTQ1LjM4OC04Ni40MDF2LTE3MS44ODNsMTQ1LjM4OC04OS4wNHoiIGRhdGEtb3JpZ2luYWw9IiMwMDAwMDAiIHN0eWxlPSIiPjwvcGF0aD4KCTwvZz48L2c+Cjwvc3ZnPg==" width="16"><span>What's new</span></button>
+        <div>
+            <div class="tw-relative tw-inline-block tw-text-left false" data-testid="dropdown-item">
+                <div>
+                    <button aria-expanded="true" aria-haspopup="true" class="tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none tw-justify-center tw-nav " data-testid="menu-button" id="menu-button" type="button">
+                        <img alt="Doc icon" class="svg-icon tw-align-middle tw-mt-0.5 tw-mr-1" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9IiMzNzM1MmYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0yNTYgMEMxMTQuNTA5IDAgMCAxMTQuNDk2IDAgMjU2QzAgMzk3LjQ4OSAxMTQuNDk2IDUxMiAyNTYgNTEyQzM5Ny40OTEgNTEyIDUxMiAzOTcuNTA0IDUxMiAyNTZDNTEyIDExNC41MDkgMzk3LjUwNCAwIDI1NiAwWk0yNTYgNDc2LjI3OUMxMzQuNTM4IDQ3Ni4yNzkgMzUuNzIxIDM3Ny40NjMgMzUuNzIxIDI1NkMzNS43MjEgMTM0LjUzNyAxMzQuNTM4IDM1LjcyMSAyNTYgMzUuNzIxQzM3Ny40NjMgMzUuNzIxIDQ3Ni4yNzkgMTM0LjUzNyA0NzYuMjc5IDI1NkM0NzYuMjc5IDM3Ny40NjMgMzc3LjQ2MyA0NzYuMjc5IDI1NiA0NzYuMjc5WiIgZmlsbD0iIzM3MzUyZiIvPgo8cGF0aCBkPSJNMjQ4LjQyNSAzMjMuOTI0QzIzNC4yNzIgMzIzLjkyNCAyMjIuODE1IDMzNS43MTggMjIyLjgxNSAzNDkuODdDMjIyLjgxNSAzNjMuNjg3IDIzMy45MzUgMzc1LjgxOCAyNDguNDI1IDM3NS44MThDMjYyLjkxNSAzNzUuODE4IDI3NC4zNzEgMzYzLjY4NyAyNzQuMzcxIDM0OS44N0MyNzQuMzcxIDMzNS43MTggMjYyLjU3NyAzMjMuOTI0IDI0OC40MjUgMzIzLjkyNFoiIGZpbGw9IiMzNzM1MmYiLz4KPHBhdGggZD0iTTI1Mi44MDUgMTI3LjQ2OUMyMDcuMzEzIDEyNy40NjkgMTg2LjQyMSAxNTQuNDI4IDE4Ni40MjEgMTcyLjYyNEMxODYuNDIxIDE4NS43NjYgMTk3LjU0MSAxOTEuODMyIDIwNi42MzkgMTkxLjgzMkMyMjQuODM2IDE5MS44MzIgMjE3LjQyMyAxNjUuODg0IDI1MS43OTQgMTY1Ljg4NEMyNjguNjQyIDE2NS44ODQgMjgyLjEyMiAxNzMuMjk4IDI4Mi4xMjIgMTg4Ljc5OUMyODIuMTIyIDIwNi45OTUgMjYzLjI1MSAyMTcuNDQxIDI1Mi4xMzEgMjI2Ljg3NkMyNDIuMzU4IDIzNS4yOTkgMjI5LjU1NCAyNDkuMTE2IDIyOS41NTQgMjc4LjA5NkMyMjkuNTU0IDI5NS42MTggMjM0LjI3MiAzMDAuNjczIDI0OC4wODcgMzAwLjY3M0MyNjQuNTk4IDMwMC42NzMgMjY3Ljk2OCAyOTMuMjYgMjY3Ljk2OCAyODYuODU2QzI2Ny45NjggMjY5LjMzNCAyNjguMzA1IDI1OS4yMjUgMjg2LjgzOSAyNDQuNzM1QzI5NS45MzcgMjM3LjY1OSAzMjQuNTc5IDIxNC43NDQgMzI0LjU3OSAxODMuMDY5QzMyNC41NzkgMTUxLjM5NCAyOTUuOTM3IDEyNy40NjkgMjUyLjgwNSAxMjcuNDY5WiIgZmlsbD0iIzM3MzUyZiIvPgo8L3N2Zz4K" width="16">
+                        <p class="hover:tw-underline" style="color: rgb(55, 53, 47);">Need Help</p>
+                        <svg aria-hidden="true" class="tw-inline-block  tw-h-5 tw-w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="margin-top: 1px; color: rgb(55, 53, 47);">
+                            <path clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1
+                                0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fill-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div data-testid="dropdown-profile">
+            <div class="tw-relative tw-inline-block tw-text-left false" data-testid="dropdown-item">
+                <div>
+                    <button aria-expanded="true" aria-haspopup="true" class="tw-inline-flex tw-px-4 tw-py-2 focus:tw-outline-none tw-justify-center tw-nav " data-testid="menu-button" id="menu-button" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="tw-mr-1" style="height: 22px; width: 22px; border-radius: 50%;">
+                            <path d="M511.676 498.752l-12.8-51.2a74.345 74.345 0 00-48.747-52.885l-93.867-31.275c-22.891-9.536-33.365-46.4-35.627-60.395a88.703 88.703 0 0031.36-57.664 17.391 17.391 0 012.581-10.987 10.665 10.665 0 007.317-6.4 159.447 159.447 0 0011.435-46.613 10.254 10.254 0 00-.32-2.581 27.434 27.434 0 00-10.347-15.531v-56.555c0-34.368-10.496-48.469-21.547-56.64C339.004 33.472 321.276 0 255.996 0c-57.917 2.332-104.335 48.75-106.667 106.667v56.555a27.434 27.434 0 00-10.347 15.531 10.26 10.26 0 00-.32 2.581 159.454 159.454 0 0011.435 46.635 9.067 9.067 0 006.4 6.123c1.195.597 3.435 3.691 3.435 11.243a88.683 88.683 0 0031.531 57.771c-2.24 13.973-12.651 50.816-34.901 60.117l-94.699 31.445a74.346 74.346 0 00-48.725 52.843l-12.8 51.2c-1.449 5.71 2.005 11.514 7.715 12.963.853.217 1.73.327 2.61.328H501.33c5.891-.002 10.665-4.779 10.664-10.67a10.722 10.722 0 00-.318-2.58z" fill="#455a64"></path>
+                        </svg>
+                        <p class="hover:tw-underline" style="color: rgb(55, 53, 47);"><span>Welcome, <span class="tw-font-medium">Aaron</span></span></p>
+                        <svg aria-hidden="true" class="tw-inline-block  tw-h-5 tw-w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="margin-top: 1px; color: rgb(55, 53, 47);">
+                            <path clip-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1
+                                0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" fill-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -70,6 +70,13 @@ pii_requirements = {
     "spacy==3.0.5"
 }
 
+report_requirements = {
+    "asgiref==3.4.1",
+    "Django==3.2.7",
+    "pytz==2021.1",
+    "sqlparse==0.4.2"
+}
+
 base_plugins = {
     "query-parser",
     "metadata-usage",
@@ -102,7 +109,8 @@ plugins: Dict[str, Set[str]] = {
     "sample-data": {"faker~=8.1.1", "pandas~=1.3.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
-    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"}
+    "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
+    "report-server": report_requirements
 }
 
 build_options = {"includes": ["_cffi_backend"]}

@@ -69,7 +69,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     CreateTable createTable = TableResourceTest.create(test);
     TABLE = createAndCheckTable(createTable, adminAuthHeaders());
-    COLUMNS = Collections.singletonList(new Column().withName("column1").withColumnDataType(ColumnDataType.BIGINT));
+    COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
 
     USER = TableResourceTest.USER1;

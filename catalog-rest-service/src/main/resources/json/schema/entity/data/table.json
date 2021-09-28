@@ -35,7 +35,7 @@
         }
       ]
     },
-    "columnDataType": {
+    "dataType": {
       "javaType": "org.openmetadata.catalog.type.ColumnDataType",
       "description": "This enum defines the type of data stored in a column.",
       "type": "string",
@@ -76,7 +76,7 @@
         "JSON"
       ]
     },
-    "columnConstraint": {
+    "constraint": {
       "javaType": "org.openmetadata.catalog.type.ColumnConstraint",
       "description": "This enum defines the type for column constraint.",
       "type": "string",
@@ -111,7 +111,7 @@
       }
     },
     "columnName": {
-      "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct columnDataType. For example, BigQuery supports struct with unnamed fields",
+      "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields",
       "type": "string",
       "minLength": 1,
       "maxLength": 64,
@@ -125,7 +125,7 @@
       "pattern": "^[^.]*$"
     },
     "fullyQualifiedColumnName": {
-      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for columnDataType struct fields, `field_#` where `#` is field index is used. For map columnDataType, for key the field name `key` is used and for the value field `value` is used.",
+      "description": "Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.",
       "type": "string",
       "minLength": 1,
       "maxLength": 256
@@ -138,19 +138,21 @@
         "name": {
           "$ref": "#/definitions/columnName"
         },
-        "columnDataType": {
+        "dataType": {
           "description": "Data type of the column (int, date etc.).",
-          "$ref": "#/definitions/columnDataType"
+          "$ref": "#/definitions/dataType"
         },
         "arrayDataType" : {
-          "description": "Data type used array in columnDataType. For example, `array<int>` has columnDataType as `array` and arrayDataType as `int`."
+          "description": "Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.",
+          "$ref": "#/definitions/dataType"
         },
         "dataLength" : {
-          "description": "Length of `char`, `varchar`, `binary`, `varbinary` `columnDataTypes`, else null. For example, `varchar(20)` has columnDataType as `varchar` and dataLength as `20`.",
+          "description": "Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.",
           "type": "integer"
         },
-        "columnDataTypeDisplay" : {
-          "description" : "Display name used for columnDataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types."
+        "dataTypeDisplay" : {
+          "description" : "Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.",
+          "type": "string"
         },
         "description": {
           "description": "Description of the column.",
@@ -167,29 +169,30 @@
           },
           "default": null
         },
-        "columnConstraint": {
+        "constraint": {
           "description": "Column level constraint.",
-          "$ref": "#/definitions/columnConstraint"
+          "$ref": "#/definitions/constraint"
         },
         "ordinalPosition": {
           "description": "Ordinal position of the column.",
           "type": "integer"
         },
         "jsonSchema" : {
-          "description": "Json schema only if the columnDataType is JSON else null.",
+          "description": "Json schema only if the dataType is JSON else null.",
           "type": "string"
         },
         "children" : {
-          "description": "Child columns if columnDataType or arrayDataType is `map`, `struct`, or `union` else `null`.",
+          "description": "Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/column"
-          }
+          },
+          "default" : null
         }
       },
       "required": [
         "name",
-        "columnDataType"
+        "dataType"
       ],
       "additionalProperties": false
     },

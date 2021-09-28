@@ -28,9 +28,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, ColumnConstraint, TableType, \
-    TableData, \
-    TableProfile
+from metadata.generated.schema.entity.data.table import Table, Column, TableType, Constraint, \
+    TableData, TableProfile, ConstraintType, TableConstraint
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes as types
@@ -257,13 +256,14 @@ class SQLSource(Source):
                 self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
 
                 description = _get_table_description(schema, table_name, inspector)
-
+                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
                 table_columns = self._get_columns(schema, table_name, inspector)
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table_name,
                     tableType='Regular',
                     description=description if description is not None else ' ',
+                    fullyQualifiedName=fqn,
                     columns=table_columns
                 )
                 if self.sql_config.generate_sample_data:
@@ -314,11 +314,13 @@ class SQLSource(Source):
 
                 description = _get_table_description(schema, view_name, inspector)
                 table_columns = self._get_columns(schema, view_name, inspector)
+                fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{view_name}"
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
                     tableType='View',
                     description=description if description is not None else ' ',
+                    fullyQualifiedName=fqn,
                     columns=table_columns,
                     viewDefinition=view_definition
                 )
@@ -367,23 +369,31 @@ class SQLSource(Source):
                 logger.error(err)
             col_constraint = None
             if column['nullable']:
-                col_constraint = ColumnConstraint.NULL
+                col_constraint = Constraint.NULL
             elif not column['nullable']:
-                col_constraint = ColumnConstraint.NOT_NULL
+                col_constraint = Constraint.NOT_NULL
 
             if column['name'] in pk_columns:
-                col_constraint = ColumnConstraint.PRIMARY_KEY
+                col_constraint = Constraint.PRIMARY_KEY
             elif column['name'] in unique_columns:
-                col_constraint = ColumnConstraint.UNIQUE
-            table_columns.append(
-                Column(
+                col_constraint = Constraint.UNIQUE
+            col_data_length = None
+            if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
+                col_data_length = column['type'].length
+
+            om_column = Column(
                     name=column['name'],
                     description=column.get("comment", None),
-                    columnDataType=col_type,
-                    columnConstraint=col_constraint,
+                    dataType=col_type,
+                    dataTypeDisplay=col_type,
+                    constraint=col_constraint,
                     ordinalPosition=row_order
                 )
-            )
+
+            if col_data_length is not None:
+                om_column.dataLength = col_data_length
+
+            table_columns.append(om_column)
             row_order = row_order + 1
 
         return table_columns

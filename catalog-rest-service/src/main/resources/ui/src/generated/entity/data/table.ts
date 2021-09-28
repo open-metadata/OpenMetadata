@@ -1,3 +1,21 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * This schema defines the Table entity. A Table organizes data in rows and columns and is
  * defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both
@@ -76,6 +94,16 @@ export interface Table {
  */
 export interface Column {
   /**
+   * Data type used array in columnDataType. For example, `array<int>` has columnDataType as
+   * `array` and arrayDataType as `int`.
+   */
+  arrayDataType?: any;
+  /**
+   * Child columns if columnDataType or arrayDataType is `map`, `struct`, or `union` else
+   * `null`.
+   */
+  children?: Column[];
+  /**
    * Column level constraint.
    */
   columnConstraint?: ColumnConstraint;
@@ -84,10 +112,24 @@ export interface Column {
    */
   columnDataType: ColumnDataType;
   /**
+   * Display name used for columnDataType. This is useful for complex types, such as
+   * `array<int>, map<int,string>, struct<>, and union types.
+   */
+  columnDataTypeDisplay?: any;
+  /**
+   * Length of `char`, `varchar`, `binary`, `varbinary` `columnDataTypes`, else null. For
+   * example, `varchar(20)` has columnDataType as `varchar` and dataLength as `20`.
+   */
+  dataLength?: number;
+  /**
    * Description of the column.
    */
   description?: string;
   fullyQualifiedName?: string;
+  /**
+   * Json schema only if the columnDataType is JSON else null.
+   */
+  jsonSchema?: string;
   name: string;
   /**
    * Ordinal position of the column.
@@ -122,6 +164,7 @@ export enum ColumnDataType {
   Binary = 'BINARY',
   Blob = 'BLOB',
   Boolean = 'BOOLEAN',
+  Byteint = 'BYTEINT',
   Char = 'CHAR',
   Date = 'DATE',
   Datetime = 'DATETIME',
@@ -281,7 +324,6 @@ export interface TableData {
   /**
    * Data for multiple rows of the table.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rows?: Array<any[]>;
 }
 

@@ -74,7 +74,12 @@ public final class JsonUtils {
   }
 
   public static String pojoToJson(Object o) throws JsonProcessingException {
-    return OBJECT_MAPPER.writeValueAsString(o);
+    return pojoToJson(o, false);
+  }
+
+  public static String pojoToJson(Object o, boolean prettyPrint) throws JsonProcessingException {
+    return prettyPrint ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o) :
+            OBJECT_MAPPER.writeValueAsString(o);
   }
 
   public static JsonStructure getJsonStructure(Object o) {
