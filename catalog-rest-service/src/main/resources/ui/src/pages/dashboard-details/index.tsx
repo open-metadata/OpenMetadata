@@ -1,7 +1,7 @@
 import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail, User } from 'Models';
+import { ColumnTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -29,6 +29,7 @@ import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
+import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
@@ -71,6 +72,7 @@ const MyDashBoardPage = () => {
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [dashboardUrl, setDashboardUrl] = useState<string>('');
+  const [displayName, setDisplayName] = useState<string>('');
   // const [usage, setUsage] = useState('');
   // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
@@ -185,6 +187,7 @@ const MyDashBoardPage = () => {
         dashboardUrl,
         // usageSummary,
       } = res.data;
+      setDisplayName(displayName);
       setDashboardDetails(res.data);
       setDashboardId(id);
       setDescription(description ?? '');
@@ -243,12 +246,16 @@ const MyDashBoardPage = () => {
 
   const followDashboard = (): void => {
     if (isFollowing) {
-      removeFollower(dashboardId, USERId).then(() => {
+      removeFollower(dashboardId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
+        setFollowers(followers);
         setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
-      addFollower(dashboardId, USERId).then(() => {
+      addFollower(dashboardId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
+        setFollowers(followers);
         setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
@@ -429,8 +436,10 @@ const MyDashBoardPage = () => {
         <div className="tw-px-4 w-full">
           <EntityPageInfo
             isTagEditable
+            entityName={displayName}
             extraInfo={extraInfo}
             followers={followersCount}
+            followersList={followers}
             followHandler={followDashboard}
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}

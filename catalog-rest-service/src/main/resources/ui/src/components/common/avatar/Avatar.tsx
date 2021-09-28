@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Avatar = ({ name }: { name: string }) => {
+const Avatar = ({ name, width = '36' }: { name: string; width?: string }) => {
   const getBgColorByCode = (code: number) => {
     if (code >= 65 && code <= 71) {
       return '#B02AAC40';
@@ -19,13 +19,13 @@ const Avatar = ({ name }: { name: string }) => {
     <div
       className="tw-flex tw-justify-center tw-items-center tw-align-middle"
       style={{
-        height: '36px',
-        width: '36px',
+        height: `${width}px`,
+        width: `${width}px`,
         borderRadius: '50%',
         background: getBgColorByCode(name?.charCodeAt(0)),
         color: 'black',
       }}>
-      <p>{name?.[0]}</p>
+      <p className="tw-self-center">{name?.[0]}</p>
     </div>
   );
 };

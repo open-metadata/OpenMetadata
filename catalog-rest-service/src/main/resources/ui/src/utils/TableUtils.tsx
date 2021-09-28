@@ -109,6 +109,12 @@ export const getOwnerFromId = (
   return retVal;
 };
 
+export const getFollowerDetail = (id: string) => {
+  const follower = AppState.users.find((user) => user.id === id);
+
+  return follower;
+};
+
 export const getConstraintIcon = (constraint = '') => {
   let title: string, icon: string;
   switch (constraint) {
