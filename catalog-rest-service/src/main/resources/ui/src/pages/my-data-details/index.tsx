@@ -230,9 +230,11 @@ const MyDataDetailsPage = () => {
         ...tableDetails,
         columns: updateColumns,
       };
-      saveUpdatedTableData(updatedTableDetails).then(() => {
-        setTableDetails(updatedTableDetails);
-        setColumns(updateColumns);
+      saveUpdatedTableData(updatedTableDetails).then((res: AxiosResponse) => {
+        const { columns } = res.data;
+        setTableDetails(res.data);
+        setColumns(columns);
+        setTableTags(getTableTags(columns || []));
       });
     }
   };
