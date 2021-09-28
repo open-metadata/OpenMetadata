@@ -67,11 +67,13 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
   };
 
   return (
-    <dialog className="tw-modal ">
+    <dialog className="tw-modal " data-testid="modal-container">
       <div className="tw-modal-backdrop" />
       <div className="tw-modal-container tw-max-h-90vh tw-max-w-3xl">
         <div className="tw-modal-header">
-          <p className="tw-modal-title">{header}</p>
+          <p className="tw-modal-title" data-testid="header">
+            {header}
+          </p>
         </div>
         <div className="tw-modal-body">
           <Searchbar
@@ -84,7 +86,9 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
             {getUserCards()}
           </div>
         </div>
-        <div className="tw-modal-footer tw-justify-end">
+        <div
+          className="tw-modal-footer tw-justify-end"
+          data-testid="cta-container">
           <Button
             className="tw-mr-2"
             size="regular"

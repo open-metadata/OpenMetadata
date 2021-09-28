@@ -145,7 +145,7 @@ jest.mock(
 );
 
 describe('Test Teams page', () => {
-  it('Check for heading', async () => {
+  it('Component should render', async () => {
     const { container } = render(<TeamsPage />);
     const teamComponent = await findByTestId(container, 'team-container');
     const leftPanelContent = await findByTestId(
