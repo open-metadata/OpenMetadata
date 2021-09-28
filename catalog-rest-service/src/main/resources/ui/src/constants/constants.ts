@@ -54,6 +54,8 @@ export const tiers = [
   { key: 'Tier.Tier5', doc_count: 0 },
 ];
 
+export const visibleFilters = ['service', 'tier', 'tags'];
+
 export const tableSortingFields = [
   {
     name: 'Last Updated',
