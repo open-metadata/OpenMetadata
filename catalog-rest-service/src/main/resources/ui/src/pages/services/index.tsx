@@ -297,7 +297,7 @@ const ServicesPage = () => {
     <>
       {!isLoading ? (
         <PageContainer>
-          <div className="container-fluid">
+          <div className="container-fluid" data-testid="services-container">
             <div className="tw-bg-transparent tw-mb-4">
               <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
                 {getServiceTabs().map((tab, index) => (
@@ -320,7 +320,7 @@ const ServicesPage = () => {
             {serviceList.length ? (
               <div
                 className="tw-grid tw-grid-cols-4 tw-gap-4"
-                data-testid="services-container">
+                data-testid="data-container">
                 {serviceList.map((service, index) => (
                   <div
                     className="tw-card tw-flex tw-py-2 tw-px-3 tw-justify-between tw-text-grey-muted"
@@ -332,7 +332,9 @@ const ServicesPage = () => {
                           service.serviceType || ''
                         )}>
                         <button>
-                          <h6 className="tw-text-base tw-text-grey-body tw-font-medium">
+                          <h6
+                            className="tw-text-base tw-text-grey-body tw-font-medium"
+                            data-testid="service-name">
                             {service.name}
                           </h6>
                         </button>
@@ -373,6 +375,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="tw-pr-3 focus:tw-outline-none"
+                            data-testid="edit-service"
                             onClick={() => handleEdit(service)}>
                             <SVGIcons
                               alt="edit"
@@ -417,6 +420,7 @@ const ServicesPage = () => {
                   <div className="tw-inline-block" style={{ width: '100%' }}>
                     <div
                       className="tw-cursor-pointer tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
+                      data-testid="add-services"
                       onClick={() => handleAddService()}>
                       <img alt="Add service" src={PLUS} />
                       <p className="tw-text-base tw-font-normal tw-mt-4">
