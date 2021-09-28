@@ -68,8 +68,7 @@ class SampleEntitySource(Source):
                                                    'Snowflake'])
         self.database_name = lambda: self.faker.first_name()
         self.table_name = lambda: self.faker.first_name()
-        self.column_name = lambda: random.choice(['firstname', 'data_of_birth', 'address',
-                                                  'user', 'pass', 'phone', 'ssn', 'social'])
+        self.column_name = lambda: self.faker.first_name()
         self.description = lambda: self.faker.text()
         self.tags = self.__get_tags()
         self.tagFQN = lambda: self.faker.first_name()
