@@ -38,6 +38,7 @@ import {
   getExplorePathWithSearch,
   PAGE_SIZE,
   tableSortingFields,
+  visibleFilters,
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
@@ -50,8 +51,6 @@ import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
 import { Params } from './explore.interface';
-
-const visibleFilters = ['tags', 'service', 'tier'];
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery

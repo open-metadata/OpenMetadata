@@ -34,11 +34,6 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
   const [showAllTags, setShowAllTags] = useState<boolean>(false);
   const [showAllServices, setShowAllServices] = useState<boolean>(false);
   const [showAllTier, setShowAllTier] = useState<boolean>(false);
-  const sortAggregations = () => {
-    return aggregations.sort((a, b) =>
-      a.buckets.length > b.buckets.length ? 1 : -1
-    );
-  };
   const getLinkText = (
     length: number,
     state: boolean,
@@ -128,7 +123,7 @@ const FacetFilter: FunctionComponent<FacetProp> = ({
 
   return (
     <>
-      {sortAggregations().map((aggregation: AggregationType, index: number) => {
+      {aggregations.map((aggregation: AggregationType, index: number) => {
         return (
           <Fragment key={index}>
             {aggregation.buckets.length > 0 ? (

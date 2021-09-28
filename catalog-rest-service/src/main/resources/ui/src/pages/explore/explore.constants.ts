@@ -43,7 +43,7 @@ export const getBucketList = (buckets: Array<Bucket>) => {
 export const getAggrWithDefaultValue = (
   aggregations: Array<AggregationType>,
   visibleAgg: Array<string> = []
-) => {
+): Array<AggregationType> => {
   const aggregation = aggregations.find(
     (aggregation) => aggregation.title === 'Tier'
   );
@@ -55,9 +55,19 @@ export const getAggrWithDefaultValue = (
     aggregations[index].buckets = getBucketList(aggregations[index].buckets);
   }
 
-  return !allowedAgg.length
+  const visibleAggregations = !allowedAgg.length
     ? aggregations
     : aggregations.filter((item) => allowedAgg.includes(lowerCase(item.title)));
+
+  return allowedAgg
+    .map((agg) => {
+      const aggregation = visibleAggregations.find(
+        (a) => lowerCase(a.title) === agg
+      );
+
+      return aggregation;
+    })
+    .filter(Boolean) as Array<AggregationType>;
 };
 
 export const tabsInfo = [
