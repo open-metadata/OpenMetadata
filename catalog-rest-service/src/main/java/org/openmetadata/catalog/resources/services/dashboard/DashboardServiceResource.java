@@ -186,7 +186,7 @@ public class DashboardServiceResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Dashboard service", tags = "services",
+  @Operation(summary = "Delete a Dashbo ard service", tags = "services",
           description = "Delete a Dashboard services. If dashboard (and charts) belong to the service, it can't be " +
                   "deleted.",
           responses = {
