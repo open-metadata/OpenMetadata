@@ -21,10 +21,12 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
+Download the latest OpenMetadata release from here 
+https://github.com/open-metadata/OpenMetadata/releases
+tar zxvf openmetadata-0.4.0.tar.gz
+cd openmetadata-0.4.0/ingestion
+python3 -m venv env 
 python3 -m pip install 'openmetadata-ingestion[sample-data, elasticsearch]'
-
-git clone https://github.com/open-metadata/OpenMetadata.git
-cd OpenMetadata/ingestion
 ```
 {% endtab %}
 {% endtabs %}
