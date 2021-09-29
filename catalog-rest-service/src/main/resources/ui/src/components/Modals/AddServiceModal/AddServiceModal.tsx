@@ -568,6 +568,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </label>
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="broker-url"
             id="broker"
             name="broker"
             placeholder={getBrokerUrlPlaceholder()}
@@ -583,6 +584,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
           </label>
           <input
             className="tw-form-inputs tw-px-3 tw-py-1"
+            data-testid="schema-registry"
             id="schema-registry"
             name="schema-registry"
             placeholder="http(s)://hostname:port"
@@ -757,6 +759,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="dashboard-url"
                 id="dashboard-url"
                 name="dashboard-url"
                 placeholder="http(s)://hostname:port"
@@ -773,6 +776,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="username"
                 id="username"
                 name="username"
                 placeholder="username"
@@ -788,6 +792,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
               </label>
               <input
                 className="tw-form-inputs tw-px-3 tw-py-1"
+                data-testid="password"
                 id="password"
                 name="password"
                 placeholder="password"

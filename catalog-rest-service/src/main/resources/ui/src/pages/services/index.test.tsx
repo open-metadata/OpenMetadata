@@ -228,4 +228,35 @@ describe('Test Service page', () => {
       await findByTestId(container, 'add-service-modal')
     ).toBeInTheDocument();
   });
+
+  it('Card details should be display properly', async () => {
+    const { container } = render(<ServicesPage />, {
+      wrapper: MemoryRouter,
+    });
+    const serviceName = await findAllByTestId(container, 'service-name');
+    const serviceDescription = await findAllByTestId(
+      container,
+      'service-description'
+    );
+    const additionalField = await findAllByTestId(
+      container,
+      'additional-field'
+    );
+    const ingestion = await findAllByTestId(container, 'service-ingestion');
+    const type = await findAllByTestId(container, 'service-type');
+    const edit = await findAllByTestId(container, 'edit-service');
+    const deleteIcon = await findAllByTestId(container, 'delete-service');
+    const icon = await findAllByTestId(container, 'service-icon');
+
+    expect(serviceName.length).toBe(mockDatabaseService.data.data.length);
+    expect(serviceDescription.length).toBe(
+      mockDatabaseService.data.data.length
+    );
+    expect(additionalField.length).toBe(mockDatabaseService.data.data.length);
+    expect(ingestion.length).toBe(mockDatabaseService.data.data.length);
+    expect(type.length).toBe(mockDatabaseService.data.data.length);
+    expect(edit.length).toBe(mockDatabaseService.data.data.length);
+    expect(deleteIcon.length).toBe(mockDatabaseService.data.data.length);
+    expect(icon.length).toBe(mockDatabaseService.data.data.length);
+  });
 });

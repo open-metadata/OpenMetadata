@@ -226,7 +226,7 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1">
+            <div className="tw-mb-1" data-testid="additional-field">
               <label className="tw-mb-0">Driver Class:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {databaseService.jdbc.driverClass}
@@ -240,7 +240,7 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1">
+            <div className="tw-mb-1" data-testid="additional-field">
               <label className="tw-mb-0">Brokers:</label>
               <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                 {messagingService.brokers.join(', ')}
@@ -254,7 +254,7 @@ const ServicesPage = () => {
 
         return (
           <>
-            <div className="tw-mb-1">
+            <div className="tw-mb-1" data-testid="additional-field">
               <label className="tw-mb-0">
                 {dashboardService.serviceType === DashboardServiceType.Tableau
                   ? 'Site URL:'
@@ -339,7 +339,9 @@ const ServicesPage = () => {
                           </h6>
                         </button>
                       </Link>
-                      <div className="tw-text-grey-body tw-pb-1">
+                      <div
+                        className="tw-text-grey-body tw-pb-1"
+                        data-testid="service-description">
                         {service.description ? (
                           <RichTextEditorPreviewer
                             markdown={service.description}
@@ -351,7 +353,7 @@ const ServicesPage = () => {
                         )}
                       </div>
                       {getOptionalFields(service)}
-                      <div className="tw-mb-1">
+                      <div className="tw-mb-1" data-testid="service-ingestion">
                         <label className="tw-mb-0">Ingestion:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                           {service.ingestionSchedule?.repeatFrequency
@@ -361,7 +363,7 @@ const ServicesPage = () => {
                             : '--'}
                         </span>
                       </div>
-                      <div className="">
+                      <div className="" data-testid="service-type">
                         <label className="tw-mb-0">Type:</label>
                         <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
                           {service.serviceType}
@@ -390,6 +392,7 @@ const ServicesPage = () => {
                           title={TITLE_FOR_NON_ADMIN_ACTION}>
                           <button
                             className="focus:tw-outline-none"
+                            data-testid="delete-service"
                             onClick={() => handleDelete(service.id || '')}>
                             <SVGIcons
                               alt="delete"
@@ -400,7 +403,9 @@ const ServicesPage = () => {
                           </button>
                         </NonAdminAction>
                       </div>
-                      <div className="tw-flex tw-justify-end">
+                      <div
+                        className="tw-flex tw-justify-end"
+                        data-testid="service-icon">
                         {/* {!isNull(serviceTypeLogo(service.serviceType)) && (
                           <img
                             alt=""
