@@ -17,7 +17,7 @@
  */
 
 /**
- * This schema defines the Messaging Service entity, such as Kafka and Pulsar.
+ * This schema defines the Dashboard Service entity, such as Looker and Superset.
  */
 export interface DashboardService {
   /**
@@ -29,7 +29,7 @@ export interface DashboardService {
    */
   description?: string;
   /**
-   * Link to the resource corresponding to this messaging service.
+   * Link to the resource corresponding to this dashboard service.
    */
   href?: string;
   /**

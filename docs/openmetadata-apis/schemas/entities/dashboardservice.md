@@ -1,6 +1,6 @@
 # Dashboard Service
 
-This schema defines the Messaging Service entity, such as Kafka and Pulsar.
+This schema defines the Dashboard Service entity, such as Looker and Superset.
 
 **$id: https://open-metadata.org/schema/entity/services/dashboardService.json**
 
@@ -34,7 +34,7 @@ Type: `object`
    - Schedule for running metadata ingestion jobs.
    - $ref: [../../type/schedule.json](../types/schedule.md)
  - **href**
-   - Link to the resource corresponding to this messaging service.
+   - Link to the resource corresponding to this dashboard service.
    - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 
 
