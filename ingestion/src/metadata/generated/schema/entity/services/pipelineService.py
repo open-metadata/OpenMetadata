@@ -28,7 +28,7 @@ class PipelineService(BaseModel):
         None, description='Type of pipeline service such as Airflow or Prefect...'
     )
     description: Optional[str] = Field(
-        None, description='Description of a messaging service instance.'
+        None, description='Description of a pipeline service instance.'
     )
     pipelineUrl: AnyUrl = Field(..., description='Pipeline Service Management/UI URL')
     ingestionSchedule: Optional[schedule.Schedule] = Field(
@@ -36,5 +36,5 @@ class PipelineService(BaseModel):
     )
     href: Optional[basic.Href] = Field(
         None,
-        description='Link to the resource corresponding to this messaging service.',
+        description='Link to the resource corresponding to this pipeline service.',
     )

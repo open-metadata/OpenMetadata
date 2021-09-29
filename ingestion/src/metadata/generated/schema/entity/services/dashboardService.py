@@ -47,5 +47,5 @@ class DashboardService(BaseModel):
     )
     href: Optional[basic.Href] = Field(
         None,
-        description='Link to the resource corresponding to this messaging service.',
+        description='Link to the resource corresponding to this dashboard service.',
     )

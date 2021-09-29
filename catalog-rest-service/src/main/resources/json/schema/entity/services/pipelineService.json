@@ -38,7 +38,7 @@
       "$ref": "#/definitions/pipelineServiceType"
     },
     "description": {
-      "description": "Description of a messaging service instance.",
+      "description": "Description of a pipeline service instance.",
       "type": "string"
     },
     "pipelineUrl": {
@@ -51,7 +51,7 @@
       "$ref": "../../type/schedule.json"
     },
     "href": {
-      "description": "Link to the resource corresponding to this messaging service.",
+      "description": "Link to the resource corresponding to this pipeline service.",
       "$ref": "../../type/basic.json#/definitions/href"
     }
   },

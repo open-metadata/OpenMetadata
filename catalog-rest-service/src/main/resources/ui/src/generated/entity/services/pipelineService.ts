@@ -21,11 +21,11 @@
  */
 export interface PipelineService {
   /**
-   * Description of a messaging service instance.
+   * Description of a pipeline service instance.
    */
   description?: string;
   /**
-   * Link to the resource corresponding to this messaging service.
+   * Link to the resource corresponding to this pipeline service.
    */
   href?: string;
   /**
