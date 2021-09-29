@@ -5,12 +5,10 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { AddServiceModal } from './AddServiceModal';
+import { AddServiceModal, ServiceDataObj } from './AddServiceModal';
 
 const mockData = {
-  connectionUrl: 'string',
   description: 'string',
-  driverClass: 'string',
   href: 'string',
   id: 'string',
   jdbc: { driverClass: 'string', connectionUrl: 'string' },
@@ -22,7 +20,7 @@ const mockData = {
 const mockOnSave = jest.fn();
 const mockOnCancel = jest.fn();
 
-const mockServiceList = [mockData, mockData, mockData];
+const mockServiceList: Array<ServiceDataObj> = [{ name: mockData.name }];
 
 jest.mock('../../common/editor/MarkdownWithPreview', () => {
   return jest
@@ -68,29 +66,7 @@ describe('Test AddServiceModal Component', () => {
     expect(mockOnCancel).toBeCalledTimes(1);
   });
 
-  it('on click of cancel onCancel should be call', async () => {
-    const { container } = render(
-      <AddServiceModal
-        header="Test"
-        serviceList={mockServiceList}
-        serviceName="dashboardServices"
-        onCancel={mockOnCancel}
-        onSave={mockOnSave}
-      />
-    );
-    const cancel = await findByTestId(container, 'cancel');
-    fireEvent.click(
-      cancel,
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-      })
-    );
-
-    expect(mockOnCancel).toBeCalledTimes(1);
-  });
-
-  it('form with all the fild should render', async () => {
+  it('form with all the Field should render for databaseService', async () => {
     const { container } = render(
       <AddServiceModal
         header="Test"
@@ -104,9 +80,6 @@ describe('Test AddServiceModal Component', () => {
     const selectService = await findByTestId(container, 'selectService');
     const name = await findByTestId(container, 'name');
     const url = await findByTestId(container, 'url');
-    // const port = await findByTestId(container, 'port');
-    // const userName = await findByTestId(container, 'userName');
-    // const password = await findByTestId(container, 'password');
     const database = await findByTestId(container, 'database');
     const driverClass = await findByTestId(container, 'driverClass');
     const description = await findByTestId(container, 'description');
@@ -116,11 +89,70 @@ describe('Test AddServiceModal Component', () => {
     expect(selectService).toBeInTheDocument();
     expect(name).toBeInTheDocument();
     expect(url).toBeInTheDocument();
-    // expect(port).toBeInTheDocument();
-    // expect(userName).toBeInTheDocument();
-    // expect(password).toBeInTheDocument();
     expect(database).toBeInTheDocument();
     expect(driverClass).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(ingestionSwitch).toBeInTheDocument();
+    expect(queryByText(container, /day/i)).not.toBeInTheDocument();
+    expect(queryByText(container, /hour/i)).not.toBeInTheDocument();
+    expect(queryByText(container, /minute/i)).not.toBeInTheDocument();
+  });
+
+  it('form with all the Field should render for dashboardServices', async () => {
+    const { container } = render(
+      <AddServiceModal
+        header="Test"
+        serviceList={mockServiceList}
+        serviceName="dashboardServices"
+        onCancel={mockOnCancel}
+        onSave={mockOnSave}
+      />
+    );
+    const form = await findByTestId(container, 'form');
+    const selectService = await findByTestId(container, 'selectService');
+    const name = await findByTestId(container, 'name');
+    const url = await findByTestId(container, 'dashboard-url');
+    const userName = await findByTestId(container, 'username');
+    const password = await findByTestId(container, 'password');
+    const description = await findByTestId(container, 'description');
+    const ingestionSwitch = await findByTestId(container, 'ingestion-switch');
+
+    expect(form).toBeInTheDocument();
+    expect(selectService).toBeInTheDocument();
+    expect(name).toBeInTheDocument();
+    expect(url).toBeInTheDocument();
+    expect(userName).toBeInTheDocument();
+    expect(password).toBeInTheDocument();
+    expect(description).toBeInTheDocument();
+    expect(ingestionSwitch).toBeInTheDocument();
+    expect(queryByText(container, /day/i)).not.toBeInTheDocument();
+    expect(queryByText(container, /hour/i)).not.toBeInTheDocument();
+    expect(queryByText(container, /minute/i)).not.toBeInTheDocument();
+  });
+
+  it('form with all the Field should render for messagingServices', async () => {
+    const { container } = render(
+      <AddServiceModal
+        header="Test"
+        serviceList={mockServiceList}
+        serviceName="messagingServices"
+        onCancel={mockOnCancel}
+        onSave={mockOnSave}
+      />
+    );
+    const form = await findByTestId(container, 'form');
+    const selectService = await findByTestId(container, 'selectService');
+    const name = await findByTestId(container, 'name');
+    const url = await findByTestId(container, 'broker-url');
+    const schemaRegistry = await findByTestId(container, 'schema-registry');
+    const description = await findByTestId(container, 'description');
+    const ingestionSwitch = await findByTestId(container, 'ingestion-switch');
+
+    expect(form).toBeInTheDocument();
+    expect(selectService).toBeInTheDocument();
+    expect(name).toBeInTheDocument();
+    expect(url).toBeInTheDocument();
+    expect(schemaRegistry).toBeInTheDocument();
     expect(description).toBeInTheDocument();
     expect(ingestionSwitch).toBeInTheDocument();
     expect(queryByText(container, /day/i)).not.toBeInTheDocument();
@@ -209,24 +241,6 @@ describe('Test AddServiceModal Component', () => {
       target: { value: 'test.123' },
     });
 
-    // const port = await findByTestId(container, 'port');
-
-    // fireEvent.change(port, {
-    //   target: { value: 123 },
-    // });
-
-    // const userName = await findByTestId(container, 'userName');
-
-    // fireEvent.change(userName, {
-    //   target: { value: 'testUser' },
-    // });
-
-    // const password = await findByTestId(container, 'password');
-
-    // fireEvent.change(password, {
-    //   target: { value: 'testPwd' },
-    // });
-
     const database = await findByTestId(container, 'database');
 
     fireEvent.change(database, {
@@ -270,9 +284,6 @@ describe('Test AddServiceModal Component', () => {
     expect(selectService).toHaveValue('MySQL');
     expect(name).toHaveValue('test');
     expect(url).toHaveValue('test.123');
-    // expect(port).toHaveValue(123);
-    // expect(userName).toHaveValue('testUser');
-    // expect(password).toHaveValue('testPwd');
     expect(database).toHaveValue('testdb');
     expect(driverClass).toHaveValue('jdbc');
     expect(frequency).toHaveValue('1');
