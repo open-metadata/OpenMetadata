@@ -66,7 +66,7 @@ describe('Test AddServiceModal Component', () => {
     expect(mockOnCancel).toBeCalledTimes(1);
   });
 
-  it('form with all the fild should render for databaseService', async () => {
+  it('form with all the Field should render for databaseService', async () => {
     const { container } = render(
       <AddServiceModal
         header="Test"
@@ -98,7 +98,7 @@ describe('Test AddServiceModal Component', () => {
     expect(queryByText(container, /minute/i)).not.toBeInTheDocument();
   });
 
-  it('form with all the fild should render for dashboardServices', async () => {
+  it('form with all the Field should render for dashboardServices', async () => {
     const { container } = render(
       <AddServiceModal
         header="Test"
@@ -130,7 +130,7 @@ describe('Test AddServiceModal Component', () => {
     expect(queryByText(container, /minute/i)).not.toBeInTheDocument();
   });
 
-  it('form with all the fild should render for messagingServices', async () => {
+  it('form with all the Field should render for messagingServices', async () => {
     const { container } = render(
       <AddServiceModal
         header="Test"
