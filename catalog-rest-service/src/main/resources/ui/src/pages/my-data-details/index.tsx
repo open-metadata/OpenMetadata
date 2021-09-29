@@ -304,14 +304,18 @@ const MyDataDetailsPage = () => {
 
   const followTable = (): void => {
     if (isFollowing) {
-      removeFollower(tableId, USERId).then(() => {
+      removeFollower(tableId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
         setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
+        setFollowers(followers);
       });
     } else {
-      addFollower(tableId, USERId).then(() => {
+      addFollower(tableId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
         setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
+        setFollowers(followers);
       });
     }
   };
@@ -453,8 +457,10 @@ const MyDataDetailsPage = () => {
     <PageContainer>
       <div className="tw-px-4 w-full">
         <EntityPageInfo
+          entityName={name}
           extraInfo={extraInfo}
           followers={followersCount}
+          followersList={followers}
           followHandler={followTable}
           isFollowing={isFollowing}
           tags={tableTags}

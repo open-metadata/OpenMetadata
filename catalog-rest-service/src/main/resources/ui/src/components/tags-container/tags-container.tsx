@@ -40,6 +40,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
 }: TagsContainerProps) => {
   const [tags, setTags] = useState<Array<ColumnTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
+  const [hasFocus, setFocus] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
@@ -58,6 +59,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const focusInputBox = () => {
     if (editable && inputRef.current) {
       inputRef.current.focus();
+      setFocus(true);
     }
   };
 
@@ -160,8 +162,10 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     <div
       className={classNames(
         editable
-          ? 'tw-bg-white tw-p-1 tw-border-2 tw-border-primary tw-cursor-text'
-          : 'tw-cursor-pointer'
+          ? 'tw-bg-white tw-p-1 tw-border-2 tw-rounded tw-cursor-text'
+          : 'tw-cursor-pointer',
+        { 'tw-border-primary': hasFocus },
+        { 'hover:tw-border-main': !hasFocus }
       )}
       data-testid="tag-conatiner"
       onClick={(event) => {

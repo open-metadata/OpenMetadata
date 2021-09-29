@@ -1,6 +1,6 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail, Topic, User } from 'Models';
+import { ColumnTags, TableDetail, Topic } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -21,6 +21,7 @@ import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
+import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
@@ -60,6 +61,7 @@ const MyTopicDetailPage = () => {
   const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
   const [replicationFactor, setReplicationFactor] = useState<number>(0);
   const [retentionSize, setRetentionSize] = useState<number>(0);
+  const [name, setName] = useState<string>('');
 
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [schemaText, setSchemaText] = useState<string>('{}');
@@ -142,6 +144,7 @@ const MyTopicDetailPage = () => {
           replicationFactor,
           retentionSize,
         } = res.data;
+        setName(name);
         setTopicDetails(res.data);
         setTopicId(id);
         setDescription(description ?? '');
@@ -194,12 +197,16 @@ const MyTopicDetailPage = () => {
 
   const followTopic = (): void => {
     if (isFollowing) {
-      removeFollower(topicId, USERId).then(() => {
+      removeFollower(topicId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
+        setFollowers(followers);
         setFollowersCount((preValu) => preValu - 1);
         setIsFollowing(false);
       });
     } else {
-      addFollower(topicId, USERId).then(() => {
+      addFollower(topicId, USERId).then((res: AxiosResponse) => {
+        const { followers } = res.data;
+        setFollowers(followers);
         setFollowersCount((preValu) => preValu + 1);
         setIsFollowing(true);
       });
@@ -342,12 +349,14 @@ const MyTopicDetailPage = () => {
         <div className="tw-px-4 w-full">
           <EntityPageInfo
             isTagEditable
+            entityName={name}
             extraInfo={[
               { key: 'Owner', value: owner?.name || '' },
               { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
               ...getConfigDetails(),
             ]}
             followers={followersCount}
+            followersList={followers}
             followHandler={followTopic}
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
