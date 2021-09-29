@@ -1,7 +1,7 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/messagingService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Messaging Service",
+  "title": "Pipeline Service",
   "description": "This schema defines the Pipeline Service entity, such as Airflow and Prefect.",
   "type": "object",
   "definitions": {

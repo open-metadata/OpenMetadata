@@ -22,24 +22,29 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardEntityRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table, TableData, TableJoins, TableProfile
+from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import REST, ClientConfig, APIError
 
 import google.auth
 import google.auth.transport.requests
@@ -57,6 +62,8 @@ DatabaseServiceEntities = List[DatabaseService]
 DatabaseEntities = List[Database]
 Tags = List[Tag]
 TableProfiles = List[TableProfile]
+Pipelines = List[Pipeline]
+
 
 
 class TableEntities(BaseModel):
@@ -197,8 +204,11 @@ class OpenMetadataAPIClient(object):
 
     def get_database_service(self, service_name: str) -> DatabaseService:
         """Get the Database service"""
-        resp = self.client.get('/services/databaseServices?name={}'.format(service_name))
-        return DatabaseService(**resp['data'][0]) if len(resp['data']) > 0 else None
+        try:
+            resp = self.client.get('/services/databaseServices?name={}'.format(service_name))
+            return DatabaseService(**resp)
+        except APIError as err:
+            return None
 
     def get_database_service_by_id(self, service_id: str) -> DatabaseService:
         """Get the Database Service by ID"""
@@ -322,8 +332,11 @@ class OpenMetadataAPIClient(object):
 
     def get_messaging_service(self, service_name: str) -> MessagingService:
         """Get the Messaging service"""
-        resp = self.client.get('/services/messagingServices?name={}'.format(service_name))
-        return MessagingService(**resp['data'][0]) if len(resp['data']) > 0 else None
+        try:
+            resp = self.client.get('/services/messagingServices/name/{}'.format(service_name))
+            return DashboardService(**resp)
+        except APIError as err:
+            return None
 
     def get_messaging_service_by_id(self, service_id: str) -> MessagingService:
         """Get the Messaging Service by ID"""
@@ -361,8 +374,11 @@ class OpenMetadataAPIClient(object):
 
     def get_dashboard_service(self, service_name: str) -> DashboardService:
         """Get the Dashboard service"""
-        resp = self.client.get('/services/dashboardServices?name={}'.format(service_name))
-        return DashboardService(**resp['data'][0]) if len(resp['data']) > 0 else None
+        try:
+            resp = self.client.get('/services/dashboardServices/name/{}'.format(service_name))
+            return DashboardService(**resp)
+        except APIError as err:
+            return None
 
     def get_dashboard_service_by_id(self, service_id: str) -> DashboardService:
         """Get the Dashboard Service by ID"""
@@ -409,6 +425,52 @@ class OpenMetadataAPIClient(object):
             total = resp['paging']['total']
             after = resp['paging']['after'] if 'after' in resp['paging'] else None
             return DashboardEntities(dashboards=dashboards, total=total, after=after)
+
+    def get_pipeline_service(self, service_name: str) -> PipelineService:
+        """Get the Pipeline service"""
+        try:
+            resp = self.client.get('/services/pipelineServices/name/{}'.format(service_name))
+            return PipelineService(**resp)
+        except APIError as err:
+            return None
+
+    def get_pipeline_service_by_id(self, service_id: str) -> PipelineService:
+        """Get the Pipeline Service by ID"""
+        resp = self.client.get('/services/pipelineServices/{}'.format(service_id))
+        return PipelineService(**resp)
+
+    def create_pipeline_service(self,
+                                 pipeline_service: CreatePipelineServiceEntityRequest) -> PipelineService:
+        """Create a new Pipeline Service"""
+        resp = self.client.post('/services/pipelineServices', data=pipeline_service.json())
+        return PipelineService(**resp)
+
+    def create_or_update_task(self, create_task_request: CreateTaskEntityRequest) -> Task:
+        """Create or Update a Task """
+        resp = self.client.put('/tasks', data=create_task_request.json())
+        return Task(**resp)
+
+    def get_task_by_id(self, chart_id: str, fields: [] = ['tags, service']) -> Task:
+        """Get Task By ID"""
+        params = {'fields': ",".join(fields)}
+        resp = self.client.get('/tasks/{}'.format(chart_id), data=params)
+        return Task(**resp)
+
+    def create_or_update_pipeline(self, create_pipeline_request: CreatePipelineEntityRequest) -> Pipeline:
+        """Create or Update a Pipeline """
+        resp = self.client.put('/pipelines', data=create_pipeline_request.json())
+        return Pipeline(**resp)
+
+    def list_pipelines(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Pipelines:
+        """ List all pipelines"""
+        if fields is None:
+            resp = self.client.get('/pipelines')
+        else:
+            resp = self.client.get('/pipelines?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+        if self._use_raw_data:
+            return resp
+        else:
+            return [Pipeline(**t) for t in resp['data']]
 
     def close(self):
         self.client.close()

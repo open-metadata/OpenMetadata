@@ -14,16 +14,16 @@
 #  limitations under the License.
 import pathlib
 from datetime import timedelta
-from airflow import DAG
+from airflow_provider_openmetadata import DAG
 
 try:
-    from airflow.operators.python import PythonOperator
+    from airflow_provider_openmetadata.operators.python import PythonOperator
 except ModuleNotFoundError:
-    from airflow.operators.python_operator import PythonOperator
+    from airflow_provider_openmetadata.operators.python_operator import PythonOperator
 
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
+from airflow_provider_openmetadata.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
