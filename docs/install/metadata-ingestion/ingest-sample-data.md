@@ -16,6 +16,10 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 1. Python 3.7 or above
 {% endhint %}
 
+### Run OpenMetadata Server
+
+ please refer to Run OpenMetadata section to run the server manually or using docker.
+
 ### Install from PyPI
 
 {% tabs %}
@@ -56,7 +60,7 @@ docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elas
 Index sample data in ElasticSearch:
 
 ```bash
-cd OpenMetadata/ingestion
+cd openmetadata-0.4.0/ingestion
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
 
