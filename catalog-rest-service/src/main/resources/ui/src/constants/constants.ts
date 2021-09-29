@@ -14,7 +14,7 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
 */
-
+export const FOLLOWERS_VIEW_CAP = 20;
 export const JSON_TAB_SIZE = 2;
 export const PAGE_SIZE = 10;
 export const API_RES_MAX_SIZE = 100000;

@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ColumnTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { LIST_SIZE } from '../../../constants/constants';
+import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -14,6 +14,7 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
+import FollowersModal from './FollowersModal';
 
 type ExtraInfo = {
   key?: string;
@@ -57,6 +58,7 @@ const EntityPageInfo = ({
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
+  const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
     tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsEditable(false);
@@ -95,7 +97,7 @@ const EntityPageInfo = ({
             className={classNames('tw-grid tw-gap-3', {
               'tw-grid-cols-2': list.length > 1,
             })}>
-            {list.map((follower, index) => (
+            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower, index) => (
               <div className="tw-flex" key={index}>
                 <Avatar
                   name={(follower?.displayName || follower?.name) as string}
@@ -109,6 +111,13 @@ const EntityPageInfo = ({
           </div>
         ) : (
           <p>{entityName} dosen&#39;t have any followers yet</p>
+        )}
+        {list.length > FOLLOWERS_VIEW_CAP && (
+          <p
+            className="link-text tw-text-sm tw-py-2"
+            onClick={() => setIsViewMore(true)}>
+            View more
+          </p>
         )}
       </div>
     );
@@ -295,6 +304,26 @@ const EntityPageInfo = ({
           </NonAdminAction>
         )}
       </div>
+      {isViewMore && (
+        <FollowersModal
+          header={
+            <>
+              Followers of <span className="tw-text-black">{entityName}</span>{' '}
+            </>
+          }
+          list={[
+            ...entityFollowers
+              .map((follower) => getFollowerDetail(follower.id))
+              .filter(Boolean)
+              .map((user) => ({
+                displayName: user?.displayName as string,
+                name: user?.name as string,
+                id: user?.id as string,
+              })),
+          ]}
+          onCancel={() => setIsViewMore(false)}
+        />
+      )}
     </div>
   );
 };
