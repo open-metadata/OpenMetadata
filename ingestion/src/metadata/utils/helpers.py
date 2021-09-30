@@ -207,8 +207,6 @@ def _handle_complex_data_types(status, dataset_name, nested_str):
             name, _, data_type, length, _ = get_datatype.groups()
             children['name'] = name
             children['dataType'] = get_column_type(status,dataset_name,data_type.upper())
-            print(data_type)
-            print(children['dataType'])
             children['dataLength'] = length.lstrip('(').rstrip(')')
             if data_type.lower() == 'struct':
                 children['dataTypeDisplay'] = children['dataType']
@@ -220,7 +218,6 @@ def _handle_complex_data_types(status, dataset_name, nested_str):
                 length = 1
             col.append(children)
         check_dt = remaining_str
-    print(f"col: {col}")
     return col
 
 

@@ -305,9 +305,8 @@ class SQLSource(Source):
         table_columns = []
         row_order = 1
         for column in columns:
-            col_type = None
             children = None
-            if 'raw_type' in column:
+            if 'raw_data_type' in column and 'raw_data_type' is not None:
                 if column['raw_type'][:7] == 'struct<':
                     col_type = 'STRUCT'
                     children = _handle_complex_data_types(self.status, dataset_name, column['raw_type'])
