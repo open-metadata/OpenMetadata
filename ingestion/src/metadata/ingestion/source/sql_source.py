@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import logging
+import traceback
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -112,6 +113,7 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.PickleType: "BYTES",
     types.ARRAY: "ARRAY",
     types.VARCHAR: "VARCHAR",
+    types.CHAR: "VARCHAR",
     types.String: "STRING",
     types.Date: "DATE",
     types.DATE: "DATE",
@@ -278,7 +280,7 @@ class SQLSource(Source):
                     table=table_entity, database=self._get_database(schema)
                 )
                 yield table_and_db
-            except ValidationError as err:
+            except Exception as err:
                 logger.error(err)
                 self.status.failures.append('{}.{}'.format(self.config.service_name, table_name))
                 continue
@@ -332,7 +334,7 @@ class SQLSource(Source):
                     table=table, database=self._get_database(schema)
                 )
                 yield table_and_db
-            except ValidationError as err:
+            except Exception as err:
                 logger.error(err)
                 self.status.failures.append('{}.{}'.format(self.config.service_name, view_name))
                 continue
@@ -367,6 +369,7 @@ class SQLSource(Source):
                 col_type = get_column_type(self.status, dataset_name, column['type'])
             except Exception as err:
                 logger.error(err)
+
             col_constraint = None
             if column['nullable']:
                 col_constraint = Constraint.NULL
@@ -386,6 +389,7 @@ class SQLSource(Source):
                     description=column.get("comment", None),
                     dataType=col_type,
                     dataTypeDisplay=col_type,
+                    dataLength=col_data_length,
                     constraint=col_constraint,
                     ordinalPosition=row_order
                 )
