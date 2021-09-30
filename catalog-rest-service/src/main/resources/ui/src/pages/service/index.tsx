@@ -567,7 +567,9 @@ const ServicePage: FunctionComponent = () => {
 
             <div className="tw-bg-white tw-my-4">
               <div className="tw-col-span-3">
-                <div className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md">
+                <div
+                  className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
+                  data-testid="description-container">
                   <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                     <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
                       Description
@@ -575,6 +577,7 @@ const ServicePage: FunctionComponent = () => {
                     <div className="tw-flex-initial">
                       <button
                         className="focus:tw-outline-none"
+                        data-testid="description-edit"
                         onClick={onDescriptionEdit}>
                         <SVGIcons
                           alt="edit"
@@ -586,7 +589,7 @@ const ServicePage: FunctionComponent = () => {
                     </div>
                   </div>
                   <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                    <div data-testid="description" id="description" />
+                    <div data-testid="description-data" id="description" />
                     {description ? (
                       <RichTextEditorPreviewer markdown={description} />
                     ) : (

@@ -1,6 +1,8 @@
 import {
   findAllByTestId,
   findByTestId,
+  findByText,
+  fireEvent,
   queryByText,
   render,
 } from '@testing-library/react';
@@ -77,14 +79,41 @@ jest.mock('../../utils/ServiceUtils', () => ({
   serviceTypeLogo: jest.fn().mockReturnValue('img/path'),
 }));
 
+jest.mock(
+  '../../components/common/title-breadcrumb/title-breadcrumb.component',
+  () => {
+    return jest.fn().mockReturnValue(<div>TitleBreadcrumb</div>);
+  }
+);
+
+jest.mock(
+  '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  () => ({
+    ModalWithMarkdownEditor: jest
+      .fn()
+      .mockReturnValue(<p>ModalWithMarkdownEditor</p>),
+  })
+);
+
 describe('Test ServicePage Component', () => {
   it('Component should render', async () => {
     const { container } = render(<ServicePage />, {
       wrapper: MemoryRouter,
     });
     const servicePage = await findByTestId(container, 'service-page');
+    const titleBreadcrumb = await findByText(container, /TitleBreadcrumb/i);
+    const descriptionContainer = await findByTestId(
+      container,
+      'description-container'
+    );
+    const descriptionData = await findByTestId(container, 'description-data');
+    const descriptionEdit = await findByTestId(container, 'description-edit');
 
     expect(servicePage).toBeInTheDocument();
+    expect(titleBreadcrumb).toBeInTheDocument();
+    expect(descriptionContainer).toBeInTheDocument();
+    expect(descriptionData).toBeInTheDocument();
+    expect(descriptionEdit).toBeInTheDocument();
   });
 
   it('Table should be visible if data is available', async () => {
@@ -106,5 +135,19 @@ describe('Test ServicePage Component', () => {
     const column = await findAllByTestId(container, 'column');
 
     expect(column.length).toBe(1);
+  });
+
+  it('on click of edit description icon ModalWithMarkdownEditor should open', async () => {
+    const { container } = render(<ServicePage />, {
+      wrapper: MemoryRouter,
+    });
+
+    const editIcon = await findByTestId(container, 'description-edit');
+
+    fireEvent.click(editIcon);
+
+    expect(
+      await findByText(container, /ModalWithMarkdownEditor/i)
+    ).toBeInTheDocument();
   });
 });
