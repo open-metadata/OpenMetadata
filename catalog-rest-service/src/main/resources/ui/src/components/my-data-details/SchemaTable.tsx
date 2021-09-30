@@ -29,8 +29,8 @@ import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
 import {
   Column,
-  ColumnDataType,
   ColumnJoins,
+  DataType,
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
@@ -87,26 +87,26 @@ const SchemaTable: FunctionComponent<Props> = ({
   const rowRef = useRef<HTMLTableRowElement>(null);
   const getDataTypeString = (dataType: string): string => {
     switch (upperCase(dataType)) {
-      case ColumnDataType.String:
-      case ColumnDataType.Char:
-      case ColumnDataType.Text:
-      case ColumnDataType.Varchar:
-      case ColumnDataType.Mediumtext:
-      case ColumnDataType.Mediumblob:
-      case ColumnDataType.Blob:
+      case DataType.String:
+      case DataType.Char:
+      case DataType.Text:
+      case DataType.Varchar:
+      case DataType.Mediumtext:
+      case DataType.Mediumblob:
+      case DataType.Blob:
         return 'varchar';
-      case ColumnDataType.Timestamp:
-      case ColumnDataType.Time:
+      case DataType.Timestamp:
+      case DataType.Time:
         return 'timestamp';
-      case ColumnDataType.Int:
-      case ColumnDataType.Float:
-      case ColumnDataType.Smallint:
-      case ColumnDataType.Bigint:
-      case ColumnDataType.Numeric:
-      case ColumnDataType.Tinyint:
+      case DataType.Int:
+      case DataType.Float:
+      case DataType.Smallint:
+      case DataType.Bigint:
+      case DataType.Numeric:
+      case DataType.Tinyint:
         return 'numeric';
-      case ColumnDataType.Boolean:
-      case ColumnDataType.Enum:
+      case DataType.Boolean:
+      case DataType.Enum:
         return 'boolean';
       default:
         return dataType;
@@ -216,9 +216,7 @@ const SchemaTable: FunctionComponent<Props> = ({
         return (
           lowerCase(column.name).includes(searchText) ||
           lowerCase(column.description).includes(searchText) ||
-          lowerCase(getDataTypeString(column.columnDataType)).includes(
-            searchText
-          )
+          lowerCase(getDataTypeString(column.dataType)).includes(searchText)
         );
       });
       setSearchedColumns(searchCols);
@@ -271,14 +269,14 @@ const SchemaTable: FunctionComponent<Props> = ({
                   key={index}
                   ref={columnName === column.name ? rowRef : null}>
                   <td className="tw-relative tableBody-cell">
-                    {getConstraintIcon(column.columnConstraint)}
+                    {getConstraintIcon(column.constraint)}
                     <span>{column.name}</span>
                   </td>
 
                   <td className="tableBody-cell">
                     <span>
-                      {column.columnDataType
-                        ? lowerCase(getDataTypeString(column.columnDataType))
+                      {column.dataType
+                        ? lowerCase(getDataTypeString(column.dataType))
                         : ''}
                     </span>
                   </td>
