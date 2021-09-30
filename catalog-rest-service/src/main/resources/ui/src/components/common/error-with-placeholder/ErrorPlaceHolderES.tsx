@@ -22,23 +22,13 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   const noRecordForES = () => {
     return (
       <p className="tw-text-center">
+        No matching data assets found
         {query ? (
           <>
-            No results found for{' '}
-            <span className="tw-text-primary tw-font-medium">{query}</span>
+            {' '}
+            for <span className="tw-text-primary tw-font-medium">{query}</span>
           </>
-        ) : (
-          <>
-            No results found from{' '}
-            <a
-              className="tw-text-primary tw-font-medium"
-              href="https://docs.open-metadata.org/install/metadata-ingestion/connectors/elastic-search"
-              rel="noopener noreferrer"
-              target="_blank">
-              Elasticsearch.
-            </a>
-          </>
-        )}
+        ) : null}
       </p>
     );
   };
