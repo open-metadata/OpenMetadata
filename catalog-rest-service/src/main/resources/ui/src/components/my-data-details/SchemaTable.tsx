@@ -269,7 +269,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                   key={index}
                   ref={columnName === column.name ? rowRef : null}>
                   <td className="tw-relative tableBody-cell">
-                    {getConstraintIcon(column.dataType)}
+                    {getConstraintIcon(column.constraint)}
                     <span>{column.name}</span>
                   </td>
 
