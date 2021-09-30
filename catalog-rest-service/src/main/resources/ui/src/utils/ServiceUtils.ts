@@ -217,3 +217,12 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
 
   return entityCounts;
 };
+
+export const getTotalEntityCountByService = (buckets: Array<Bucket> = []) => {
+  let entityCounts = 0;
+  buckets.forEach((bucket) => {
+    entityCounts += bucket.doc_count;
+  });
+
+  return entityCounts;
+};

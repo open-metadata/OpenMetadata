@@ -35,6 +35,7 @@ import { getCurrentUserId } from '../../utils/CommonUtils';
 import {
   getAllServices,
   getEntityCountByService,
+  getTotalEntityCountByService,
 } from '../../utils/ServiceUtils';
 
 const MyDataPage: React.FC = (): React.ReactElement => {
@@ -51,7 +52,6 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     'dashboard_search_index,topic_search_index,table_search_index'
   );
   const [countServices, setCountServices] = useState<number>(0);
-  const [countAssets, setCountAssets] = useState<number>(0);
   const isMounted = useRef<boolean>(false);
 
   const getActiveTabClass = (tab: number) => {
@@ -84,12 +84,10 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     )
       .then((res: SearchResponse) => {
         const hits = res.data.hits.hits;
-        const total = res.data.hits.total.value;
         if (hits.length > 0) {
           setTotalNumberOfValues(res.data.hits.total.value);
           setData(formatDataResponse(hits));
           if (setAssetCount) {
-            setCountAssets(total);
             setAggregations(res.data.aggregations);
           }
           setIsLoading(false);
@@ -183,7 +181,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
               totalValue={totalNumberOfValue}>
               <>
                 <MyDataHeader
-                  countAssets={countAssets}
+                  countAssets={getTotalEntityCountByService(
+                    aggregations?.['sterms#Service']?.buckets as Bucket[]
+                  )}
                   countServices={countServices}
                   entityCounts={getEntityCountByService(
                     aggregations?.['sterms#Service']?.buckets as Bucket[]

@@ -20,6 +20,7 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import {
   AggregationType,
+  Bucket,
   FilterObject,
   FormatedTableData,
   SearchResponse,
@@ -47,6 +48,8 @@ import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
+import { getSearchAPIQuery } from '../../utils/SearchUtils';
+import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
@@ -132,8 +135,9 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
+  const [searchAPIQuery, setSearchAPIQuery] = useState<string>('');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
-  const [sortField, setSortField] = useState<string>('last_updated_timestamp');
+  const [sortField, setSortField] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
@@ -274,14 +278,27 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     Promise.allSettled([tableCount, topicCount, dashboardCount]).then(
       ([table, topic, dashboard]: PromiseSettledResult<SearchResponse>[]) => {
         setTableCount(
-          table.status === 'fulfilled' ? table.value.data.hits.total.value : 0
+          table.status === 'fulfilled'
+            ? getTotalEntityCountByService(
+                table.value.data.aggregations?.['sterms#Service']
+                  ?.buckets as Bucket[]
+              )
+            : 0
         );
         setTopicCount(
-          topic.status === 'fulfilled' ? topic.value.data.hits.total.value : 0
+          topic.status === 'fulfilled'
+            ? getTotalEntityCountByService(
+                topic.value.data.aggregations?.['sterms#Service']
+                  ?.buckets as Bucket[]
+              )
+            : 0
         );
         setDashboardCount(
           dashboard.status === 'fulfilled'
-            ? dashboard.value.data.hits.total.value
+            ? getTotalEntityCountByService(
+                dashboard.value.data.aggregations?.['sterms#Service']
+                  ?.buckets as Bucket[]
+              )
             : 0
         );
       }
@@ -290,6 +307,17 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   const fetchTableData = (forceSetAgg: boolean) => {
     setIsLoading(true);
+    setSearchAPIQuery(
+      getSearchAPIQuery(
+        searchText,
+        currentPage,
+        PAGE_SIZE,
+        getFilterString(filters),
+        sortField,
+        sortOrder,
+        searchIndex
+      )
+    );
 
     const searchResults = searchData(
       searchText,
@@ -390,7 +418,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
-    setSortField(value || 'last_updated_timestamp');
+    setSortField(value || '');
     setFieldListVisible(false);
   };
   const handleOrder = (value: string) => {
@@ -409,10 +437,8 @@ const ExplorePage: React.FC = (): React.ReactElement => {
               theme="primary"
               variant="link"
               onClick={() => setFieldListVisible((visible) => !visible)}>
-              {
-                tableSortingFields.find((field) => field.value === sortField)
-                  ?.name
-              }
+              {fieldList.find((field) => field.value === sortField)?.name ||
+                'Relevance'}
               <DropDownIcon />
             </Button>
             {fieldListVisible && (
@@ -520,6 +546,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
+    setSortOrder('desc');
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
@@ -573,6 +600,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           fetchLeftPanel={fetchLeftPanel}
           isLoading={isLoading}
           paginate={paginate}
+          searchAPIQuery={searchAPIQuery}
           searchText={searchText}
           totalValue={totalNumberOfValue}>
           {getTabs()}

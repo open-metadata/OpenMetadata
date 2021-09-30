@@ -18,6 +18,7 @@
 import { AxiosResponse } from 'axios';
 import { SearchIndex } from '../enums/search.enum';
 import { getCurrentUserId } from '../utils/CommonUtils';
+import { getSearchAPIQuery } from '../utils/SearchUtils';
 import APIClient from './index';
 
 export const searchData: Function = (
@@ -29,15 +30,16 @@ export const searchData: Function = (
   sortOrder: string,
   searchIndex: string
 ): Promise<AxiosResponse> => {
-  const start = (from - 1) * size;
-  const query = queryString ? `*${queryString}*` : '*';
-
   return APIClient.get(
-    `/search/query?q=${query}${
-      filters ? ` AND ${filters}` : ''
-    }&from=${start}&size=${size}${sortField ? `&sort_field=${sortField}` : ''}${
-      sortOrder ? `&sort_order=${sortOrder}` : ''
-    }${searchIndex ? `&index=${searchIndex}` : ''}`
+    `/search/query?${getSearchAPIQuery(
+      queryString,
+      from,
+      size,
+      filters,
+      sortField,
+      sortOrder,
+      searchIndex
+    )}`
   );
 };
 

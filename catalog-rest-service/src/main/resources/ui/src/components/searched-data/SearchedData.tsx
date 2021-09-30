@@ -41,6 +41,7 @@ type SearchedDataProp = {
   fetchLeftPanel?: () => ReactNode;
   showResultCount?: boolean;
   searchText?: string;
+  searchAPIQuery?: string;
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
 };
@@ -54,6 +55,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   showOnboardingTemplate = false,
   showOnlyChildren = false,
   searchText,
+  searchAPIQuery = '',
   totalValue,
   fetchLeftPanel,
 }: SearchedDataProp) => {
@@ -129,7 +131,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
               ) : (
                 <>
                   {children}
-                  <ErrorPlaceHolderES type="noData" />
+                  <ErrorPlaceHolderES query={searchAPIQuery} type="noData" />
                 </>
               )}
             </>
