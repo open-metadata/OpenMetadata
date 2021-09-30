@@ -14,14 +14,15 @@
 #  limitations under the License.
 
 from typing import Optional
+from metadata.utils.helpers import register_custom_type
 from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
 from .sql_source import (
     SQLConnectionConfig,
     SQLSource,
-    register_custom_type,
 )
+
 from ..ometa.openmetadata_rest import MetadataServerConfig
 
 register_custom_type(HiveDate, "DATE")

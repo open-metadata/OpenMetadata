@@ -12,16 +12,13 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import json
 import logging
-import traceback
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
-from pydantic import ValidationError
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -29,11 +26,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, TableType, Constraint, \
-    TableData, TableProfile, ConstraintType, TableConstraint
+from metadata.generated.schema.entity.data.table import Table, Column, Constraint, \
+    TableData, TableProfile
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.inspection import inspect
 
 from metadata.ingestion.api.common import IncludeFilterPattern, ConfigModel, Record
@@ -41,7 +37,7 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_database_service_or_create, _handle_complex_data_types
+from metadata.utils.helpers import get_column_type, get_database_service_or_create, _handle_complex_data_types
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -103,62 +99,6 @@ class SQLConnectionConfig(ConfigModel):
         return self.service_name
 
 
-_column_type_mapping: Dict[Type[types.TypeEngine], str] = {
-    types.Integer: "INT",
-    types.Numeric: "INT",
-    types.Boolean: "BOOLEAN",
-    types.Enum: "ENUM",
-    types._Binary: "BYTES",
-    types.LargeBinary: "BYTES",
-    types.PickleType: "BYTES",
-    types.ARRAY: "ARRAY",
-    types.VARCHAR: "VARCHAR",
-    types.CHAR: "VARCHAR",
-    types.String: "STRING",
-    types.Date: "DATE",
-    types.DATE: "DATE",
-    types.Time: "TIME",
-    types.DateTime: "DATETIME",
-    types.DATETIME: "DATETIME",
-    types.TIMESTAMP: "TIMESTAMP",
-    types.NullType: "NULL",
-    types.JSON: "JSON"
-}
-
-_known_unknown_column_types: Set[Type[types.TypeEngine]] = {
-    types.Interval,
-    types.CLOB,
-}
-
-
-def register_custom_type(
-        tp: Type[types.TypeEngine], output: str = None
-) -> None:
-    if output:
-        _column_type_mapping[tp] = output
-    else:
-        _known_unknown_column_types.add(tp)
-
-
-def get_column_type(status: SQLSourceStatus, dataset_name: str, column_type: Any) -> str:
-    type_class: Optional[str] = None
-    for sql_type in _column_type_mapping.keys():
-        if isinstance(column_type, sql_type):
-            type_class = _column_type_mapping[sql_type]
-            break
-    if type_class is None:
-        for sql_type in _known_unknown_column_types:
-            if isinstance(column_type, sql_type):
-                type_class = "NULL"
-                break
-
-    if type_class is None:
-        status.warning(
-            dataset_name, f"unable to map type {column_type!r} to metadata schema"
-        )
-        type_class = "NULL"
-
-    return type_class
 
 
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
@@ -366,15 +306,13 @@ class SQLSource(Source):
         row_order = 1
         for column in columns:
             col_type = None
-            logger.info(column)
-            if 'raw_data_type' in column and column['raw_data_type'] is not None:
-                print(json.dumps(_handle_complex_data_types(column['raw_data_type']), indent=2))
-            try:
-                col_type = get_column_type(self.status, dataset_name, column['type'])
-                print(col_type)
-            except Exception as err:
-                logger.error(err)
-
+            children = None
+            if 'raw_type' in column:
+                if column['raw_type'][:7] == 'struct<':
+                    col_type = 'STRUCT'
+                    children = _handle_complex_data_types(self.status, dataset_name, column['raw_type'])
+                else:
+                    col_type = get_column_type(self.status, dataset_name, column['type'])
             col_constraint = None
             if column['nullable']:
                 col_constraint = Constraint.NULL
@@ -394,9 +332,10 @@ class SQLSource(Source):
                     description=column.get("comment", None),
                     dataType=col_type,
                     dataTypeDisplay=col_type,
-                    dataLength=col_data_length,
+                    dataLength=col_data_length if col_data_length is not None else 1,
                     constraint=col_constraint,
-                    ordinalPosition=row_order
+                    ordinalPosition=row_order,
+                    children=children if children is not None else None
                 )
 
             if col_data_length is not None:
