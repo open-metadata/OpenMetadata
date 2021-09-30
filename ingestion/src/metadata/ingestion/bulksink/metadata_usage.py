@@ -50,8 +50,8 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime('%Y-%m-%d')
 
     def __map_tables(self):
-        tables = self.client.list_tables('columns')
-        for table in tables:
+        table_entities = self.client.list_tables('columns')
+        for table in table_entities.tables:
             if table.name.__root__ not in self.tables_dict.keys():
                 self.tables_dict[table.name.__root__] = table
 
