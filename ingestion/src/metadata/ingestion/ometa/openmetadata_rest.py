@@ -204,8 +204,8 @@ class OpenMetadataAPIClient(object):
     def get_database_service(self, service_name: str) -> DatabaseService:
         """Get the Database service"""
         try:
-            resp = self.client.get('/services/databaseServices?name={}'.format(service_name))
-            return DatabaseService(**resp['data'][0]) if len(resp['data']) > 0 else None
+            resp = self.client.get('/services/databaseServices/name/{}'.format(service_name))
+            return DatabaseService(**resp)
         except APIError as err:
             return None
 
@@ -333,7 +333,7 @@ class OpenMetadataAPIClient(object):
         """Get the Messaging service"""
         try:
             resp = self.client.get('/services/messagingServices/name/{}'.format(service_name))
-            return MessagingService(**resp['data'][0]) if len(resp['data']) > 0 else None
+            return MessagingService(**resp)
         except APIError as err:
             return None
 
@@ -375,7 +375,7 @@ class OpenMetadataAPIClient(object):
         """Get the Dashboard service"""
         try:
             resp = self.client.get('/services/dashboardServices/name/{}'.format(service_name))
-            return DashboardService(**resp['data'][0]) if len(resp['data']) > 0 else None
+            return DashboardService(**resp)
         except APIError as err:
             return None
 
@@ -387,8 +387,11 @@ class OpenMetadataAPIClient(object):
     def create_dashboard_service(self,
                                  dashboard_service: CreateDashboardServiceEntityRequest) -> DashboardService:
         """Create a new Database Service"""
-        resp = self.client.post('/services/dashboardServices', data=dashboard_service.json())
-        return DashboardService(**resp)
+        try:
+            resp = self.client.post('/services/dashboardServices', data=dashboard_service.json())
+            return DashboardService(**resp)
+        except APIError as err:
+            return None
 
     def create_or_update_chart(self, create_chart_request: CreateChartEntityRequest) -> Chart:
         """Create or Update a Chart """
@@ -429,7 +432,7 @@ class OpenMetadataAPIClient(object):
         """Get the Pipeline service"""
         try:
             resp = self.client.get('/services/pipelineServices/name/{}'.format(service_name))
-            return PipelineService(**resp['data'][0]) if len(resp['data']) > 0 else None
+            return PipelineService(**resp['data'][0]) if 'data' in resp and len(resp['data']) > 0 else None
         except APIError as err:
             return None
 
@@ -441,8 +444,11 @@ class OpenMetadataAPIClient(object):
     def create_pipeline_service(self,
                                  pipeline_service: CreatePipelineServiceEntityRequest) -> PipelineService:
         """Create a new Pipeline Service"""
-        resp = self.client.post('/services/pipelineServices', data=pipeline_service.json())
-        return PipelineService(**resp)
+        try:
+            resp = self.client.post('/services/pipelineServices', data=pipeline_service.json())
+            return PipelineService(**resp)
+        except APIError as err:
+           return None
 
     def create_or_update_task(self, create_task_request: CreateTaskEntityRequest) -> Task:
         """Create or Update a Task """
