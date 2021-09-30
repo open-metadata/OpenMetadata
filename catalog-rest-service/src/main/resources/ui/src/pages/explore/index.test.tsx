@@ -15,9 +15,9 @@
   * limitations under the License.
 */
 
-import { act, render, screen } from '@testing-library/react';
+import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { getFilterString } from '../../utils/FilterUtils';
+import { MemoryRouter } from 'react-router';
 import ExplorePage from './index';
 import { mockResponse } from './index.mock';
 jest.mock('react-router-dom', () => ({
@@ -36,7 +36,13 @@ jest.mock('../../utils/FilterUtils', () => ({
 }));
 
 jest.mock('../../components/searched-data/SearchedData', () => {
-  return jest.fn().mockReturnValue(<p>SearchedData</p>);
+  return jest
+    .fn()
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="search-data">
+        <div data-testid="wrapped-content">{children}</div>
+      </div>
+    ));
 });
 
 jest.mock('../../hooks/useToastContext', () => {
@@ -44,19 +50,16 @@ jest.mock('../../hooks/useToastContext', () => {
 });
 
 describe('Test Explore page', () => {
-  it('Should Call Search API', async () => {
-    await act(async () => {
-      render(<ExplorePage />);
+  it('Component should render', async () => {
+    const { container } = render(<ExplorePage />, {
+      wrapper: MemoryRouter,
     });
+    const searchData = await findByTestId(container, 'search-data');
+    const wrappedContent = await findByTestId(container, 'wrapped-content');
+    const tabs = await findAllByTestId(container, 'tab');
 
-    expect(await screen.findByText('SearchedData')).toBeInTheDocument();
-  });
-
-  it('getFilterString should return filter as string', async () => {
-    await act(async () => {
-      render(<ExplorePage />);
-    });
-
-    expect(getFilterString).toEqual(getFilterString);
+    expect(searchData).toBeInTheDocument();
+    expect(wrappedContent).toBeInTheDocument();
+    expect(tabs.length).toBe(3);
   });
 });
