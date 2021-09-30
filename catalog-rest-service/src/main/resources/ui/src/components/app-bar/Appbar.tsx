@@ -130,7 +130,7 @@ const Appbar: React.FC = (): JSX.Element => {
       : appState.userDetails.displayName || appState.userDetails.name;
 
     return (
-      <span>
+      <span data-testid="greeting-text">
         Welcome, <span className="tw-font-medium">{name.split(' ')[0]}</span>
       </span>
     );
@@ -238,6 +238,7 @@ const Appbar: React.FC = (): JSX.Element => {
             </div>
             <button
               className="tw-nav focus:tw-no-underline hover:tw-underline"
+              data-testid="whatsnew-modal"
               onClick={openModal}>
               <SVGIcons
                 alt="Doc icon"
