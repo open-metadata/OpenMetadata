@@ -58,40 +58,39 @@ export interface CreateTable {
  */
 export interface Column {
   /**
-   * Data type used array in columnDataType. For example, `array<int>` has columnDataType as
-   * `array` and arrayDataType as `int`.
+   * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+   * arrayDataType as `int`.
    */
-  arrayDataType?: any;
+  arrayDataType?: DataType;
   /**
-   * Child columns if columnDataType or arrayDataType is `map`, `struct`, or `union` else
-   * `null`.
+   * Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
    */
   children?: Column[];
   /**
    * Column level constraint.
    */
-  columnConstraint?: ColumnConstraint;
+  constraint?: Constraint;
+  /**
+   * Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example,
+   * `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+   */
+  dataLength?: number;
   /**
    * Data type of the column (int, date etc.).
    */
-  columnDataType: ColumnDataType;
+  dataType: DataType;
   /**
-   * Display name used for columnDataType. This is useful for complex types, such as
-   * `array<int>, map<int,string>, struct<>, and union types.
+   * Display name used for dataType. This is useful for complex types, such as `array<int>,
+   * map<int,string>, struct<>, and union types.
    */
-  columnDataTypeDisplay?: any;
-  /**
-   * Length of `char`, `varchar`, `binary`, `varbinary` `columnDataTypes`, else null. For
-   * example, `varchar(20)` has columnDataType as `varchar` and dataLength as `20`.
-   */
-  dataLength?: number;
+  dataTypeDisplay?: string;
   /**
    * Description of the column.
    */
   description?: string;
   fullyQualifiedName?: string;
   /**
-   * Json schema only if the columnDataType is JSON else null.
+   * Json schema only if the dataType is JSON else null.
    */
   jsonSchema?: string;
   name: string;
@@ -106,23 +105,14 @@ export interface Column {
 }
 
 /**
- * Column level constraint.
- *
- * This enum defines the type for column constraint.
- */
-export enum ColumnConstraint {
-  NotNull = 'NOT_NULL',
-  Null = 'NULL',
-  PrimaryKey = 'PRIMARY_KEY',
-  Unique = 'UNIQUE',
-}
-
-/**
- * Data type of the column (int, date etc.).
+ * Data type used array in dataType. For example, `array<int>` has dataType as `array` and
+ * arrayDataType as `int`.
  *
  * This enum defines the type of data stored in a column.
+ *
+ * Data type of the column (int, date etc.).
  */
-export enum ColumnDataType {
+export enum DataType {
   Array = 'ARRAY',
   Bigint = 'BIGINT',
   Binary = 'BINARY',
@@ -157,6 +147,18 @@ export enum ColumnDataType {
   Union = 'UNION',
   Varbinary = 'VARBINARY',
   Varchar = 'VARCHAR',
+}
+
+/**
+ * Column level constraint.
+ *
+ * This enum defines the type for column constraint.
+ */
+export enum Constraint {
+  NotNull = 'NOT_NULL',
+  Null = 'NULL',
+  PrimaryKey = 'PRIMARY_KEY',
+  Unique = 'UNIQUE',
 }
 
 /**

@@ -384,6 +384,8 @@ const SchemaTable: FunctionComponent<Props> = ({
                     onClick={() => {
                       if (!editColumnTag) {
                         handleEditColumnTag(column, index);
+                      } else {
+                        handleTagSelection();
                       }
                     }}>
                     <NonAdminAction

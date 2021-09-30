@@ -59,10 +59,10 @@ base_requirements = {
     "email-validator>=1.0.3",
     "wheel~=0.36.2",
     "python-jose==3.3.0",
-    "okta>=1.7.0",
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
-    "requests~=2.25.1"
+    "requests~=2.26",
+    "PyYAML"
 }
 pii_requirements = {
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
@@ -110,7 +110,8 @@ plugins: Dict[str, Set[str]] = {
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
-    "report-server": report_requirements
+    "report-server": report_requirements,
+    "airflow": {"apache-airflow >= 1.10.2"}
 }
 
 build_options = {"includes": ["_cffi_backend"]}
@@ -137,6 +138,7 @@ setup(
     packages=find_namespace_packages(where='./src', exclude=['tests*']),
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
+        "apache_airflow_provider": ["provider_info = airflow_provider_openmetadata:get_provider_config"],
     },
     install_requires=list(base_requirements),
     extras_require={

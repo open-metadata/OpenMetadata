@@ -179,8 +179,8 @@ const TeamsPage = () => {
     if ((currentTeam?.users.length as number) <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>there are not any users added yet.</p>
-          <p>would like to start adding some ?</p>
+          <p>There are not any users added yet.</p>
+          <p>Would like to start adding some?</p>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
               className="tw-h-8 tw-rounded tw-mb-2"
@@ -226,7 +226,7 @@ const TeamsPage = () => {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>Your team does not have any dataset</p>
-          <p>would like to start adding some ?</p>
+          <p>Would like to start adding some?</p>
           <Link to="/explore">
             <Button
               className="tw-h-8 tw-rounded tw-mb-2 tw-text-white"

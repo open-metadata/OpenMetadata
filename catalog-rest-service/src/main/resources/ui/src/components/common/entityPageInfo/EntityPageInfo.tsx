@@ -1,16 +1,20 @@
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import { ColumnTags, TableDetail } from 'Models';
-import React, { useState } from 'react';
-import { LIST_SIZE } from '../../../constants/constants';
+import React, { useEffect, useState } from 'react';
+import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
+import { User } from '../../../generated/entity/teams/user';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
 import SVGIcons from '../../../utils/SvgUtils';
+import { getFollowerDetail } from '../../../utils/TableUtils';
 import TagsContainer from '../../tags-container/tags-container';
 import Tags from '../../tags/tags';
+import Avatar from '../avatar/Avatar';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import PopOver from '../popover/PopOver';
 import TitleBreadcrumb from '../title-breadcrumb/title-breadcrumb.component';
 import { TitleBreadcrumbProps } from '../title-breadcrumb/title-breadcrumb.interface';
+import FollowersModal from './FollowersModal';
 
 type ExtraInfo = {
   key?: string;
@@ -31,6 +35,8 @@ type Props = {
   owner?: TableDetail['owner'];
   hasEditAccess?: boolean;
   tagsHandler?: (selectedTags?: Array<string>) => void;
+  followersList: Array<User>;
+  entityName: string;
 };
 
 const EntityPageInfo = ({
@@ -46,9 +52,13 @@ const EntityPageInfo = ({
   owner,
   hasEditAccess,
   tagsHandler,
+  followersList = [],
+  entityName,
 }: Props) => {
   const [isEditable, setIsEditable] = useState<boolean>(false);
-
+  const [entityFollowers, setEntityFollowers] =
+    useState<Array<User>>(followersList);
+  const [isViewMore, setIsViewMore] = useState<boolean>(false);
   const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
     tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsEditable(false);
@@ -70,6 +80,52 @@ const EntityPageInfo = ({
           })),
         ];
   };
+
+  const getFollowers = () => {
+    const list = entityFollowers
+      .map((follower) => getFollowerDetail(follower.id))
+      .filter(Boolean);
+
+    return (
+      <div
+        className={classNames('tw-max-h-96 tw-overflow-y-auto', {
+          'tw-flex tw-justify-center tw-items-center tw-py-2':
+            list.length === 0,
+        })}>
+        {list.length > 0 ? (
+          <div
+            className={classNames('tw-grid tw-gap-3', {
+              'tw-grid-cols-2': list.length > 1,
+            })}>
+            {list.slice(0, FOLLOWERS_VIEW_CAP).map((follower, index) => (
+              <div className="tw-flex" key={index}>
+                <Avatar
+                  name={(follower?.displayName || follower?.name) as string}
+                  width="30"
+                />
+                <span className="tw-self-center tw-ml-2">
+                  {follower?.displayName || follower?.name}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p>{entityName} dosen&#39;t have any followers yet</p>
+        )}
+        {list.length > FOLLOWERS_VIEW_CAP && (
+          <p
+            className="link-text tw-text-sm tw-py-2"
+            onClick={() => setIsViewMore(true)}>
+            View more
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    setEntityFollowers(followersList);
+  }, [followersList]);
 
   return (
     <div>
@@ -99,9 +155,16 @@ const EntityPageInfo = ({
                   </>
                 )}
               </button>
-              <span className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r">
-                {followers}
-              </span>
+              <PopOver
+                className="tw-justify-center tw-items-center"
+                html={getFollowers()}
+                position="bottom"
+                theme="light"
+                trigger="click">
+                <span className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline">
+                  {followers}
+                </span>
+              </PopOver>
             </span>
           </div>
         </div>
@@ -241,6 +304,26 @@ const EntityPageInfo = ({
           </NonAdminAction>
         )}
       </div>
+      {isViewMore && (
+        <FollowersModal
+          header={
+            <>
+              Followers of <span className="tw-text-black">{entityName}</span>{' '}
+            </>
+          }
+          list={[
+            ...entityFollowers
+              .map((follower) => getFollowerDetail(follower.id))
+              .filter(Boolean)
+              .map((user) => ({
+                displayName: user?.displayName as string,
+                name: user?.name as string,
+                id: user?.id as string,
+              })),
+          ]}
+          onCancel={() => setIsViewMore(false)}
+        />
+      )}
     </div>
   );
 };

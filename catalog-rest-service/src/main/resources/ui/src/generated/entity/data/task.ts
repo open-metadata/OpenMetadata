@@ -32,7 +32,7 @@ export interface Task {
   /**
    * All the tasks that are downstream of this task.
    */
-  downstreamTasks?: EntityReference[];
+  downstreamTasks?: string[];
   /**
    * Followers of this Pipeline.
    */
@@ -74,19 +74,15 @@ export interface Task {
    * Task URL to visit/manage. This URL points to respective pipeline service UI
    */
   taskUrl?: string;
-  /**
-   * All the tasks that are upstream of this task.
-   */
-  upstreamTasks?: EntityReference[];
 }
 
 /**
+ * Followers of this Pipeline.
+ *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Followers of this Pipeline.
  *
  * Owner of this pipeline.
  *

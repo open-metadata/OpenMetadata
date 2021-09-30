@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/dashboardService.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Dashboard Service",
-  "description": "This schema defines the Messaging Service entity, such as Kafka and Pulsar.",
+  "description": "This schema defines the Dashboard Service entity, such as Looker and Superset.",
   "type": "object",
   "definitions": {
     "dashboardServiceType": {
@@ -67,7 +67,7 @@
       "$ref": "../../type/schedule.json"
     },
     "href": {
-      "description": "Link to the resource corresponding to this messaging service.",
+      "description": "Link to the resource corresponding to this dashboard service.",
       "$ref": "../../type/basic.json#/definitions/href"
     }
   },

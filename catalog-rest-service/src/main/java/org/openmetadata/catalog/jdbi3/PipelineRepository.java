@@ -46,6 +46,8 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -162,10 +164,19 @@ public abstract class PipelineRepository {
 
     // Service can't be changed in update since service name is part of FQN and
     // change to a different service will result in a different FQN and creation of a new database under the new service
-    storedPipeline.setService(service);
-    storedPipeline.setTasks(updatedPipeline.getTasks());
-    updateTaskRelationships(storedPipeline);
+    //Airflow lineage backend gets executed per task in a dag. This means we will not a get full picture of the pipeline
+    // in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipleine
+    // in the next task run we may have to update. To take care of this we will merge the tasks
 
+    List<EntityReference> storedTasks = storedPipeline.getTasks();
+    if (updatedPipeline.getTasks() != null) {
+      List<EntityReference> updatedTasks = Stream.concat(storedPipeline.getTasks().stream(),
+              updatedPipeline.getTasks().stream()).collect(Collectors.toList());
+      storedPipeline.setTasks(updatedTasks);
+    }
+
+    storedPipeline.setService(service);
+    updateTaskRelationships(storedPipeline);
     return new PutResponse<>(Response.Status.OK, storedPipeline);
   }
 

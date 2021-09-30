@@ -104,7 +104,7 @@ public class SearchResource {
                            @DefaultValue("10") @QueryParam("size") int size,
                          @Parameter(description = "Sort the search results by field, available fields to " +
                                  "sort weekly_stats" +
-                                 " , daily_stats, monthly_stats, last_updated_timestamp defaults to weekly_stats")
+                                 " , daily_stats, monthly_stats, last_updated_timestamp")
                                   @QueryParam("sort_field") String sortFieldParam,
                          @Parameter(description = "Sort order asc for ascending or desc for descending, " +
                                  "defaults to desc")

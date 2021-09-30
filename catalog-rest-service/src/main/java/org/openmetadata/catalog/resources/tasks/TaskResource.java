@@ -274,6 +274,7 @@ public class TaskResource {
                     .withDescription(create.getDescription())
                     .withService(create.getService())
                     .withTaskUrl(create.getTaskUrl())
+                    .withDownstreamTasks(create.getDownstreamTasks())
                     .withTaskConfig(create.getTaskConfig())
                     .withTags(create.getTags())
                     .withOwner(create.getOwner());
