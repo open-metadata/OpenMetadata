@@ -21,8 +21,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     "mappings":{
           "properties": {
             "table_name": {
-              "type":"text",
-              "analyzer": "keyword"
+              "type":"text"
             },
             "schema": {
               "type":"text",
@@ -34,10 +33,10 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               }
             },
             "display_name": {
-              "type": "keyword"
+              "type": "text"
             },
             "owner": {
-              "type": "keyword"
+              "type": "text"
             },
             "followers": {
               "type": "keyword"
@@ -53,7 +52,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "column_names": {
-              "type":"keyword"
+              "type":"text"
             },
             "column_descriptions": {
               "type": "text"
@@ -71,7 +70,7 @@ TABLE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "keyword"
             },
             "database": {
-              "type": "keyword"
+              "type": "text"
             },
             "suggest": {
               "type": "completion"
@@ -106,8 +105,7 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     "mappings":{
           "properties": {
             "topic_name": {
-              "type":"text",
-              "analyzer": "keyword"
+              "type":"text"
             },
             "schema": {
               "type":"text",
@@ -119,10 +117,10 @@ TOPIC_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               }
             },
             "display_name": {
-              "type": "keyword"
+              "type": "text"
             },
             "owner": {
-              "type": "keyword"
+              "type": "text"
             },
             "followers": {
               "type": "keyword"
@@ -161,11 +159,10 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     "mappings":{
           "properties": {
             "dashboard_name": {
-              "type":"text",
-              "analyzer": "keyword"
+              "type":"text"
             },
             "display_name": {
-              "type": "keyword"
+              "type": "text"
             },
             "owner": {
               "type": "keyword"
@@ -181,7 +178,7 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
               "type": "text"
             },
             "chart_names": {
-              "type":"keyword"
+              "type":"text"
             },
             "chart_descriptions": {
               "type": "text"
