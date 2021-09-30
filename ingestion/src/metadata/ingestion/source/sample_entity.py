@@ -12,6 +12,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 from metadata.ingestion.source.sample_data import get_database_service_or_create
@@ -63,12 +64,12 @@ class SampleEntitySource(Source):
         self.database_service_json = json.load(open("./examples/sample_data/datasets/service.json", 'r'))
         self.database_service = get_database_service_or_create(self.database_service_json, self.metadata_config)
         self.column_scanner = ColumnNameScanner()
-        self.service_name = lambda: self.faker.first_name()
+        self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(['BigQuery', 'Hive', 'MSSQL', 'MySQL', 'Postgres', 'Redshift',
                                                    'Snowflake'])
-        self.database_name = lambda: self.faker.first_name()
-        self.table_name = lambda: self.faker.first_name()
-        self.column_name = lambda: self.faker.first_name()
+        self.database_name = lambda: self.faker.word()
+        self.table_name = lambda: self.faker.word()
+        self.column_name = lambda: self.faker.word()
         self.description = lambda: self.faker.text()
         self.tags = self.__get_tags()
         self.tagFQN = lambda: self.faker.first_name()
@@ -89,11 +90,7 @@ class SampleEntitySource(Source):
         pass
 
     def __get_tags(self) -> {}:
-        user_tags = self.client.list_tags_by_category("user")
-        tags_dict = {}
-        for tag in user_tags:
-            tags_dict[tag.name.__root__] = tag
-        return tags_dict
+        return self.client.list_tags_by_category("user")
 
     def scan(self, text):
         types = set()
@@ -110,8 +107,16 @@ class SampleEntitySource(Source):
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         for h in range(self.config.no_of_services):
             service = {'jdbc': {'connectionUrl': f'jdbc://localhost', 'driverClass': 'jdbc'},
-                       'name': self.service_name(), 'description': str(self.description), 'serviceType': self.service_type()}
-            create_service = self.client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
+                       'name': self.service_name(), 'description': self.description(),
+                       'serviceType': self.service_type()}
+            create_service = None
+            while True:
+                try:
+                    create_service = self.client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
+                    break
+                except APIError as err:
+                    continue
+
             logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
             for i in range(self.config.no_of_databases):
                 db = Database(id=uuid.uuid4(),
@@ -131,22 +136,14 @@ class SampleEntitySource(Source):
                                          columns=table_columns)
                     row_order = 0
                     for t in range(self.config.no_of_columns):
-                        pii_tags = []
-                        col_name = self.column_name()
-                        pii_tags += self.column_scanner.scan(col_name)
                         tag_labels = []
-                        for pii_tag in pii_tags:
-                            if snake_to_camel(pii_tag) in self.tags.keys():
-                                tag_entity = self.tags[snake_to_camel(pii_tag)]
-                            else:
-                                logging.debug("Fail to tag column {} with tag {}".format(col_name, pii_tag))
-                                continue
-                            tag_labels.append(TagLabel(tagFQN=tag_entity.fullyQualifiedName,
-                                                       labelType='Automated',
-                                                       state='Suggested',
-                                                       href=tag_entity.href))
+                        tag_entity = random.choice(self.tags)
+                        tag_labels.append(TagLabel(tagFQN=tag_entity.fullyQualifiedName,
+                                                   labelType='Automated',
+                                                   state='Suggested',
+                                                   href=tag_entity.href))
                         table_columns.append(
-                            Column(name=col_name,
+                            Column(name=self.column_name(),
                                    description=self.description(),
                                    dataType=self.col_type(),
                                    constraint=self.col_constraint(),
