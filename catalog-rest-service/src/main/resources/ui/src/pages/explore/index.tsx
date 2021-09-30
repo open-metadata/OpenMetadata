@@ -48,7 +48,6 @@ import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
-import { getSearchAPIQuery } from '../../utils/SearchUtils';
 import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
@@ -135,7 +134,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
   const [error, setError] = useState<string>('');
-  const [searchAPIQuery, setSearchAPIQuery] = useState<string>('');
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<string>('desc');
@@ -307,17 +305,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   const fetchTableData = (forceSetAgg: boolean) => {
     setIsLoading(true);
-    setSearchAPIQuery(
-      getSearchAPIQuery(
-        searchText,
-        currentPage,
-        PAGE_SIZE,
-        getFilterString(filters),
-        sortField,
-        sortOrder,
-        searchIndex
-      )
-    );
 
     const searchResults = searchData(
       searchText,
@@ -600,7 +587,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           fetchLeftPanel={fetchLeftPanel}
           isLoading={isLoading}
           paginate={paginate}
-          searchAPIQuery={searchAPIQuery}
           searchText={searchText}
           totalValue={totalNumberOfValue}>
           {getTabs()}
