@@ -55,7 +55,6 @@ import http.client
 import json
 
 from jose import jwt
-from okta.jwt import JWT
 
 logger = logging.getLogger(__name__)
 DatabaseServiceEntities = List[DatabaseService]
@@ -206,7 +205,7 @@ class OpenMetadataAPIClient(object):
         """Get the Database service"""
         try:
             resp = self.client.get('/services/databaseServices?name={}'.format(service_name))
-            return DatabaseService(**resp)
+            return DatabaseService(**resp['data'][0]) if len(resp['data']) > 0 else None
         except APIError as err:
             return None
 
@@ -334,7 +333,7 @@ class OpenMetadataAPIClient(object):
         """Get the Messaging service"""
         try:
             resp = self.client.get('/services/messagingServices/name/{}'.format(service_name))
-            return DashboardService(**resp)
+            return MessagingService(**resp['data'][0]) if len(resp['data']) > 0 else None
         except APIError as err:
             return None
 
@@ -376,7 +375,7 @@ class OpenMetadataAPIClient(object):
         """Get the Dashboard service"""
         try:
             resp = self.client.get('/services/dashboardServices/name/{}'.format(service_name))
-            return DashboardService(**resp)
+            return DashboardService(**resp['data'][0]) if len(resp['data']) > 0 else None
         except APIError as err:
             return None
 
@@ -430,7 +429,7 @@ class OpenMetadataAPIClient(object):
         """Get the Pipeline service"""
         try:
             resp = self.client.get('/services/pipelineServices/name/{}'.format(service_name))
-            return PipelineService(**resp)
+            return PipelineService(**resp['data'][0]) if len(resp['data']) > 0 else None
         except APIError as err:
             return None
 

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class RedshiftConfig(SQLConnectionConfig):
-    scheme = "postgresql+psycopg2"
+    scheme = "redshift+psycopg2"
     where_clause: Optional[str] = None
     duration: int = 1
     service_type = "Redshift"
