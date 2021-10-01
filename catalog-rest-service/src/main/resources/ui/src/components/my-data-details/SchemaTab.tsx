@@ -70,7 +70,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       if (matchedColumn) {
         return {
           name: matchedColumn.name,
-          dataType: matchedColumn.columnDataType,
+          dataType: matchedColumn.dataType,
         };
       } else {
         return {
