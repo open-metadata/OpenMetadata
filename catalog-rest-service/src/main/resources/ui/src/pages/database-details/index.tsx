@@ -229,7 +229,7 @@ const DatabaseDetails: FunctionComponent = () => {
         <Loader />
       ) : (
         <PageContainer>
-          <div className="tw-px-4">
+          <div className="tw-px-4" data-testid="page-container">
             <TitleBreadcrumb titleLinks={slashedTableName} />
 
             <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
@@ -237,12 +237,18 @@ const DatabaseDetails: FunctionComponent = () => {
                 <span className="tw-text-grey-muted tw-font-normal">
                   Tables :
                 </span>{' '}
-                <span className="tw-pl-1 tw-font-normal">{instanceCount}</span>
+                <span
+                  className="tw-pl-1 tw-font-normal"
+                  data-testid="table-count">
+                  {instanceCount}
+                </span>
               </span>
             </div>
             <div className="tw-bg-white tw-mb-4">
               <div className="tw-col-span-3">
-                <div className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md">
+                <div
+                  className="schema-description tw-flex tw-flex-col tw-h-full tw-relative tw-border tw-border-main tw-rounded-md"
+                  data-testid="description-container">
                   <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
                     <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-text-sm tw-font-normal">
                       Description
@@ -250,6 +256,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     <div className="tw-flex-initial">
                       <button
                         className="focus:tw-outline-none"
+                        data-testid="description-edit-button"
                         onClick={onDescriptionEdit}>
                         <SVGIcons
                           alt="edit"
@@ -261,7 +268,7 @@ const DatabaseDetails: FunctionComponent = () => {
                     </div>
                   </div>
                   <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                    <div data-testid="description" id="description" />
+                    <div data-testid="description-data" id="description" />
                     {description ? (
                       <RichTextEditorPreviewer markdown={description} />
                     ) : (
@@ -286,13 +293,27 @@ const DatabaseDetails: FunctionComponent = () => {
             <table
               className="tw-bg-white tw-w-full tw-mb-4"
               data-testid="database-tables">
-              <thead>
+              <thead data-testid="table-header">
                 <tr className="tableHead-row">
-                  <th className="tableHead-cell">Table Name</th>
-                  <th className="tableHead-cell">Description</th>
-                  <th className="tableHead-cell">Owner</th>
-                  <th className="tableHead-cell">Usage</th>
-                  <th className="tableHead-cell tw-w-60">Tags</th>
+                  <th className="tableHead-cell" data-testid="header-name">
+                    Table Name
+                  </th>
+                  <th
+                    className="tableHead-cell"
+                    data-testid="header-description">
+                    Description
+                  </th>
+                  <th className="tableHead-cell" data-testid="header-owner">
+                    Owner
+                  </th>
+                  <th className="tableHead-cell" data-testid="header-usage">
+                    Usage
+                  </th>
+                  <th
+                    className="tableHead-cell tw-w-60"
+                    data-testid="header-tags">
+                    Tags
+                  </th>
                 </tr>
               </thead>
               <tbody className="tableBody">
@@ -303,7 +324,7 @@ const DatabaseDetails: FunctionComponent = () => {
                         'tableBody-row',
                         !isEven(index + 1) ? 'odd-row' : null
                       )}
-                      data-testid="column"
+                      data-testid="tabale-column"
                       key={index}>
                       <td className="tableBody-cell">
                         <Link

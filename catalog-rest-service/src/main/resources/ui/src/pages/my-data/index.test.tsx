@@ -17,7 +17,12 @@
 
 /* eslint-disable @typescript-eslint/camelcase */
 
-import { findByTestId, render } from '@testing-library/react';
+import {
+  findAllByTestId,
+  findByTestId,
+  findByText,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import MyDataPage from './index';
@@ -189,11 +194,19 @@ jest.mock('../../axiosAPIs/miscAPI', () => ({
 jest.mock('../../components/searched-data/SearchedData', () => {
   return jest
     .fn()
-    .mockReturnValue(<p data-testid="search-data">SearchedData</p>);
+    .mockImplementation(({ children }: { children: React.ReactNode }) => (
+      <div data-testid="search-data">
+        <div data-testid="wrapped-content">{children}</div>
+      </div>
+    ));
 });
 
 jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
   return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
+});
+
+jest.mock('../../components/my-data/MyDataHeader', () => {
+  return jest.fn().mockReturnValue(<p>MyDataHeader</p>);
 });
 
 jest.mock('../../utils/ServiceUtils', () => ({
@@ -211,7 +224,13 @@ describe('Test MyData page', () => {
       wrapper: MemoryRouter,
     });
     const searchData = await findByTestId(container, 'search-data');
+    const wrappedContent = await findByTestId(container, 'wrapped-content');
+    const tabs = await findAllByTestId(container, 'tab');
+    const myDataHeader = await findByText(container, /MyDataHeader/i);
 
     expect(searchData).toBeInTheDocument();
+    expect(wrappedContent).toBeInTheDocument();
+    expect(myDataHeader).toBeInTheDocument();
+    expect(tabs.length).toBe(3);
   });
 });

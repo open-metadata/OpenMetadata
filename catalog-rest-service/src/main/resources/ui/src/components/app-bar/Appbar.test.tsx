@@ -15,7 +15,13 @@
   * limitations under the License.
 */
 
-import { render } from '@testing-library/react';
+import {
+  findAllByTestId,
+  findByTestId,
+  findByText,
+  fireEvent,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Appbar from './Appbar';
@@ -26,6 +32,7 @@ jest.mock('../../hooks/authHooks', () => ({
       isSignedIn: true,
       isSignedOut: false,
       isAuthenticatedRoute: true,
+      isAuthDisabled: true,
     };
   },
 }));
@@ -34,34 +41,49 @@ jest.mock('../Modals/WhatsNewModal', () => ({
   WhatsNewModal: jest.fn().mockReturnValue(<p>WhatsNewModal</p>),
 }));
 
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  getVersion: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: {
+        version: '0.5.0-SNAPSHOT',
+      },
+    })
+  ),
+}));
+
 describe('Test Appbar Component', () => {
-  it('Component should render', () => {
-    const { getByTestId } = render(<Appbar />, {
+  it('Component should render', async () => {
+    const { container } = render(<Appbar />, {
       wrapper: MemoryRouter,
     });
-    // Check for statis user for now
-    // TODO: Fix the tests when we have actual data
-    const dropdown = getByTestId('dropdown-profile');
+
+    const dropdown = await findByTestId(container, 'dropdown-profile');
+    const whatsnewModal = await findByTestId(container, 'whatsnew-modal');
+    const greetingText = await findByTestId(container, 'greeting-text');
 
     expect(dropdown).toBeInTheDocument();
+    expect(whatsnewModal).toBeInTheDocument();
+    expect(greetingText).toBeInTheDocument();
   });
 
-  it('Check for render Items by default', () => {
-    const { getAllByTestId } = render(<Appbar />, {
+  it('Check for render Items by default', async () => {
+    const { container } = render(<Appbar />, {
       wrapper: MemoryRouter,
     });
-    const items = getAllByTestId('appbar-item');
+    const items = await findAllByTestId(container, 'appbar-item');
 
     expect(items).toHaveLength(2);
     expect(items.map((i) => i.textContent)).toEqual(['', 'Explore']);
   });
 
-  it('Check for render dropdown item', () => {
-    const { getAllByTestId } = render(<Appbar />, {
+  it('onClick of whatsNewModal, it should open', async () => {
+    const { container } = render(<Appbar />, {
       wrapper: MemoryRouter,
     });
-    const items = getAllByTestId('dropdown-item');
 
-    expect(items).toHaveLength(3);
+    const whatsnewModal = await findByTestId(container, 'whatsnew-modal');
+    fireEvent.click(whatsnewModal);
+
+    expect(await findByText(container, /WhatsNewModal/i)).toBeInTheDocument();
   });
 });

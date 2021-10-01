@@ -19,13 +19,13 @@ import { getByTestId, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { Column, ColumnDataType } from '../../generated/entity/data/table';
+import { Column, DataType } from '../../generated/entity/data/table';
 import SchemaTab from './SchemaTab';
 
 const mockColumns: Column[] = [
   {
     name: 'testId',
-    columnDataType: ColumnDataType.String,
+    dataType: DataType.String,
     description: 'string',
     fullyQualifiedName: 'string',
     tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],

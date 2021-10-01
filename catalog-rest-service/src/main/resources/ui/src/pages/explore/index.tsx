@@ -504,6 +504,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
                 className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
                   tab.tab
                 )}`}
+                data-testid="tab"
                 key={index}
                 onClick={() => {
                   onTabChange(tab.tab);

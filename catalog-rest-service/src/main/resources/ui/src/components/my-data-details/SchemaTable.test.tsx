@@ -19,21 +19,23 @@ import { getAllByTestId, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ColumnDataType } from '../../generated/entity/data/table';
+import { Constraint, DataType, Table } from '../../generated/entity/data/table';
 import SchemaTable from './SchemaTable';
 
 jest.mock('../common/rich-text-editor/RichTextEditorPreviewer', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-const mockColumns = [
+const mockColumns: Table['columns'] = [
   {
-    name: 'testId',
-    columnDataType: ColumnDataType.String,
-    description: 'string',
-    fullyQualifiedName: 'string',
+    constraint: Constraint.PrimaryKey,
+    dataType: DataType.Number,
+    dataTypeDisplay: 'numeric',
+    description: 'Unique identifier for the address.',
+    fullyQualifiedName: 'bigquery.shopify.dim_address.address_id',
+    name: 'address_id',
+    ordinalPosition: 1,
     tags: [{ tagFQN: 'string' }, { tagFQN: 'string2' }],
-    ordinalPosition: 2,
   },
 ];
 

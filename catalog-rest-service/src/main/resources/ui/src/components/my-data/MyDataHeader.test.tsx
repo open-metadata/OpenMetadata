@@ -127,7 +127,7 @@ describe('Test MyDataHeader Component', () => {
     expect(getByText(container, /40 tables/i)).toBeInTheDocument();
     expect(getByText(container, /13 topics/i)).toBeInTheDocument();
     expect(getByText(container, /10 dashboards/i)).toBeInTheDocument();
-    expect(getByText(container, /4 of services/i)).toBeInTheDocument();
+    expect(getByText(container, /4 services/i)).toBeInTheDocument();
     expect(getByText(container, /193 assets/i)).toBeInTheDocument();
   });
 
