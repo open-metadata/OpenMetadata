@@ -25,6 +25,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.LocationDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -37,10 +38,12 @@ import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
+import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -161,6 +164,8 @@ public final class EntityUtil {
       ModelResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       PipelineResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      LocationResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       DatabaseServiceResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
@@ -169,6 +174,8 @@ public final class EntityUtil {
       DashboardServiceResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       PipelineServiceResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      StorageServiceResource.addHref(uriInfo, ref);
     } else {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
     }
@@ -279,6 +286,8 @@ public final class EntityUtil {
       return dao.pipelineDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       return dao.modelDAO().findEntityReferenceById(id);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      return dao.locationDAO().findEntityReferenceById(id);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
@@ -307,10 +316,11 @@ public final class EntityUtil {
       return dao.userDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.TEAM)) {
       return dao.teamDAO().findEntityReferenceByName(fqn);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      return dao.locationDAO().findEntityReferenceByName(fqn);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
-
 
   public static EntityReference validateEntityLink(EntityLink entityLink, CollectionDAO dao)
           throws IOException {

@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -94,6 +95,9 @@ public class TableResource {
     if (table.getDatabase() != null) {
       DatabaseResource.addHref(uriInfo, table.getDatabase());
     }
+    if (table.getLocation() != null) {
+      LocationResource.addHref(uriInfo, table.getLocation());
+    }
     EntityUtil.addHref(uriInfo, table.getOwner());
     EntityUtil.addHref(uriInfo, table.getFollowers());
     return table;
@@ -117,7 +121,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile";
+          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile,location";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -396,6 +400,27 @@ public class TableResource {
     return addHref(uriInfo, table);
   }
 
+  @PUT
+  @Path("/{id}/location")
+  @Operation(summary = "Add a location", tags = "tables",
+          description = "Add a location identified by `locationId` to this table",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+          })
+  public Response addLocation(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                              @PathParam("id") String id,
+                              @Parameter(description = "Id of the location to be added",
+                                      schema = @Schema(type = "string"))
+                                      String locationId) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "location");
+    Status status = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
+    Table table = dao.get(id, fields);
+    return Response.status(status).entity(table).build();
+  }
+
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "tables",
@@ -410,6 +435,21 @@ public class TableResource {
                                  @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
+  }
+
+  @DELETE
+  @Path("/{id}/location")
+  @Operation(summary = "Remove the location", tags = "tables",
+          description = "Remove the location")
+  public Table deleteLocation(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the table",
+                                      schema = @Schema(type = "string"))
+                              @PathParam("id") String id) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "location");
+    dao.deleteLocation(id);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }

@@ -70,3 +70,6 @@ catalog-rest-service/src/main/resources/ui/tsconfig.tsbuildinfo
 
 #tests
 .coverage
+
+#vscode
+*/.vscode/*
