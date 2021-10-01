@@ -17,9 +17,12 @@ import json
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Set, Type
 
-from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import \
+    CreateDashboardServiceEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import \
+    CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import \
+    CreateMessagingServiceEntityRequest
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -76,7 +79,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
             if isinstance(column_type, sql_type):
                 type_class = "NULL"
                 break
-    if type_class is None and column_type == 'CHARACTER VARYING':
+    if type_class is None and column_type in ['CHARACTER VARYING', 'CHAR']:
         type_class = _column_type_mapping[types.VARCHAR]
     if type_class is None:
         status.warning(
@@ -109,17 +112,22 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
         return service
     else:
         service = {'jdbc': {'connectionUrl': f'jdbc://{config.host_port}', 'driverClass': 'jdbc'},
-                   'name': config.service_name, 'description': '', 'serviceType': config.get_service_type()}
+                   'name': config.service_name, 'description': '',
+                   'serviceType': config.get_service_type()}
         print(service)
-        created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
+        created_service = client.create_database_service(
+            CreateDatabaseServiceEntityRequest(**service)
+        )
         return created_service
 
 
-def get_messaging_service_or_create(service_name: str,
-                                    message_service_type: str,
-                                    schema_registry_url: str,
-                                    brokers: List[str],
-                                    metadata_config) -> MessagingService:
+def get_messaging_service_or_create(
+        service_name: str,
+        message_service_type: str,
+        schema_registry_url: str,
+        brokers: List[str],
+        metadata_config
+) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_name)
     if service is not None:
@@ -135,12 +143,14 @@ def get_messaging_service_or_create(service_name: str,
         return created_service
 
 
-def get_dashboard_service_or_create(service_name: str,
-                                    dashboard_service_type: str,
-                                    username: str,
-                                    password: str,
-                                    dashboard_url: str,
-                                    metadata_config) -> DashboardService:
+def get_dashboard_service_or_create(
+        service_name: str,
+        dashboard_service_type: str,
+        username: str,
+        password: str,
+        dashboard_url: str,
+        metadata_config
+) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_dashboard_service(service_name)
     if service is not None:
@@ -155,6 +165,7 @@ def get_dashboard_service_or_create(service_name: str,
         )
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
+
 
 def get_last_index(nested_str):
     counter = 1
@@ -186,7 +197,7 @@ def _handle_complex_data_types(status, dataset_name, nested_str):
             break
         else:
             previous_dt = check_dt
-            counter+=1
+            counter += 1
         struct = None
         parse_str = None
         if type(check_dt) == str:
@@ -200,24 +211,31 @@ def _handle_complex_data_types(status, dataset_name, nested_str):
 
         if parse_str is None:
             parse_str, _, remaining_str = get_variable(nested).groups()
-
         get_datatype = re.match(r'(.*)(:)([\w\s]*)(\(\d*\))?(?:>*)(.*?)', parse_str)
         if parse_str and get_datatype:
             children = {}
             name, _, data_type, length, _ = get_datatype.groups()
             children['name'] = name
-            children['dataType'] = get_column_type(status,dataset_name,data_type.upper())
+            children['dataType'] = get_column_type(status, dataset_name, data_type.upper())
             children['dataLength'] = length.lstrip('(').rstrip(')')
             if data_type.lower() == 'struct':
                 children['dataTypeDisplay'] = children['dataType']
-                children['children']=(_handle_complex_data_types(status, dataset_name, 
-                check_dt.lstrip(name).lstrip(':')))
+                children['children'] = (_handle_complex_data_types(
+                    status, dataset_name,
+                    check_dt.lstrip(name).lstrip(':')
+                ))
             else:
                 children['dataTypeDisplay'] = children['dataType']
-            if not length:
-                length = 1
+                if data_type.lower() in ['array', 'map']:
+                    if re.match(r'(map)(?:.*)', parse_str):
+                        children['dataType'] = 'MAP'
+                    else:
+                        children['dataType'] = 'ARRAY'
+                        arr_data_type = re.match(r'(?:array<)(\w*)(?:.*)', parse_str)
+                        children['arr_data_type'] = arr_data_type.groups()[0].upper()
+                    children['dataTypeDisplay'] = parse_str
+            if children['dataLength'] is None:
+                children['dataLength'] = 1
             col.append(children)
         check_dt = remaining_str
     return col
-
-

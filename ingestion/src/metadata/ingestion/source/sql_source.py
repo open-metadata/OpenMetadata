@@ -14,6 +14,7 @@
 #  limitations under the License.
 import logging
 import uuid
+import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
@@ -37,7 +38,8 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_column_type, get_database_service_or_create, _handle_complex_data_types
+from metadata.utils.helpers import get_column_type, get_database_service_or_create, \
+    _handle_complex_data_types
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -99,8 +101,6 @@ class SQLConnectionConfig(ConfigModel):
         return self.service_name
 
 
-
-
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
     description = None
     try:
@@ -133,8 +133,10 @@ class SQLSource(Source):
             if self.config.data_profiler_enabled:
                 if self.data_profiler is None:
                     from metadata.profiler.dataprofiler import DataProfiler
-                    self.data_profiler = DataProfiler(status=self.status,
-                                                    connection_str=self.connection_string)
+                    self.data_profiler = DataProfiler(
+                        status=self.status,
+                        connection_str=self.connection_string
+                    )
                 return True
             return False
         except Exception:
@@ -208,9 +210,14 @@ class SQLSource(Source):
                     fullyQualifiedName=fqn,
                     columns=table_columns
                 )
-                if self.sql_config.generate_sample_data:
-                    table_data = self.fetch_sample_data(schema, table_name)
-                    table_entity.sampleData = table_data
+                try:
+                    if self.sql_config.generate_sample_data:
+                        table_data = self.fetch_sample_data(schema, table_name)
+                        table_entity.sampleData = table_data
+                except Exception as err:
+                    logger.error(repr(err))
+                    logger.error(err)
+                    pass
 
                 if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
@@ -301,49 +308,67 @@ class SQLSource(Source):
                 unique_columns = constraint['column_names']
         dataset_name = f"{schema}.{table}"
         columns = inspector.get_columns(table, schema)
-
         table_columns = []
         row_order = 1
-        for column in columns:
-            children = None
-            if 'raw_data_type' in column and 'raw_data_type' is not None:
-                if column['raw_type'][:7] == 'struct<':
-                    col_type = 'STRUCT'
-                    children = _handle_complex_data_types(self.status, dataset_name, column['raw_type'])
+        try:
+            for column in columns:
+                children = None
+                data_type_display = None
+                col_data_length = None
+                arr_data_type = None
+                if 'raw_data_type' in column and 'raw_data_type' is not None:
+                    if re.match(r'(struct<)(?:.*)', column['raw_data_type']):
+                        col_type = 'STRUCT'
+                        children = _handle_complex_data_types(
+                            self.status, dataset_name, column['raw_data_type']
+                        )
+                        data_type_display = column['raw_data_type']
+                    elif re.match(r'(map<|array<)(?:.*)', column['raw_data_type']):
+                        if re.match(r'(map<)(?:.*)', column['raw_data_type']):
+                            col_type = 'MAP'
+                        else:
+                            col_type = 'ARRAY'
+                            arr_data_type = re.match(
+                                r'(?:array<)(\w*)(?:.*)', column['raw_data_type']
+                            )
+                            arr_data_type = arr_data_type.groups()[0].upper()
+                        data_type_display = column['raw_data_type']
+                    else:
+                        col_type = get_column_type(self.status, dataset_name, column['type'])
                 else:
                     col_type = get_column_type(self.status, dataset_name, column['type'])
-            col_constraint = None
-            if column['nullable']:
-                col_constraint = Constraint.NULL
-            elif not column['nullable']:
-                col_constraint = Constraint.NOT_NULL
-
-            if column['name'] in pk_columns:
-                col_constraint = Constraint.PRIMARY_KEY
-            elif column['name'] in unique_columns:
-                col_constraint = Constraint.UNIQUE
-            col_data_length = None
-            if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
-                col_data_length = column['type'].length
-
-            om_column = Column(
+                col_constraint = None
+                if column['nullable']:
+                    col_constraint = Constraint.NULL
+                elif not column['nullable']:
+                    col_constraint = Constraint.NOT_NULL
+                if column['name'] in pk_columns:
+                    col_constraint = Constraint.PRIMARY_KEY
+                elif column['name'] in unique_columns:
+                    col_constraint = Constraint.UNIQUE
+                if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
+                    col_data_length = column['type'].length
+                if col_data_length is None:
+                    col_data_length = 1
+                om_column = Column(
                     name=column['name'],
                     description=column.get("comment", None),
                     dataType=col_type,
-                    dataTypeDisplay=col_type,
-                    dataLength=col_data_length if col_data_length is not None else 1,
+                    dataTypeDisplay="{}({})".format(col_type, col_data_length) if data_type_display
+                                                                                  is None else
+                    f"{data_type_display}",
+                    dataLength=col_data_length,
                     constraint=col_constraint,
                     ordinalPosition=row_order,
-                    children=children if children is not None else None
+                    children=children if children is not None else None,
+                    arrayDataType=arr_data_type
                 )
 
-            if col_data_length is not None:
-                om_column.dataLength = col_data_length
-
-            table_columns.append(om_column)
-            row_order = row_order + 1
-
-        return table_columns
+                table_columns.append(om_column)
+                row_order = row_order + 1
+            return table_columns
+        except Exception as err:
+            logger.error("{}: {} {}".format(repr(err), table, err))
 
     def run_data_profiler(
             self,
@@ -355,7 +380,7 @@ class SQLSource(Source):
         logger.info(
             f"Running Profiling for {dataset_name}. "
             f"If you haven't configured offset and limit this process can take longer"
-            
+
         )
         if self.config.scheme == "bigquery":
             table = dataset_name
