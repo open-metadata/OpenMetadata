@@ -24,60 +24,66 @@ import { isEven } from '../../utils/CommonUtils';
 export type SampleColumns = { name: string; dataType: string };
 
 type Props = {
-  sampleData: {
-    columns: Array<SampleColumns>;
-    rows: TableData['rows'];
+  sampleData?: {
+    columns?: Array<SampleColumns>;
+    rows?: TableData['rows'];
   };
 };
 
 const SampleDataTable: FunctionComponent<Props> = ({ sampleData }: Props) => {
   return (
     <div className="tw-table-responsive">
-      <table
-        className="tw-min-w-max tw-w-full tw-table-auto"
-        data-testid="sample-data-table">
-        <thead>
-          <tr className="tableHead-row">
-            {sampleData.columns.map((column) => {
+      {sampleData?.rows && sampleData?.columns ? (
+        <table
+          className="tw-min-w-max tw-w-full tw-table-auto"
+          data-testid="sample-data-table">
+          <thead>
+            <tr className="tableHead-row">
+              {sampleData.columns.map((column) => {
+                return (
+                  <th
+                    className="tableHead-cell"
+                    data-testid="column-name"
+                    key={column.name}>
+                    {column.name}
+                    <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
+                      ({lowerCase(column.dataType)})
+                    </span>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody className="tw-text-gray-600 tw-text-sm">
+            {sampleData?.rows?.map((row, rowIndex) => {
               return (
-                <th
-                  className="tableHead-cell"
-                  data-testid="column-name"
-                  key={column.name}>
-                  {column.name}
-                  <span className="tw-py-0.5 tw-px-1 tw-ml-1 tw-rounded tw-text-grey-muted">
-                    ({lowerCase(column.dataType)})
-                  </span>
-                </th>
+                <tr
+                  className={classNames(
+                    'tableBody-row',
+                    !isEven(rowIndex + 1) ? 'odd-row' : null
+                  )}
+                  data-testid="row"
+                  key={rowIndex}>
+                  {row.map((data, index) => {
+                    return (
+                      <td
+                        className="tableBody-cell"
+                        data-testid="cell"
+                        key={index}>
+                        {data ? data.toString() : '--'}
+                      </td>
+                    );
+                  })}
+                </tr>
               );
             })}
-          </tr>
-        </thead>
-        <tbody className="tw-text-gray-600 tw-text-sm">
-          {sampleData?.rows?.map((row, rowIndex) => {
-            return (
-              <tr
-                className={classNames(
-                  'tableBody-row',
-                  !isEven(rowIndex + 1) ? 'odd-row' : null
-                )}
-                data-testid="row"
-                key={rowIndex}>
-                {row.map((data, index) => {
-                  return (
-                    <td
-                      className="tableBody-cell"
-                      data-testid="cell"
-                      key={index}>
-                      {data ? data.toString() : '--'}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      ) : (
+        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+          No sample data available
+        </div>
+      )}
     </div>
   );
 };
