@@ -7,9 +7,10 @@ import { useAuth } from '../../../hooks/authHooks';
 type Props = {
   type: 'error' | 'noData';
   errorMessage?: string;
+  query?: string;
 };
 
-const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
+const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   const { isAuthDisabled } = useAuth();
   const getUserDisplayName = () => {
     return isAuthDisabled
@@ -20,30 +21,15 @@ const ErrorPlaceHolderES = ({ type, errorMessage }: Props) => {
   };
   const noRecordForES = () => {
     return (
-      <>
-        <p>
-          We are unable to get any results from{' '}
-          <a
-            className="tw-text-primary tw-font-medium"
-            href="https://docs.open-metadata.org/install/metadata-ingestion/connectors/elastic-search"
-            rel="noopener noreferrer"
-            target="_blank">
-            Elasticsearch.
-          </a>
-        </p>
-        <p>Please make sure you ran the Elasticsearch indexing.</p>
-        <p>
-          Refer to our{' '}
-          <a
-            className="tw-text-primary tw-font-medium"
-            href="https://docs.open-metadata.org/install/metadata-ingestion/connectors/elastic-search"
-            rel="noopener noreferrer"
-            target="_blank">
-            docs
-          </a>{' '}
-          for Elasticsearch indexing
-        </p>
-      </>
+      <p className="tw-text-center">
+        No matching data assets found
+        {query ? (
+          <>
+            {' '}
+            for <span className="tw-text-primary tw-font-medium">{query}</span>
+          </>
+        ) : null}
+      </p>
     );
   };
 

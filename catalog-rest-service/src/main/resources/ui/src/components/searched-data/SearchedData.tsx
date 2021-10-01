@@ -129,7 +129,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
               ) : (
                 <>
                   {children}
-                  <ErrorPlaceHolderES type="noData" />
+                  <ErrorPlaceHolderES query={searchText} type="noData" />
                 </>
               )}
             </>
