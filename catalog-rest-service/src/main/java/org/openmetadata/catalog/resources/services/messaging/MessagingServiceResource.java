@@ -185,7 +185,7 @@ public class MessagingServiceResource {
   @DELETE
   @Path("/{id}")
   @Operation(summary = "Delete a messaging service", tags = "services",
-          description = "Delete a messaing services. If topics belong the service, it can't be " +
+          description = "Delete a messaging service. If topics belong the service, it can't be " +
                   "deleted.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),

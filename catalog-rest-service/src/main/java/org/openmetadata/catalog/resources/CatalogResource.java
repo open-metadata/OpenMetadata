@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,7 +50,7 @@ public class CatalogResource {
 
   private static CollectionList collectionList;
 
-  public static CollectionList getCollectionList(UriInfo uriInfo) throws JsonProcessingException {
+  public static CollectionList getCollectionList(UriInfo uriInfo) {
     if (collectionList == null) {
       CollectionDescriptor[] collections = CollectionRegistry.getInstance()
               .getCollectionForPath("/v1", uriInfo);
@@ -69,7 +68,7 @@ public class CatalogResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = CollectionDescriptor.class)))
           })
-  public CollectionList getCollections(@Context UriInfo uriInfo) throws JsonProcessingException {
+  public CollectionList getCollections(@Context UriInfo uriInfo) {
     return getCollectionList(uriInfo);
   }
 }

@@ -165,7 +165,7 @@ public abstract class PipelineRepository {
     // Service can't be changed in update since service name is part of FQN and
     // change to a different service will result in a different FQN and creation of a new database under the new service
     //Airflow lineage backend gets executed per task in a dag. This means we will not a get full picture of the pipeline
-    // in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipleine
+    // in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipeline
     // in the next task run we may have to update. To take care of this we will merge the tasks
 
     List<EntityReference> storedTasks = storedPipeline.getTasks();

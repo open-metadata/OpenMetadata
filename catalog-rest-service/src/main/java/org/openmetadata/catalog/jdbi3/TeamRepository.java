@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -132,8 +131,7 @@ public abstract class TeamRepository {
   }
 
   @Transaction
-  public TeamList listAfter(Fields fields, int limitParam, String after) throws IOException,
-          ParseException, GeneralSecurityException {
+  public TeamList listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException {
     // Forward scrolling, either because after != null or first page is being asked
     List<String> jsons = teamDAO().listAfter(limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
@@ -155,8 +153,7 @@ public abstract class TeamRepository {
   }
 
   @Transaction
-  public TeamList listBefore(Fields fields, int limitParam, String before) throws IOException,
-          ParseException, GeneralSecurityException {
+  public TeamList listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException {
     // Reverse scrolling
     List<String> jsons = teamDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
 

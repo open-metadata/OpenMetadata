@@ -29,7 +29,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.skife.jdbi.v2.DBI;
@@ -48,11 +47,10 @@ import java.util.Set;
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
   private RestHighLevelClient client;
-  private TableRepository tableRepository;
   private final ActionListener<UpdateResponse> listener = new ActionListener<>() {
     @Override
     public void onResponse(UpdateResponse updateResponse) {
-      LOG.info("Updated Elastic Search", updateResponse);
+      LOG.info("Updated Elastic Search {}", updateResponse);
     }
 
     @Override
@@ -71,8 +69,6 @@ public class ElasticSearchEventHandler implements EventHandler {
   public Void process(ContainerRequestContext requestContext,
                       ContainerResponseContext responseContext) {
     try {
-      int responseCode = responseContext.getStatus();
-      String method = requestContext.getMethod();
       LOG.info("request Context "+ requestContext.toString());
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();

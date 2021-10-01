@@ -26,6 +26,6 @@ authorizerConfiguration:
     - "suresh"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "open-metadata.org"
+  principalDomain: "open-metadata.org"
 ```
 

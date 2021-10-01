@@ -97,7 +97,6 @@ import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
-import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -114,10 +113,8 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static Database DATABASE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel TIER_2 = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public static List<Column> COLUMNS = Arrays.asList(
+  public static final List<Column> COLUMNS = Arrays.asList(
           getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
           getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
@@ -251,7 +248,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
     Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_c = getColumn("c", STRUCT, "struct<int: d>>>", USER_ADDRESS_TAG_LABEL)
-            .withChildren(new ArrayList<>(Arrays.asList(c2_c_d)));
+            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
     Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>>",USER_BANK_ACCOUNT_TAG_LABEL)
@@ -929,7 +926,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     printTables(allTables);
 
     // List tables with limit set from 1 to maxTables size
-    // Each time comapare the returned list with allTables list to make sure right results are returned
+    // Each time compare the returned list with allTables list to make sure right results are returned
     for (int limit = 1; limit < maxTables; limit++) {
       String after = null;
       String before;
@@ -1286,8 +1283,7 @@ public class TableResourceTest extends CatalogApplicationTest {
       return;
     }
     // Sort columns by name
-    expectedColumns.sort(new ColumnComparator());
-    actualColumns.sort(new ColumnComparator());
+    assertNotNull(expectedColumns);
     assertEquals(expectedColumns.size(), actualColumns.size());
     for (int i = 0; i < expectedColumns.size(); i++) {
       validateColumn(expectedColumns.get(i), actualColumns.get(i));

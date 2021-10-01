@@ -78,7 +78,7 @@ public final class TablesInitializer {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(OPTIONS, args);
     if (!commandLine.hasOption(OPTION_CONFIG_FILE_PATH) || !commandLine.hasOption(OPTION_SCRIPT_ROOT_PATH)) {
-      usage(OPTIONS);
+      usage();
       System.exit(1);
     }
 
@@ -193,9 +193,9 @@ public final class TablesInitializer {
     }
   }
 
-  private static void usage(Options options) {
+  private static void usage() {
     HelpFormatter formatter = new HelpFormatter();
-    formatter.printHelp("TableInitializer [options]", options);
+    formatter.printHelp("TableInitializer [options]", TablesInitializer.OPTIONS);
   }
 
   enum SchemaMigrationOption {

@@ -58,13 +58,11 @@ import java.util.Objects;
 public class UsageResource {
   private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   private final UsageRepository dao;
-  private final CatalogAuthorizer authorizer;
 
   @Inject
   public UsageResource(UsageRepository dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "UsageRepository must not be null");
     this.dao = dao;
-    this.authorizer = authorizer;
   }
 
   @GET

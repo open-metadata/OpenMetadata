@@ -32,8 +32,6 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
@@ -73,7 +71,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -150,7 +147,7 @@ public class TableResource {
                         @Parameter(description = "Returns list of tables before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of tables after this curor",
+                        @Parameter(description = "Returns list of tables after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after)
           throws IOException, ParseException, GeneralSecurityException {

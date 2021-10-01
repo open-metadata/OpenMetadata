@@ -389,8 +389,7 @@ public class MessagingServiceResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateMessagingServiceConfig(MessagingService actualService, List<String> expectedBrokers,
-                                                     URI expectedSchemaRegistry)
-          throws HttpResponseException {
+                                                     URI expectedSchemaRegistry) {
     assertTrue(actualService.getBrokers().containsAll(expectedBrokers));
     assertEquals(actualService.getSchemaRegistry(), expectedSchemaRegistry);
   }

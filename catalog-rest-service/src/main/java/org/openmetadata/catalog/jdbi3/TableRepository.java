@@ -773,7 +773,7 @@ public abstract class TableRepository {
 
     @SqlQuery("SELECT count(*) FROM table_entity WHERE " +
             "(fullyQualifiedName LIKE CONCAT(:databaseFQN, '.%') OR :databaseFQN IS NULL)")
-    int listCount(@Bind("databaseFQN") String databseFQN);
+    int listCount(@Bind("databaseFQN") String databaseFQN);
 
     @SqlQuery(
             "SELECT json FROM (" +
@@ -783,7 +783,7 @@ public abstract class TableRepository {
               "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by table fullyQualifiedName
               "LIMIT :limit" +
             ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("databaseFQN") String databseFQN, @Bind("limit") int limit,
+    List<String> listBefore(@Bind("databaseFQN") String databaseFQN, @Bind("limit") int limit,
                            @Bind("before") String before);
 
     @SqlQuery("SELECT json FROM table_entity WHERE " +
@@ -791,7 +791,7 @@ public abstract class TableRepository {
             "fullyQualifiedName > :after " + // Pagination by table fullyQualifiedName
             "ORDER BY fullyQualifiedName " + // Pagination ordering by table fullyQualifiedName
             "LIMIT :limit")
-    List<String> listAfter(@Bind("databaseFQN") String databseFQN, @Bind("limit") int limit,
+    List<String> listAfter(@Bind("databaseFQN") String databaseFQN, @Bind("limit") int limit,
                            @Bind("after") String after);
 
     @SqlQuery("SELECT EXISTS (SELECT * FROM table_entity WHERE id = :id)")
