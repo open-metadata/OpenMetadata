@@ -12,6 +12,7 @@ from metadata.generated.schema.api.services.createPipelineService import CreateP
 from metadata.generated.schema.entity.services.pipelineService import PipelineServiceType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from metadata.utils.helpers import convert_epoch_to_iso
 
 if TYPE_CHECKING:
     from airflow import DAG
@@ -111,6 +112,10 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         k: v for (k, v) in dag_properties.items() if k in allowed_flow_keys
     }
 
+    operator.log.info("Task Properties {}".format(task_properties))
+    operator.log.info("DAG properties {}".format(dag_properties))
+    #operator.log.info("Pipeline Context {}".format(context))
+
     timestamp = int(dateutil.parser.parse(context["ts"]).timestamp() * 1000)
     owner = dag.owner
     tags = dag.tags
@@ -124,18 +129,27 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
             pipelineUrl=pipeline_service_url
         )
         airflow_service_entity = client.create_pipeline_service(pipeline_service)
-        operator.log.info("airflow service is created {}", airflow_service_entity)
+
+    operator.log.info("airflow service entity {}", airflow_service_entity)
     operator.log.info(task_properties)
     operator.log.info(dag_properties)
     downstream_tasks = []
+    dag_start_date = convert_epoch_to_iso(int(float(dag_properties['start_date'])))
+
     if '_downstream_task_ids' in task_properties:
         downstream_tasks = ast.literal_eval(task_properties['_downstream_task_ids'])
+
     operator.log.info("downstream tasks {}".format(downstream_tasks))
+    task_start_date = task_properties['start_date'].isoformat() if 'start_time' in task_properties else None
+    task_end_date = task_properties['end_date'].isoformat() if 'end_time' in task_properties else None
+
     create_task = CreateTaskEntityRequest(
         name=task_properties['task_id'],
         displayName=task_properties['label'],
         taskUrl=task_url,
-        upstreamTasks=None,
+        taskType=task_properties['_task_type'],
+        startDate=task_start_date,
+        endDate=task_end_date,
         downstreamTasks=downstream_tasks,
         service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
     )
@@ -147,6 +161,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         displayName=dag.dag_id,
         description=dag.description,
         pipelineUrl=dag_url,
+        startDate=dag_start_date,
         tasks=[EntityReference(id=task.id, type='task')],
         service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
     )
@@ -190,5 +205,6 @@ class OpenMetadataLineageBackend(LineageBackend):
                 config, context, operator, operator.inlets, operator.outlets, client
             )
         except Exception as e:
+            operator.log.error(traceback.format_exc())
             operator.log.error(e)
             operator.log.error(traceback.print_exc())
