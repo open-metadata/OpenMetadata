@@ -81,8 +81,8 @@ const SchemaTab: FunctionComponent<Props> = ({
     });
 
     return {
-      columns: updatedColumns as SampleColumns[],
-      rows: sampleData.rows,
+      columns: updatedColumns as SampleColumns[] | undefined,
+      rows: sampleData?.rows,
     };
   };
 
