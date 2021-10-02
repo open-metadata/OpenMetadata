@@ -72,7 +72,7 @@ public abstract class AuditLogRepository {
   }
 
   @Transaction
-  public void delete(String id) throws IOException {
+  public void delete(String id) {
     auditLogDAO().delete(id);
   }
 

@@ -61,7 +61,6 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -132,12 +131,12 @@ public class TeamResource {
                        @Min(1)
                        @Max(1000000)
                        @QueryParam("limit") int limitParam,
-                       @Parameter(description = "Returns list of tables before this curor",
+                       @Parameter(description = "Returns list of tables before this cursor",
                                schema = @Schema(type = "string"))
                        @QueryParam("before") String before,
-                       @Parameter(description = "Returns list of tables after this curor",
+                       @Parameter(description = "Returns list of tables after this cursor",
                                schema = @Schema(type = "string"))
-                       @QueryParam("after") String after) throws IOException, GeneralSecurityException, ParseException {
+                       @QueryParam("after") String after) throws IOException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 
@@ -245,7 +244,7 @@ public class TeamResource {
           })
   public Response delete(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @PathParam("id") String id) throws IOException {
+                         @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(id);
     return Response.ok().build();

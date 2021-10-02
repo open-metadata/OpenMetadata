@@ -387,8 +387,7 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   }
 
   private static void validatePipelineServiceConfig(PipelineService actualService, List<String> expectedBrokers,
-                                                     URI expectedUrl)
-          throws HttpResponseException {
+                                                     URI expectedUrl) {
     assertEquals(actualService.getPipelineUrl(), expectedUrl);
   }
 }

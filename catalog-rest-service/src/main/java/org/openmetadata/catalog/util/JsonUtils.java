@@ -141,7 +141,7 @@ public final class JsonUtils {
 
     // Build new sorted patch
     JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-    operations.forEach(o -> arrayBuilder.add(o));
+    operations.forEach(arrayBuilder::add);
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
 
     // Apply sortedPatch

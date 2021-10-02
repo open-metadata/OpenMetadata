@@ -29,9 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
@@ -41,7 +41,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   private Set<String> adminUsers;
   private Set<String> botUsers;
 
-  private String prinicipalDomain;
+  private String principalDomain;
   private UserRepository userRepository;
   private final String fieldsParam = "teams";
 
@@ -49,11 +49,9 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   @Override
   public void init(AuthorizerConfiguration config, DBI dbi) {
     LOG.debug("Initializing DefaultCatalogAuthorizer with config {}", config);
-    this.adminUsers = config.getAdminPrincipals().stream()
-            .collect(Collectors.toSet());
-    this.botUsers = config.getBotPrincipals().stream()
-            .collect(Collectors.toSet());
-    this.prinicipalDomain = config.getPrinicipalDomain();
+    this.adminUsers = new HashSet<>(config.getAdminPrincipals());
+    this.botUsers = new HashSet<>(config.getBotPrincipals());
+    this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
     this.userRepository = dbi.onDemand(UserRepository.class);
     mayBeAddAdminUsers();
@@ -80,7 +78,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .forEach(name -> {
               User user = new User().withId(UUID.randomUUID())
                       .withName(name)
-                      .withEmail(name + "@" + prinicipalDomain)
+                      .withEmail(name + "@" + principalDomain)
                       .withIsAdmin(true);
               try {
                 User addedUser = userRepository.create(user, null);
@@ -113,7 +111,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .forEach(name -> {
               User user = new User().withId(UUID.randomUUID())
                       .withName(name)
-                      .withEmail(name + "@" + prinicipalDomain)
+                      .withEmail(name + "@" + principalDomain)
                       .withIsBot(true);
               try {
                 User addedUser = userRepository.create(user, null);
@@ -145,9 +143,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
           }
         }
       } else if(owner.getType().equals(Entity.USER)) {
-        if (user.getName().equals(owner.getName())) {
-          return true;
-        }
+        return user.getName().equals(owner.getName());
       }
       return false;
     } catch (IOException |EntityNotFoundException ex) {
