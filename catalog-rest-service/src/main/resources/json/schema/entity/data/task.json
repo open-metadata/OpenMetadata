@@ -5,27 +5,6 @@
   "description": "This schema defines the Task entity. A task is a unit of computation in a Pipeline. ",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Task",
-  "definitions": {
-    "taskConfig": {
-      "type": "object",
-      "javaType": "org.openmetadata.catalog.type.TaskConfig",
-      "description": "This schema defines the type for a column in a table.",
-      "properties": {
-        "codeLocation": {
-          "description": "Location of task file",
-          "type": "string"
-        },
-        "startDate": {
-          "description": "Start Date of the task",
-          "$ref": "../../type/basic.json#/definitions/date"
-        },
-        "concurrency": {
-          "description": "Concurrency of the Task",
-          "type": "integer"
-        }
-      }
-    }
-  },
   "properties" : {
     "id": {
       "description": "Unique identifier that identifies a task instance.",
@@ -66,13 +45,21 @@
       },
       "default": null
     },
-    "taskConfig": {
-      "description": "Task Configuration.",
-      "$ref": "#/definitions/taskConfig"
+    "taskType": {
+      "description": "Type of the Task. Usually refers to the class it implements",
+      "type": "string"
     },
-    "followers": {
-      "description": "Followers of this Pipeline.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    "taskSQL": {
+      "description": "SQL used in the task. Can be used to determine the lineage",
+      "type": "string"
+    },
+    "startDate": {
+      "description": "Start date of the task",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "endDate": {
+      "description": "End date of the task",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "tags": {
       "description": "Tags for this Pipeline.",

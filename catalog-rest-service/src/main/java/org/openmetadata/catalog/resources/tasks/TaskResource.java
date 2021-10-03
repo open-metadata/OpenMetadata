@@ -224,7 +224,10 @@ public class TaskResource {
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
                     .withDescription(create.getDescription())
                     .withService(create.getService())
-                    .withTaskConfig(create.getTaskConfig())
+                    .withStartDate(create.getStartDate())
+                    .withEndDate(create.getEndDate())
+                    .withTaskType(create.getTaskType())
+                    .withTaskSQL(create.getTaskSQL())
                     .withTaskUrl(create.getTaskUrl())
                     .withTags(create.getTags())
                     .withOwner(create.getOwner());
@@ -275,7 +278,10 @@ public class TaskResource {
                     .withService(create.getService())
                     .withTaskUrl(create.getTaskUrl())
                     .withDownstreamTasks(create.getDownstreamTasks())
-                    .withTaskConfig(create.getTaskConfig())
+                    .withStartDate(create.getStartDate())
+                    .withEndDate(create.getEndDate())
+                    .withTaskType(create.getTaskType())
+                    .withTaskSQL(create.getTaskSQL())
                     .withTags(create.getTags())
                     .withOwner(create.getOwner());
     PutResponse<Task> response = dao.createOrUpdate(task, create.getService(), create.getOwner());

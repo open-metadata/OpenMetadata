@@ -432,7 +432,7 @@ class OpenMetadataAPIClient(object):
         """Get the Pipeline service"""
         try:
             resp = self.client.get('/services/pipelineServices/name/{}'.format(service_name))
-            return PipelineService(**resp['data'][0]) if 'data' in resp and len(resp['data']) > 0 else None
+            return PipelineService(**resp)
         except APIError as err:
             return None
 
