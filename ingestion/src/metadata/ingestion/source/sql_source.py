@@ -38,9 +38,8 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_column_type, get_database_service_or_create, \
-    _handle_complex_data_types
-
+from metadata.utils.helpers import  get_database_service_or_create
+from metadata.utils.column_helpers import _handle_complex_data_types,get_column_type
 logger: logging.Logger = logging.getLogger(__name__)
 
 
