@@ -99,6 +99,7 @@ const ReactTable = ({
       {
         columns: columns,
         data,
+        autoResetExpanded: false,
       },
       useExpanded
     );
@@ -448,11 +449,11 @@ const ReactTable = ({
                         <div>
                           {cell.value.length > 20 ? (
                             <span>
-                              {cell.value.slice(0, 20)}
+                              {cell.value.slice(0, 20).toLowerCase()}
                               <PopOver
                                 html={
                                   <div className="tw-break-words">
-                                    {cell.value}
+                                    {cell.value.toLowerCase()}
                                   </div>
                                 }
                                 position="bottom"
@@ -464,7 +465,7 @@ const ReactTable = ({
                               </PopOver>
                             </span>
                           ) : (
-                            cell.value
+                            cell.value.toLowerCase()
                           )}
                         </div>
                       )}
