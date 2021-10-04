@@ -37,7 +37,7 @@ import {
   isEven,
 } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import { getConstraintIcon } from '../../utils/TableUtils';
+import { getConstraintIcon, makeData } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import PopOver from '../common/popover/PopOver';
@@ -45,7 +45,6 @@ import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPr
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TagsContainer from '../tags-container/tags-container';
 import Tags from '../tags/tags';
-import { makeData } from './data';
 
 type Props = {
   owner: Table['owner'];
