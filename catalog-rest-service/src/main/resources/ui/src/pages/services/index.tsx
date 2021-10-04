@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { isNull } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -54,6 +54,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -75,6 +76,8 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
+  const showToast = useToastContext();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
@@ -137,37 +140,47 @@ const ServicesPage = () => {
     id: string,
     dataObj: DataObj
   ) => {
-    updateService(selectedService, id, dataObj).then(
-      ({ data }: { data: AxiosResponse['data'] }) => {
-        const updatedData = {
-          ...data,
-          ...data.jdbc,
-          ...data.brokers,
-          ...data.schemaRegistry,
-        };
-        const updatedServiceList = serviceList.map((s) =>
-          s.id === updatedData.id ? updatedData : s
-        );
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServiceList(updatedServiceList);
-      }
-    );
+    return new Promise<void>((resolve, reject) => {
+      updateService(selectedService, id, dataObj)
+        .then(({ data }: { data: AxiosResponse['data'] }) => {
+          const updatedData = {
+            ...data,
+            ...data.jdbc,
+            ...data.brokers,
+            ...data.schemaRegistry,
+          };
+          const updatedServiceList = serviceList.map((s) =>
+            s.id === updatedData.id ? updatedData : s
+          );
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServiceList(updatedServiceList);
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          reject(err);
+        });
+    });
   };
 
   const handleAdd = (selectedService: string, dataObj: DataObj) => {
-    postService(selectedService, dataObj).then(
-      ({ data }: { data: AxiosResponse['data'] }) => {
-        const updatedData = {
-          ...data,
-          ...data.jdbc,
-          ...data.brokers,
-          ...data.schemaRegistry,
-        };
-        const updatedServiceList = [...serviceList, updatedData];
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServiceList(updatedServiceList);
-      }
-    );
+    return new Promise<void>((resolve, reject) => {
+      postService(selectedService, dataObj)
+        .then(({ data }: { data: AxiosResponse['data'] }) => {
+          const updatedData = {
+            ...data,
+            ...data.jdbc,
+            ...data.brokers,
+            ...data.schemaRegistry,
+          };
+          const updatedServiceList = [...serviceList, updatedData];
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServiceList(updatedServiceList);
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          reject(err);
+        });
+    });
   };
 
   const handleSave = (
@@ -175,13 +188,23 @@ const ServicesPage = () => {
     selectedService: string,
     isEdit: EditObj
   ) => {
-    if (isEdit.edit) {
-      isEdit.id && handleUpdate(selectedService, isEdit.id, dataObj);
+    let promiseSave;
+    if (isEdit.edit && isEdit.id) {
+      promiseSave = handleUpdate(selectedService, isEdit.id, dataObj);
     } else {
-      handleAdd(selectedService, dataObj);
+      promiseSave = handleAdd(selectedService, dataObj);
     }
-    setIsModalOpen(false);
-    setEditData(undefined);
+    promiseSave
+      .then(() => {
+        setIsModalOpen(false);
+        setEditData(undefined);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.responseMessage ?? 'Something went wrong!',
+        });
+      });
   };
 
   const handleDelete = (id: string) => {
