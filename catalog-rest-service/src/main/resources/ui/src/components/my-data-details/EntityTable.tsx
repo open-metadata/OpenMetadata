@@ -56,7 +56,7 @@ type Props = {
   hasEditAccess: boolean;
 };
 
-const ReactTable = ({
+const EntityTable = ({
   tableColumns,
   searchText,
   onUpdate,
@@ -659,4 +659,4 @@ const ReactTable = ({
   );
 };
 
-export default ReactTable;
+export default EntityTable;

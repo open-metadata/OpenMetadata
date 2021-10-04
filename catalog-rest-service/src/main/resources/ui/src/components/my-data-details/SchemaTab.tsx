@@ -23,7 +23,7 @@ import {
   TableData,
 } from '../../generated/entity/data/table';
 import Searchbar from '../common/searchbar/Searchbar';
-import ReactTable from './ReactTable';
+import EntityTable from './EntityTable';
 import SampleDataTable, { SampleColumns } from './SampleDataTable';
 
 type Props = {
@@ -123,7 +123,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       <div className="row">
         <div className="col-sm-12">
           {checkedValue === 'schema' ? (
-            <ReactTable
+            <EntityTable
               columnName={columnName}
               hasEditAccess={hasEditAccess}
               joins={joins}
