@@ -318,9 +318,11 @@ class SQLSource(Source):
                 if 'raw_data_type' in column and 'raw_data_type' is not None:
                     if re.match(r'(struct<)(?:.*)', column['raw_data_type']):
                         col_type = 'STRUCT'
+                        # plucked = re.match(r'(?:struct<)(.*)(?:>)',column['raw_data_type']).groups()[0]
+
                         children = _handle_complex_data_types(
-                            self.status, dataset_name, column['raw_data_type']
-                        )
+                            self.status, dataset_name, f"{column['name']}:{column['raw_data_type']}"
+                        )['children']
                         data_type_display = column['raw_data_type']
                     elif re.match(r'(map<|array<)(?:.*)', column['raw_data_type']):
                         if re.match(r'(map<)(?:.*)', column['raw_data_type']):

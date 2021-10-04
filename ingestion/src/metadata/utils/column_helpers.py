@@ -57,7 +57,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 type_class = "NULL"
                 break
     if type_class is None and column_type in ['CHARACTER VARYING', 'CHAR']:
-        type_class = _column_type_mapping[types.VARCHAR]
+        type_class = 'VARCHAR'
     if type_class is None:
         status.warning(
             dataset_name, f"unable to map type {column_type!r} to metadata schema"
@@ -90,7 +90,7 @@ def get_array_type(col_type):
         r'(?:array<)(\w*)(?:.*)', col_type).groups()[0].upper()
     return col
 
-def _handle_complex_data_types(raw_type: str, level=0):
+def _handle_complex_data_types(status,dataset_name,raw_type: str, level=0):
     col = {}
     # Checks if the format is name:type
     if re.match(r'([\w\s]*)(:)(.*)',raw_type):
@@ -119,7 +119,7 @@ def _handle_complex_data_types(raw_type: str, level=0):
                 elif type.startswith('struct'):
                     datatype,rest = re.match(r'(struct)(.*)',','.join(plucked.split(',')[index:])).groups()
                     type = f"{datatype}{rest[:get_last_index(rest)+2]}"
-                children.append(_handle_complex_data_types(type,counter))
+                children.append(_handle_complex_data_types(status,dataset_name,type,counter))
                 if plucked.endswith(type):
                     break
                 counter += 1
@@ -140,7 +140,7 @@ def _handle_complex_data_types(raw_type: str, level=0):
         else:
             col['dataLength'] = 1
         # Gets the datatype - VARCHAR(20) returns VARCHAR
-        col['dataType'] = re.match('([\w\s]*)(?:.*)',col_type).groups()[0].upper()
+        col['dataType'] = get_column_type(status,dataset_name,re.match('([\w\s]*)(?:.*)',col_type).groups()[0].upper())
         col['dataTypeDisplay'] = col_type.rstrip('>')
     return col
  
