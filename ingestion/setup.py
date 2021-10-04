@@ -100,7 +100,7 @@ plugins: Dict[str, Set[str]] = {
     "presto": {"pyhive~=0.6.3"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
-    "redshift": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift": {"openmetadata-sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
     "data-profiler": {"openmetadata-data-profiler"},
