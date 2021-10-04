@@ -333,7 +333,7 @@ const DatabaseDetails: FunctionComponent = () => {
                           to={
                             table.fullyQualifiedName
                               ? getDatasetDetailsPath(table.fullyQualifiedName)
-                              : '#'
+                              : ''
                           }>
                           {table.name}
                         </Link>
