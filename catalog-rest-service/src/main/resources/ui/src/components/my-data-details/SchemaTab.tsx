@@ -23,8 +23,8 @@ import {
   TableData,
 } from '../../generated/entity/data/table';
 import Searchbar from '../common/searchbar/Searchbar';
+import EntityTable from './EntityTable';
 import SampleDataTable, { SampleColumns } from './SampleDataTable';
-import SchemaTable from './SchemaTable';
 
 type Props = {
   owner: Table['owner'];
@@ -123,13 +123,13 @@ const SchemaTab: FunctionComponent<Props> = ({
       <div className="row">
         <div className="col-sm-12">
           {checkedValue === 'schema' ? (
-            <SchemaTable
+            <EntityTable
               columnName={columnName}
-              columns={columns}
               hasEditAccess={hasEditAccess}
               joins={joins}
               owner={owner}
               searchText={lowerCase(searchText)}
+              tableColumns={columns}
               onUpdate={onUpdate}
             />
           ) : (

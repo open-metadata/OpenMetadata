@@ -9,6 +9,7 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
+import { Column, Table } from '../generated/entity/data/table';
 import { ordinalize } from './StringsUtils';
 import SVGIcons from './SvgUtils';
 
@@ -193,4 +194,23 @@ export const getEntityIcon = (indexType: string) => {
   }
 
   return <SVGIcons alt={icon} icon={icon} width="14" />;
+};
+
+export const makeRow = (column: Column) => {
+  return {
+    description: column.description || '',
+    tags: column?.tags || [],
+    ...column,
+  };
+};
+
+export const makeData = (
+  columns: Table['columns'] = []
+): Array<Column & { subRows: Column[] | undefined }> => {
+  const data = columns.map((column) => ({
+    ...makeRow(column),
+    subRows: column.children ? makeData(column.children) : undefined,
+  }));
+
+  return data;
 };
