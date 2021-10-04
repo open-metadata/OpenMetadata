@@ -29,7 +29,7 @@ import {
   JoinedWith,
   Table,
 } from '../../generated/entity/data/table';
-import { TagLabel } from '../../generated/type/tagLabel';
+import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import {
   getHtmlForNonAdminAction,
   getPartialNameFromFQN,
@@ -277,8 +277,8 @@ const EntityTable = ({
               return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
             })
             .map((tag) => ({
-              labelType: 'Manual',
-              state: 'Confirmed',
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
               tagFQN: tag,
             }));
           const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
