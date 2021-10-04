@@ -32,7 +32,6 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
@@ -49,11 +48,9 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
@@ -65,7 +62,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -588,7 +584,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), task.getService().getId());
       assertEquals(expectedService.getType(), task.getService().getType());
     }
-    validateTags(expectedTags, task.getTags());
+    TestUtils.validateTags(expectedTags, task.getTags());
     return task;
   }
 
@@ -690,29 +686,9 @@ public class TaskResourceTest extends CatalogApplicationTest {
             .withTaskUrl(new URI("http://localhost:0"));
   }
 
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
-    if (expectedList == null) {
-      return;
-    }
-    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
-    // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
-    for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
-      updatedExpectedList.addAll(derived);
-    }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-
-    assertTrue(actualList.containsAll(updatedExpectedList));
-    assertTrue(updatedExpectedList.containsAll(actualList));
-  }
-
   public static PipelineService createService(CreatePipelineService create,
                                                Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("services/pipelineServices"),
             create, PipelineService.class, authHeaders);
   }
-
 }

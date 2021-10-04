@@ -629,7 +629,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), chart.getService().getId());
       assertEquals(expectedService.getType(), chart.getService().getType());
     }
-    validateTags(expectedTags, chart.getTags());
+    TestUtils.validateTags(expectedTags, chart.getTags());
     return chart;
   }
 
@@ -794,24 +794,4 @@ public class ChartResourceTest extends CatalogApplicationTest {
     checkUserFollowing(userId, chartId, false, authHeaders);
     return getChart;
   }
-
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
-    if (expectedList == null) {
-      return;
-    }
-    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
-    // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
-    for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
-      updatedExpectedList.addAll(derived);
-    }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-
-    assertTrue(actualList.containsAll(updatedExpectedList));
-    assertTrue(updatedExpectedList.containsAll(actualList));
-  }
-
 }
