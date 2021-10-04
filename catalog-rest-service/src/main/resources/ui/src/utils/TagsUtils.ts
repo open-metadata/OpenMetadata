@@ -53,12 +53,12 @@ export const getTaglist = (categories: Array<TagsCategory>): Array<string> => {
 };
 
 export const getTableTags = (
-  columns: Array<TableColumn>
+  columns: Array<Partial<TableColumn>>
 ): Array<ColumnTags> => {
   const flag: { [x: string]: boolean } = {};
   const uniqueTags: Array<ColumnTags> = [];
   const tags = columns
-    .map((column) => column.tags)
+    .map((column) => column.tags || [])
     .reduce((prev, curr) => prev.concat(curr), [])
     .map((tag) => tag);
 
