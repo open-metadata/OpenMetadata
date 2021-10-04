@@ -148,7 +148,5 @@ def _handle_complex_data_types(status,dataset_name,raw_type: str, level=0):
             col['dataLength'] = 1
         col['dataType'] = get_column_type(status,dataset_name,re.match('([\w\s]*)(?:.*)',col_type).groups()[0].upper())
         col['dataTypeDisplay'] = col_type.rstrip('>')
-    if col['dataLength'] is None:
-        col['dataLength'] = 1
     return col
  
