@@ -6,12 +6,18 @@ from dataclasses import dataclass, field
 from typing import Iterable, List
 from faker import Faker
 
+from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
+from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, Column
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.source import SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
@@ -32,6 +38,12 @@ class SampleEntitySourceConfig(SQLConnectionConfig):
     no_of_databases: int
     no_of_tables: int
     no_of_columns: int
+    no_of_dashboards: int
+    no_of_charts: int
+    no_of_topics: int
+    generate_tables: bool = True
+    generate_dashboards: bool = True
+    generate_topics: bool = True
 
     def get_connection_url(self):
         pass
@@ -61,8 +73,6 @@ class SampleEntitySource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.client = OpenMetadataAPIClient(metadata_config)
-        self.database_service_json = json.load(open("./examples/sample_data/datasets/service.json", 'r'))
-        self.database_service = get_database_service_or_create(self.database_service_json, self.metadata_config)
         self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(['BigQuery', 'Hive', 'MSSQL', 'MySQL', 'Postgres', 'Redshift',
@@ -71,12 +81,14 @@ class SampleEntitySource(Source):
         self.table_name = lambda: self.faker.word()
         self.column_name = lambda: self.faker.word()
         self.description = lambda: self.faker.text()
+        self.chart_ids = lambda: self.faker.random_int()
         self.tags = self.__get_tags()
         self.tagFQN = lambda: self.faker.first_name()
         self.labelType = lambda: random.choice(['Automated', 'Derived', 'Manual', 'Propagated'])
         self.state = lambda: random.choice(['Confirmed', 'Suggested'])
         self.href = lambda: self.faker.url()
         self.col_type = lambda: random.choice(['INT', 'STRING', 'VARCHAR', 'DATE'])
+        self.chart_type = lambda: random.choice(['Area', 'Line', 'Table', 'Bar', 'Pie', 'Histogram', 'Scatter', 'Text'])
         self.col_constraint = lambda: random.choice(
             [Constraint.UNIQUE, Constraint.NOT_NULL, Constraint.NULL])
 
@@ -102,7 +114,12 @@ class SampleEntitySource(Source):
         return list(types)
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
-        yield from self.ingest_tables()
+        if self.config.generate_tables:
+            yield from self.ingest_tables()
+        if self.config.generate_dashboards:
+            yield from self.ingest_dashboards()
+        if self.config.generate_topics:
+            yield from self.ingest_topics()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         for h in range(self.config.no_of_services):
@@ -158,6 +175,80 @@ class SampleEntitySource(Source):
                         table=table_entity, database=db
                     )
                     yield table_and_db
+
+    def ingest_dashboards(self) -> Iterable[Record]:
+        for h in range(self.config.no_of_services):
+            create_service = None
+            while True:
+                try:
+                    service = {'name': self.service_name(), 'description': self.description(),
+                               'dashboardUrl': 'http://localhost:8088',
+                               'userName': 'admin',
+                               'password': 'admin',
+                               'serviceType': 'Superset'}
+                    create_service = self.client.create_dashboard_service(
+                        CreateDashboardServiceEntityRequest(**service))
+                    break
+                except APIError as err:
+                    continue
+
+            logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
+            for i in range(self.config.no_of_dashboards):
+                logger.info('Ingesting dashboard {}/{} in service: {}/{}'
+                            .format(i + 1, self.config.no_of_databases, h + 1, self.config.no_of_services))
+                chart_ids = []
+                for j in range(self.config.no_of_charts):
+                    charts = []
+                    chart_id = self.chart_ids()
+                    chart_entity = Chart(id=uuid.uuid4(),
+                                         name=str(chart_id),
+                                         displayName=self.table_name(),
+                                         description=self.description(),
+                                         chart_type=self.chart_type(),
+                                         chartId=str(chart_id),
+                                         url='http://superset:8080/chartUrl',
+                                         service=EntityReference(id=create_service.id, type="dashboardService"))
+                    chart_ids.append(str(chart_id))
+                    yield chart_entity
+
+                dashboard = Dashboard(id=uuid.uuid4(),
+                                      name=str(self.chart_ids()),
+                                      displayName=self.table_name(),
+                                      description=self.description(),
+                                      url='http://superset:8080/dashboardUrl',
+                                      charts=chart_ids,
+                                      service=EntityReference(id=create_service.id, type="dashboardService"))
+                yield dashboard
+
+    def ingest_topics(self) -> Iterable[CreateTopic]:
+        for h in range(self.config.no_of_services):
+            create_service = None
+            while True:
+                try:
+                    service = {'name': self.service_name(), 'description': self.description(),
+                               'brokers': ["localhost:9092"],
+                               'schemaRegistry': 'http://localhost:8081',
+                               'serviceType': 'Kafka'}
+                    create_service = self.client.create_messaging_service(
+                        CreateMessagingServiceEntityRequest(**service))
+                    break
+                except APIError as err:
+                    continue
+
+            logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
+            for j in range(self.config.no_of_topics):
+                topic_entity = CreateTopic(
+                                     name=self.table_name(),
+                                     description=self.description(),
+                                     partitions=self.chart_ids(),
+                                     retentionSize=322122382273,
+                                     replicationFactor=2,
+                                     maximumMessageSize=167,
+                                     cleanupPolicies=["delete"],
+                                     schemaType="Avro",
+                                     schemaText="{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}",
+                                     service=EntityReference(id=create_service.id, type="messagingService"))
+                yield topic_entity
 
     def close(self):
         pass
