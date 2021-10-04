@@ -870,7 +870,7 @@ public class TableResourceTest extends CatalogApplicationTest {
       assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
       assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
       assertEquals(table.getDatabase().getId(), DATABASE.getId());
-      assertEquals(table.getDatabase().getName(), DATABASE.getName());
+      assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
     }
 
     // List tables with databaseFQN as filter
@@ -1199,7 +1199,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
     assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
     assertEquals(table.getDatabase().getId(), DATABASE.getId());
-    assertEquals(table.getDatabase().getName(), DATABASE.getName());
+    assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
   }
 
   public static Table createTable(CreateTable create, Map<String, String> authHeaders) throws HttpResponseException {
