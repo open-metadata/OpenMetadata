@@ -49,13 +49,13 @@ export const getRelativeDayDifference = (
   const elapsed = current - previous;
 
   if (elapsed < msPerDay / 2) {
-    return 'a few hours ago';
+    return 'in last few hours';
   } else if (elapsed < msPerDay) {
     return 'today';
   } else if (elapsed < msPerMonth) {
     const relativeTime = Math.round(elapsed / msPerDay);
 
-    return `${relativeTime} day${relativeTime > 1 ? 's' : ''} ago`;
+    return `${relativeTime} in last day${relativeTime > 1 ? 's' : ''}`;
   } else if (elapsed < msPerYear) {
     const relativeTime = Math.round(elapsed / msPerMonth);
 
