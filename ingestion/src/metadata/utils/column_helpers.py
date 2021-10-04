@@ -1,7 +1,5 @@
-from dataclasses import field
 import re
-import json
-from typing import Any, Dict, List, Optional, Set, Type
+from typing import Any, Dict, Optional, Set, Type
 from sqlalchemy.sql import sqltypes as types
 from metadata.ingestion.api.source import SourceStatus
 
@@ -92,11 +90,9 @@ def get_array_type(col_type):
 
 def _handle_complex_data_types(status,dataset_name,raw_type: str, level=0):
     col = {}
-    # Checks if the format is name:type
     if re.match(r'([\w\s]*)(:)(.*)',raw_type):
         name, col_type = raw_type.lstrip('<').split(':', 1)
         col['name'] = name
-    # If no name, gives it field_counter
     else:
         col['name'] = f'field_{level}'
         if raw_type.startswith('struct<'):
@@ -112,13 +108,25 @@ def _handle_complex_data_types(status,dataset_name,raw_type: str, level=0):
             col['dataType'] = 'STRUCT'
             plucked = col_type[:get_last_index(col_type)]
             counter = 0
+            continue_next = False
             for index,type in enumerate(plucked.split(',')):
+                if continue_next:
+                    continue_next = False
+                    continue
                 if re.match(r'(\w*)(:)(struct)(.*)',type):
                     col_name,datatype,rest = re.match(r'(\w*)(?::)(struct)(.*)',','.join(plucked.split(',')[index:])).groups()
                     type = f"{col_name}:{datatype}{rest[:get_last_index(rest)+2]}"
                 elif type.startswith('struct'):
                     datatype,rest = re.match(r'(struct)(.*)',','.join(plucked.split(',')[index:])).groups()
                     type = f"{datatype}{rest[:get_last_index(rest)+2]}"
+                elif re.match(r'([\w\s]*)(:?)(map)(.*)',type):
+                    get_map_type = ','.join(plucked.split(',')[index:])
+                    type,col_type = re.match(r'([\w]*:?map<[\w,]*>)(.*)',get_map_type).groups()
+                    continue_next = True
+                elif re.match(r'([\w\s]*)(:?)(uniontype)(.*)',type):
+                    get_union_type = ','.join(plucked.split(',')[index:])
+                    type,col_type = re.match(r'([\w\s]*:?uniontype<[\w\s,]*>)(.*)',get_union_type).groups()
+                    continue_next = True
                 children.append(_handle_complex_data_types(status,dataset_name,type,counter))
                 if plucked.endswith(type):
                     break
@@ -131,16 +139,16 @@ def _handle_complex_data_types(status,dataset_name,raw_type: str, level=0):
         col['dataType'] = 'MAP'
         col['dataTypeDisplay'] = col_type
     elif col_type.startswith('uniontype'):
-        col['dataType'] = 'UNIONTYPE'
+        col['dataType'] = 'UNION'
         col['dataTypeDisplay'] = col_type
     else:
-        # Gets the length from datatype - VARCHAR(20) returns 20
         if re.match(r'(?:[\w\s]*)(?:\()([\d]*)(?:\))', col_type):
             col['dataLength'] = re.match(r'(?:[\w\s]*)(?:\()([\d]*)(?:\))', col_type).groups()[0]
         else:
             col['dataLength'] = 1
-        # Gets the datatype - VARCHAR(20) returns VARCHAR
         col['dataType'] = get_column_type(status,dataset_name,re.match('([\w\s]*)(?:.*)',col_type).groups()[0].upper())
         col['dataTypeDisplay'] = col_type.rstrip('>')
+    if col['dataLength'] is None:
+        col['dataLength'] = 1
     return col
  
