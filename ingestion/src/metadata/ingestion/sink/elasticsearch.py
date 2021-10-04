@@ -20,18 +20,21 @@ from typing import Optional, List
 from elasticsearch import Elasticsearch
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING, \
-    TOPIC_ELASTICSEARCH_INDEX_MAPPING, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING
+    TOPIC_ELASTICSEARCH_INDEX_MAPPING, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
-from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument, DashboardESDocument
+from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument, DashboardESDocument, \
+    PipelineESDocument
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +43,13 @@ class ElasticSearchConfig(ConfigModel):
     es_host: str
     es_port: int = 9200
     index_tables: Optional[bool] = True
-    index_topics: Optional[bool] = False
-    index_dashboards: Optional[bool] = False
+    index_topics: Optional[bool] = True
+    index_dashboards: Optional[bool] = True
+    index_pipelines: Optional[bool] = True
     table_index_name: str = "table_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
+    pipeline_index_name: str = "pipeline_search_index"
 
 
 class ElasticsearchSink(Sink):
@@ -78,6 +83,8 @@ class ElasticsearchSink(Sink):
             self._check_or_create_index(self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING)
         if self.config.index_dashboards:
             self._check_or_create_index(self.config.dashboard_index_name, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING)
+        if self.config.index_pipelines:
+            self._check_or_create_index(self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING)
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
@@ -89,11 +96,11 @@ class ElasticsearchSink(Sink):
             if not mapping[index_name]['mappings']:
                 logger.debug(f'There are no mappings for index {index_name}. Updating the mapping')
                 es_mapping_dict = json.loads(es_mapping)
-                es_mapping_update_dict =  {'properties': es_mapping_dict['mappings']['properties']}
+                es_mapping_update_dict = {'properties': es_mapping_dict['mappings']['properties']}
                 self.elasticsearch_client.indices.put_mapping(index=index_name, body=json.dumps(es_mapping_update_dict))
         else:
             logger.warning("Received index not found error from Elasticsearch. "
-                    + "The index doesn't exist for a newly created ES. It's OK on first run.")
+                           + "The index doesn't exist for a newly created ES. It's OK on first run.")
             # create new index with mapping
             self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
 
@@ -110,7 +117,12 @@ class ElasticsearchSink(Sink):
             dashboard_doc = self._create_dashboard_es_doc(record)
             self.elasticsearch_client.index(index=self.config.dashboard_index_name, id=str(dashboard_doc.dashboard_id),
                                             body=dashboard_doc.json())
-        if (hasattr(record.name,'__root__')):
+        if isinstance(record, Pipeline):
+            pipeline_doc = self._create_pipeline_es_doc(record)
+            self.elasticsearch_client.index(index=self.config.pipeline_index_name, id=str(pipeline_doc.pipeline_id),
+                                            body=pipeline_doc.json())
+
+        if (hasattr(record.name, '__root__')):
             self.status.records_written(record.name.__root__)
         else:
             self.status.records_written(record.name)
@@ -257,6 +269,52 @@ class ElasticsearchSink(Sink):
 
         return dashboard_doc
 
+    def _create_pipeline_es_doc(self, pipeline: Pipeline):
+        fqdn = pipeline.fullyQualifiedName
+        suggest = [{'input': [pipeline.displayName], 'weight': 10}]
+        tags = set()
+        timestamp = time.time()
+        service_entity = self.rest.get_pipeline_service_by_id(str(pipeline.service.id.__root__))
+        pipeline_owner = str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
+        pipeline_followers = []
+        if pipeline.followers:
+            for follower in pipeline.followers.__root__:
+                pipeline_followers.append(str(follower.id.__root__))
+        tier = None
+        for pipeline_tag in pipeline.tags:
+            if "Tier" in pipeline_tag.tagFQN:
+                tier = pipeline_tag.tagFQN
+            else:
+                tags.add(pipeline_tag.tagFQN)
+        tasks: List[Task] = self._get_tasks(pipeline.tasks)
+        task_names = []
+        task_descriptions = []
+        for task in tasks:
+            task_names.append(task.displayName)
+            if task.description is not None:
+                task_descriptions.append(task.description)
+            if len(task.tags) > 0:
+                for col_tag in task.tags:
+                    tags.add(col_tag.tagFQN)
+
+        pipeline_doc = PipelineESDocument(pipeline_id=str(pipeline.id.__root__),
+                                          service=service_entity.name,
+                                          service_type=service_entity.serviceType.name,
+                                          pipeline_name=pipeline.displayName,
+                                          task_names=task_names,
+                                          task_descriptions=task_descriptions,
+                                          suggest=suggest,
+                                          description=pipeline.description,
+                                          last_updated_timestamp=timestamp,
+                                          tier=tier,
+                                          tags=list(tags),
+                                          fqdn=fqdn,
+                                          owner=pipeline_owner,
+                                          followers=pipeline_followers
+                                          )
+
+        return pipeline_doc
+
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []
         if chart_refs is not None:
@@ -264,6 +322,14 @@ class ElasticsearchSink(Sink):
                 chart = self.rest.get_chart_by_id(str(chart_ref.id.__root__))
                 charts.append(chart)
         return charts
+
+    def _get_tasks(self, task_refs: Optional[List[entityReference.EntityReference]]):
+        tasks = []
+        if task_refs is not None:
+            for task_ref in task_refs:
+                task = self.rest.get_task_by_id(str(task_ref.id.__root__))
+                tasks.append(task)
+        return tasks
 
     def get_status(self):
         return self.status

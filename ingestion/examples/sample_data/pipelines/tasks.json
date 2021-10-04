@@ -1,0 +1,35 @@
+{
+	"tasks": [{
+			"name": "hive_create_table",
+			"displayName": "Hive Create Table",
+			"description": "Hive Create Table Task",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=hive_create_table",
+			"downstreamTasks": ["assert_table_exits"],
+			"taskType": "HiveOperator"
+		},
+		{
+			"name": "assert_table_exists",
+			"displayName": "Assert Table Exists",
+			"description": "Assert if a table exists",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+			"downstreamTasks": [],
+			"taskType": "HiveOperator"
+		},
+		{
+			"name": "snowflake_task",
+			"displayName": "Snowflake Task",
+			"description": "Airflow operator to perform ETL on snowflake tables",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "SnowflakeOperator"
+		},
+		{
+			"name": "presto_task",
+			"displayName": "Presto Task",
+			"description": "Airflow operator to perform ETL on presto tables",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PrestoOperator"
+		}
+	]
+}

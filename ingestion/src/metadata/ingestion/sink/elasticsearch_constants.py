@@ -221,3 +221,54 @@ DASHBOARD_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
     }
     """
 )
+
+PIPELINE_ELASTICSEARCH_INDEX_MAPPING = textwrap.dedent(
+    """
+    {
+    "mappings":{
+          "properties": {
+            "pipeline_name": {
+              "type":"text"
+            },
+            "display_name": {
+              "type": "text"
+            },
+            "owner": {
+              "type": "keyword"
+            },
+            "followers": {
+              "type": "keyword"
+            },
+            "last_updated_timestamp": {
+              "type": "date",
+              "format": "epoch_second"
+            },
+            "description": {
+              "type": "text"
+            },
+            "task_names": {
+              "type":"text"
+            },
+            "task_descriptions": {
+              "type": "text"
+            },
+            "tier": {
+              "type": "keyword"
+            },
+            "tags": {
+              "type": "keyword"
+            },
+            "service": {
+              "type": "keyword"
+            },
+            "service_type": {
+              "type": "keyword"
+            },
+            "suggest": {
+              "type": "completion"
+            }
+          }
+        }
+    }
+    """
+)

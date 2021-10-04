@@ -22,9 +22,13 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardEntityRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
+from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -82,6 +86,10 @@ class MetadataRestSink(Sink):
             self.write_charts(record)
         elif isinstance(record, Dashboard):
             self.write_dashboards(record)
+        elif isinstance(record, Task):
+            self.write_tasks(record)
+        elif isinstance(record, Pipeline):
+            self.write_pipelines(record)
         else:
             logging.info("Ignoring the record due to unknown Record type {}".format(type(record)))
 
@@ -184,6 +192,42 @@ class MetadataRestSink(Sink):
             if chart_id in self.charts_dict.keys():
                 chart_references.append(self.charts_dict[chart_id])
         return chart_references
+
+    def write_tasks(self, task: Task):
+        try:
+            task_request = CreateTaskEntityRequest(
+                name=task.name,
+                displayName=task.displayName,
+                description=task.description,
+                taskUrl=task.taskUrl,
+                downstreamTasks=task.downstreamTasks,
+                service=task.service
+            )
+            created_task = self.client.create_or_update_task(task_request)
+            logger.info('Successfully ingested Task {}'.format(created_task.displayName))
+            self.status.records_written('{}'.format(created_task.displayName))
+        except (APIError, ValidationError) as err:
+            logger.error("Failed to ingest task {}".format(task.name))
+            logger.error(err)
+            self.status.failure(task.name)
+
+    def write_pipelines(self, pipeline: Pipeline):
+        try:
+            pipeline_request = CreatePipelineEntityRequest(
+                name=pipeline.name,
+                displayName=pipeline.displayName,
+                description=pipeline.description,
+                pipelineUrl=pipeline.pipelineUrl,
+                tasks=pipeline.tasks,
+                service=pipeline.service
+            )
+            created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
+            logger.info('Successfully ingested Task {}'.format(created_pipeline.displayName))
+            self.status.records_written('{}'.format(created_pipeline.displayName))
+        except (APIError, ValidationError) as err:
+            logger.error("Failed to ingest task {}".format(pipeline.name))
+            logger.error(err)
+            self.status.failure(pipeline.name)
 
     def get_status(self):
         return self.status

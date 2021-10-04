@@ -1,0 +1,24 @@
+{
+	"pipelines": [{
+		    "name": "presto_etl",
+			"displayName": "Presto ETL",
+			"description": "Presto ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=presto_etl",
+			"tasks": ["presto_task", "assert_table_exists"]
+		},
+		{
+			"name": "hive_etl",
+			"displayName": "Hive ETL",
+			"description": "Hive ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=hive_etl",
+			"tasks": ["hive_create_table", "assert_table_exists"]
+		},
+		{
+			"name": "snowflake_etl",
+			"displayName": "Snowflake ETL",
+			"description": "Snowflake ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=snowflake_etl",
+			"tasks": ["snowflake_etl", "assert_table_exists"]
+		}
+	]
+}

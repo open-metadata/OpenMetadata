@@ -29,10 +29,14 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import SourceStatus, Source
@@ -64,6 +68,7 @@ def get_database_service_or_create(service_json, metadata_config) -> DatabaseSer
         created_service = client.create_database_service(CreateDatabaseServiceEntityRequest(**service_json))
         return created_service
 
+
 def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_json['name'])
@@ -73,6 +78,7 @@ def get_messaging_service_or_create(service_json, metadata_config) -> MessagingS
         created_service = client.create_messaging_service(CreateMessagingServiceEntityRequest(**service_json))
         return created_service
 
+
 def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_dashboard_service(service_json['name'])
@@ -80,6 +86,16 @@ def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardS
         return service
     else:
         created_service = client.create_dashboard_service(CreateDashboardServiceEntityRequest(**service_json))
+        return created_service
+
+
+def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
+    client = OpenMetadataAPIClient(metadata_config)
+    service = client.get_pipeline_service(service_json['name'])
+    if service is not None:
+        return service
+    else:
+        created_service = client.create_pipeline_service(CreatePipelineServiceEntityRequest(**service_json))
         return created_service
 
 
@@ -281,6 +297,10 @@ class SampleDataSource(Source):
         self.charts = json.load(open(self.config.sample_data_folder + "/dashboards/charts.json", 'r'))
         self.dashboards = json.load(open(self.config.sample_data_folder + "/dashboards/dashboards.json", 'r'))
         self.dashboard_service = get_dashboard_service_or_create(self.dashboard_service_json, metadata_config)
+        self.pipeline_service_json = json.load(open(self.config.sample_data_folder + "/pipelines/service.json", 'r'))
+        self.tasks = json.load(open(self.config.sample_data_folder + "/pipelines/tasks.json", 'r'))
+        self.pipelines = json.load(open(self.config.sample_data_folder + "/pipelines/pipelines.json", 'r'))
+        self.pipeline_service = get_pipeline_service_or_create(self.pipeline_service_json, metadata_config)
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -296,6 +316,8 @@ class SampleDataSource(Source):
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_dashboards()
+        yield from self.ingest_tasks()
+        yield from self.ingest_pipelines()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(id=uuid.uuid4(),
@@ -341,6 +363,38 @@ class SampleDataSource(Source):
                                      service=EntityReference(id=self.dashboard_service.id, type="dashboardService"))
             self.status.scanned("dashboard", dashboard_ev.name)
             yield dashboard_ev
+
+    def ingest_tasks(self) -> Iterable[Task]:
+        for task in self.tasks['tasks']:
+            task_ev = Task(id=uuid.uuid4(),
+                           name=task['name'],
+                           displayName=task['displayName'],
+                           description=task['description'],
+                           taskUrl=task['taskUrl'],
+                           taskType=task['taskType'],
+                           downstreamTasks=task['downstreamTasks'],
+                           service=EntityReference(id=self.pipeline_service.id, type='pipelineService'))
+            yield task_ev
+
+    def ingest_pipelines(self) -> Iterable[Dashboard]:
+        tasks = self.client.list_tasks("service")
+        task_dict = {}
+        for task in tasks:
+            task_dict[task.name] = task
+
+        for pipeline in self.pipelines['pipelines']:
+            task_refs = []
+            for task in pipeline['tasks']:
+                if task in task_dict:
+                    task_refs.append(EntityReference(id=task_dict[task].id, type='task'))
+            pipeline_ev = Pipeline(id=uuid.uuid4(),
+                                   name=pipeline['name'],
+                                   displayName=pipeline['displayName'],
+                                   description=pipeline['description'],
+                                   pipelineUrl=pipeline['pipelineUrl'],
+                                   tasks=task_refs,
+                                   service=EntityReference(id=self.pipeline_service.id, type='pipelineService'))
+            yield pipeline_ev
 
     def close(self):
         pass

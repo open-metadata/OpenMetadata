@@ -57,12 +57,12 @@ import json
 from jose import jwt
 
 logger = logging.getLogger(__name__)
+
 DatabaseServiceEntities = List[DatabaseService]
 DatabaseEntities = List[Database]
 Tags = List[Tag]
 TableProfiles = List[TableProfile]
-Pipelines = List[Pipeline]
-
+Tasks = List[Task]
 
 
 class TableEntities(BaseModel):
@@ -87,6 +87,7 @@ class PipelineEntities(BaseModel):
     pipelines: List[Pipeline]
     total: int
     after: str = None
+
 
 class MetadataServerConfig(ConfigModel):
     api_endpoint: str
@@ -263,7 +264,7 @@ class OpenMetadataAPIClient(object):
         """ Delete Database using ID """
         self.client.delete('/databases/{}'.format(database_id))
 
-    def list_tables(self, fields: str = None, after: str = None, limit: int = 1000000) -> TableEntities:
+    def list_tables(self, fields: str = None, after: str = None, limit: int = 1000) -> TableEntities:
         """ List all tables"""
 
         if fields is None:
@@ -353,7 +354,7 @@ class OpenMetadataAPIClient(object):
         resp = self.client.put('/topics', data=create_topic_request.json())
         return Topic(**resp)
 
-    def list_topics(self, fields: str = None, after: str = None, limit: int = 1000000) -> TopicEntities:
+    def list_topics(self, fields: str = None, after: str = None, limit: int = 1000) -> TopicEntities:
         """ List all topics"""
         if fields is None:
             resp = self.client.get('/tables')
@@ -409,7 +410,7 @@ class OpenMetadataAPIClient(object):
         resp = self.client.put('/dashboards', data=create_dashboard_request.json())
         return Dashboard(**resp)
 
-    def list_dashboards(self, fields: str = None, after: str = None, limit: int = 1000000) -> DashboardEntities:
+    def list_dashboards(self, fields: str = None, after: str = None, limit: int = 1000) -> DashboardEntities:
         """ List all dashboards"""
 
         if fields is None:
@@ -442,40 +443,58 @@ class OpenMetadataAPIClient(object):
         return PipelineService(**resp)
 
     def create_pipeline_service(self,
-                                 pipeline_service: CreatePipelineServiceEntityRequest) -> PipelineService:
+                                pipeline_service: CreatePipelineServiceEntityRequest) -> PipelineService:
         """Create a new Pipeline Service"""
         try:
             resp = self.client.post('/services/pipelineServices', data=pipeline_service.json())
             return PipelineService(**resp)
         except APIError as err:
-           return None
+            return None
 
     def create_or_update_task(self, create_task_request: CreateTaskEntityRequest) -> Task:
         """Create or Update a Task """
         resp = self.client.put('/tasks', data=create_task_request.json())
         return Task(**resp)
 
-    def get_task_by_id(self, chart_id: str, fields: [] = ['tags, service']) -> Task:
+    def get_task_by_id(self, task_id: str, fields: [] = ['tags, service']) -> Task:
         """Get Task By ID"""
         params = {'fields': ",".join(fields)}
-        resp = self.client.get('/tasks/{}'.format(chart_id), data=params)
+        resp = self.client.get('/tasks/{}'.format(task_id), data=params)
         return Task(**resp)
+
+    def list_tasks(self, fields: str = None, offset: int = 0, limit: int = 1000) -> Tasks:
+        """ List all tasks"""
+        if fields is None:
+            resp = self.client.get('/tasks?offset={}&limit={}'.format(offset, limit))
+        else:
+            resp = self.client.get('/tasks?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+        if self._use_raw_data:
+            return resp
+        else:
+            return [Task(**t) for t in resp['data']]
 
     def create_or_update_pipeline(self, create_pipeline_request: CreatePipelineEntityRequest) -> Pipeline:
         """Create or Update a Pipeline """
         resp = self.client.put('/pipelines', data=create_pipeline_request.json())
         return Pipeline(**resp)
 
-    def list_pipelines(self, fields: str = None, offset: int = 0, limit: int = 1000000) -> Pipelines:
+    def list_pipelines(self, fields: str = None, after: str = None, limit: int = 1000) -> PipelineEntities:
         """ List all pipelines"""
         if fields is None:
             resp = self.client.get('/pipelines')
         else:
-            resp = self.client.get('/pipelines?fields={}&offset={}&limit={}'.format(fields, offset, limit))
+            if after is not None:
+                resp = self.client.get('/pipelines?fields={}&after={}&limit={}'.format(fields, after, limit))
+            else:
+                resp = self.client.get('/pipelines?fields={}&limit={}'.format(fields, limit))
+
         if self._use_raw_data:
             return resp
         else:
-            return [Pipeline(**t) for t in resp['data']]
+            pipelines = [Pipeline(**t) for t in resp['data']]
+            total = resp['paging']['total']
+            after = resp['paging']['after'] if 'after' in resp['paging'] else None
+            return PipelineEntities(pipelines=pipelines, total=total, after=after)
 
     def close(self):
         self.client.close()
