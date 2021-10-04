@@ -92,6 +92,7 @@ import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
+import static org.openmetadata.catalog.type.ColumnDataType.BINARY;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
@@ -229,13 +230,12 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {
-
     return getColumn(name, columnDataType, null, tag);
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, String dataTypeDisplay, TagLabel tag) {
     List<TagLabel> tags = tag == null ? new ArrayList<>() : singletonList(tag);
-    return new Column().withName(name).withDataType(columnDataType)
+    return new Column().withName(name).withDataType(columnDataType).withDescription(name)
             .withDataTypeDisplay(dataTypeDisplay).withTags(tags);
   }
 
@@ -438,9 +438,10 @@ public class TableResourceTest extends CatalogApplicationTest {
     //
     // Create a table with column c1, type BIGINT, description c1 and tag USER_ADDRESS_TAB_LABEL
     //
-    List<TagLabel> tags = new ArrayList<>(singletonList(USER_ADDRESS_TAG_LABEL));
-    List<Column> columns = singletonList(new Column().withName("c1").withDataType(BIGINT)
-            .withOrdinalPosition(1).withDescription("c1").withTags(tags));
+    List<TagLabel> tags = new ArrayList<>();
+    tags.add(USER_ADDRESS_TAG_LABEL);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("c1", BIGINT, null).withTags(tags));
 
     CreateTable request = create(test).withColumns(columns);
     Table table = createAndCheckTable(request, adminAuthHeaders());
@@ -458,8 +459,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     //
     tags.add(USER_BANK_ACCOUNT_TAG_LABEL);
     List<Column> updatedColumns = new ArrayList<>();
-    updatedColumns.add(new Column().withName("c1").withDataType(BIGINT)
-            .withTags(tags).withOrdinalPosition(1));
+    updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
 
     // Ensure tag usage counts are updated
@@ -470,7 +470,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     //
     // Add a new column and make sure it is added by PUT
     //
-    updatedColumns.add(new Column().withName("c2").withDataType(ColumnDataType.BINARY).withOrdinalPosition(2)
+    updatedColumns.add(getColumn("c2", BINARY, null).withOrdinalPosition(2)
             .withDataLength(10).withFullyQualifiedName(table.getFullyQualifiedName() + ".c2").withTags(tags));
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
     assertEquals(2, table.getColumns().size());
@@ -1024,7 +1024,7 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void patch_tableColumnTags_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void patch_tableColumns_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
     // Create table without description, table tags, tier, owner, tableType, and tableConstraints
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL));
@@ -1033,10 +1033,11 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     Table table = createTable(create(test).withColumns(columns), adminAuthHeaders());
 
-    // Update the columns
-    columns.get(0).setTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add a tag
-    columns.get(1).setTags(List.of(USER_ADDRESS_TAG_LABEL));                              // No change in tag
-    columns.get(2).setTags(new ArrayList<>());                                            // Remove tag
+    // Update the column tags and description
+    columns.get(0).withDescription("new0")
+            .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add a tag
+    columns.get(1).withDescription("new1").withTags(List.of(USER_ADDRESS_TAG_LABEL));// No change in tag
+    columns.get(2).withDescription("new3").withTags(new ArrayList<>());              // Remove tag
 
     table = patchTableColumnAttributesAndCheck(table, columns, adminAuthHeaders());
     validateColumns(columns, table.getColumns());
@@ -1242,6 +1243,7 @@ public class TableResourceTest extends CatalogApplicationTest {
   private static void validateColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
     assertNotNull(actualColumn.getFullyQualifiedName());
     assertEquals(expectedColumn.getName(), actualColumn.getName());
+    assertEquals(expectedColumn.getDescription(), actualColumn.getDescription());
     assertEquals(expectedColumn.getDataType(), actualColumn.getDataType());
     assertEquals(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
     if (expectedColumn.getDataTypeDisplay() != null) {
