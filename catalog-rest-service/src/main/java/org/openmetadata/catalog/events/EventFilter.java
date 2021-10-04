@@ -17,19 +17,15 @@
 package org.openmetadata.catalog.events;
 
 import org.openmetadata.catalog.CatalogApplicationConfig;
-import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.util.ParallelStreamUtil;
 import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.ext.Provider;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -42,14 +38,10 @@ public class EventFilter implements ContainerResponseFilter {
   private static final Logger LOG = LoggerFactory.getLogger(EventFilter.class);
   private static final List<String> AUDITABLE_METHODS = Arrays.asList("POST", "PUT", "PATCH", "DELETE");
   private static final int FORK_JOIN_POOL_PARALLELISM = 20;
-  private CatalogApplicationConfig config;
-  private DBI jdbi;
   private final ForkJoinPool forkJoinPool;
-  private List<EventHandler> eventHandlers;
+  private final List<EventHandler> eventHandlers;
 
   public EventFilter(CatalogApplicationConfig config, DBI jdbi) {
-    this.config = config;
-    this.jdbi = jdbi;
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config, jdbi);
@@ -65,13 +57,13 @@ public class EventFilter implements ContainerResponseFilter {
         eventHandlers.add(eventHandler);
       }
     } catch (Exception e) {
-        LOG.info("Failed instantiate and regisger event handler {}".format(e.getMessage()));
+        LOG.info(e.getMessage());
     }
   }
 
   @Override
   public void filter(ContainerRequestContext requestContext,
-                     ContainerResponseContext responseContext) throws IOException {
+                     ContainerResponseContext responseContext) {
 
     int responseCode = responseContext.getStatus();
     String method = requestContext.getMethod();

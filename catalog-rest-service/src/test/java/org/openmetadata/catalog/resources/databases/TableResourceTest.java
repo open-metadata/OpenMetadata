@@ -54,7 +54,6 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -75,7 +74,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -97,7 +95,6 @@ import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
 import static org.openmetadata.catalog.type.ColumnDataType.CHAR;
 import static org.openmetadata.catalog.type.ColumnDataType.FLOAT;
 import static org.openmetadata.catalog.type.ColumnDataType.INT;
-import static org.openmetadata.catalog.type.ColumnDataType.STRING;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
@@ -114,10 +111,8 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static Database DATABASE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel TIER_2 = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public static List<Column> COLUMNS = Arrays.asList(
+  public static final List<Column> COLUMNS = Arrays.asList(
           getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
           getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
@@ -251,7 +246,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
     Column c2_c_d = getColumn("d", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_c = getColumn("c", STRUCT, "struct<int: d>>>", USER_ADDRESS_TAG_LABEL)
-            .withChildren(new ArrayList<>(Arrays.asList(c2_c_d)));
+            .withChildren(new ArrayList<>(singletonList(c2_c_d)));
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
     Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>>",USER_BANK_ACCOUNT_TAG_LABEL)
@@ -479,8 +474,8 @@ public class TableResourceTest extends CatalogApplicationTest {
             .withDataLength(10).withFullyQualifiedName(table.getFullyQualifiedName() + ".c2").withTags(tags));
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
     assertEquals(2, table.getColumns().size());
-    validateTags(updatedColumns.get(0).getTags(), table.getColumns().get(0).getTags());
-    validateTags(updatedColumns.get(1).getTags(), table.getColumns().get(1).getTags());
+    TestUtils.validateTags(updatedColumns.get(0).getTags(), table.getColumns().get(0).getTags());
+    TestUtils.validateTags(updatedColumns.get(1).getTags(), table.getColumns().get(1).getTags());
 
     // Ensure tag usage counts are updated - column c2 added both address and bank tags
     assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -493,7 +488,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     updatedColumns.remove(1);
     table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
     assertEquals(1, table.getColumns().size());
-    validateTags(columns.get(0).getTags(), table.getColumns().get(0).getTags());
+    TestUtils.validateTags(columns.get(0).getTags(), table.getColumns().get(0).getTags());
 
     // Ensure tag usage counts are updated to reflect removal of column c2
     assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -929,7 +924,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     printTables(allTables);
 
     // List tables with limit set from 1 to maxTables size
-    // Each time comapare the returned list with allTables list to make sure right results are returned
+    // Each time compare the returned list with allTables list to make sure right results are returned
     for (int limit = 1; limit < maxTables; limit++) {
       String after = null;
       String before;
@@ -1206,29 +1201,6 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(table.getDatabase().getName(), DATABASE.getName());
   }
 
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
-    if (expectedList == null) {
-      return;
-    }
-    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
-    // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
-    for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
-      updatedExpectedList.addAll(derived);
-    }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-    updatedExpectedList.sort(new TagLabelComparator());
-    actualList.sort(new TagLabelComparator());
-
-    assertEquals(updatedExpectedList.size(), actualList.size());
-    for (int i = 0; i < actualList.size(); i++) {
-      assertEquals(updatedExpectedList.get(i), actualList.get(i));
-    }
-  }
-
   public static Table createTable(CreateTable create, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("tables"), create, Table.class, authHeaders);
   }
@@ -1263,7 +1235,7 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Validate table constraints
     assertEquals(expectedTableConstraints, table.getTableConstraints());
-    validateTags(expectedTags, table.getTags());
+    TestUtils.validateTags(expectedTags, table.getTags());
     TestUtils.validateEntityReference(table.getFollowers());
   }
 
@@ -1275,7 +1247,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     if (expectedColumn.getDataTypeDisplay() != null) {
       assertEquals(expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT), actualColumn.getDataTypeDisplay());
     }
-    validateTags(expectedColumn.getTags(), actualColumn.getTags());
+    TestUtils.validateTags(expectedColumn.getTags(), actualColumn.getTags());
 
     // Check the nested columns
     validateColumns(expectedColumn.getChildren(), actualColumn.getChildren());
@@ -1286,8 +1258,7 @@ public class TableResourceTest extends CatalogApplicationTest {
       return;
     }
     // Sort columns by name
-    expectedColumns.sort(new ColumnComparator());
-    actualColumns.sort(new ColumnComparator());
+    assertNotNull(expectedColumns);
     assertEquals(expectedColumns.size(), actualColumns.size());
     for (int i = 0; i < expectedColumns.size(); i++) {
       validateColumn(expectedColumns.get(i), actualColumns.get(i));

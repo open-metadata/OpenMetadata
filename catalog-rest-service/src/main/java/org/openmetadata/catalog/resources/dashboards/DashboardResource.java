@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.openmetadata.catalog.api.data.CreateDashboard;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -64,7 +63,6 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -79,9 +77,6 @@ import java.util.UUID;
 @Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepository")
 public class DashboardResource {
   public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
-  private final List<String> attributes = RestUtil.getAttributes(Dashboard.class);
-  private final List<String> relationships = RestUtil.getAttributes(Dashboard.class);
-
   private final DashboardRepository dao;
   private final CatalogAuthorizer authorizer;
 
@@ -135,7 +130,7 @@ public class DashboardResource {
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "List of dashboardss",
+                  @ApiResponse(responseCode = "200", description = "List of dashboards",
                                content = @Content(mediaType = "application/json",
                                        schema = @Schema(implementation = DashboardList.class)))
           })
@@ -297,7 +292,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Dashboard dashboard = dao.get(id, fields);
@@ -315,7 +310,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException, ParseException {
+                              @PathParam("userId") String userId) throws IOException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Dashboard dashboard = dao.get(id, fields);

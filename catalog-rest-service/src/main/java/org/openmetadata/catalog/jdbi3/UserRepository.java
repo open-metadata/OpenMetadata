@@ -108,8 +108,7 @@ public abstract class UserRepository {
   abstract TaskDAO taskDAO();
 
   @Transaction
-  public UserList listAfter(Fields fields, int limitParam, String after) throws IOException,
-          ParseException, GeneralSecurityException {
+  public UserList listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException {
     // forward scrolling, if after == null then first page is being asked being asked
     List<String> jsons = userDAO().listAfter(limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
@@ -130,8 +129,7 @@ public abstract class UserRepository {
   }
 
   @Transaction
-  public UserList listBefore(Fields fields, int limitParam, String before) throws IOException,
-          ParseException, GeneralSecurityException {
+  public UserList listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = userDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
 
@@ -191,8 +189,7 @@ public abstract class UserRepository {
   }
 
   @Transaction
-  public RestUtil.PutResponse<User> createOrUpdate(User updatedUser) throws
-          IOException, ParseException {
+  public RestUtil.PutResponse<User> createOrUpdate(User updatedUser) throws IOException {
     User storedUser = JsonUtils.readValue(userDAO().findByName(updatedUser.getName()), User.class);
     List<UUID> teamIds = new ArrayList<>();
     if (updatedUser.getTeams() != null) {
@@ -222,7 +219,7 @@ public abstract class UserRepository {
   }
 
   @Transaction
-  public EntityReference getOwnerReference(User user) throws IOException {
+  public EntityReference getOwnerReference(User user) {
     return EntityUtil.getEntityReference(user);
   }
 

@@ -59,7 +59,6 @@ public class FeedResource {
   // TODO add /v1/feed?user=userid
   public static final String COLLECTION_PATH = "/v1/feed/";
   private final FeedRepository dao;
-  private final CatalogAuthorizer authorizer;
 
   public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
@@ -75,7 +74,6 @@ public class FeedResource {
   public FeedResource(FeedRepository dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "FeedRepository must not be null");
     this.dao = dao;
-    this.authorizer = authorizer;
   }
 
   static class ThreadList extends ResultList<Thread> {

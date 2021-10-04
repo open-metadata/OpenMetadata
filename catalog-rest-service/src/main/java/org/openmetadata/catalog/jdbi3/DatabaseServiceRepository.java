@@ -24,8 +24,6 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.joda.time.Period;
-import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.util.Utils;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;

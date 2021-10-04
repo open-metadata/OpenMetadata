@@ -33,7 +33,7 @@ public class AuthorizerConfiguration {
   private Set<String> botPrincipals;
 
   @NotEmpty
-  private String prinicipalDomain;
+  private String principalDomain;
 
 
   private CatalogAuthorizerConfiguration catalogAuthorizerConfiguration;
@@ -78,12 +78,12 @@ public class AuthorizerConfiguration {
     this.botPrincipals = botPrincipals;
   }
 
-  public String getPrinicipalDomain() {
-    return prinicipalDomain;
+  public String getPrincipalDomain() {
+    return principalDomain;
   }
 
   public void setPrincipalDomain(String principalDomain) {
-    this.prinicipalDomain = principalDomain;
+    this.principalDomain = principalDomain;
   }
 
   @Override

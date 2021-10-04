@@ -25,6 +25,18 @@
       "type": "string",
       "format": "uri"
     },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline",
+      "type": "integer"
+    },
+    "pipelineLocation": {
+      "description": "Pipeline Code Location",
+      "type": "string"
+    },
+    "startDate": {
+      "description": "Start date of the workflow",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
     "tasks": {
       "description": "All the tasks that are part of pipeline.",
       "type": "array",

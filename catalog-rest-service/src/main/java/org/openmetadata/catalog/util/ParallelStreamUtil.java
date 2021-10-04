@@ -60,8 +60,6 @@ public final class ParallelStreamUtil {
     try {
       CompletableFuture<T> resultFuture = CompletableFuture.supplyAsync(supplier, executor);
       return resultFuture.get(timeoutInSeconds, TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
     } catch (ExecutionException e) {
       handleExecutionException(e);
       // shouldn't reach here

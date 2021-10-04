@@ -55,6 +55,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
@@ -162,7 +163,7 @@ public final class EntityUtil {
         DashboardServiceResource.addHref(uriInfo, ref);
         break;
       case Entity.PIPELINE_SERVICE:
-        DashboardServiceResource.addHref(uriInfo, ref);
+        PipelineServiceResource.addHref(uriInfo, ref);
         break;
       default:
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
@@ -342,7 +343,7 @@ public final class EntityUtil {
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
 
-  public static EntityReference getEntityReference(Object entity, Class<?> clazz) throws IOException {
+  public static EntityReference getEntityReference(Object entity, Class<?> clazz) {
     if (clazz.toString().toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
       Table instance = (Table) entity;
       return getEntityReference(instance);

@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import org.openmetadata.catalog.type.CollectionDescriptor;
@@ -96,8 +95,7 @@ public final class CollectionRegistry {
   }
 
   /** For a collection at {@code collectionPath} returns JSON document that describes it and it's children */
-  public CollectionDescriptor[] getCollectionForPath(String collectionPath, UriInfo uriInfo)
-          throws JsonProcessingException {
+  public CollectionDescriptor[] getCollectionForPath(String collectionPath, UriInfo uriInfo) {
     CollectionDetails parent = collectionMap.get(collectionPath);
     CollectionDescriptor[] children = parent.getChildCollections();
     for (CollectionDescriptor child : children) {
@@ -186,7 +184,7 @@ public final class CollectionRegistry {
     return new CollectionDetails(cd, cl.getCanonicalName(), repoClass);
   }
 
-  /** Compile a list of REST collection based on Resrouce classes marked with {@code Collection} annotation */
+  /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
     Reflections reflections = new Reflections("org.openmetadata.catalog.resources");
 

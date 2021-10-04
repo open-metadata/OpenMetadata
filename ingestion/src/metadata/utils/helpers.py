@@ -103,3 +103,8 @@ def get_dashboard_service_or_create(
         created_service = client.create_dashboard_service(create_dashboard_service_request)
         return created_service
 
+def convert_epoch_to_iso(seconds_since_epoch):
+    dt = datetime.utcfromtimestamp(seconds_since_epoch)
+    iso_format = dt.isoformat() + 'Z'
+    return iso_format
+  

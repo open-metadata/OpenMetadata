@@ -59,10 +59,7 @@ import java.util.UUID;
 @Collection(name = "metrics", repositoryClass = "org.openmetadata.catalog.jdbi3.MetricsRepository")
 public class MetricsResource {
   public static final String COLLECTION_PATH = "/v1/metrics/";
-  private final List<String> attributes = RestUtil.getAttributes(Metrics.class);
-  private final List<String> relationships = RestUtil.getAttributes(Metrics.class);
   private final MetricsRepository dao;
-  private final CatalogAuthorizer authorizer;
 
   private static List<Metrics> addHref(UriInfo uriInfo, List<Metrics> metrics) {
     metrics.forEach(m -> addHref(uriInfo, m));
@@ -78,7 +75,6 @@ public class MetricsResource {
   public MetricsResource(MetricsRepository dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "MetricsRepository must not be null");
     this.dao = dao;
-    this.authorizer = authorizer;
   }
 
   static class MetricsList extends ResultList<Metrics> {

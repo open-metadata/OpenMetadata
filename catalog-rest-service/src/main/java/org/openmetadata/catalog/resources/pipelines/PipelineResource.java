@@ -78,9 +78,6 @@ import java.util.UUID;
 @Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
-  private final List<String> attributes = RestUtil.getAttributes(Pipeline.class);
-  private final List<String> relationships = RestUtil.getAttributes(Pipeline.class);
-
   private final PipelineRepository dao;
   private final CatalogAuthorizer authorizer;
 
@@ -296,7 +293,7 @@ public class PipelineResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException, ParseException {
+                                      String userId) throws IOException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);
@@ -314,7 +311,7 @@ public class PipelineResource {
                                   @PathParam("id") String id,
                                   @Parameter(description = "Id of the user being removed as follower",
                                           schema = @Schema(type = "string"))
-                                  @PathParam("userId") String userId) throws IOException, ParseException {
+                                  @PathParam("userId") String userId) throws IOException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);

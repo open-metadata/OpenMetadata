@@ -1,0 +1,8 @@
+{
+	"id": "a6fb4f54-ba3d-4a16-97f0-766713199189",
+	"name": "sample_airflow",
+	"serviceType": "Airflow",
+	"description": "Airflow service",
+	"href": "null",
+	"pipelineUrl": "http://localhost:8080"
+}

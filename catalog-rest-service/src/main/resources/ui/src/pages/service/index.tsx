@@ -18,7 +18,7 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined } from 'lodash';
-import { Database, Paging, ServiceOption } from 'Models';
+import { Paging } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
@@ -41,7 +41,11 @@ import {
   ServiceCategory,
 } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Database } from '../../generated/entity/data/database';
 import { Topic } from '../../generated/entity/data/topic';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { MessagingService } from '../../generated/entity/services/messagingService';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -51,6 +55,11 @@ import {
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
+
+type Data = Database | Topic | Dashboard;
+type ServiceDataObj = { name: string } & Partial<DatabaseService> &
+  Partial<MessagingService> &
+  Partial<DashboardService>;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType } = useParams() as Record<string, string>;
@@ -62,8 +71,8 @@ const ServicePage: FunctionComponent = () => {
   >([]);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [serviceDetails, setServiceDetails] = useState<ServiceOption>();
-  const [data, setData] = useState<Array<Database>>([]);
+  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
+  const [data, setData] = useState<Array<Data>>([]);
   const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
@@ -392,7 +401,7 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             <p>
               {getUsagePercentile(
-                database.usageSummary.weeklyStats.percentileRank
+                database.usageSummary?.weeklyStats?.percentileRank || 0
               )}
             </p>
           </td>
@@ -549,7 +558,7 @@ const ServicePage: FunctionComponent = () => {
                 </span>{' '}
                 <span className="tw-pl-1 tw-font-normal">
                   {' '}
-                  {serviceDetails?.ingestionSchedule
+                  {serviceDetails?.ingestionSchedule?.repeatFrequency
                     ? getFrequencyTime(
                         serviceDetails.ingestionSchedule.repeatFrequency
                       )
@@ -630,11 +639,14 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
-                          <Link to={getLinkForFqn(dataObj.fullyQualifiedName)}>
+                          <Link
+                            to={getLinkForFqn(
+                              dataObj.fullyQualifiedName || ''
+                            )}>
                             {serviceName ===
                               ServiceCategory.DASHBOARD_SERVICES &&
-                            dataObj.displayName
-                              ? dataObj.displayName
+                            (dataObj as Dashboard).displayName
+                              ? (dataObj as Dashboard).displayName
                               : dataObj.name}
                           </Link>
                         </td>

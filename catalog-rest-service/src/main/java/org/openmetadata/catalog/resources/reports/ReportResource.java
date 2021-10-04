@@ -59,10 +59,7 @@ import java.util.UUID;
 @Collection(name = "reports", repositoryClass = "org.openmetadata.catalog.jdbi3.ReportRepository")
 public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
-  private final List<String> attributes = RestUtil.getAttributes(Report.class);
-  private final List<String> relationships = RestUtil.getAttributes(Report.class);
   private final ReportRepository dao;
-  private final CatalogAuthorizer authorizer;
 
   private static List<Report> addHref(UriInfo uriInfo, List<Report> reports) {
     reports.forEach(r -> addHref(uriInfo, r));
@@ -78,7 +75,6 @@ public class ReportResource {
   public ReportResource(ReportRepository dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepository must not be null");
     this.dao = dao;
-    this.authorizer = authorizer;
   }
 
   static class ReportList extends ResultList<Report> {

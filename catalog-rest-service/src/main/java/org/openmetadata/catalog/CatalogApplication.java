@@ -116,7 +116,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
       }
     });
     bootstrap.addBundle(new AssetsBundle("/assets", "/", "index.html", "static"));
-    bootstrap.addBundle(new HealthCheckBundle<CatalogApplicationConfig>() {
+    bootstrap.addBundle(new HealthCheckBundle<>() {
       @Override
       protected HealthConfiguration getHealthConfiguration(final CatalogApplicationConfig configuration) {
         return configuration.getHealthConfiguration();

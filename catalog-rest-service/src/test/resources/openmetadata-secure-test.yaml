@@ -130,7 +130,7 @@ authorizerConfiguration:
     - "admin"
   botPrincipals:
     - "ingestion-bot"
-  prinicipalDomain: "open-metadata.org"
+  principalDomain: "open-metadata.org"
 
 authenticationConfiguration:
   provider: "openID"

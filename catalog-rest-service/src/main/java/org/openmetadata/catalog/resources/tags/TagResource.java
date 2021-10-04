@@ -92,7 +92,7 @@ public class TagResource {
 
   @SuppressWarnings("unused") // Method used using reflection
   public void initialize() throws IOException {
-    // Find tag defintions and load tag categories from the json file, if necessary
+    // Find tag definitions and load tag categories from the json file, if necessary
     List<String> tagFiles = getTagDefinitions();
     tagFiles.forEach(tagFile -> {
       try {

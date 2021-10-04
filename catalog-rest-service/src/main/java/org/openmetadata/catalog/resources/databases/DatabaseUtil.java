@@ -157,7 +157,7 @@ public final class DatabaseUtil {
       validateColumnNames(column.getChildren());
       if (!column.getDataTypeDisplay().startsWith("struct<")) {
         throw new IllegalArgumentException("For column data type struct, dataTypeDisplay must be of type " +
-                "stuct<member fields>");
+                "struct<member fields>");
       }
     }
   }
