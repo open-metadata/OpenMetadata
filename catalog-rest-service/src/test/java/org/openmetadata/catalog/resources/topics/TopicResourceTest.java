@@ -32,7 +32,6 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
@@ -48,13 +47,10 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -85,7 +81,6 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public static EntityReference TEAM_OWNER1;
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
@@ -624,7 +619,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), topic.getService().getId());
       assertEquals(expectedService.getType(), topic.getService().getType());
     }
-    validateTags(expectedTags, topic.getTags());
+    TestUtils.validateTags(expectedTags, topic.getTags());
     return topic;
   }
 
@@ -789,24 +784,4 @@ public class TopicResourceTest extends CatalogApplicationTest {
     checkUserFollowing(userId, topicId, false, authHeaders);
     return getTopic;
   }
-
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
-    if (expectedList == null) {
-      return;
-    }
-    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
-    // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
-    for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
-      updatedExpectedList.addAll(derived);
-    }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-
-    assertTrue(actualList.containsAll(updatedExpectedList));
-    assertTrue(updatedExpectedList.containsAll(actualList));
-  }
-
 }

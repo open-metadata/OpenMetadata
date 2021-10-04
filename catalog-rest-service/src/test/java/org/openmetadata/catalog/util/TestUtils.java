@@ -16,11 +16,14 @@
 
 package org.openmetadata.catalog.util;
 
+import org.openmetadata.catalog.resources.databases.TableResourceTest.TagLabelComparator;
+import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
+import org.openmetadata.catalog.type.TagLabel;
 
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
@@ -32,12 +35,14 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -208,6 +213,29 @@ public final class TestUtils {
       headers.put(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER, username);
     }
     return headers;
+  }
+
+  public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+          throws HttpResponseException {
+    if (expectedList == null) {
+      return;
+    }
+    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
+    // So add to the expectedList, the derived tags before validating the tags
+    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
+    for (TagLabel expected : expectedList) {
+      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
+              adminAuthHeaders()));
+      updatedExpectedList.addAll(derived);
+    }
+    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
+    updatedExpectedList.sort(new TagLabelComparator());
+    actualList.sort(new TagLabelComparator());
+
+    assertEquals(updatedExpectedList.size(), actualList.size());
+    for (int i = 0; i < actualList.size(); i++) {
+      assertEquals(updatedExpectedList.get(i), actualList.get(i));
+    }
   }
 
   public static Map<String, String> adminAuthHeaders() {
