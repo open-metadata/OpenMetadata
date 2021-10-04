@@ -20,7 +20,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { Database, Paging, TableDetail } from 'Models';
+import { Paging } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Link, useHistory, useParams } from 'react-router-dom';
 import appState from '../../AppState';
@@ -46,6 +46,8 @@ import {
   getServiceDetailsPath,
   pagingObject,
 } from '../../constants/constants';
+import { Database } from '../../generated/entity/data/database';
+import { Table } from '../../generated/entity/data/table';
 import useToastContext from '../../hooks/useToastContext';
 import { getCurrentUserId, isEven } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -62,7 +64,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { databaseFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
-  const [data, setData] = useState<Array<TableDetail>>([]);
+  const [data, setData] = useState<Array<Table>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
     databaseFQN.split('.').slice(-1).pop() || ''
@@ -328,12 +330,16 @@ const DatabaseDetails: FunctionComponent = () => {
                       key={index}>
                       <td className="tableBody-cell">
                         <Link
-                          to={getDatasetDetailsPath(table.fullyQualifiedName)}>
+                          to={
+                            table.fullyQualifiedName
+                              ? getDatasetDetailsPath(table.fullyQualifiedName)
+                              : ''
+                          }>
                           {table.name}
                         </Link>
                       </td>
                       <td className="tableBody-cell">
-                        {table.description.trim() ? (
+                        {table.description?.trim() ? (
                           <RichTextEditorPreviewer
                             markdown={table.description}
                           />
@@ -349,12 +355,12 @@ const DatabaseDetails: FunctionComponent = () => {
                       <td className="tableBody-cell">
                         <p>
                           {getUsagePercentile(
-                            table.usageSummary.weeklyStats.percentileRank || 0
+                            table.usageSummary?.weeklyStats?.percentileRank || 0
                           )}
                         </p>
                       </td>
                       <td className="tableBody-cell">
-                        {table.tags.map((tag, tagIndex) => (
+                        {table.tags?.map((tag, tagIndex) => (
                           <PopOver
                             key={tagIndex}
                             position="top"
@@ -364,7 +370,7 @@ const DatabaseDetails: FunctionComponent = () => {
                             <Tags
                               className="tw-bg-gray-200"
                               tag={`#${
-                                tag.tagFQN.startsWith('Tier.Tier')
+                                tag.tagFQN?.startsWith('Tier.Tier')
                                   ? tag.tagFQN.split('.')[1]
                                   : tag.tagFQN
                               }`}
