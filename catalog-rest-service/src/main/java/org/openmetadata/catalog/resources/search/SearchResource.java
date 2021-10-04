@@ -120,6 +120,8 @@ public class SearchResource {
       searchSourceBuilder = buildTopicSearchBuilder(query, from, size);
     } else if (index.equals("dashboard_search_index")) {
       searchSourceBuilder = buildDashboardSearchBuilder(query, from, size);
+    } else if (index.equals("pipeline_search_index")) {
+      searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
     } else {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
     }
@@ -242,6 +244,34 @@ public class SearchResource {
             .field("description")
             .field("chart_names")
             .field("chart_descriptions")
+            .lenient(true))
+            .aggregation(AggregationBuilders.terms("Service").field("service_type"))
+            .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+            .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+            .highlighter(hb)
+            .from(from).size(size);
+
+    return searchSourceBuilder;
+  }
+
+  private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    HighlightBuilder.Field highlightTableName =
+            new HighlightBuilder.Field("pipeline_name");
+    highlightTableName.highlighterType("unified");
+    HighlightBuilder.Field highlightDescription =
+            new HighlightBuilder.Field("description");
+    highlightDescription.highlighterType("unified");
+    HighlightBuilder hb = new HighlightBuilder();
+    hb.field(highlightDescription);
+    hb.field(highlightTableName);
+    hb.preTags("<span class=\"text-highlighter\">");
+    hb.postTags("</span>");
+    searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+            .field("pipeline_name", 5.0f)
+            .field("description")
+            .field("task_names")
+            .field("task_descriptions")
             .lenient(true))
             .aggregation(AggregationBuilders.terms("Service").field("service_type"))
             .aggregation(AggregationBuilders.terms("Tier").field("tier"))
