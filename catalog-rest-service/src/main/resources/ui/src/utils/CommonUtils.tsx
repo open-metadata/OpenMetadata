@@ -1,5 +1,5 @@
 import { isEmpty } from 'lodash';
-import { RecentlyViewed, RecentlyViewedData, UserTeam } from 'Models';
+import { RecentlyViewed, RecentlyViewedData } from 'Models';
 import React from 'react';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import AppState from '../AppState';
@@ -7,7 +7,12 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
+import { EntityReference as UserTeams } from '../generated/entity/teams/user';
 import { countBackground } from './styleconstant';
+
+type UserTeam = {
+  displayName?: string;
+} & UserTeams;
 
 export const arraySorterByKey = (
   key: string,

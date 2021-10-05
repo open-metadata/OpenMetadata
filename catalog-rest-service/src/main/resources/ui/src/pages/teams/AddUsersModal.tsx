@@ -1,8 +1,13 @@
-import { UserTeam } from 'Models';
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
+import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
 import UserCard from './UserCard';
+
+type UserTeam = {
+  displayName?: string;
+} & UserTeams;
+
 type Props = {
   header: string;
   list: Array<UserTeam>;
@@ -32,13 +37,13 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
       .filter((user) => {
         return (
           user.description?.includes(searchText) ||
-          user.name.includes(searchText)
+          user?.name?.includes(searchText)
         );
       })
       .map((user, index) => {
         const User = {
-          description: user.description,
-          name: user.name,
+          description: user.description || '',
+          name: user.name || '',
           id: user.id,
         };
 

@@ -17,6 +17,7 @@
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+
   export type Match = {
     params: {
       searchQuery: string;
@@ -168,15 +169,6 @@ declare module 'Models' {
 
   export type UserProfile = {
     images: Record<string, string>;
-  };
-
-  export type UserTeam = {
-    description: string;
-    displayName?: string;
-    href: string;
-    id: string;
-    name: string;
-    type: string;
   };
 
   export type User = {

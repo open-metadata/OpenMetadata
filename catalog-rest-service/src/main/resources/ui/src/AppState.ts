@@ -16,8 +16,15 @@
 */
 
 import { makeAutoObservable } from 'mobx';
-import { ClientAuth, NewUser, UserTeam } from 'Models';
-import { User } from './generated/entity/teams/user';
+import { ClientAuth, NewUser } from 'Models';
+import {
+  EntityReference as UserTeams,
+  User,
+} from './generated/entity/teams/user';
+
+type UserTeam = {
+  displayName?: string;
+} & UserTeams;
 
 class AppState {
   users: Array<User> = [];
