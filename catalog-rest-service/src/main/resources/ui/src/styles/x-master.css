@@ -704,3 +704,7 @@ a:focus {
   background-color: #ffc34e40;
   padding: 0.25rem;
 }
+
+body .profiler-graph .recharts-active-dot circle {
+  fill: #ff4c3b;
+}
