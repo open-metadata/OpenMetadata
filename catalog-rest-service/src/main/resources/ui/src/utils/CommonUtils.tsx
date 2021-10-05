@@ -99,7 +99,7 @@ export const getUserTeams = (): Array<UserTeam> => {
     retVal = AppState.userTeams;
   }
 
-  return retVal;
+  return retVal || [];
 };
 
 export const getTabClasses = (

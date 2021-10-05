@@ -59,7 +59,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   };
 
   const getFilters = (): string => {
-    if (filter === 'owner') {
+    if (filter === 'owner' && AppState.userDetails.teams) {
       const userTeams = !isEmpty(AppState.userDetails)
         ? AppState.userDetails.teams.map((team) => `${filter}:${team.id}`)
         : [];
