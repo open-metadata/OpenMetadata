@@ -131,7 +131,7 @@ const Appbar: React.FC = (): JSX.Element => {
 
     return (
       <span data-testid="greeting-text">
-        Welcome, <span className="tw-font-medium">{name.split(' ')[0]}</span>
+        Welcome, <span className="tw-font-medium">{name?.split(' ')[0]}</span>
       </span>
     );
   };
@@ -286,7 +286,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 ]}
                 icon={
                   <>
-                    {appState.userDetails.profile?.images.image512 ? (
+                    {appState?.userDetails?.profile?.images?.image512 ? (
                       <div className="profile-image tw-mr-1">
                         <img
                           alt="user"

@@ -62,7 +62,7 @@ const ManageTab: FunctionComponent<Props> = ({
       ? appState.users[0]
       : undefined;
     const teams = getUserTeams().map((team) => ({
-      name: team?.displayName || team.name,
+      name: team?.displayName || team.name || '',
       value: team.id,
       group: 'Teams',
       type: 'team',
@@ -71,14 +71,14 @@ const ManageTab: FunctionComponent<Props> = ({
     if (user?.isAdmin) {
       const users = appState.users
         .map((user) => ({
-          name: user.displayName,
+          name: user.displayName || user.name || '',
           value: user.id,
           group: 'Users',
           type: 'user',
         }))
         .filter((u) => u.value != user.id);
       const teams = appState.userTeams.map((team) => ({
-        name: team.displayName || team.name,
+        name: team.displayName || team.name || '',
         value: team.id,
         group: 'Teams',
         type: 'team',
@@ -86,7 +86,7 @@ const ManageTab: FunctionComponent<Props> = ({
 
       return [
         {
-          name: user.displayName,
+          name: user.displayName || user.name || '',
           value: user.id,
           group: 'Users',
           type: 'user',
@@ -98,7 +98,7 @@ const ManageTab: FunctionComponent<Props> = ({
       return user
         ? [
             {
-              name: user.displayName,
+              name: user.displayName || user.name,
               value: user.id,
               group: 'Users',
               type: 'user',

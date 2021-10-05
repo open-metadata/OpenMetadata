@@ -19,7 +19,7 @@ import { AxiosResponse } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isEmpty, isNil } from 'lodash';
 import { observer } from 'mobx-react';
-import { NewUser, User } from 'Models';
+import { NewUser } from 'Models';
 import { UserManager, WebStorageStateStore } from 'oidc-client';
 import React, {
   ComponentType,
@@ -44,6 +44,7 @@ import { FirstTimeUserModal } from '../components/Modals/FirstTimeUserModal/Firs
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { oidcTokenKey, ROUTES } from '../constants/constants';
 import { ClientErrors } from '../enums/axios.enum';
+import { User } from '../generated/entity/teams/user';
 import { useAuth } from '../hooks/authHooks';
 import useToastContext from '../hooks/useToastContext';
 import SigninPage from '../pages/login';
