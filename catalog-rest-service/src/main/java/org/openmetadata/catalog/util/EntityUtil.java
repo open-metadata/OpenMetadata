@@ -21,6 +21,7 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Task;
@@ -377,11 +378,17 @@ public final class EntityUtil {
     } else if (clazz.toString().toLowerCase().endsWith(Entity.TASK.toLowerCase())) {
       Task instance = (Task) entity;
       return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
+      Pipeline instance = (Pipeline) entity;
+      return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
       MessagingService instance = (MessagingService) entity;
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD_SERVICE.toLowerCase())) {
       DashboardService instance = (DashboardService) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.PIPELINE_SERVICE.toLowerCase())) {
+      PipelineService instance = (PipelineService) entity;
       return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
@@ -449,6 +456,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Pipeline pipeline) {
+    return new EntityReference().withDescription(pipeline.getDescription()).withId(pipeline.getId())
+            .withName(pipeline.getFullyQualifiedName()).withType(Entity.PIPELINE);
   }
 
   public static EntityReference getEntityReference(Task task) {
