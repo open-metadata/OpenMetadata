@@ -20,9 +20,11 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
+import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
+import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.NoopFilter;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
@@ -39,7 +41,6 @@ import io.dropwizard.jdbi.DBIFactory;
 import io.dropwizard.jdbi.OptionalContainerFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
-import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
@@ -86,8 +87,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory()).setRegisterDefaultExceptionMappers(false);
-    environment.jersey()
-            .property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
+    environment.jersey().property(ServerProperties.RESPONSE_SET_STATUS_OVER_SEND_ERROR, true);
     environment.jersey().register(MultiPartFeature.class);
     environment.jersey().register(CatalogGenericExceptionMapper.class);
 
@@ -95,10 +95,10 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new ConstraintViolationExceptionMapper());
 
     // Restore dropwizard default exception mappers
-    environment.jersey().register(new LoggingExceptionMapper<>() {
-    });
+    environment.jersey().register(new LoggingExceptionMapper<>() {});
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
+    environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
     registerResources(catalogConfig, environment, jdbi);
 
