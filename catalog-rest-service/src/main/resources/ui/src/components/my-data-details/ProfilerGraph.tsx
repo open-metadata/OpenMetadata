@@ -15,7 +15,7 @@ const ProfilerGraph = ({ data }: Props) => {
   }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs">
+        <div className="tw-py-1.5 tw-px-1 tw-bg-black tw-opacity-50 tw-rounded tw-text-white tw-text-xs tw-font-normal">
           <div>Value {payload[0].value}</div>
           <div>Date {payload[0].payload.date}</div>
         </div>
@@ -38,7 +38,7 @@ const ProfilerGraph = ({ data }: Props) => {
       width={150}>
       <Tooltip
         content={CustomTooltip}
-        cursor={{ stroke: 'red', strokeWidth: 2 }}
+        cursor={{ stroke: '#FF4C3B', strokeWidth: 2 }}
         offset={20}
         position={{ x: 20, y: 20 }}
       />

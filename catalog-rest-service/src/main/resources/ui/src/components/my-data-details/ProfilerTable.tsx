@@ -54,8 +54,8 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
             <tr className="tableHead-row">
               <th className="tableHead-cell">Column Name</th>
               <th className="tableHead-cell">Rows</th>
-              <th className="tableHead-cell">Distinct Ratio (Percentage)</th>
-              <th className="tableHead-cell">Null Ratio (Percentage)</th>
+              <th className="tableHead-cell">Distinct Ratio (%)</th>
+              <th className="tableHead-cell">Null Ratio (%)</th>
               <th className="tableHead-cell">Min</th>
               <th className="tableHead-cell">Max</th>
               <th className="tableHead-cell">Median</th>
@@ -91,7 +91,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                       </span>
                       {col.name}
                     </td>
-                    <td className="tw-relative tableBody-cell">
+                    <td className="tw-relative tableBody-cell profiler-graph">
                       <ProfilerGraph
                         data={
                           col.data
@@ -103,7 +103,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                         }
                       />
                     </td>
-                    <td className="tw-relative tableBody-cell">
+                    <td className="tw-relative tableBody-cell profiler-graph">
                       <ProfilerGraph
                         data={
                           col.data
@@ -115,7 +115,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                         }
                       />
                     </td>
-                    <td className="tw-relative tableBody-cell">
+                    <td className="tw-relative tableBody-cell profiler-graph">
                       <ProfilerGraph
                         data={
                           col.data
@@ -130,7 +130,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                     <td className="tw-relative tableBody-cell">{col.min}</td>
                     <td className="tw-relative tableBody-cell">{col.max}</td>
                     <td className="tw-relative tableBody-cell">{col.median}</td>
-                    <td className="tw-relative tableBody-cell">
+                    <td className="tw-relative tableBody-cell profiler-graph">
                       <ProfilerGraph
                         data={
                           col.data
