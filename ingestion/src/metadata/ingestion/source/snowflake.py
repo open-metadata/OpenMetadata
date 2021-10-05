@@ -20,10 +20,9 @@ from snowflake.sqlalchemy import custom_types
 from .sql_source import (
     SQLConnectionConfig,
     SQLSource,
-    register_custom_type,
 )
 from ..ometa.openmetadata_rest import MetadataServerConfig
-
+from metadata.utils.helpers import register_custom_type
 register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")

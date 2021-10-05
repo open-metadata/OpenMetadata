@@ -202,7 +202,7 @@ public abstract class TableRepository {
     updatedTable.setId(storedTable.getId());
     validateRelationships(updatedTable, database, newOwner);
 
-    // Carry forward non empty description
+    // Carry forward non-empty description
     if (storedTable.getDescription() != null && !storedTable.getDescription().isEmpty()) {
       // Update description only when it is empty
       updatedTable.setDescription(storedTable.getDescription());
@@ -211,7 +211,7 @@ public abstract class TableRepository {
     EntityUtil.removeTagsByPrefix(tagDAO(), storedTable.getFullyQualifiedName());
     updatedTable.setTags(EntityUtil.mergeTags(updatedTable.getTags(), storedTable.getTags()));
 
-    updateColumns(storedTable, updatedTable);
+    updateColumns(storedTable, updatedTable, false);
     storeTable(updatedTable, true);
 
     updateRelationships(storedTable, updatedTable);
@@ -468,7 +468,7 @@ public abstract class TableRepository {
 
     // Remove previous tags. Merge tags from the update and the existing tags
     EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updateColumns(original, updated);
+    updateColumns(original, updated, true);
 
     storeTable(updated, true);
     updateRelationships(original, updated);
@@ -515,8 +515,7 @@ public abstract class TableRepository {
   }
 
   //TODO modified columns
-  private void updateColumns(List<Column> storedColumns, List<Column> updatedColumns, List<Column> addedColumns,
-                             List<Column> deletedColumns) {
+  private void updateColumns(List<Column> storedColumns, List<Column> updatedColumns, boolean patchOperation) {
     // Carry forward the user generated metadata from existing columns to new columns
     for (Column updated : updatedColumns) {
       // Find stored column matching name, data type and ordinal position
@@ -529,13 +528,14 @@ public abstract class TableRepository {
               .orElse(null);
       if (stored == null) {
         // TODO versioning of schema
-        addedColumns.add(updated);
         LOG.info("Column {} was newly added", updated.getFullyQualifiedName());
         continue;
       }
 
-      // Carry forward user generated metadata to the columns from the update
-      if (stored.getDescription() != null && !stored.getDescription().isEmpty()) {
+      // For patch operation don't overwrite updated column with stored column description
+      // For put operation overwrite updated column with non-empty or non-null stored column description
+      if (!patchOperation &&
+              stored.getDescription() != null && !stored.getDescription().isEmpty()) {
         updated.setDescription(stored.getDescription()); // Carry forward non-empty description
       }
 
@@ -546,7 +546,7 @@ public abstract class TableRepository {
       updated.setTags(updated.getTags());
 
       if (updated.getChildren() != null && stored.getChildren() != null) {
-        updateColumns(stored.getChildren(), updated.getChildren(), addedColumns, deletedColumns);
+        updateColumns(stored.getChildren(), updated.getChildren(), patchOperation);
       }
     }
 
@@ -562,14 +562,13 @@ public abstract class TableRepository {
               .orElse(null);
       if (updated == null) {
         // TODO versioning of schema addedColumns.add(stored);
-        deletedColumns.add(stored);
         LOG.info("Column {} was deleted", stored.getFullyQualifiedName());
       }
     }
   }
 
-  private void updateColumns(Table storedTable, Table updatedTable) {
-    updateColumns(storedTable.getColumns(), updatedTable.getColumns(), new ArrayList<>(), new ArrayList<>());
+  private void updateColumns(Table storedTable, Table updatedTable, boolean patchOperation) {
+    updateColumns(storedTable.getColumns(), updatedTable.getColumns(), patchOperation);
     storedTable.setColumns(updatedTable.getColumns());
   }
 

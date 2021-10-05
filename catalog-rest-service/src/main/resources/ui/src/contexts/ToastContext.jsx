@@ -35,10 +35,10 @@ export const ToastContextProvider = ({ children }) => {
 
   return (
     <ToastContext.Provider value={addToast}>
+      {children}
       <div className="tw-notification-container">
         <Toaster toastList={toasts} />
       </div>
-      {children}
     </ToastContext.Provider>
   );
 };

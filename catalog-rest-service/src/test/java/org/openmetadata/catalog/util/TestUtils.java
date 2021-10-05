@@ -58,12 +58,8 @@ public final class TestUtils {
   public static URI PIPELINE_URL;
 
   static {
-    try {
-      JDBC_INFO = new JdbcInfo().withConnectionUrl(new URI("jdbc:service://")).withDriverClass("driverClass");
-    } catch (URISyntaxException e) {
-      JDBC_INFO = null;
-      e.printStackTrace();
-    }
+    JDBC_INFO = new JdbcInfo().withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
+            .withDriverClass("driverClass");
   }
 
   static {
@@ -198,8 +194,8 @@ public final class TestUtils {
     assertNotNull(ref.getType());
     // Ensure data entities use fully qualified name
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
-            .contains(ref.getName())) {
-      ref.getName().contains("."); // FullyQualifiedName has "." as separator
+            .contains(ref.getType())) {
+      assertTrue(ref.getName().contains(".")); // FullyQualifiedName has "." as separator
     }
   }
 

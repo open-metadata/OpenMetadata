@@ -11,9 +11,8 @@
       "type": "string"
     },
     "connectionUrl": {
-      "description": "Type used for JDBC connection URL.",
-      "type": "string",
-      "format": "uri"
+      "description": "Type used for JDBC connection URL of format `url_scheme://<username>:<password>@<host>:<port>/<db_name>`.",
+      "type": "string"
     },
 
     "jdbcInfo": {

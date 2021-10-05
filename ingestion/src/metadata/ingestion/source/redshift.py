@@ -15,13 +15,11 @@
 
 import logging
 from typing import Optional
-
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.source.sql_source import SQLSource, SQLConnectionConfig
 from metadata.ingestion.api.source import SourceStatus
 
 logger = logging.getLogger(__name__)
-
 
 class RedshiftConfig(SQLConnectionConfig):
     scheme = "redshift+psycopg2"

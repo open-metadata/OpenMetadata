@@ -468,27 +468,27 @@ public final class EntityUtil {
 
   public static EntityReference getEntityReference(Database database) {
     return new EntityReference().withDescription(database.getDescription()).withId(database.getId())
-            .withName(database.getName()).withType(Entity.DATABASE);
+            .withName(database.getFullyQualifiedName()).withType(Entity.DATABASE);
   }
 
   public static EntityReference getEntityReference(Table table) {
     return new EntityReference().withDescription(table.getDescription()).withId(table.getId())
-            .withName(table.getName()).withType(Entity.TABLE);
+            .withName(table.getFullyQualifiedName()).withType(Entity.TABLE);
   }
 
   public static EntityReference getEntityReference(Report report) {
     return new EntityReference().withDescription(report.getDescription()).withId(report.getId())
-            .withName(report.getName()).withType(Entity.REPORT);
+            .withName(report.getFullyQualifiedName()).withType(Entity.REPORT);
   }
 
   public static EntityReference getEntityReference(Metrics metrics) {
     return new EntityReference().withDescription(metrics.getDescription()).withId(metrics.getId())
-            .withName(metrics.getName()).withType(Entity.METRICS);
+            .withName(metrics.getFullyQualifiedName()).withType(Entity.METRICS);
   }
 
   public static EntityReference getEntityReference(Dashboard dashboard) {
     return new EntityReference().withDescription(dashboard.getDescription()).withId(dashboard.getId())
-            .withName(dashboard.getName()).withType(Entity.DASHBOARD);
+            .withName(dashboard.getFullyQualifiedName()).withType(Entity.DASHBOARD);
   }
 
   public static EntityReference getEntityReference(Team team) {
