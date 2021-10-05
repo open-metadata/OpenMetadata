@@ -57,6 +57,11 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "usageSummary" : {
+      "description": "Latest usage information for this model.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
     }
   },
   "required": ["id", "name"]

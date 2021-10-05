@@ -22,6 +22,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
+import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -63,6 +64,9 @@ public abstract class ModelRepository {
 
   @CreateSqlObject
   abstract TeamDAO teamDAO();
+
+  @CreateSqlObject
+  abstract UsageDAO usageDAO();
 
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
@@ -194,6 +198,8 @@ public abstract class ModelRepository {
     model.setOwner(fields.contains("owner") ? getOwner(model) : null);
     model.setFollowers(fields.contains("followers") ? getFollowers(model) : null);
     model.setTags(fields.contains("tags") ? getTags(model.getFullyQualifiedName()) : null);
+    model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(),
+            model.getId()) : null);
     return model;
   }
 
