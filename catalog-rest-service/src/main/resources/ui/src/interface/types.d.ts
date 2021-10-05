@@ -319,7 +319,8 @@ declare module 'Models' {
   export type ServiceTypes =
     | 'databaseServices'
     | 'messagingServices'
-    | 'dashboardServices';
+    | 'dashboardServices'
+    | 'pipelineServices';
 
   export type SampleData = {
     columns: Array<string>;

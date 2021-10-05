@@ -34,9 +34,9 @@ export interface Task {
    */
   downstreamTasks?: string[];
   /**
-   * Followers of this Pipeline.
+   * End date of the task
    */
-  followers?: EntityReference[];
+  endDate?: Date;
   /**
    * A unique name that identifies a pipeline in the format
    * 'ServiceName.PipelineName.TaskName'.
@@ -63,13 +63,21 @@ export interface Task {
    */
   service: EntityReference;
   /**
+   * Start date of the task
+   */
+  startDate?: Date;
+  /**
    * Tags for this Pipeline.
    */
   tags?: TagLabel[];
   /**
-   * Task Configuration.
+   * SQL used in the task. Can be used to determine the lineage
    */
-  taskConfig?: TaskConfig;
+  taskSQL?: string;
+  /**
+   * Type of the Task. Usually refers to the class it implements
+   */
+  taskType?: string;
   /**
    * Task URL to visit/manage. This URL points to respective pipeline service UI
    */
@@ -77,14 +85,12 @@ export interface Task {
 }
 
 /**
- * Followers of this Pipeline.
+ * Owner of this pipeline.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
- *
- * Owner of this pipeline.
  *
  * Link to service where this pipeline is hosted in.
  */
@@ -158,24 +164,4 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * Task Configuration.
- *
- * This schema defines the type for a column in a table.
- */
-export interface TaskConfig {
-  /**
-   * Location of task file
-   */
-  codeLocation?: string;
-  /**
-   * Concurrency of the Task
-   */
-  concurrency?: number;
-  /**
-   * Start Date of the task
-   */
-  startDate?: Date;
 }
