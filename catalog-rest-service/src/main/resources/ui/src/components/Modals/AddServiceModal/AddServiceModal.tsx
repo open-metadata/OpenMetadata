@@ -27,6 +27,7 @@ import {
 // import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
+import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -83,7 +84,8 @@ type DashboardService = {
 
 export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
-  Partial<DashboardService>;
+  Partial<DashboardService> &
+  Partial<PipelineService>;
 
 export type EditObj = {
   edit: boolean;
