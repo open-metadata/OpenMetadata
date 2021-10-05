@@ -119,6 +119,7 @@ const ServicesPage = () => {
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
           }
+          setIsLoading(false);
         }
       );
     }
@@ -293,6 +294,20 @@ const ServicesPage = () => {
           </>
         );
       }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        const pipelineService = service as unknown as PipelineService;
+
+        return (
+          <>
+            <div className="tw-mb-1" data-testid="additional-field">
+              <label className="tw-mb-0">Pipeline URL:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {pipelineService.pipelineUrl}
+              </span>
+            </div>
+          </>
+        );
+      }
       default: {
         return <></>;
       }
@@ -311,7 +326,6 @@ const ServicesPage = () => {
             value: service.collection.name,
           };
         });
-        setIsLoading(false);
       } else {
         setIsLoading(false);
       }
