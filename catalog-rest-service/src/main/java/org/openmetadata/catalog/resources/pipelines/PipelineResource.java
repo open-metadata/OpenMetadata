@@ -191,7 +191,7 @@ public class PipelineResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a pipeline by name", tags = "pipeline",
+  @Operation(summary = "Get a pipeline by name", tags = "pipelines",
           description = "Get a pipeline by fully qualified name.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
@@ -257,7 +257,7 @@ public class PipelineResource {
   }
 
   @PUT
-  @Operation(summary = "Create or update a pipeline", tags = "pipeline",
+  @Operation(summary = "Create or update a pipeline", tags = "pipelines",
           description = "Create a new pipeline, if it does not exist or update an existing pipeline.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
@@ -281,7 +281,7 @@ public class PipelineResource {
 
   @PUT
   @Path("/{id}/followers")
-  @Operation(summary = "Add a follower", tags = "pipeline",
+  @Operation(summary = "Add a follower", tags = "pipelines",
           description = "Add a user identified by `userId` as follower of this pipeline",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
@@ -320,7 +320,7 @@ public class PipelineResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Pipeline", tags = "pipeline",
+  @Operation(summary = "Delete a Pipeline", tags = "pipelines",
           description = "Delete a pipeline by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
