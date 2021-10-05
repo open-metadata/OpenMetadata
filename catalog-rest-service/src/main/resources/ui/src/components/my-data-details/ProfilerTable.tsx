@@ -1,12 +1,17 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
-import { Sparklines, SparklinesCurve } from 'react-sparklines';
 import { Table, TableProfile } from '../../generated/entity/data/table';
+import ProfilerGraph from './ProfilerGraph';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
   columns: Array<string>;
 };
+
+type ProfilerGraphData = Array<{
+  date: Date;
+  value: number;
+}>;
 
 const ProfilerTable = ({ tableProfiles, columns }: Props) => {
   const [expandedColumn, setExpandedColumn] = useState<{
@@ -16,6 +21,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
     name: '',
     isExpanded: false,
   });
+
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
     rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
@@ -34,150 +40,153 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
     return {
       name: column,
       data,
-      distinctCount: 0,
-      nullRatio: 0,
-      min: 1,
-      max: 1,
-      median: 1,
-      standardDeviation: 3.6,
+      min: data?.length ? data[0].min ?? 0 : 0,
+      max: data?.length ? data[0].max ?? 0 : 0,
+      median: data?.length ? data[0].median ?? 0 : 0,
     };
   });
 
   return (
-    <div className="tw-table-responsive">
-      <table className="tw-w-full" data-testid="schema-table">
-        <thead>
-          <tr className="tableHead-row">
-            <th className="tableHead-cell">Column Name</th>
-            <th className="tableHead-cell">Rows</th>
-            <th className="tableHead-cell">Distinct Ratio (Percentage)</th>
-            <th className="tableHead-cell">Null Ratio (Percentage)</th>
-            <th className="tableHead-cell">Min</th>
-            <th className="tableHead-cell">Max</th>
-            <th className="tableHead-cell">Median</th>
-            <th className="tableHead-cell">Standard Deviation</th>
-          </tr>
-        </thead>
-        {columnSpecificData.map((col, colIndex) => {
-          return (
-            <Fragment key={colIndex}>
-              <tbody className="tableBody">
-                <tr className={classNames('tableBody-row')}>
-                  <td className="tw-relative tableBody-cell">
-                    <span
-                      className="tw-mr-2 tw-cursor-pointer"
-                      onClick={() =>
-                        setExpandedColumn((prevState) => ({
-                          name: col.name,
-                          isExpanded:
-                            prevState.name === col.name
-                              ? !prevState.isExpanded
-                              : true,
-                        }))
-                      }>
-                      {expandedColumn.name === col.name ? (
-                        expandedColumn.isExpanded ? (
-                          <i className="fas fa-caret-down" />
-                        ) : (
-                          <i className="fas fa-caret-right" />
-                        )
+    <table className="tw-w-full" data-testid="schema-table">
+      <thead>
+        <tr className="tableHead-row">
+          <th className="tableHead-cell">Column Name</th>
+          <th className="tableHead-cell">Rows</th>
+          <th className="tableHead-cell">Distinct Ratio (Percentage)</th>
+          <th className="tableHead-cell">Null Ratio (Percentage)</th>
+          <th className="tableHead-cell">Min</th>
+          <th className="tableHead-cell">Max</th>
+          <th className="tableHead-cell">Median</th>
+          <th className="tableHead-cell">Standard Deviation</th>
+        </tr>
+      </thead>
+      {columnSpecificData.map((col, colIndex) => {
+        return (
+          <Fragment key={colIndex}>
+            <tbody className="tableBody">
+              <tr className={classNames('tableBody-row')}>
+                <td className="tw-relative tableBody-cell">
+                  <span
+                    className="tw-mr-2 tw-cursor-pointer"
+                    onClick={() =>
+                      setExpandedColumn((prevState) => ({
+                        name: col.name,
+                        isExpanded:
+                          prevState.name === col.name
+                            ? !prevState.isExpanded
+                            : true,
+                      }))
+                    }>
+                    {expandedColumn.name === col.name ? (
+                      expandedColumn.isExpanded ? (
+                        <i className="fas fa-caret-down" />
                       ) : (
                         <i className="fas fa-caret-right" />
-                      )}
-                    </span>
-                    {col.name}
-                  </td>
-                  <td className="tw-relative tableBody-cell">
-                    <Sparklines
-                      data={col.data?.map((d) => d.rows ?? 0)}
-                      svgWidth={120}>
-                      <SparklinesCurve
-                        color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
-                      />
-                    </Sparklines>
-                  </td>
-                  <td className="tw-relative tableBody-cell">
-                    <Sparklines
-                      data={col.data?.map((d) => d.uniqueProportion ?? 0)}
-                      svgWidth={120}>
-                      <SparklinesCurve
-                        color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
-                      />
-                    </Sparklines>
-                  </td>
-                  <td className="tw-relative tableBody-cell">
-                    <Sparklines
-                      data={col.data?.map((d) => d.nullProportion ?? 0)}
-                      svgWidth={120}>
-                      <SparklinesCurve
-                        color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
-                      />
-                    </Sparklines>
-                  </td>
-                  <td className="tw-relative tableBody-cell">{col.min}</td>
-                  <td className="tw-relative tableBody-cell">{col.max}</td>
-                  <td className="tw-relative tableBody-cell">{col.median}</td>
-                  <td className="tw-relative tableBody-cell">
-                    <Sparklines
-                      data={col.data?.map((d) => d.stddev ?? 0)}
-                      svgWidth={120}>
-                      <SparklinesCurve
-                        color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
-                      />
-                    </Sparklines>
-                  </td>
-                </tr>
+                      )
+                    ) : (
+                      <i className="fas fa-caret-right" />
+                    )}
+                  </span>
+                  {col.name}
+                </td>
+                <td className="tw-relative tableBody-cell">
+                  <ProfilerGraph
+                    data={
+                      col.data
+                        ?.map((d) => ({
+                          date: d.profilDate,
+                          value: d.rows ?? 0,
+                        }))
+                        .reverse() as ProfilerGraphData
+                    }
+                  />
+                </td>
+                <td className="tw-relative tableBody-cell">
+                  <ProfilerGraph
+                    data={
+                      col.data
+                        ?.map((d) => ({
+                          date: d.profilDate,
+                          value: d.uniqueProportion ?? 0,
+                        }))
+                        .reverse() as ProfilerGraphData
+                    }
+                  />
+                </td>
+                <td className="tw-relative tableBody-cell">
+                  <ProfilerGraph
+                    data={
+                      col.data
+                        ?.map((d) => ({
+                          date: d.profilDate,
+                          value: d.nullProportion ?? 0,
+                        }))
+                        .reverse() as ProfilerGraphData
+                    }
+                  />
+                </td>
+                <td className="tw-relative tableBody-cell">{col.min}</td>
+                <td className="tw-relative tableBody-cell">{col.max}</td>
+                <td className="tw-relative tableBody-cell">{col.median}</td>
+                <td className="tw-relative tableBody-cell">
+                  <ProfilerGraph
+                    data={
+                      col.data
+                        ?.map((d) => ({
+                          date: d.profilDate,
+                          value: d.stddev ?? 0,
+                        }))
+                        .reverse() as ProfilerGraphData
+                    }
+                  />
+                </td>
+              </tr>
+            </tbody>
+            {expandedColumn.name === col.name && expandedColumn.isExpanded && (
+              <tbody>
+                {col.data?.map((colData, index) => (
+                  <tr
+                    className={classNames(
+                      'tableBody-row tw-border-0 tw-border-l tw-border-r',
+                      {
+                        'tw-border-b':
+                          columnSpecificData.length - 1 === colIndex &&
+                          col.data?.length === index + 1,
+                      }
+                    )}
+                    key={index}>
+                    <td className="tw-relative tableBody-cell">
+                      <span className="tw-pl-6">{colData.profilDate}</span>
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      <span className="tw-pl-6">{colData.rows}</span>
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.uniqueProportion ?? 0}
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.nullProportion ?? 0}
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.min ?? 0}
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.max ?? 0}
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.median ?? 0}
+                    </td>
+                    <td className="tw-relative tableBody-cell">
+                      {colData.stddev ?? 0}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
-              {expandedColumn.name === col.name && expandedColumn.isExpanded && (
-                <tbody>
-                  {col.data?.map((colData, index) => (
-                    <tr
-                      className={classNames(
-                        'tableBody-row tw-border-0 tw-border-l tw-border-r',
-                        {
-                          'tw-border-b':
-                            columnSpecificData.length - 1 === colIndex &&
-                            col.data?.length === index + 1,
-                        }
-                      )}
-                      key={index}>
-                      <td className="tw-relative tableBody-cell">
-                        <span className="tw-pl-6">{colData.profilDate}</span>
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        <span className="tw-pl-6">{colData.rows}</span>
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.uniqueProportion ?? 0}
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.nullProportion ?? 0}
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.min ?? 0}
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.max ?? 0}
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.median ?? 0}
-                      </td>
-                      <td className="tw-relative tableBody-cell">
-                        {colData.stddev ?? 0}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              )}
-            </Fragment>
-          );
-        })}
-      </table>
-    </div>
+            )}
+          </Fragment>
+        );
+      })}
+    </table>
   );
 };
 

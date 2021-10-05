@@ -28,4 +28,4 @@ declare module 'react-codemirror2';
 declare module 'react-slick';
 declare module 'slick-carousel';
 declare module 'react-table';
-declare module 'react-sparklines';
+declare module 'recharts';
