@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createModel.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Model entity request",
+  "description": "Create Model entity request",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this model.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Display Name that identifies this model. It could be title or label from the source services",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the model instance. How it was trained and for what it is used.",
+      "type": "string"
+    },
+    "algorithm": {
+      "description": "Algorithm used to train the model",
+      "type": "string"
+    },
+    "dashboard" : {
+      "description": "Performance Dashboard URL to track metric evolution",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this model",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "$ref": "../../type/entityReference.json"
+    }
+  },
+  "required": ["name"]
+}
