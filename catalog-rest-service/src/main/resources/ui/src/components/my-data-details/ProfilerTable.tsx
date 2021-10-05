@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
-import { Sparklines, SparklinesLine } from 'react-sparklines';
+import { Sparklines, SparklinesCurve } from 'react-sparklines';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 
 type Props = {
@@ -17,6 +17,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
     isExpanded: false,
   });
   const modifiedData = tableProfiles?.map((tableProfile: TableProfile) => ({
+    rows: tableProfile.rowCount,
     profileDate: tableProfile.profileDate,
     columnProfile: tableProfile.columnProfile,
   }));
@@ -27,7 +28,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
         (colProfile) => colProfile.name === column
       );
 
-      return { profilDate: md.profileDate, ...currentColumn };
+      return { profilDate: md.profileDate, ...currentColumn, rows: md.rows };
     });
 
     return {
@@ -48,8 +49,9 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
         <thead>
           <tr className="tableHead-row">
             <th className="tableHead-cell">Column Name</th>
-            <th className="tableHead-cell">Distinct Count</th>
-            <th className="tableHead-cell">Null Ratio</th>
+            <th className="tableHead-cell">Rows</th>
+            <th className="tableHead-cell">Distinct Ratio (Percentage)</th>
+            <th className="tableHead-cell">Null Ratio (Percentage)</th>
             <th className="tableHead-cell">Min</th>
             <th className="tableHead-cell">Max</th>
             <th className="tableHead-cell">Median</th>
@@ -86,19 +88,32 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                     {col.name}
                   </td>
                   <td className="tw-relative tableBody-cell">
-                    <Sparklines data={col.data?.map((d) => d.uniqueCount ?? 0)}>
-                      <SparklinesLine
+                    <Sparklines
+                      data={col.data?.map((d) => d.rows ?? 0)}
+                      svgWidth={120}>
+                      <SparklinesCurve
                         color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '1' }}
+                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
                       />
                     </Sparklines>
                   </td>
                   <td className="tw-relative tableBody-cell">
                     <Sparklines
-                      data={col.data?.map((d) => d.nullProportion ?? 0)}>
-                      <SparklinesLine
+                      data={col.data?.map((d) => d.uniqueProportion ?? 0)}
+                      svgWidth={120}>
+                      <SparklinesCurve
                         color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '1' }}
+                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
+                      />
+                    </Sparklines>
+                  </td>
+                  <td className="tw-relative tableBody-cell">
+                    <Sparklines
+                      data={col.data?.map((d) => d.nullProportion ?? 0)}
+                      svgWidth={120}>
+                      <SparklinesCurve
+                        color="#7147E8"
+                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
                       />
                     </Sparklines>
                   </td>
@@ -106,10 +121,12 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                   <td className="tw-relative tableBody-cell">{col.max}</td>
                   <td className="tw-relative tableBody-cell">{col.median}</td>
                   <td className="tw-relative tableBody-cell">
-                    <Sparklines data={col.data?.map((d) => d.stddev ?? 0)}>
-                      <SparklinesLine
+                    <Sparklines
+                      data={col.data?.map((d) => d.stddev ?? 0)}
+                      svgWidth={120}>
+                      <SparklinesCurve
                         color="#7147E8"
-                        style={{ fillOpacity: '0.4', strokeWidth: '1' }}
+                        style={{ fillOpacity: '0.4', strokeWidth: '2' }}
                       />
                     </Sparklines>
                   </td>
@@ -123,7 +140,8 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                         'tableBody-row tw-border-0 tw-border-l tw-border-r',
                         {
                           'tw-border-b':
-                            columnSpecificData.length - 1 === colIndex,
+                            columnSpecificData.length - 1 === colIndex &&
+                            col.data?.length === index + 1,
                         }
                       )}
                       key={index}>
@@ -131,7 +149,10 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                         <span className="tw-pl-6">{colData.profilDate}</span>
                       </td>
                       <td className="tw-relative tableBody-cell">
-                        {colData.uniqueCount ?? 0}
+                        <span className="tw-pl-6">{colData.rows}</span>
+                      </td>
+                      <td className="tw-relative tableBody-cell">
+                        {colData.uniqueProportion ?? 0}
                       </td>
                       <td className="tw-relative tableBody-cell">
                         {colData.nullProportion ?? 0}
