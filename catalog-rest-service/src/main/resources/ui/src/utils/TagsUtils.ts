@@ -2,13 +2,14 @@ import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { flatten } from 'lodash';
 import { ColumnTags, TableColumn } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
-import { TagsCategory } from '../pages/tags/tagsTypes';
+import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
+// import { TagsCategory } from '../pages/tags/tagsTypes';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {
-    let listOfCategories: Array<TagsCategory> = [];
+    let listOfCategories: Array<TagCategory> = [];
     const categories = await getTags(fields);
-    const categoryList = categories.data.data.map((category: TagsCategory) => {
+    const categoryList = categories.data.data.map((category: TagCategory) => {
       return {
         name: category.name,
         description: category.description,
@@ -16,7 +17,7 @@ export const getTagCategories = async (fields?: Array<string> | string) => {
     });
     if (categoryList.length) {
       let promiseArr: Array<AxiosPromise> = [];
-      promiseArr = categoryList.map((category: TagsCategory) => {
+      promiseArr = categoryList.map((category: TagCategory) => {
         return getCategory(category.name, fields);
       });
 
@@ -40,13 +41,13 @@ export const getTagCategories = async (fields?: Array<string> | string) => {
   }
 };
 
-export const getTaglist = (categories: Array<TagsCategory>): Array<string> => {
-  const children = categories.map((category: TagsCategory) => {
+export const getTaglist = (categories: Array<TagCategory>): Array<string> => {
+  const children = categories.map((category: TagCategory) => {
     return category.children || [];
   });
   const allChildren = flatten(children);
-  const tagList = allChildren?.map((tag) => {
-    return tag?.fullyQualifiedName;
+  const tagList = (allChildren as unknown as TagClass[])?.map((tag) => {
+    return tag?.fullyQualifiedName || '';
   });
 
   return tagList;
