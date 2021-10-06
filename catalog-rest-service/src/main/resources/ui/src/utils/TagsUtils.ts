@@ -3,7 +3,6 @@ import { flatten } from 'lodash';
 import { ColumnTags, TableColumn } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
-// import { TagsCategory } from '../pages/tags/tagsTypes';
 
 export const getTagCategories = async (fields?: Array<string> | string) => {
   try {

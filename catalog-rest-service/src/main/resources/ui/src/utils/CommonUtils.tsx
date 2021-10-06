@@ -7,12 +7,8 @@ import {
   LOCALSTORAGE_RECENTLY_VIEWED,
   TITLE_FOR_NON_OWNER_ACTION,
 } from '../constants/constants';
-import { EntityReference as UserTeams } from '../generated/entity/teams/user';
+import { UserTeam } from '../interface/team.interface';
 import { countBackground } from './styleconstant';
-
-type UserTeam = {
-  displayName?: string;
-} & UserTeams;
 
 export const arraySorterByKey = (
   key: string,
