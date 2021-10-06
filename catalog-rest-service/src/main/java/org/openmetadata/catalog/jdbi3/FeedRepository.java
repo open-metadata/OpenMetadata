@@ -26,7 +26,9 @@ import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
+import org.openmetadata.catalog.jdbi3.ModelRepository.ModelDAO;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
@@ -82,6 +84,12 @@ public abstract class FeedRepository {
   @CreateSqlObject
   abstract TopicDAO topicDAO();
 
+  @CreateSqlObject
+  abstract TaskDAO taskDAO();
+
+  @CreateSqlObject
+  abstract ModelDAO modelDAO();
+
   @Transaction
   public Thread create(Thread thread) throws IOException {
     // Validate user creating thread
@@ -91,7 +99,7 @@ public abstract class FeedRepository {
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about, userDAO(), teamDAO(), tableDAO(),
-            databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO());
+            databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), taskDAO(), modelDAO());
 
     // Get owner for the addressed to Entity
     EntityReference owner = EntityUtil.populateOwner(aboutRef.getId(), relationshipDAO(), userDAO(), teamDAO());
@@ -170,7 +178,7 @@ public abstract class FeedRepository {
       throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
     }
     EntityReference reference = EntityUtil.validateEntityLink(entityLink, userDAO(), teamDAO(), tableDAO(),
-            databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO());
+            databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), taskDAO(), modelDAO());
     List<String> threadIds = new ArrayList<>();
     List<List<String>> result = fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
             entityLink.getFullyQualifiedFieldType(), "thread",
