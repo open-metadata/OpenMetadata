@@ -83,6 +83,10 @@ const getCurrentTab = (tab: string) => {
       currentTab = 3;
 
       break;
+    case 'pipelines':
+      currentTab = 4;
+
+      break;
 
     case 'tables':
     default:
@@ -103,6 +107,10 @@ const getCurrentIndex = (tab: string) => {
       break;
     case 'dashboards':
       currentIndex = SearchIndex.DASHBOARD;
+
+      break;
+    case 'pipelines':
+      currentIndex = SearchIndex.PIPELINE;
 
       break;
 
@@ -142,6 +150,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
   const [dashboardCount, setDashboardCount] = useState<number>(0);
+  const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const isMounting = useRef(true);
@@ -239,6 +248,10 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         setTopicCount(count);
 
         break;
+      case SearchIndex.PIPELINE:
+        setPipelineCount(count);
+
+        break;
       default:
         break;
     }
@@ -273,8 +286,27 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       emptyValue,
       SearchIndex.DASHBOARD
     );
-    Promise.allSettled([tableCount, topicCount, dashboardCount]).then(
-      ([table, topic, dashboard]: PromiseSettledResult<SearchResponse>[]) => {
+    const pipelineCount = searchData(
+      searchText,
+      0,
+      0,
+      emptyValue,
+      emptyValue,
+      emptyValue,
+      SearchIndex.PIPELINE
+    );
+    Promise.allSettled([
+      tableCount,
+      topicCount,
+      dashboardCount,
+      pipelineCount,
+    ]).then(
+      ([
+        table,
+        topic,
+        dashboard,
+        pipeline,
+      ]: PromiseSettledResult<SearchResponse>[]) => {
         setTableCount(
           table.status === 'fulfilled'
             ? getTotalEntityCountByService(
@@ -295,6 +327,14 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           dashboard.status === 'fulfilled'
             ? getTotalEntityCountByService(
                 dashboard.value.data.aggregations?.['sterms#Service']
+                  ?.buckets as Bucket[]
+              )
+            : 0
+        );
+        setPipelineCount(
+          pipeline.status === 'fulfilled'
+            ? getTotalEntityCountByService(
+                pipeline.value.data.aggregations?.['sterms#Service']
                   ?.buckets as Bucket[]
               )
             : 0
@@ -478,6 +518,8 @@ const ExplorePage: React.FC = (): React.ReactElement => {
         return getCountBadge(topicCount);
       case SearchIndex.DASHBOARD:
         return getCountBadge(dashboardCount);
+      case SearchIndex.PIPELINE:
+        return getCountBadge(pipelineCount);
       default:
         return getCountBadge();
     }

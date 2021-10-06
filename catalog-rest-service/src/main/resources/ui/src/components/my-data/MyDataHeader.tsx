@@ -30,6 +30,7 @@ type Props = {
     tableCount: number;
     topicCount: number;
     dashboardCount: number;
+    pipelineCount: number;
   };
 };
 type Summary = {
@@ -86,6 +87,12 @@ const MyDataHeader: FunctionComponent<Props> = ({
         data: `${entityCounts.dashboardCount} Dashboards`,
         link: `/explore/dashboards`,
         dataTestId: 'dashboards',
+      },
+      pipelines: {
+        icon: Icons.PIPELINE_GREY,
+        data: `${entityCounts.pipelineCount} Pipelines`,
+        link: `/explore/pipelines`,
+        dataTestId: 'pipelines',
       },
       service: {
         icon: Icons.SERVICE,

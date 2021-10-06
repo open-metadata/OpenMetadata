@@ -30,6 +30,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -51,6 +52,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -72,6 +74,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -87,7 +90,7 @@ describe('Test MyDataHeader Component', () => {
     expect(getByText(container, /Knowledgebase/i)).toBeInTheDocument();
   });
 
-  it('Should have 6 data summary details', () => {
+  it('Should have 7 data summary details', () => {
     const { container } = render(
       <MyDataHeader
         countAssets={3}
@@ -96,6 +99,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -105,7 +109,7 @@ describe('Test MyDataHeader Component', () => {
 
     const dataSummary = getByTestId(container, 'data-summary-container');
 
-    expect(dataSummary.childElementCount).toBe(6);
+    expect(dataSummary.childElementCount).toBe(7);
   });
 
   it('Should display same count as provided by props', () => {
@@ -117,6 +121,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -127,6 +132,7 @@ describe('Test MyDataHeader Component', () => {
     expect(getByText(container, /40 tables/i)).toBeInTheDocument();
     expect(getByText(container, /13 topics/i)).toBeInTheDocument();
     expect(getByText(container, /10 dashboards/i)).toBeInTheDocument();
+    expect(getByText(container, /3 pipelines/i)).toBeInTheDocument();
     expect(getByText(container, /4 services/i)).toBeInTheDocument();
     expect(getByText(container, /193 assets/i)).toBeInTheDocument();
   });
@@ -140,6 +146,7 @@ describe('Test MyDataHeader Component', () => {
           tableCount: 40,
           topicCount: 13,
           dashboardCount: 10,
+          pipelineCount: 3,
         }}
       />,
       {
@@ -149,6 +156,7 @@ describe('Test MyDataHeader Component', () => {
     const tables = getByTestId(container, 'tables');
     const topics = getByTestId(container, 'topics');
     const dashboards = getByTestId(container, 'dashboards');
+    const pipelines = getByTestId(container, 'pipelines');
     const service = getByTestId(container, 'service');
     const user = getByTestId(container, 'user');
     const terms = getByTestId(container, 'terms');
@@ -156,6 +164,7 @@ describe('Test MyDataHeader Component', () => {
     expect(tables).toHaveAttribute('href', '/explore/tables');
     expect(topics).toHaveAttribute('href', '/explore/topics');
     expect(dashboards).toHaveAttribute('href', '/explore/dashboards');
+    expect(pipelines).toHaveAttribute('href', '/explore/pipelines');
     expect(service).toHaveAttribute('href', '/services');
     expect(user).toHaveAttribute('href', '/teams');
     expect(terms).toHaveAttribute('href', '/teams');

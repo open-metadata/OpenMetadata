@@ -49,7 +49,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [filter, setFilter] = useState<string>('');
   const [aggregations, setAggregations] = useState<Record<string, Sterm>>();
   const [searchIndex] = useState<string>(
-    'dashboard_search_index,topic_search_index,table_search_index'
+    'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index'
   );
   const [countServices, setCountServices] = useState<number>(0);
   const isMounted = useRef<boolean>(false);

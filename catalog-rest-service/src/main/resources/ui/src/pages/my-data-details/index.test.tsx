@@ -72,6 +72,6 @@ describe('Test MyDataDetailsPage page', () => {
     expect(followButton).toBeInTheDocument();
     expect(relatedTables).toBeInTheDocument();
     // we only have 2 for now => schema and manage
-    expect(tabs.length).toBe(2);
+    expect(tabs.length).toBe(3);
   });
 });
