@@ -36,7 +36,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
@@ -55,7 +54,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -84,6 +82,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public static EntityReference TEAM_OWNER1;
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
+  public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
@@ -102,6 +101,9 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
     SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_INVALID_SERVICE_REFERENCE = new EntityReference().withName("invalid_superset_service")
+            .withId(SUPERSET_REFERENCE.getId())
+            .withType("DashboardService1");
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker);
     service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
@@ -181,6 +183,16 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDashboard(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+  }
+
+  @Test
+  public void post_DashboardWithInvalidService_4xx(TestInfo test) {
+    CreateDashboard create = create(test).withService(SUPERSET_INVALID_SERVICE_REFERENCE);
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            createDashboard(create, adminAuthHeaders()));
+    TestUtils.assertResponseContains(exception, BAD_REQUEST, String.format("Invalid service type %s",
+            SUPERSET_INVALID_SERVICE_REFERENCE.getType().toString()));
+
   }
 
   @Test
