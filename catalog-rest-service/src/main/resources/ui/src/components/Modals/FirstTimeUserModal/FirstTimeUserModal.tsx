@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { FunctionComponent, useState } from 'react';
 import BGConfetti from '../../../assets/img/confetti-bg.jpeg';
+import { urlGithubRepo, urlJoinSlack } from '../../../constants/url.const';
 import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { Button } from '../../buttons/Button/Button';
 
@@ -59,7 +60,7 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
             </p>
           </div>
         </div>
-        <div className="tw-modal-body tw-relative tw-h-40 tw-justify-start tw-items-center">
+        <div className="tw-modal-body tw-relative tw-h-32 tw-justify-start tw-items-center">
           {description.map((d, i) => (
             <p
               className={classNames(
@@ -73,6 +74,25 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
             </p>
           ))}
         </div>
+        <div
+          className={classNames(
+            'tw-w-full tw-text-center',
+            active !== 0 && 'tw-invisible'
+          )}>
+          <a href={urlGithubRepo} rel="noopener noreferrer" target="_blank">
+            <button className="tw-welcome-button tw-text-grey-body tw-mr-4">
+              <SVGIcons alt="Github Logo" icon={Icons.GITHUB_ICON} width="22" />
+              <span className="tw-ml-3">Follow Us</span>
+            </button>
+          </a>
+          <a href={urlJoinSlack} rel="noopener noreferrer" target="_blank">
+            <button className="tw-welcome-button tw-text-grey-body">
+              <SVGIcons alt="Github Logo" icon={Icons.SLACK} width="22" />
+              <span className="tw-ml-3">Join Us</span>
+            </button>
+          </a>
+        </div>
+
         <div className="tw-modal-footer tw-border-0 tw-justify-between">
           <Button
             className={classNames(

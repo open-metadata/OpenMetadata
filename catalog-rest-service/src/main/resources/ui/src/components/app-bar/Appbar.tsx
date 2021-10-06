@@ -35,6 +35,7 @@ import {
   navLinkSettings,
   ROUTES,
 } from '../../constants/constants';
+import { urlGitbookDocs, urlJoinSlack } from '../../constants/url.const';
 import { useAuth } from '../../hooks/authHooks';
 import { userSignOut } from '../../utils/AuthUtils';
 import {
@@ -81,41 +82,41 @@ const Appbar: React.FC = (): JSX.Element => {
   const supportLinks = [
     {
       name: `Docs`,
-      to: 'https://docs.open-metadata.org/',
+      to: urlGitbookDocs,
       isOpenNewTab: true,
       disabled: false,
       icon: (
         <SVGIcons
           alt="Doc icon"
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon="doc"
+          icon={Icons.DOC}
           width="12"
         />
       ),
     },
     {
       name: `API`,
-      to: '/docs',
+      to: ROUTES.SWAGGER,
       disabled: false,
       icon: (
         <SVGIcons
           alt="API icon"
           className="tw-align-middle tw--mt-0.5 tw-mr-0.5"
-          icon="api"
+          icon={Icons.API}
           width="12"
         />
       ),
     },
     {
       name: `Slack`,
-      to: 'https://slack.open-metadata.org',
+      to: urlJoinSlack,
       disabled: false,
       isOpenNewTab: true,
       icon: (
         <SVGIcons
           alt="slack icon"
-          className="tw-align-middle  tw-mr-0.5"
-          icon="slack"
+          className="tw-align-middle tw-mr-0.5"
+          icon={Icons.SLACK_GREY}
           width="12"
         />
       ),

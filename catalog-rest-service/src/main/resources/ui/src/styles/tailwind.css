@@ -166,12 +166,20 @@
     @apply tw-py-1 tw-px-3 tw-text-xs tw-font-normal tw-rounded-2xl tw-bg-tag;
   }
 
-  .tw-signin-button {
-    @apply tw-rounded-md tw-bg-white tw-w-60 tw-h-9 tw-px-4 tw-mt-2 tw-border tw-font-medium;
+  .tw-signin-button,
+  .tw-welcome-button {
+    @apply tw-rounded-md tw-bg-white tw-h-9 tw-px-4 tw-border tw-font-medium;
     box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
   }
-  .tw-signin-button:hover {
+  .tw-signin-button:hover,
+  .tw-welcome-button:hover {
     box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
+  }
+  .tw-signin-button {
+    @apply tw-w-60 tw-mt-2;
+  }
+  .tw-welcome-button {
+    @apply tw-w-36;
   }
 
   .tw-card {
