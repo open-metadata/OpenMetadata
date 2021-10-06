@@ -67,7 +67,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
     DashboardSource[]
   >([]);
-  const [pipelineSuggestions, setPielineSuggestions] = useState<
+  const [pipelineSuggestions, setPipelineSuggestions] = useState<
     PipelineSource[]
   >([]);
 
@@ -89,7 +89,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.DASHBOARD)
         .map((option) => option._source)
     );
-    setPielineSuggestions(
+    setPipelineSuggestions(
       options
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
