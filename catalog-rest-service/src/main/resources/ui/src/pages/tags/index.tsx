@@ -39,19 +39,24 @@ import {
   getExplorePathWithSearch,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import {
+  CreateTagCategory,
+  TagCategoryType,
+} from '../../generated/api/tags/createTagCategory';
+import { TagCategory, TagClass } from '../../generated/entity/tags/tagCategory';
 import { isEven } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 import Form from './Form';
-import { Tag, TagsCategory } from './tagsTypes';
+// import { Tag, TagsCategory } from './tagsTypes';
 const TagsPage = () => {
-  const [categories, setCategoreis] = useState<Array<TagsCategory>>([]);
-  const [currentCategory, setCurrentCategory] = useState<TagsCategory>();
+  const [categories, setCategoreis] = useState<Array<TagCategory>>([]);
+  const [currentCategory, setCurrentCategory] = useState<TagCategory>();
   const [isEditCategory, setIsEditCategory] = useState<boolean>(false);
   const [isAddingCategory, setIsAddingCategory] = useState<boolean>(false);
   const [isEditTag, setIsEditTag] = useState<boolean>(false);
   const [isAddingTag, setIsAddingTag] = useState<boolean>(false);
-  const [editTag, setEditTag] = useState<Tag>();
+  const [editTag, setEditTag] = useState<TagClass>();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -95,7 +100,7 @@ const TagsPage = () => {
     }
   };
 
-  const createCategory = (data: TagsCategory) => {
+  const createCategory = (data: CreateTagCategory) => {
     createTagCategory(data).then((res: AxiosResponse) => {
       if (res.data) {
         fetchCategories();
@@ -117,7 +122,7 @@ const TagsPage = () => {
     setIsEditCategory(false);
   };
 
-  const createPrimaryTag = (data: TagsCategory) => {
+  const createPrimaryTag = (data: TagCategory) => {
     createTag(currentCategory?.name, {
       name: data.name,
       description: data.description,
@@ -189,7 +194,7 @@ const TagsPage = () => {
           </NonAdminAction>
         </div>
         {categories &&
-          categories.map((category: TagsCategory) => (
+          categories.map((category: TagCategory) => (
             <div
               className={`tw-group tw-text-grey-body tw-cursor-pointer tw-text-body tw-mb-3 tw-flex tw-justify-between ${currentCategoryTab(
                 category.name
@@ -318,8 +323,8 @@ const TagsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="tw-text-sm" data-testid="table-body">
-                    {currentCategory?.children?.map(
-                      (tag: Tag, index: number) => {
+                    {(currentCategory?.children as TagClass[])?.map(
+                      (tag: TagClass, index: number) => {
                         return (
                           <tr
                             className={`tableBody-row ${
@@ -364,7 +369,7 @@ const TagsPage = () => {
                                   <Link
                                     className="link-text tw-align-middle"
                                     to={getUsageCountLink(
-                                      tag.fullyQualifiedName
+                                      tag.fullyQualifiedName || ''
                                     )}>
                                     {tag.usageCount}
                                   </Link>
@@ -388,11 +393,11 @@ const TagsPage = () => {
                                   editable={
                                     editTag?.name === tag.name && !isEditTag
                                   }
-                                  selectedTags={tag.associatedTags.map(
-                                    (tag) => ({
+                                  selectedTags={
+                                    tag.associatedTags?.map((tag) => ({
                                       tagFQN: tag,
-                                    })
-                                  )}
+                                    })) || []
+                                  }
                                   tagList={
                                     getTaglist(categories) as Array<string>
                                   }
@@ -402,7 +407,7 @@ const TagsPage = () => {
                                   onSelectionChange={(tags) => {
                                     handleTagSelection(tags);
                                   }}>
-                                  {tag.associatedTags.length ? (
+                                  {tag.associatedTags?.length ? (
                                     <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                       <SVGIcons
                                         alt="edit"
@@ -449,10 +454,10 @@ const TagsPage = () => {
                   initialData={{
                     name: '',
                     description: '',
-                    categoryType: 'Descriptive',
+                    categoryType: TagCategoryType.Descriptive,
                   }}
                   onCancel={() => setIsAddingCategory(false)}
-                  onSave={(data) => createCategory(data)}
+                  onSave={(data) => createCategory(data as TagCategory)}
                 />
               )}
               {isAddingTag && (
@@ -465,7 +470,7 @@ const TagsPage = () => {
                     categoryType: '',
                   }}
                   onCancel={() => setIsAddingTag(false)}
-                  onSave={(data) => createPrimaryTag(data)}
+                  onSave={(data) => createPrimaryTag(data as TagCategory)}
                 />
               )}
             </div>

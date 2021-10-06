@@ -40,19 +40,13 @@ import {
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
-import {
-  EntityReference as UserTeams,
-  User,
-} from '../../generated/entity/teams/user';
+import { User } from '../../generated/entity/teams/user';
+import { UserTeam } from '../../interface/team.interface';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
-
-type UserTeam = {
-  displayName?: string;
-} & UserTeams;
 
 const TeamsPage = () => {
   const [teams, setTeams] = useState<Array<Team>>([]);

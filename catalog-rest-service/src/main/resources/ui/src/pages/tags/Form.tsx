@@ -24,17 +24,24 @@ import React, {
   useState,
 } from 'react';
 import MarkdownWithPreview from '../../components/common/editor/MarkdownWithPreview';
-import { TagsCategory } from './tagsTypes';
+import { CreateTagCategory } from '../../generated/api/tags/createTagCategory';
+
+type CustomTagCategory = {
+  categoryType: string;
+  description: CreateTagCategory['description'];
+  name: CreateTagCategory['name'];
+};
+
 type FormProp = {
-  saveData: (value: {}) => void;
-  initialData: TagsCategory;
+  saveData: (value: CreateTagCategory) => void;
+  initialData: CustomTagCategory;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
 };
 const Form: React.FC<FormProp> = forwardRef(
   ({ saveData, initialData }, ref): JSX.Element => {
-    const [data, setData] = useState<TagsCategory>({
+    const [data, setData] = useState<CustomTagCategory>({
       name: initialData.name,
       description: initialData.description,
       categoryType: initialData.categoryType,
@@ -60,7 +67,7 @@ const Form: React.FC<FormProp> = forwardRef(
 
     useEffect(() => {
       saveData({
-        ...data,
+        ...(data as CreateTagCategory),
       });
     }, [data]);
 
@@ -75,8 +82,8 @@ const Form: React.FC<FormProp> = forwardRef(
                 </label>
                 <select
                   required
-                  className="tw-text-sm tw-appearance-none tw-border tw-border-main 
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
+                  className="tw-text-sm tw-appearance-none tw-border tw-border-main
+                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10 tw-bg-white"
                   name="categoryType"
                   value={data.categoryType}
@@ -91,8 +98,8 @@ const Form: React.FC<FormProp> = forwardRef(
               <input
                 required
                 autoComplete="off"
-                className="tw-text-sm tw-appearance-none tw-border tw-border-main 
-                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight 
+                className="tw-text-sm tw-appearance-none tw-border tw-border-main
+                tw-rounded tw-w-full tw-py-2 tw-px-3 tw-text-grey-body  tw-leading-tight
                 focus:tw-outline-none focus:tw-border-focus hover:tw-border-hover tw-h-10"
                 name="name"
                 placeholder="Name"
