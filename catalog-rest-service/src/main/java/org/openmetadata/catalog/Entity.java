@@ -35,6 +35,7 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String TASK = "task";
+  public static final String MODEL = "model";
 
   // Team/user
   public static final String USER = "user";
