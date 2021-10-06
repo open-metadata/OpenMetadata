@@ -60,6 +60,6 @@ describe('Test Explore page', () => {
 
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
-    expect(tabs.length).toBe(3);
+    expect(tabs.length).toBe(4);
   });
 });

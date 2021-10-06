@@ -98,4 +98,13 @@ export const tabsInfo = [
     path: 'dashboards',
     icon: Icons.DASHBOARD_GREY,
   },
+  {
+    label: 'Pipelines',
+    index: SearchIndex.PIPELINE,
+    sortingFields: topicSortingFields,
+    sortField: '',
+    tab: 4,
+    path: 'pipelines',
+    icon: Icons.PIPELINE_GREY,
+  },
 ];

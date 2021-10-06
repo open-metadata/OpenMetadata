@@ -185,6 +185,10 @@ export const getEntityIcon = (indexType: string) => {
       icon = 'dashboard';
 
       break;
+    case SearchIndex.PIPELINE:
+      icon = 'pipeline';
+
+      break;
 
     case SearchIndex.TABLE:
     default:

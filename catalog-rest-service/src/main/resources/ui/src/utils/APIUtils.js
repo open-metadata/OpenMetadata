@@ -8,11 +8,15 @@ export const formatDataResponse = (hits) => {
     const newData = {};
     newData.index = hit._index;
     newData.id =
-      hit._source.table_id || hit._source.topic_id || hit._source.dashboard_id;
+      hit._source.table_id ||
+      hit._source.topic_id ||
+      hit._source.dashboard_id ||
+      hit._source.pipeline_id;
     newData.name =
       hit._source.table_name ||
       hit._source.topic_name ||
-      hit._source.dashboard_name;
+      hit._source.dashboard_name ||
+      hit._source.pipeline_name;
     newData.description = hit._source.description;
     newData.fullyQualifiedName = hit._source.fqdn;
     newData.tableType = hit._source.table_type;

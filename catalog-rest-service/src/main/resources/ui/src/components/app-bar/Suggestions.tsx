@@ -50,9 +50,14 @@ type TopicSource = {
   topic_name: string;
 } & CommonSource;
 
+type PipelineSource = {
+  pipeline_id: string;
+  pipeline_name: string;
+} & CommonSource;
+
 type Option = {
   _index: string;
-  _source: TableSource & DashboardSource & TopicSource;
+  _source: TableSource & DashboardSource & TopicSource & PipelineSource;
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
@@ -61,6 +66,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   const [topicSuggestions, setTopicSuggestions] = useState<TopicSource[]>([]);
   const [dashboardSuggestions, setDashboardSuggestions] = useState<
     DashboardSource[]
+  >([]);
+  const [pipelineSuggestions, setPipelineSuggestions] = useState<
+    PipelineSource[]
   >([]);
 
   const isMounting = useRef(true);
@@ -81,6 +89,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.DASHBOARD)
         .map((option) => option._source)
     );
+    setPipelineSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.PIPELINE)
+        .map((option) => option._source)
+    );
   };
 
   const getGroupLabel = (index: string) => {
@@ -95,6 +108,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       case SearchIndex.DASHBOARD:
         label = 'Dashboards';
         icon = Icons.DASHBOARD_GREY;
+
+        break;
+      case SearchIndex.PIPELINE:
+        label = 'Pipelines';
+        icon = Icons.PIPELINE_GREY;
 
         break;
       case SearchIndex.TABLE:
@@ -192,6 +210,24 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                 serviceType,
                 name,
                 SearchIndex.DASHBOARD
+              );
+            })}
+          </>
+        )}
+        {pipelineSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.PIPELINE)}
+
+            {pipelineSuggestions.map((suggestion: PipelineSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.pipeline_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.PIPELINE
               );
             })}
           </>
