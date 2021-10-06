@@ -30,6 +30,14 @@
 			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 			"downstreamTasks": ["assert_table_exists"],
 			"taskType": "PrestoOperator"
+		},
+		{
+			"name": "trino_task",
+			"displayName": "Trino Task",
+			"description": "Airflow operator to perform ETL on trino tables",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "TrinoOperator"
 		}
 	]
 }

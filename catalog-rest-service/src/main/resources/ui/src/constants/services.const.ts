@@ -36,6 +36,7 @@ import snowflakes from '../assets/img/service-icon-snowflakes.png';
 import mysql from '../assets/img/service-icon-sql.png';
 import superset from '../assets/img/service-icon-superset.png';
 import tableau from '../assets/img/service-icon-tableau.png';
+import trino from '../assets/img/service-icon-trino.png';
 import plus from '../assets/svg/plus.svg';
 
 export const MYSQL = mysql;
@@ -48,6 +49,7 @@ export const ORACLE = oracle;
 export const SNOWFLAKE = snowflakes;
 export const ATHENA = athena;
 export const PRESTO = presto;
+export const TRINO = trino;
 export const KAFKA = kafka;
 export const PULSAR = pulsar;
 export const SUPERSET = superset;
@@ -74,6 +76,7 @@ export const serviceTypes: Record<ServiceTypes, Array<string>> = {
     'Oracle',
     'Athena',
     'Presto',
+    'Trino',
   ],
   messagingServices: ['Kafka'],
   dashboardServices: ['Superset', 'Looker', 'Tableau', 'Redash'],

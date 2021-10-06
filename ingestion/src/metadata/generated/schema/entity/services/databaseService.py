@@ -23,6 +23,7 @@ class DatabaseServiceType(Enum):
     Oracle = 'Oracle'
     Athena = 'Athena'
     Presto = 'Presto'
+    Trino = 'Trino'
     Vertica = 'Vertica'
 
 
