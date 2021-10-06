@@ -23,6 +23,7 @@ import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
+import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -42,10 +43,12 @@ import {
 } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { Database } from '../../generated/entity/data/database';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardService } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -59,7 +62,8 @@ import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
 type Data = Database | Topic | Dashboard;
 type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
-  Partial<DashboardService>;
+  Partial<DashboardService> &
+  Partial<PipelineService>;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType } = useParams() as Record<string, string>;
@@ -143,6 +147,31 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchPipeLines = (paging?: string) => {
+    setIsloading(true);
+    getPipelines(serviceFQN, paging, [
+      'owner',
+      'service',
+      'usageSummary',
+      'tags',
+    ])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -157,6 +186,11 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         fetchDashboards(paging);
+
+        break;
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        fetchPipeLines(paging);
 
         break;
       }
@@ -349,6 +383,39 @@ const ServicePage: FunctionComponent = () => {
 
         return elemFields;
       }
+      case ServiceCategory.PIPELINE_SERVICES:
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">
+              Pipeline Url :
+            </span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.pipelineUrl ? (
+                <a
+                  className="link-text"
+                  href={serviceDetails.pipelineUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <>
+                    <span className="tw-mr-1">
+                      {serviceDetails.pipelineUrl}
+                    </span>
+                    <SVGIcons
+                      alt="external-link"
+                      className="tw-align-middle"
+                      icon="external-link"
+                      width="12px"
+                    />
+                  </>
+                </a>
+              ) : (
+                '--'
+              )}
+            </span>
+            <span className="tw-mx-3 tw-text-grey-muted">•</span>
+          </span>
+        );
+
       default: {
         return <></>;
       }
@@ -381,6 +448,16 @@ const ServicePage: FunctionComponent = () => {
         return (
           <>
             <th className="tableHead-cell">Dashboard Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Pipeline Name</th>
             <th className="tableHead-cell">Description</th>
             <th className="tableHead-cell">Owner</th>
             <th className="tableHead-cell">Tags</th>
@@ -461,6 +538,33 @@ const ServicePage: FunctionComponent = () => {
           </td>
         );
       }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        const pipeline = data as Pipeline;
+
+        return (
+          <td className="tableBody-cell">
+            {pipeline.tags && pipeline.tags?.length > 0
+              ? pipeline.tags.map((tag, tagIndex) => (
+                  <PopOver
+                    key={tagIndex}
+                    position="top"
+                    size="small"
+                    title={tag.labelType}
+                    trigger="mouseenter">
+                    <Tags
+                      className="tw-bg-gray-200"
+                      tag={`#${
+                        tag.tagFQN?.startsWith('Tier.Tier')
+                          ? tag.tagFQN.split('.')[1]
+                          : tag.tagFQN
+                      }`}
+                    />
+                  </PopOver>
+                ))
+              : '--'}
+          </td>
+        );
+      }
       default:
         return <></>;
     }
@@ -515,6 +619,8 @@ const ServicePage: FunctionComponent = () => {
             body: errMsg,
           });
         });
+    } else {
+      setIsEdit(false);
     }
   };
 
@@ -535,6 +641,8 @@ const ServicePage: FunctionComponent = () => {
         return 'Dashboards';
       case ServiceCategory.MESSAGING_SERVICES:
         return 'Topics';
+      case ServiceCategory.PIPELINE_SERVICES:
+        return 'Pipelines';
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return 'Databases';

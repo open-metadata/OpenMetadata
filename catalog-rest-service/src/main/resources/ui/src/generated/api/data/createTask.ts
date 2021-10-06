@@ -34,6 +34,10 @@ export interface CreateTask {
    */
   downstreamTasks?: string[];
   /**
+   * End date of the task
+   */
+  endDate?: Date;
+  /**
    * Name that identifies this Task.
    */
   name: string;
@@ -46,13 +50,21 @@ export interface CreateTask {
    */
   service: EntityReference;
   /**
+   * Start date of the task
+   */
+  startDate?: Date;
+  /**
    * Tags for this chart
    */
   tags?: TagLabel[];
   /**
-   * Task Configuration.
+   * SQL used in the task. Can be used to determine the lineage
    */
-  taskConfig?: TaskConfig;
+  taskSQL?: string;
+  /**
+   * Type of the Task. Usually refers to the class it implements
+   */
+  taskType?: string;
   /**
    * Task URL to visit/manage. This URL points to respective pipeline service UI
    */
@@ -139,24 +151,4 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * Task Configuration.
- *
- * This schema defines the type for a column in a table.
- */
-export interface TaskConfig {
-  /**
-   * Location of task file
-   */
-  codeLocation?: string;
-  /**
-   * Concurrency of the Task
-   */
-  concurrency?: number;
-  /**
-   * Start Date of the task
-   */
-  startDate?: Date;
 }

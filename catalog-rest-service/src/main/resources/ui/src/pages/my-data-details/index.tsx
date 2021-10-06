@@ -38,9 +38,8 @@ import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
-import IssuesTab from '../../components/my-data-details/IssuesTab';
 import ManageTab from '../../components/my-data-details/ManageTab';
-import QualityTab from '../../components/my-data-details/QualityTab';
+import ProfilerTable from '../../components/my-data-details/ProfilerTable';
 import SchemaTab from '../../components/my-data-details/SchemaTab';
 import {
   getDatabaseDetailsPath,
@@ -74,7 +73,6 @@ import {
 } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import { getRelativeDay } from '../../utils/TimeUtils';
-import { issues } from './index.mock';
 
 const getProfilerRowDiff = (tableProfile: Table['tableProfile']) => {
   let retDiff;
@@ -153,6 +151,16 @@ const MyDataDetailsPage = () => {
       position: 1,
     },
     {
+      name: 'Profiler',
+      icon: {
+        alt: 'profiler',
+        name: 'icon-profiler',
+        title: 'Profiler',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -161,7 +169,7 @@ const MyDataDetailsPage = () => {
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 6,
+      position: 3,
     },
   ];
 
@@ -513,11 +521,13 @@ const MyDataDetailsPage = () => {
                 </div>
               </div>
             )}
-            {activeTab === 2 && <QualityTab />}
-            {activeTab === 3 && <IssuesTab issues={issues} />}
-            {activeTab === 4 && <></>}
-            {activeTab === 5 && <></>}
-            {activeTab === 6 && (
+            {activeTab === 2 && (
+              <ProfilerTable
+                columns={columns.map((col) => col.name)}
+                tableProfiles={tableProfile}
+              />
+            )}
+            {activeTab === 3 && (
               <ManageTab
                 currentTier={tier}
                 currentUser={owner?.id}

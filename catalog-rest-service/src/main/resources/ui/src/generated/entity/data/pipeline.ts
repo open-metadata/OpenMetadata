@@ -23,6 +23,10 @@
  */
 export interface Pipeline {
   /**
+   * Concurrency of the Pipeline
+   */
+  concurrency?: number;
+  /**
    * Description of this Pipeline.
    */
   description?: string;
@@ -56,6 +60,10 @@ export interface Pipeline {
    */
   owner?: EntityReference;
   /**
+   * Pipeline Code Location
+   */
+  pipelineLocation?: string;
+  /**
    * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI
    */
   pipelineUrl?: string;
@@ -63,6 +71,10 @@ export interface Pipeline {
    * Link to service where this pipeline is hosted in.
    */
   service: EntityReference;
+  /**
+   * Start date of the workflow
+   */
+  startDate?: Date;
   /**
    * Tags for this Pipeline.
    */

@@ -54,6 +54,7 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
 import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -63,6 +64,7 @@ type ServiceRecord = {
   databaseServices: Array<DatabaseService>;
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
+  pipelineServices: Array<PipelineService>;
 };
 
 export type ApiData = {
@@ -85,6 +87,7 @@ const ServicesPage = () => {
     databaseServices: [],
     messagingServices: [],
     dashboardServices: [],
+    pipelineServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
@@ -116,6 +119,7 @@ const ServicesPage = () => {
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
           }
+          setIsLoading(false);
         }
       );
     }
@@ -290,6 +294,20 @@ const ServicesPage = () => {
           </>
         );
       }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        const pipelineService = service as unknown as PipelineService;
+
+        return (
+          <>
+            <div className="tw-mb-1" data-testid="additional-field">
+              <label className="tw-mb-0">Pipeline URL:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {pipelineService.pipelineUrl}
+              </span>
+            </div>
+          </>
+        );
+      }
       default: {
         return <></>;
       }
@@ -308,7 +326,6 @@ const ServicesPage = () => {
             value: service.collection.name,
           };
         });
-        setIsLoading(false);
       } else {
         setIsLoading(false);
       }
