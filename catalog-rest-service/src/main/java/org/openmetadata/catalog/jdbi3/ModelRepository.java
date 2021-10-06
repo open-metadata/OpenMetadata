@@ -268,7 +268,7 @@ public abstract class ModelRepository {
 
   private void addRelationships(Model model) throws IOException {
     // Add owner relationship
-    EntityUtil.setOwner(relationshipDAO(), model.getId(), Entity.DASHBOARD, model.getOwner());
+    EntityUtil.setOwner(relationshipDAO(), model.getId(), Entity.MODEL, model.getOwner());
     // Add tag to model relationship
     applyTags(model);
   }
