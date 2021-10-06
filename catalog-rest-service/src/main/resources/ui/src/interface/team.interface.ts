@@ -1,5 +1,5 @@
 import { EntityReference as UserTeams } from '../generated/entity/teams/user';
 
-export type UserTeam = {
+export interface UserTeam extends UserTeams {
   displayName?: string;
-} & UserTeams;
+}

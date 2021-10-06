@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '../../components/buttons/Button/Button';
 import Searchbar from '../../components/common/searchbar/Searchbar';
-import { EntityReference as UserTeams } from '../../generated/entity/teams/user';
+import { UserTeam } from '../../interface/team.interface';
 import UserCard from './UserCard';
-
-type UserTeam = {
-  displayName?: string;
-} & UserTeams;
 
 type Props = {
   header: string;
