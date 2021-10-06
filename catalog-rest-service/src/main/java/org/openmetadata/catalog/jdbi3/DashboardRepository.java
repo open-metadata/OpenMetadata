@@ -266,7 +266,7 @@ public abstract class DashboardRepository {
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
+      throw new IllegalArgumentException(String.format("Invalid service type %s for the dashboard", service.getType()));
     }
     return service;
   }
