@@ -18,11 +18,12 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { isNil, isUndefined } from 'lodash';
-import { Database, Paging, ServiceOption } from 'Models';
+import { Paging } from 'Models';
 import React, { Fragment, FunctionComponent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { getDashboards } from '../../axiosAPIs/dashboardAPI';
 import { getDatabases } from '../../axiosAPIs/databaseAPI';
+import { getPipelines } from '../../axiosAPIs/pipelineAPI';
 import { getServiceByFQN, updateService } from '../../axiosAPIs/serviceAPI';
 import { getTopics } from '../../axiosAPIs/topicsAPI';
 import NextPrevious from '../../components/common/next-previous/NextPrevious';
@@ -41,7 +42,13 @@ import {
   ServiceCategory,
 } from '../../enums/service.enum';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Database } from '../../generated/entity/data/database';
+import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Topic } from '../../generated/entity/data/topic';
+import { DashboardService } from '../../generated/entity/services/dashboardService';
+import { DatabaseService } from '../../generated/entity/services/databaseService';
+import { MessagingService } from '../../generated/entity/services/messagingService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
 import useToastContext from '../../hooks/useToastContext';
 import { isEven } from '../../utils/CommonUtils';
 import {
@@ -51,6 +58,12 @@ import {
 } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import { getEntityLink, getUsagePercentile } from '../../utils/TableUtils';
+
+type Data = Database | Topic | Dashboard;
+type ServiceDataObj = { name: string } & Partial<DatabaseService> &
+  Partial<MessagingService> &
+  Partial<DashboardService> &
+  Partial<PipelineService>;
 
 const ServicePage: FunctionComponent = () => {
   const { serviceFQN, serviceType } = useParams() as Record<string, string>;
@@ -62,8 +75,8 @@ const ServicePage: FunctionComponent = () => {
   >([]);
   const [isEdit, setIsEdit] = useState(false);
   const [description, setDescription] = useState('');
-  const [serviceDetails, setServiceDetails] = useState<ServiceOption>();
-  const [data, setData] = useState<Array<Database>>([]);
+  const [serviceDetails, setServiceDetails] = useState<ServiceDataObj>();
+  const [data, setData] = useState<Array<Data>>([]);
   const [isLoading, setIsloading] = useState(true);
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [instanceCount, setInstanceCount] = useState<number>(0);
@@ -134,6 +147,31 @@ const ServicePage: FunctionComponent = () => {
       });
   };
 
+  const fetchPipeLines = (paging?: string) => {
+    setIsloading(true);
+    getPipelines(serviceFQN, paging, [
+      'owner',
+      'service',
+      'usageSummary',
+      'tags',
+    ])
+      .then((res: AxiosResponse) => {
+        if (res.data.data) {
+          setData(res.data.data);
+          setPaging(res.data.paging);
+          setInstanceCount(res.data.paging.total);
+          setIsloading(false);
+        } else {
+          setData([]);
+          setPaging(pagingObject);
+          setIsloading(false);
+        }
+      })
+      .catch(() => {
+        setIsloading(false);
+      });
+  };
+
   const getOtherDetails = (paging?: string) => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES: {
@@ -148,6 +186,11 @@ const ServicePage: FunctionComponent = () => {
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
         fetchDashboards(paging);
+
+        break;
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        fetchPipeLines(paging);
 
         break;
       }
@@ -340,6 +383,39 @@ const ServicePage: FunctionComponent = () => {
 
         return elemFields;
       }
+      case ServiceCategory.PIPELINE_SERVICES:
+        return (
+          <span>
+            <span className="tw-text-grey-muted tw-font-normal">
+              Pipeline Url :
+            </span>{' '}
+            <span className="tw-pl-1tw-font-normal ">
+              {serviceDetails?.pipelineUrl ? (
+                <a
+                  className="link-text"
+                  href={serviceDetails.pipelineUrl}
+                  rel="noopener noreferrer"
+                  target="_blank">
+                  <>
+                    <span className="tw-mr-1">
+                      {serviceDetails.pipelineUrl}
+                    </span>
+                    <SVGIcons
+                      alt="external-link"
+                      className="tw-align-middle"
+                      icon="external-link"
+                      width="12px"
+                    />
+                  </>
+                </a>
+              ) : (
+                '--'
+              )}
+            </span>
+            <span className="tw-mx-3 tw-text-grey-muted">•</span>
+          </span>
+        );
+
       default: {
         return <></>;
       }
@@ -378,6 +454,16 @@ const ServicePage: FunctionComponent = () => {
           </>
         );
       }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        return (
+          <>
+            <th className="tableHead-cell">Pipeline Name</th>
+            <th className="tableHead-cell">Description</th>
+            <th className="tableHead-cell">Owner</th>
+            <th className="tableHead-cell">Tags</th>
+          </>
+        );
+      }
       default:
         return <></>;
     }
@@ -392,7 +478,7 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             <p>
               {getUsagePercentile(
-                database.usageSummary.weeklyStats.percentileRank
+                database.usageSummary?.weeklyStats?.percentileRank || 0
               )}
             </p>
           </td>
@@ -432,6 +518,33 @@ const ServicePage: FunctionComponent = () => {
           <td className="tableBody-cell">
             {dashboard.tags && dashboard.tags?.length > 0
               ? dashboard.tags.map((tag, tagIndex) => (
+                  <PopOver
+                    key={tagIndex}
+                    position="top"
+                    size="small"
+                    title={tag.labelType}
+                    trigger="mouseenter">
+                    <Tags
+                      className="tw-bg-gray-200"
+                      tag={`#${
+                        tag.tagFQN?.startsWith('Tier.Tier')
+                          ? tag.tagFQN.split('.')[1]
+                          : tag.tagFQN
+                      }`}
+                    />
+                  </PopOver>
+                ))
+              : '--'}
+          </td>
+        );
+      }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        const pipeline = data as Pipeline;
+
+        return (
+          <td className="tableBody-cell">
+            {pipeline.tags && pipeline.tags?.length > 0
+              ? pipeline.tags.map((tag, tagIndex) => (
                   <PopOver
                     key={tagIndex}
                     position="top"
@@ -506,6 +619,8 @@ const ServicePage: FunctionComponent = () => {
             body: errMsg,
           });
         });
+    } else {
+      setIsEdit(false);
     }
   };
 
@@ -526,6 +641,8 @@ const ServicePage: FunctionComponent = () => {
         return 'Dashboards';
       case ServiceCategory.MESSAGING_SERVICES:
         return 'Topics';
+      case ServiceCategory.PIPELINE_SERVICES:
+        return 'Pipelines';
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return 'Databases';
@@ -549,7 +666,7 @@ const ServicePage: FunctionComponent = () => {
                 </span>{' '}
                 <span className="tw-pl-1 tw-font-normal">
                   {' '}
-                  {serviceDetails?.ingestionSchedule
+                  {serviceDetails?.ingestionSchedule?.repeatFrequency
                     ? getFrequencyTime(
                         serviceDetails.ingestionSchedule.repeatFrequency
                       )
@@ -630,11 +747,14 @@ const ServicePage: FunctionComponent = () => {
                         data-testid="column"
                         key={index}>
                         <td className="tableBody-cell">
-                          <Link to={getLinkForFqn(dataObj.fullyQualifiedName)}>
+                          <Link
+                            to={getLinkForFqn(
+                              dataObj.fullyQualifiedName || ''
+                            )}>
                             {serviceName ===
                               ServiceCategory.DASHBOARD_SERVICES &&
-                            dataObj.displayName
-                              ? dataObj.displayName
+                            (dataObj as Dashboard).displayName
+                              ? (dataObj as Dashboard).displayName
                               : dataObj.name}
                           </Link>
                         </td>

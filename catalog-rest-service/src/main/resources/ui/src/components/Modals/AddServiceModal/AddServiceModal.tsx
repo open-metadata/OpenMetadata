@@ -27,6 +27,7 @@ import {
 // import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
+import { PipelineService } from '../../../generated/entity/services/pipelineService';
 import { fromISOString } from '../../../utils/ServiceUtils';
 import { Button } from '../../buttons/Button/Button';
 import MarkdownWithPreview from '../../common/editor/MarkdownWithPreview';
@@ -57,6 +58,7 @@ export type DataObj = {
   api_version?: string;
   server?: string;
   env?: string;
+  pipelineUrl?: string;
 };
 
 // type DataObj = CreateDatabaseService &
@@ -83,7 +85,8 @@ type DashboardService = {
 
 export type ServiceDataObj = { name: string } & Partial<DatabaseService> &
   Partial<MessagingService> &
-  Partial<DashboardService>;
+  Partial<DashboardService> &
+  Partial<PipelineService>;
 
 export type EditObj = {
   edit: boolean;
@@ -113,6 +116,7 @@ type ErrorMsg = {
   siteName?: boolean;
   apiVersion?: boolean;
   server?: boolean;
+  pipelineUrl?: boolean;
 };
 type EditorContentRef = {
   getEditorContent: () => string;
@@ -209,6 +213,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
   const [apiVersion, setApiVersion] = useState(data?.api_version || '');
   const [server, setServer] = useState(data?.server || '');
   const [env, setEnv] = useState(data?.env || '');
+  const [pipelineUrl, setPipelineUrl] = useState(data?.pipelineUrl || '');
   const [frequency, setFrequency] = useState(
     fromISOString(data?.ingestionSchedule?.repeatFrequency)
   );
@@ -226,6 +231,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     siteName: false,
     apiVersion: false,
     server: false,
+    pipelineUrl: false,
   });
   const [sameNameError, setSameNameError] = useState(false);
   const markdownRef = useRef<EditorContentRef>();
@@ -312,6 +318,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       siteName,
       apiVersion,
       server,
+      pipelineUrl,
     } = value;
 
     return (
@@ -327,7 +334,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
       !apiKey &&
       !siteName &&
       !apiVersion &&
-      !server
+      !server &&
+      !pipelineUrl
     );
   };
 
@@ -395,6 +403,15 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
               break;
           }
+        }
+
+        break;
+      case ServiceCategory.PIPELINE_SERVICES:
+        {
+          setMsg = {
+            ...setMsg,
+            pipelineUrl: !pipelineUrl,
+          };
         }
 
         break;
@@ -484,6 +501,15 @@ export const AddServiceModal: FunctionComponent<Props> = ({
 
                 break;
             }
+          }
+
+          break;
+        case ServiceCategory.PIPELINE_SERVICES:
+          {
+            dataObj = {
+              ...dataObj,
+              pipelineUrl: pipelineUrl,
+            };
           }
 
           break;
@@ -812,6 +838,26 @@ export const AddServiceModal: FunctionComponent<Props> = ({
     return elemFields;
   };
 
+  const getPipelineFields = (): JSX.Element => {
+    return (
+      <div className="tw-mt-4">
+        <label className="tw-block tw-form-label" htmlFor="pipeline-url">
+          {requiredField('Pipeline Url:')}
+        </label>
+        <input
+          className="tw-form-inputs tw-px-3 tw-py-1"
+          id="pipeline-url"
+          name="pipeline-url"
+          placeholder="http(s)://hostname:port"
+          type="text"
+          value={pipelineUrl}
+          onChange={(e) => setPipelineUrl(e.target.value)}
+        />
+        {showErrorMsg.pipelineUrl && errorMsg('Url is required')}
+      </div>
+    );
+  };
+
   const getOptionalFields = (): JSX.Element => {
     switch (serviceName) {
       case ServiceCategory.DATABASE_SERVICES:
@@ -820,6 +866,8 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         return getMessagingFields();
       case ServiceCategory.DASHBOARD_SERVICES:
         return getDashboardFields();
+      case ServiceCategory.PIPELINE_SERVICES:
+        return getPipelineFields();
       default:
         return <></>;
     }

@@ -19,6 +19,7 @@ export enum ServiceCategory {
   DATABASE_SERVICES = 'databaseServices',
   MESSAGING_SERVICES = 'messagingServices',
   DASHBOARD_SERVICES = 'dashboardServices',
+  PIPELINE_SERVICES = 'pipelineServices',
 }
 
 export enum DatabaseServiceType {
@@ -44,4 +45,9 @@ export enum DashboardServiceType {
   LOOKER = 'Looker',
   TABLEAU = 'Tableau',
   REDASH = 'Redash',
+}
+
+export enum PipelineServiceType {
+  AIRFLOW = 'Airflow',
+  PREFECT = 'Prefect',
 }

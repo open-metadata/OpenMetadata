@@ -27,3 +27,5 @@ declare module 'rehype-raw';
 declare module 'react-codemirror2';
 declare module 'react-slick';
 declare module 'slick-carousel';
+declare module 'react-table';
+declare module 'recharts';

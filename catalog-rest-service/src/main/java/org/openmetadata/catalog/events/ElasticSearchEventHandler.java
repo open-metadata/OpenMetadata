@@ -27,6 +27,7 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.ElasticSearchConfiguration;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.type.Column;
@@ -73,15 +74,19 @@ public class ElasticSearchEventHandler implements EventHandler {
       if (responseContext.getEntity() != null) {
         Object entity = responseContext.getEntity();
         UpdateRequest updateRequest = null;
-        if (entity.getClass().toString().toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
+        String entityClass = entity.getClass().toString();
+        if (entityClass.toLowerCase().endsWith(Entity.TABLE.toLowerCase())) {
           Table instance = (Table) entity;
           updateRequest = updateTable(instance);
-        } else if (entity.getClass().toString().toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
+        } else if (entityClass.toLowerCase().endsWith(Entity.DASHBOARD.toLowerCase())) {
           Dashboard instance = (Dashboard) entity;
           updateRequest = updateDashboard(instance);
-        } else if (entity.getClass().toString().toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
+        } else if (entityClass.toLowerCase().endsWith(Entity.TOPIC.toLowerCase())) {
           Topic instance = (Topic) entity;
           updateRequest = updateTopic(instance);
+        }  else if (entityClass.toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
+          Pipeline instance = (Pipeline) entity;
+          updateRequest = updatePipeline(instance);
         }
         if (updateRequest != null) {
           client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
@@ -218,6 +223,46 @@ public class ElasticSearchEventHandler implements EventHandler {
     }
     jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
     UpdateRequest updateRequest = new UpdateRequest("dashboard_search_index", instance.getId().toString());
+    updateRequest.doc(jsonMap);
+    return updateRequest;
+  }
+
+  private UpdateRequest updatePipeline(Pipeline instance) {
+    Map<String, Object> jsonMap = new HashMap<>();
+    jsonMap.put("description", instance.getDescription());
+    Set<String> tags = new HashSet<>();
+    if (instance.getTags() != null) {
+      instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
+    }
+
+    if (!tags.isEmpty()) {
+      List<String> tagsList = new ArrayList<>(tags);
+      String tierTag = null;
+      for (String tag: tagsList) {
+        if (tag.toLowerCase().matches("(.*)tier(.*)")) {
+          tierTag = tag;
+          break;
+        }
+      }
+      if (tierTag != null) {
+        tagsList.remove(tierTag);
+        jsonMap.put("tier", tierTag);
+      }
+      jsonMap.put("tags", tagsList);
+    }
+
+    if(instance.getOwner() != null) {
+      jsonMap.put("owner", instance.getOwner().getId().toString());
+    }
+    if (instance.getFollowers() != null) {
+      List<String> followers = new ArrayList<>();
+      for(EntityReference follower: instance.getFollowers()) {
+        followers.add(follower.getId().toString());
+      }
+      jsonMap.put("followers", followers);
+    }
+    jsonMap.put("last_updated_timestamp", System.currentTimeMillis());
+    UpdateRequest updateRequest = new UpdateRequest("pipeline_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
     return updateRequest;
   }

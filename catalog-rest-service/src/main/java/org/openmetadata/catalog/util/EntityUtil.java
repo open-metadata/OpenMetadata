@@ -22,6 +22,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Task;
@@ -51,10 +52,10 @@ import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
-import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
@@ -131,47 +132,34 @@ public final class EntityUtil {
     if (ref == null) {
       return;
     }
-    switch (ref.getType()) {
-      case Entity.TEAM:
-        TeamResource.addHref(uriInfo, ref);
-        break;
-      case Entity.USER:
-        UserResource.addHref(uriInfo, ref);
-        break;
-      case Entity.TABLE:
-        TableResource.addHref(uriInfo, ref);
-        break;
-      case Entity.DATABASE:
-        DatabaseResource.addHref(uriInfo, ref);
-        break;
-      case Entity.TOPIC:
-        TopicResource.addHref(uriInfo, ref);
-        break;
-      case Entity.CHART:
-        ChartResource.addHref(uriInfo, ref);
-        break;
-      case Entity.DASHBOARD:
-        DashboardResource.addHref(uriInfo, ref);
-        break;
-      case Entity.MODEL:
-        ModelResource.addHref(uriInfo, ref);
-        break;
-      case Entity.TASK:
-        TaskResource.addHref(uriInfo, ref);
-        break;
-      case Entity.DATABASE_SERVICE:
-        DatabaseServiceResource.addHref(uriInfo, ref);
-        break;
-      case Entity.MESSAGING_SERVICE:
-        MessagingServiceResource.addHref(uriInfo, ref);
-        break;
-      case Entity.DASHBOARD_SERVICE:
-        DashboardServiceResource.addHref(uriInfo, ref);
-        break;
-      case Entity.PIPELINE_SERVICE:
-        PipelineServiceResource.addHref(uriInfo, ref);
-        break;
-      default:
+    String entity = ref.getType();
+    if (entity.equalsIgnoreCase(Entity.TEAM)) {
+      TeamResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.USER)) {
+      UserResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.TABLE)) {
+      TableResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
+      DatabaseResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
+      TopicResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
+      ChartResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
+      DashboardResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
+      ModelResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
+      TaskResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
+      DatabaseServiceResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
+      MessagingServiceResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      DashboardServiceResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
+      PipelineServiceResource.addHref(uriInfo, ref);
+    } else {
         throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
     }
   }
@@ -395,11 +383,17 @@ public final class EntityUtil {
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MODEL.toLowerCase())) {
       Model instance = (Model) entity;
       return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.PIPELINE.toLowerCase())) {
+      Pipeline instance = (Pipeline) entity;
+      return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.MESSAGING_SERVICE.toLowerCase())) {
       MessagingService instance = (MessagingService) entity;
       return getEntityReference(instance);
     } else if (clazz.toString().toLowerCase().endsWith(Entity.DASHBOARD_SERVICE.toLowerCase())) {
       DashboardService instance = (DashboardService) entity;
+      return getEntityReference(instance);
+    } else if (clazz.toString().toLowerCase().endsWith(Entity.PIPELINE_SERVICE.toLowerCase())) {
+      PipelineService instance = (PipelineService) entity;
       return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(
@@ -433,29 +427,28 @@ public final class EntityUtil {
           throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityId();
-    switch (entityType) {
-      case Entity.USER:
-        return getEntityReference(EntityUtil.validate(fqn, userDAO.findByName(fqn), User.class));
-      case Entity.TEAM:
-        return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
-      case Entity.TABLE:
-        return getEntityReference(EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class));
-      case Entity.DATABASE:
-        return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
-      case Entity.METRICS:
-        return getEntityReference(EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class));
-      case Entity.DASHBOARD:
-        return getEntityReference(EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class));
-      case Entity.REPORT:
-        return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
-      case Entity.TOPIC:
-        return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class));
-      case Entity.TASK:
-        return getEntityReference(EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class));
-      case Entity.MODEL:
-        return getEntityReference(EntityUtil.validate(fqn, modelDAO.findByFQN(fqn), Model.class));
-      default:
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
+    if(entityType.equalsIgnoreCase(Entity.USER)) {
+      return getEntityReference(EntityUtil.validate(fqn, userDAO.findByName(fqn), User.class));
+    } else if (entityType.equalsIgnoreCase(Entity.TEAM)) {
+      return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
+    } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
+      return getEntityReference(EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class));
+    } else if (entityType.equalsIgnoreCase(Entity.DATABASE)) {
+      return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
+    } else if (entityType.equalsIgnoreCase(Entity.METRICS)) {
+      return getEntityReference(EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class));
+    } else if (entityType.equalsIgnoreCase(Entity.DASHBOARD)) {
+      return getEntityReference(EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class));
+    } else if (entityType.equalsIgnoreCase(Entity.REPORT)) {
+      return getEntityReference(EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class));
+    } else if (entityType.equalsIgnoreCase(Entity.TOPIC)) {
+      return getEntityReference(EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class));
+    } else if (entityType.equalsIgnoreCase(Entity.TASK)) {
+      return getEntityReference(EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class));
+    } else if (entityType.equalsIgnoreCase(Entity.MODEL)) {
+      return getEntityReference(EntityUtil.validate(fqn, modelDAO.findByFQN(fqn), Model.class));
+    } else {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entityType, fqn));
     }
   }
 
@@ -470,6 +463,11 @@ public final class EntityUtil {
               .withDate(RestUtil.DATE_FORMAT.format(new Date()));
     }
     return details;
+  }
+
+  public static EntityReference getEntityReference(Pipeline pipeline) {
+    return new EntityReference().withDescription(pipeline.getDescription()).withId(pipeline.getId())
+            .withName(pipeline.getFullyQualifiedName()).withType(Entity.PIPELINE);
   }
 
   public static EntityReference getEntityReference(Task task) {
@@ -494,27 +492,27 @@ public final class EntityUtil {
 
   public static EntityReference getEntityReference(Database database) {
     return new EntityReference().withDescription(database.getDescription()).withId(database.getId())
-            .withName(database.getName()).withType(Entity.DATABASE);
+            .withName(database.getFullyQualifiedName()).withType(Entity.DATABASE);
   }
 
   public static EntityReference getEntityReference(Table table) {
     return new EntityReference().withDescription(table.getDescription()).withId(table.getId())
-            .withName(table.getName()).withType(Entity.TABLE);
+            .withName(table.getFullyQualifiedName()).withType(Entity.TABLE);
   }
 
   public static EntityReference getEntityReference(Report report) {
     return new EntityReference().withDescription(report.getDescription()).withId(report.getId())
-            .withName(report.getName()).withType(Entity.REPORT);
+            .withName(report.getFullyQualifiedName()).withType(Entity.REPORT);
   }
 
   public static EntityReference getEntityReference(Metrics metrics) {
     return new EntityReference().withDescription(metrics.getDescription()).withId(metrics.getId())
-            .withName(metrics.getName()).withType(Entity.METRICS);
+            .withName(metrics.getFullyQualifiedName()).withType(Entity.METRICS);
   }
 
   public static EntityReference getEntityReference(Dashboard dashboard) {
     return new EntityReference().withDescription(dashboard.getDescription()).withId(dashboard.getId())
-            .withName(dashboard.getName()).withType(Entity.DASHBOARD);
+            .withName(dashboard.getFullyQualifiedName()).withType(Entity.DASHBOARD);
   }
 
   public static EntityReference getEntityReference(Team team) {
@@ -536,6 +534,7 @@ public final class EntityUtil {
       }
     });
   }
+
 
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}

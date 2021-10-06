@@ -3,6 +3,7 @@ import { Bucket, ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import { getServiceDetails, getServices } from '../axiosAPIs/serviceAPI';
 import { ServiceDataObj } from '../components/Modals/AddServiceModal/AddServiceModal';
 import {
+  AIRFLOW,
   ATHENA,
   BIGQUERY,
   HIVE,
@@ -12,6 +13,7 @@ import {
   MYSQL,
   ORACLE,
   POSTGRES,
+  PREFECT,
   PRESTO,
   PULSAR,
   REDASH,
@@ -26,6 +28,7 @@ import {
   DashboardServiceType,
   DatabaseServiceType,
   MessagingServiceType,
+  PipelineServiceType,
 } from '../enums/service.enum';
 import { ApiData } from '../pages/services';
 
@@ -79,6 +82,11 @@ export const serviceTypeLogo = (type: string) => {
     case DashboardServiceType.REDASH:
       return REDASH;
 
+    case PipelineServiceType.AIRFLOW:
+      return AIRFLOW;
+
+    case PipelineServiceType.PREFECT:
+      return PREFECT;
     default:
       return SERVICE_DEFAULT;
   }
@@ -182,7 +190,12 @@ export const getServiceCategoryFromType = (
 };
 
 export const getEntityCountByService = (buckets: Array<Bucket>) => {
-  const entityCounts = { tableCount: 0, topicCount: 0, dashboardCount: 0 };
+  const entityCounts = {
+    tableCount: 0,
+    topicCount: 0,
+    dashboardCount: 0,
+    pipelineCount: 0,
+  };
   buckets?.forEach((bucket) => {
     switch (bucket.key) {
       case DatabaseServiceType.ATHENA:
@@ -208,6 +221,11 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
       case DashboardServiceType.TABLEAU:
       case DashboardServiceType.REDASH:
         entityCounts.dashboardCount += bucket.doc_count;
+
+        break;
+      case PipelineServiceType.AIRFLOW:
+      case PipelineServiceType.PREFECT:
+        entityCounts.pipelineCount += bucket.doc_count;
 
         break;
       default:

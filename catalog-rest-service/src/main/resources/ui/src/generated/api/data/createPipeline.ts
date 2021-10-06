@@ -21,6 +21,10 @@
  */
 export interface CreatePipeline {
   /**
+   * Concurrency of the Pipeline
+   */
+  concurrency?: number;
+  /**
    * Description of the database instance. What it has and how to use it.
    */
   description?: string;
@@ -38,6 +42,10 @@ export interface CreatePipeline {
    */
   owner?: EntityReference;
   /**
+   * Pipeline Code Location
+   */
+  pipelineLocation?: string;
+  /**
    * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI
    */
   pipelineUrl?: string;
@@ -45,6 +53,10 @@ export interface CreatePipeline {
    * Link to the database service where this database is hosted in
    */
   service: EntityReference;
+  /**
+   * Start date of the workflow
+   */
+  startDate?: Date;
   /**
    * Tags for this Pipeline.
    */

@@ -35,6 +35,7 @@ class MetadataTablesRestSourceConfig(ConfigModel):
     include_tables: Optional[bool] = True
     include_topics: Optional[bool] = True
     include_dashboards: Optional[bool] = True
+    include_pipelines: Optional[bool] = True
     limit_records: int = 1000
 
 
@@ -89,6 +90,7 @@ class MetadataSource(Source):
         yield from self.fetch_table()
         yield from self.fetch_topic()
         yield from self.fetch_dashboard()
+        yield from self.fetch_pipeline()
 
     def fetch_table(self) -> Table:
         if self.config.include_tables:
@@ -131,6 +133,20 @@ class MetadataSource(Source):
                 if dashboard_entities.after is None:
                     break
                 after = dashboard_entities.after
+
+    def fetch_pipeline(self) -> Dashboard:
+        if self.config.include_pipelines:
+            after = None
+            while True:
+                pipeline_entities = self.client.list_pipelines(
+                    fields="owner,service,tags,followers,tasks", after=after,
+                    limit=self.config.limit_records)
+                for pipeline in pipeline_entities.pipelines:
+                    self.status.scanned_dashboard(pipeline.name)
+                    yield pipeline
+                if pipeline_entities.after is None:
+                    break
+                after = pipeline_entities.after
 
     def get_status(self) -> SourceStatus:
         return self.status

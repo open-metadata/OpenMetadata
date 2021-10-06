@@ -233,6 +233,24 @@ class DashboardESDocument(BaseModel):
     daily_percentile_rank: int
 
 
+class PipelineESDocument(BaseModel):
+    """ Elastic Search Mapping doc for Pipelines """
+    pipeline_id: str
+    service: str
+    service_type: str
+    pipeline_name: str
+    suggest: List[dict]
+    description: Optional[str] = None
+    last_updated_timestamp: Optional[int]
+    task_names: List[str]
+    task_descriptions: List[str]
+    tags: List[str]
+    fqdn: str
+    tier: Optional[str] = None
+    owner: str
+    followers: List[str]
+
+
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
     username: str
@@ -309,5 +327,3 @@ class DatasetProfile(BaseModel):
     row_count: int = None
     col_count: int = None
     col_profiles: List[DatasetColumnProfile] = None
-
-

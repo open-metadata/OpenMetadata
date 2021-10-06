@@ -27,3 +27,4 @@ test_data as (
 )
 INSERT INTO TABLE metadata_array_struct_test
 select * from test_data;
+CREATE TABLE union_test(foo UNIONTYPE<int, double, array<string>, struct<a:int,b:string>>);

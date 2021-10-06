@@ -17,6 +17,7 @@
 
 declare module 'Models' {
   import { TagLabel } from '../generated/type/tagLabel';
+
   export type Match = {
     params: {
       searchQuery: string;
@@ -170,15 +171,6 @@ declare module 'Models' {
     images: Record<string, string>;
   };
 
-  export type UserTeam = {
-    description: string;
-    displayName?: string;
-    href: string;
-    id: string;
-    name: string;
-    type: string;
-  };
-
   export type User = {
     displayName: string;
     isBot: boolean;
@@ -319,7 +311,8 @@ declare module 'Models' {
   export type ServiceTypes =
     | 'databaseServices'
     | 'messagingServices'
-    | 'dashboardServices';
+    | 'dashboardServices'
+    | 'pipelineServices';
 
   export type SampleData = {
     columns: Array<string>;

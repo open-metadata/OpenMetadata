@@ -12,16 +12,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import logging
-import traceback
 import uuid
+import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
-from pydantic import ValidationError
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
@@ -29,11 +27,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, TableType, Constraint, \
-    TableData, TableProfile, ConstraintType, TableConstraint
+from metadata.generated.schema.entity.data.table import Table, Column, Constraint, \
+    TableData, TableProfile
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
-from sqlalchemy.sql import sqltypes as types
 from sqlalchemy.inspection import inspect
 
 from metadata.ingestion.api.common import IncludeFilterPattern, ConfigModel, Record
@@ -41,8 +38,8 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import get_database_service_or_create
-
+from metadata.utils.helpers import  get_database_service_or_create
+from metadata.utils.column_helpers import _handle_complex_data_types,get_column_type
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -103,64 +100,6 @@ class SQLConnectionConfig(ConfigModel):
         return self.service_name
 
 
-_column_type_mapping: Dict[Type[types.TypeEngine], str] = {
-    types.Integer: "INT",
-    types.Numeric: "INT",
-    types.Boolean: "BOOLEAN",
-    types.Enum: "ENUM",
-    types._Binary: "BYTES",
-    types.LargeBinary: "BYTES",
-    types.PickleType: "BYTES",
-    types.ARRAY: "ARRAY",
-    types.VARCHAR: "VARCHAR",
-    types.CHAR: "VARCHAR",
-    types.String: "STRING",
-    types.Date: "DATE",
-    types.DATE: "DATE",
-    types.Time: "TIME",
-    types.DateTime: "DATETIME",
-    types.DATETIME: "DATETIME",
-    types.TIMESTAMP: "TIMESTAMP",
-    types.NullType: "NULL",
-    types.JSON: "JSON"
-}
-
-_known_unknown_column_types: Set[Type[types.TypeEngine]] = {
-    types.Interval,
-    types.CLOB,
-}
-
-
-def register_custom_type(
-        tp: Type[types.TypeEngine], output: str = None
-) -> None:
-    if output:
-        _column_type_mapping[tp] = output
-    else:
-        _known_unknown_column_types.add(tp)
-
-
-def get_column_type(status: SQLSourceStatus, dataset_name: str, column_type: Any) -> str:
-    type_class: Optional[str] = None
-    for sql_type in _column_type_mapping.keys():
-        if isinstance(column_type, sql_type):
-            type_class = _column_type_mapping[sql_type]
-            break
-    if type_class is None:
-        for sql_type in _known_unknown_column_types:
-            if isinstance(column_type, sql_type):
-                type_class = "NULL"
-                break
-
-    if type_class is None:
-        status.warning(
-            dataset_name, f"unable to map type {column_type!r} to metadata schema"
-        )
-        type_class = "NULL"
-
-    return type_class
-
-
 def _get_table_description(schema: str, table: str, inspector: Inspector) -> str:
     description = None
     try:
@@ -193,8 +132,10 @@ class SQLSource(Source):
             if self.config.data_profiler_enabled:
                 if self.data_profiler is None:
                     from metadata.profiler.dataprofiler import DataProfiler
-                    self.data_profiler = DataProfiler(status=self.status,
-                                                    connection_str=self.connection_string)
+                    self.data_profiler = DataProfiler(
+                        status=self.status,
+                        connection_str=self.connection_string
+                    )
                 return True
             return False
         except Exception:
@@ -268,9 +209,14 @@ class SQLSource(Source):
                     fullyQualifiedName=fqn,
                     columns=table_columns
                 )
-                if self.sql_config.generate_sample_data:
-                    table_data = self.fetch_sample_data(schema, table_name)
-                    table_entity.sampleData = table_data
+                try:
+                    if self.sql_config.generate_sample_data:
+                        table_data = self.fetch_sample_data(schema, table_name)
+                        table_entity.sampleData = table_data
+                except Exception as err:
+                    logger.error(repr(err))
+                    logger.error(err)
+                    pass
 
                 if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
@@ -363,44 +309,67 @@ class SQLSource(Source):
         columns = inspector.get_columns(table, schema)
         table_columns = []
         row_order = 1
-        for column in columns:
-            col_type = None
-            try:
-                col_type = get_column_type(self.status, dataset_name, column['type'])
-            except Exception as err:
-                logger.error(err)
+        try:
+            for column in columns:
+                children = None
+                data_type_display = None
+                col_data_length = None
+                arr_data_type = None
+                if 'raw_data_type' in column and 'raw_data_type' is not None:
+                    if re.match(r'(struct<)(?:.*)', column['raw_data_type']):
+                        col_type = 'STRUCT'
+                        # plucked = re.match(r'(?:struct<)(.*)(?:>)',column['raw_data_type']).groups()[0]
 
-            col_constraint = None
-            if column['nullable']:
-                col_constraint = Constraint.NULL
-            elif not column['nullable']:
-                col_constraint = Constraint.NOT_NULL
-
-            if column['name'] in pk_columns:
-                col_constraint = Constraint.PRIMARY_KEY
-            elif column['name'] in unique_columns:
-                col_constraint = Constraint.UNIQUE
-            col_data_length = None
-            if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
-                col_data_length = column['type'].length
-
-            om_column = Column(
+                        children = _handle_complex_data_types(
+                            self.status, dataset_name, f"{column['name']}:{column['raw_data_type']}"
+                        )['children']
+                        data_type_display = column['raw_data_type']
+                    elif re.match(r'(map<|array<)(?:.*)', column['raw_data_type']):
+                        if re.match(r'(map<)(?:.*)', column['raw_data_type']):
+                            col_type = 'MAP'
+                        else:
+                            col_type = 'ARRAY'
+                            arr_data_type = re.match(
+                                r'(?:array<)(\w*)(?:.*)', column['raw_data_type']
+                            )
+                            arr_data_type = arr_data_type.groups()[0].upper()
+                        data_type_display = column['raw_data_type']
+                    else:
+                        col_type = get_column_type(self.status, dataset_name, column['type'])
+                else:
+                    col_type = get_column_type(self.status, dataset_name, column['type'])
+                col_constraint = None
+                if column['nullable']:
+                    col_constraint = Constraint.NULL
+                elif not column['nullable']:
+                    col_constraint = Constraint.NOT_NULL
+                if column['name'] in pk_columns:
+                    col_constraint = Constraint.PRIMARY_KEY
+                elif column['name'] in unique_columns:
+                    col_constraint = Constraint.UNIQUE
+                if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
+                    col_data_length = column['type'].length
+                if col_data_length is None:
+                    col_data_length = 1
+                om_column = Column(
                     name=column['name'],
                     description=column.get("comment", None),
                     dataType=col_type,
-                    dataTypeDisplay=col_type,
+                    dataTypeDisplay="{}({})".format(col_type, col_data_length) if data_type_display
+                                                                                  is None else
+                    f"{data_type_display}",
                     dataLength=col_data_length,
                     constraint=col_constraint,
-                    ordinalPosition=row_order
+                    ordinalPosition=row_order,
+                    children=children if children is not None else None,
+                    arrayDataType=arr_data_type
                 )
 
-            if col_data_length is not None:
-                om_column.dataLength = col_data_length
-
-            table_columns.append(om_column)
-            row_order = row_order + 1
-
-        return table_columns
+                table_columns.append(om_column)
+                row_order = row_order + 1
+            return table_columns
+        except Exception as err:
+            logger.error("{}: {} {}".format(repr(err), table, err))
 
     def run_data_profiler(
             self,
@@ -412,7 +381,7 @@ class SQLSource(Source):
         logger.info(
             f"Running Profiling for {dataset_name}. "
             f"If you haven't configured offset and limit this process can take longer"
-            
+
         )
         if self.config.scheme == "bigquery":
             table = dataset_name

@@ -52,6 +52,7 @@ import IconUnique from '../assets/svg/icon-unique.svg';
 import IconInfo from '../assets/svg/info.svg';
 import LogoMonogram from '../assets/svg/logo-monogram.svg';
 import Logo from '../assets/svg/logo.svg';
+import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconSetting from '../assets/svg/service.svg';
 import IconSlack from '../assets/svg/slack.svg';
@@ -134,6 +135,7 @@ export const Icons = {
   CONFIG: 'icon-config',
   SLACK: 'slack',
   EXTERNAL_LINK: 'external-link',
+  PROFILER: 'icon-profiler',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -398,6 +400,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.EXTERNAL_LINK:
       IconComponent = IconExternalLink;
+
+      break;
+    case Icons.PROFILER:
+      IconComponent = IconProfiler;
 
       break;
 

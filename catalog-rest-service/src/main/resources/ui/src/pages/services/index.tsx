@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { isNull } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -54,6 +54,8 @@ import {
 } from '../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
+import { PipelineService } from '../../generated/entity/services/pipelineService';
+import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -62,6 +64,7 @@ type ServiceRecord = {
   databaseServices: Array<DatabaseService>;
   messagingServices: Array<MessagingService>;
   dashboardServices: Array<DashboardService>;
+  pipelineServices: Array<PipelineService>;
 };
 
 export type ApiData = {
@@ -75,6 +78,8 @@ export type ApiData = {
 };
 
 const ServicesPage = () => {
+  const showToast = useToastContext();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
@@ -82,6 +87,7 @@ const ServicesPage = () => {
     databaseServices: [],
     messagingServices: [],
     dashboardServices: [],
+    pipelineServices: [],
   });
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
@@ -113,6 +119,7 @@ const ServicesPage = () => {
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
           }
+          setIsLoading(false);
         }
       );
     }
@@ -137,37 +144,47 @@ const ServicesPage = () => {
     id: string,
     dataObj: DataObj
   ) => {
-    updateService(selectedService, id, dataObj).then(
-      ({ data }: { data: AxiosResponse['data'] }) => {
-        const updatedData = {
-          ...data,
-          ...data.jdbc,
-          ...data.brokers,
-          ...data.schemaRegistry,
-        };
-        const updatedServiceList = serviceList.map((s) =>
-          s.id === updatedData.id ? updatedData : s
-        );
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServiceList(updatedServiceList);
-      }
-    );
+    return new Promise<void>((resolve, reject) => {
+      updateService(selectedService, id, dataObj)
+        .then(({ data }: { data: AxiosResponse['data'] }) => {
+          const updatedData = {
+            ...data,
+            ...data.jdbc,
+            ...data.brokers,
+            ...data.schemaRegistry,
+          };
+          const updatedServiceList = serviceList.map((s) =>
+            s.id === updatedData.id ? updatedData : s
+          );
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServiceList(updatedServiceList);
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          reject(err);
+        });
+    });
   };
 
   const handleAdd = (selectedService: string, dataObj: DataObj) => {
-    postService(selectedService, dataObj).then(
-      ({ data }: { data: AxiosResponse['data'] }) => {
-        const updatedData = {
-          ...data,
-          ...data.jdbc,
-          ...data.brokers,
-          ...data.schemaRegistry,
-        };
-        const updatedServiceList = [...serviceList, updatedData];
-        setServices({ ...services, [serviceName]: updatedServiceList });
-        setServiceList(updatedServiceList);
-      }
-    );
+    return new Promise<void>((resolve, reject) => {
+      postService(selectedService, dataObj)
+        .then(({ data }: { data: AxiosResponse['data'] }) => {
+          const updatedData = {
+            ...data,
+            ...data.jdbc,
+            ...data.brokers,
+            ...data.schemaRegistry,
+          };
+          const updatedServiceList = [...serviceList, updatedData];
+          setServices({ ...services, [serviceName]: updatedServiceList });
+          setServiceList(updatedServiceList);
+          resolve();
+        })
+        .catch((err: AxiosError) => {
+          reject(err);
+        });
+    });
   };
 
   const handleSave = (
@@ -175,13 +192,23 @@ const ServicesPage = () => {
     selectedService: string,
     isEdit: EditObj
   ) => {
-    if (isEdit.edit) {
-      isEdit.id && handleUpdate(selectedService, isEdit.id, dataObj);
+    let promiseSave;
+    if (isEdit.edit && isEdit.id) {
+      promiseSave = handleUpdate(selectedService, isEdit.id, dataObj);
     } else {
-      handleAdd(selectedService, dataObj);
+      promiseSave = handleAdd(selectedService, dataObj);
     }
-    setIsModalOpen(false);
-    setEditData(undefined);
+    promiseSave
+      .then(() => {
+        setIsModalOpen(false);
+        setEditData(undefined);
+      })
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.responseMessage ?? 'Something went wrong!',
+        });
+      });
   };
 
   const handleDelete = (id: string) => {
@@ -267,6 +294,20 @@ const ServicesPage = () => {
           </>
         );
       }
+      case ServiceCategory.PIPELINE_SERVICES: {
+        const pipelineService = service as unknown as PipelineService;
+
+        return (
+          <>
+            <div className="tw-mb-1" data-testid="additional-field">
+              <label className="tw-mb-0">Pipeline URL:</label>
+              <span className=" tw-ml-1 tw-font-normal tw-text-grey-body">
+                {pipelineService.pipelineUrl}
+              </span>
+            </div>
+          </>
+        );
+      }
       default: {
         return <></>;
       }
@@ -285,7 +326,6 @@ const ServicesPage = () => {
             value: service.collection.name,
           };
         });
-        setIsLoading(false);
       } else {
         setIsLoading(false);
       }

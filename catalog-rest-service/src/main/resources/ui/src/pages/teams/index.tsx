@@ -18,7 +18,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { Team, User, UserTeam } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -40,11 +39,20 @@ import {
   ERROR404,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
+import { Team } from '../../generated/entity/teams/team';
+import {
+  EntityReference as UserTeams,
+  User,
+} from '../../generated/entity/teams/user';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
 import AddUsersModal from './AddUsersModal';
 import Form from './Form';
 import UserCard from './UserCard';
+
+type UserTeam = {
+  displayName?: string;
+} & UserTeams;
 
 const TeamsPage = () => {
   const [teams, setTeams] = useState<Array<Team>>([]);
@@ -159,7 +167,7 @@ const TeamsPage = () => {
               setCurrentTab(1);
             }}>
             Users
-            {getCountBadge(currentTeam?.users.length)}
+            {getCountBadge(currentTeam?.users?.length)}
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
@@ -168,7 +176,7 @@ const TeamsPage = () => {
               setCurrentTab(2);
             }}>
             Assets
-            {getCountBadge(currentTeam?.owns.length)}
+            {getCountBadge(currentTeam?.owns?.length)}
           </button>
         </nav>
       </div>
@@ -176,7 +184,7 @@ const TeamsPage = () => {
   };
 
   const getUserCards = () => {
-    if ((currentTeam?.users.length as number) <= 0) {
+    if ((currentTeam?.users?.length as number) <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>There are not any users added yet.</p>
@@ -200,10 +208,10 @@ const TeamsPage = () => {
         <div
           className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
           data-testid="user-card-container">
-          {currentTeam?.users.map((user, index) => {
+          {currentTeam?.users?.map((user, index) => {
             const User = {
-              description: user.description,
-              name: user.name,
+              description: user.description || '',
+              name: user.name || '',
               id: user.id,
             };
 
@@ -222,7 +230,7 @@ const TeamsPage = () => {
   };
 
   const getDatasetCards = () => {
-    if ((currentTeam?.owns.length as number) <= 0) {
+    if ((currentTeam?.owns?.length as number) <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
           <p>Your team does not have any dataset</p>
@@ -246,8 +254,11 @@ const TeamsPage = () => {
           className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
           data-testid="dataset-card">
           {' '}
-          {currentTeam?.owns.map((dataset, index) => {
-            const Dataset = { description: dataset.name, name: dataset.type };
+          {currentTeam?.owns?.map((dataset, index) => {
+            const Dataset = {
+              description: dataset.name || '',
+              name: dataset.type,
+            };
 
             return (
               <UserCard isDataset isIconVisible item={Dataset} key={index} />
@@ -319,7 +330,7 @@ const TeamsPage = () => {
   const getUniqueUserList = () => {
     const uniqueList = userList
       .filter((user) => {
-        const teamUser = currentTeam?.users.some(
+        const teamUser = currentTeam?.users?.some(
           (teamUser) => user.id === teamUser.id
         );
 
@@ -327,7 +338,7 @@ const TeamsPage = () => {
       })
       .map((user) => {
         return {
-          description: user.displayName,
+          description: user.displayName || '',
           id: user.id,
           href: user.href,
           name: user.name,
