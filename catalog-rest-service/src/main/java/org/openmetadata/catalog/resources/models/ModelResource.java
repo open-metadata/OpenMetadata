@@ -209,7 +209,7 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Model.class))),
+                          schema = @Schema(implementation = CreateModel.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
