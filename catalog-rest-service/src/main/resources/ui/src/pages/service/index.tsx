@@ -207,6 +207,9 @@ const ServicePage: FunctionComponent = () => {
       case ServiceCategory.DASHBOARD_SERVICES:
         return getEntityLink(SearchIndex.DASHBOARD, fqn);
 
+      case ServiceCategory.PIPELINE_SERVICES:
+        return getEntityLink(SearchIndex.PIPELINE, fqn);
+
       case ServiceCategory.DATABASE_SERVICES:
       default:
         return `/database/${fqn}`;
