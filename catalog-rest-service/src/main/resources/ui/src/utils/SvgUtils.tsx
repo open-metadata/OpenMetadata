@@ -57,6 +57,7 @@ import IconPipeline from '../assets/svg/pipeline.svg';
 import IconProfiler from '../assets/svg/profiler.svg';
 import IconHelpCircle from '../assets/svg/question-circle.svg';
 import IconSetting from '../assets/svg/service.svg';
+import IconSlackGrey from '../assets/svg/slack-grey.svg';
 import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
@@ -136,6 +137,7 @@ export const Icons = {
   DASHBOARD_GREY: 'dashboard-grey',
   CONFIG: 'icon-config',
   SLACK: 'slack',
+  SLACK_GREY: 'slack-grey',
   EXTERNAL_LINK: 'external-link',
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
@@ -400,6 +402,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.SLACK:
       IconComponent = IconSlack;
+
+      break;
+    case Icons.SLACK_GREY:
+      IconComponent = IconSlackGrey;
 
       break;
     case Icons.EXTERNAL_LINK:

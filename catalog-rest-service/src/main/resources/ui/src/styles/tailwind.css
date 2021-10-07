@@ -167,10 +167,15 @@
   }
 
   .tw-signin-button {
-    @apply tw-rounded-md tw-bg-white tw-w-60 tw-h-9 tw-px-4 tw-mt-2 tw-border tw-font-medium;
+    @apply tw-rounded-md tw-bg-white tw-h-9 tw-w-60 tw-mt-2 tw-px-4 tw-border tw-font-medium;
     box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
   }
-  .tw-signin-button:hover {
+  .tw-welcome-button {
+    @apply tw-rounded-md tw-bg-white tw-h-7 tw-w-48 tw-px-4 tw-border tw-font-normal tw-text-xs;
+    box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.2);
+  }
+  .tw-signin-button:hover,
+  .tw-welcome-button:hover {
     box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.2);
   }
 
