@@ -42,6 +42,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   const [newTag, setNewTag] = useState<string>('');
   const [hasFocus, setFocus] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const node = useRef<HTMLDivElement>(null);
   // const [inputWidth, setInputWidth] = useState(INPUT_COLLAPED);
   // const [inputMinWidth, setInputMinWidth] = useState(INPUT_AUTO);
 
@@ -153,10 +154,30 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
       return getTagsContainer(tag, index);
     }
   };
+  const handleClick = (e: MouseEvent) => {
+    if (node?.current?.contains(e.target as Node)) {
+      return;
+    } else {
+      e.stopPropagation();
+      handleCancel(e as unknown as React.MouseEvent<HTMLElement, MouseEvent>);
+    }
+  };
 
   useEffect(() => {
     setTags(selectedTags);
   }, [selectedTags]);
+
+  useEffect(() => {
+    if (editable) {
+      document.addEventListener('mousedown', handleClick);
+    } else {
+      document.removeEventListener('mousedown', handleClick);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+    };
+  }, [editable]);
 
   return (
     <div
@@ -168,6 +189,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         { 'hover:tw-border-main': !hasFocus }
       )}
       data-testid="tag-conatiner"
+      ref={node}
       onClick={(event) => {
         if (editable) {
           event.preventDefault();
