@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.UpdatePipelineService;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -128,7 +127,7 @@ public class PipelineServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = PipelineService.class))),
                   @ApiResponse(responseCode = "404", description = "Pipeline service for instance {id} is not found")
           })
   public PipelineService getByName(@Context UriInfo uriInfo,
@@ -143,7 +142,7 @@ public class PipelineServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = PipelineService.class))),
+                          schema = @Schema(implementation = CreatePipelineService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
@@ -166,7 +165,7 @@ public class PipelineServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Pipeline service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = PipelineService.class))),
+                          schema = @Schema(implementation = CreatePipelineService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response update(@Context UriInfo uriInfo,

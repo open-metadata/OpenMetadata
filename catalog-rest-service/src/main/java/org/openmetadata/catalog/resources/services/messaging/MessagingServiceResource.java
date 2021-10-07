@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.UpdateMessagingService;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -127,7 +126,7 @@ public class MessagingServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Messaging service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = MessagingService.class))),
                   @ApiResponse(responseCode = "404", description = "Messaging service for instance {id} is not found")
           })
   public MessagingService getByName(@Context UriInfo uriInfo,
@@ -142,7 +141,7 @@ public class MessagingServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Messaging service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MessagingService.class))),
+                          schema = @Schema(implementation = CreateMessagingService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
@@ -167,7 +166,7 @@ public class MessagingServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Messaging service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = MessagingService.class))),
+                          schema = @Schema(implementation = CreateMessagingService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response update(@Context UriInfo uriInfo,

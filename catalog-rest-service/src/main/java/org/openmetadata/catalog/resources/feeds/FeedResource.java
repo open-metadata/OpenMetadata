@@ -120,7 +120,7 @@ public class FeedResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The thread",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Thread.class))),
+                          schema = @Schema(implementation = CreateThread.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Valid CreateThread cr) throws IOException {

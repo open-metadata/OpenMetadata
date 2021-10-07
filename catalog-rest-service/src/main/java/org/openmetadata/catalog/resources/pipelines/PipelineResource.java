@@ -216,7 +216,7 @@ public class PipelineResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Pipeline.class))),
+                                  schema = @Schema(implementation = CreatePipeline.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -262,7 +262,7 @@ public class PipelineResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The pipeline",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Pipeline.class))),
+                                  schema = @Schema(implementation = CreatePipeline.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,

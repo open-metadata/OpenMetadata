@@ -27,8 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
-import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -131,7 +129,7 @@ public class TaskResource {
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
                   "entries in the list using `limit` and `before` or `after` query params.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "List of charts",
+                  @ApiResponse(responseCode = "200", description = "List of tasks",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = TaskList.class)))
           })
@@ -140,7 +138,7 @@ public class TaskResource {
                         @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter charts by service name",
+                        @Parameter(description = "Filter tasks by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
                         @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
@@ -148,10 +146,10 @@ public class TaskResource {
                         @Min(1)
                         @Max(1000000)
                         @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of charts before this cursor",
+                        @Parameter(description = "Returns list of tasks before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of charts after this cursor",
+                        @Parameter(description = "Returns list of tasks after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException {
@@ -175,7 +173,7 @@ public class TaskResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The Task",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Dashboard.class))),
+                                  schema = @Schema(implementation = Task.class))),
                   @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
           })
   public Task get(@Context UriInfo uriInfo, @PathParam("id") String id,
@@ -189,13 +187,13 @@ public class TaskResource {
 
   @GET
   @Path("/name/{fqn}")
-  @Operation(summary = "Get a chart by name", tags = "charts",
-          description = "Get a chart by fully qualified name.",
+  @Operation(summary = "Get a task by name", tags = "tasks",
+          description = "Get a task by fully qualified name.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The chart",
+                  @ApiResponse(responseCode = "200", description = "The task",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class))),
-                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
+                                  schema = @Schema(implementation = Task.class))),
+                  @ApiResponse(responseCode = "404", description = "Task for instance {id} is not found")
           })
   public Response getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
                             @Context SecurityContext securityContext,
@@ -209,12 +207,12 @@ public class TaskResource {
   }
 
   @POST
-  @Operation(summary = "Create a chart", tags = "charts",
-          description = "Create a chart under an existing `service`.",
+  @Operation(summary = "Create a task", tags = "tasks",
+          description = "Create a task under an existing `service`.",
           responses = {
-                  @ApiResponse(responseCode = "200", description = "The chart",
+                  @ApiResponse(responseCode = "200", description = "The task",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class))),
+                                  schema = @Schema(implementation = CreateTask.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -266,7 +264,7 @@ public class TaskResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated task ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Task.class)))
+                                  schema = @Schema(implementation = CreateTask.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
