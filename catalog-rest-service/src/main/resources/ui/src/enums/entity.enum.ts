@@ -19,4 +19,5 @@ export enum EntityType {
   DATASET = 'dataset',
   TOPIC = 'topic',
   DASHBOARD = 'dashboard',
+  PIPELINE = 'pipeline',
 }

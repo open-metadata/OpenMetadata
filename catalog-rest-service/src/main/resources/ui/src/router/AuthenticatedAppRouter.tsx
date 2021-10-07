@@ -26,6 +26,7 @@ import DatabaseDetails from '../pages/database-details/index';
 import ExplorePage from '../pages/explore';
 import MyDataPage from '../pages/my-data';
 import MyDataDetailsPage from '../pages/my-data-details';
+import MyPipelinePage from '../pages/Pipeline-details';
 import ReportsPage from '../pages/reports';
 import Scorecard from '../pages/scorecard';
 import ServicePage from '../pages/service';
@@ -67,6 +68,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route component={MyDataDetailsPage} path={ROUTES.DATASET_DETAILS} />
       <Route component={MyTopicDetailPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={MyDashBoardPage} path={ROUTES.DASHBOARD_DETAILS} />
+      <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
