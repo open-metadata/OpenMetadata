@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from typing import Optional
 from urllib.parse import quote_plus
 
 from .sql_source import SQLSource, SQLConnectionConfig
@@ -22,6 +23,8 @@ class TrinoConfig(SQLConnectionConfig):
     host_port = "localhost:8080"
     scheme = "trino"
     service_type = "Trino"
+    catalog: str
+    schema_name: Optional[str]
 
     def get_connection_url(self):
         url = f"{self.scheme}://"
@@ -30,8 +33,10 @@ class TrinoConfig(SQLConnectionConfig):
             if self.password:
                 url += f":{quote_plus(self.password)}"
         url += f"{self.host_port}"
-        if self.database:
-            url += f"?schema={quote_plus(self.database)}"
+        if self.catalog:
+            url += f"/{quote_plus(self.catalog)}"
+            if self.schema_name:
+                url += f"/{quote_plus(self.schema_name)}"
         return url
 
     
