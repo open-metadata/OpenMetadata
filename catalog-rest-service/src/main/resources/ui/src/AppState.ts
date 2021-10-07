@@ -36,6 +36,8 @@ class AppState {
   inPageSearchText = '';
   explorePageTab = 'tables';
 
+  isTourOpen = false;
+
   constructor() {
     makeAutoObservable(this);
   }

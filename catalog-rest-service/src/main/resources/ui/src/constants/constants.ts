@@ -98,6 +98,7 @@ export const ROUTES = {
   CALLBACK: '/callback',
   NOT_FOUND: '/404',
   MY_DATA: '/my-data',
+  TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
   EXPLORE_WITH_SEARCH: `/explore/${PLACEHOLDER_ROUTE_TAB}/${PLACEHOLDER_ROUTE_SEARCHQUERY}`,
