@@ -74,21 +74,17 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
             </p>
           ))}
         </div>
-        <div
-          className={classNames(
-            'tw-w-full tw-text-center',
-            active !== 0 && 'tw-invisible'
-          )}>
+        <div className="tw-w-full tw-text-center">
           <a href={urlGithubRepo} rel="noopener noreferrer" target="_blank">
             <button className="tw-welcome-button tw-text-grey-body tw-mr-4">
-              <SVGIcons alt="Github Logo" icon={Icons.GITHUB_ICON} width="22" />
-              <span className="tw-ml-3">Follow Us</span>
+              <SVGIcons alt="Github Logo" icon={Icons.GITHUB_ICON} width="16" />
+              <span className="tw-ml-3">Start us on Github</span>
             </button>
           </a>
           <a href={urlJoinSlack} rel="noopener noreferrer" target="_blank">
             <button className="tw-welcome-button tw-text-grey-body">
-              <SVGIcons alt="Github Logo" icon={Icons.SLACK} width="22" />
-              <span className="tw-ml-3">Join Us</span>
+              <SVGIcons alt="Github Logo" icon={Icons.SLACK} width="16" />
+              <span className="tw-ml-3">Join us on Slack</span>
             </button>
           </a>
         </div>
