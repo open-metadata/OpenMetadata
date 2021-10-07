@@ -4,8 +4,7 @@
     "config": {
       "service_name": "local_trino",
       "host_port": "localhost:8080",
-      "catalog": "tpcds",
-      "schema_name": "sf1"
+      "catalog": "system"
     }
   },
   "sink": {
