@@ -78,7 +78,7 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
           <a href={urlGithubRepo} rel="noopener noreferrer" target="_blank">
             <button className="tw-welcome-button tw-text-grey-body tw-mr-4">
               <SVGIcons alt="Github Logo" icon={Icons.GITHUB_ICON} width="16" />
-              <span className="tw-ml-3">Start us on Github</span>
+              <span className="tw-ml-3">Star us on Github</span>
             </button>
           </a>
           <a href={urlJoinSlack} rel="noopener noreferrer" target="_blank">
