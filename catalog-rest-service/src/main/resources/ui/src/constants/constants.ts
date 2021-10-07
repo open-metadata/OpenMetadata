@@ -36,6 +36,7 @@ export const ERROR404 = 'No data found';
 export const ERROR500 = 'Something went wrong';
 const PLACEHOLDER_ROUTE_DATASET_FQN = ':datasetFQN';
 const PLACEHOLDER_ROUTE_TOPIC_FQN = ':topicFQN';
+const PLACEHOLDER_ROUTE_PIPELINE_FQN = ':pipelineFQN';
 const PLACEHOLDER_ROUTE_DASHBOARD_FQN = ':dashboardFQN';
 const PLACEHOLDER_ROUTE_DATABASE_FQN = ':databaseFQN';
 const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
@@ -121,6 +122,7 @@ export const ROUTES = {
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
+  PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
   ONBOARDING: '/onboarding',
 };
 
@@ -175,6 +177,12 @@ export const getTopicDetailsPath = (topicFQN: string) => {
 export const getDashboardDetailsPath = (dashboardFQN: string) => {
   let path = ROUTES.DASHBOARD_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
+
+  return path;
+};
+export const getPipelineDetailsPath = (pipelineFQN: string) => {
+  let path = ROUTES.PIPELINE_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
 
   return path;
 };

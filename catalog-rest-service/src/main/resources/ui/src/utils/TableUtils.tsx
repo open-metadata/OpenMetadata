@@ -5,6 +5,7 @@ import PopOver from '../components/common/popover/PopOver';
 import {
   getDashboardDetailsPath,
   getDatasetDetailsPath,
+  getPipelineDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
@@ -166,6 +167,9 @@ export const getEntityLink = (
 
     case SearchIndex.DASHBOARD:
       return getDashboardDetailsPath(fullyQualifiedName);
+
+    case SearchIndex.PIPELINE:
+      return getPipelineDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
     default:

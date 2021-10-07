@@ -18,6 +18,7 @@
 import { ColumnTags, FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
+import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
 import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
 import { EntityType } from '../../enums/entity.enum';
@@ -121,6 +122,36 @@ const RecentlyViewed: FunctionComponent = () => {
 
           break;
         }
+
+        case EntityType.PIPELINE: {
+          const res = await getPipelineByFqn(
+            oData.fqn,
+            'owner, service, tags, usageSummary'
+          );
+
+          const {
+            description,
+            id,
+            displayName,
+            tags,
+            owner,
+            fullyQualifiedName,
+          } = res.data;
+          arrData.push({
+            description,
+            fullyQualifiedName,
+            id,
+            index: SearchIndex.PIPELINE,
+            name: displayName,
+            owner: getOwnerFromId(owner?.id)?.name || '--',
+            serviceType: oData.serviceType,
+            tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
+            tier: getTierFromTableTags(tags as Array<ColumnTags>),
+          });
+
+          break;
+        }
+
         default:
           break;
       }
