@@ -33,6 +33,7 @@ export enum DatabaseServiceType {
   MSSQL = 'MSSQL',
   ATHENA = 'Athena',
   PRESTO = 'Presto',
+  TRINO = 'Trino',
 }
 
 export enum MessagingServiceType {

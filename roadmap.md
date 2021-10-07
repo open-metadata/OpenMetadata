@@ -57,6 +57,7 @@ our roadmap yet, please file an Issue [Github](https://github.com/open-metadata/
 ### Other features
 * Data quality - Data profiler integration work in progress
 * Schema versioning
+* Support for Trino
 
 
 ## 0.6 Release - Nov 17th, 2021

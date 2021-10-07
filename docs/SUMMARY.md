@@ -83,6 +83,7 @@
       * [Oracle](install/metadata-ingestion/connectors/database-services/oracle.md)
       * [Postgres](install/metadata-ingestion/connectors/database-services/postgres.md)
       * [Presto](install/metadata-ingestion/connectors/database-services/presto.md)
+      * [Trino](install/metadata-ingestion/connectors/database-services/trino.md)
       * [Redshift](install/metadata-ingestion/connectors/database-services/redshift.md)
       * [Redshift Usage](install/metadata-ingestion/connectors/database-services/redshift-usage.md)
       * [Snowflake](install/metadata-ingestion/connectors/database-services/snowflake.md)

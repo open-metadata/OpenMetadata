@@ -64,6 +64,8 @@ def get_service_type_from_database_uri(uri: str) -> str:
         return "snowflake"
     if uri.startswith("presto"):
         return "presto"
+    if uri.startswith("trino"):
+        return "trino"
     if uri.startswith("postgresql"):
         return "postgres"
     if uri.startswith("pinot"):
