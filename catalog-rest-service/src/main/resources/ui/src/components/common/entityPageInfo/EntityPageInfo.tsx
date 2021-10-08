@@ -20,6 +20,7 @@ type ExtraInfo = {
   key?: string;
   value: string | number;
   isLink?: boolean;
+  placeholderText?: string;
 };
 
 type Props = {
@@ -185,7 +186,9 @@ const EntityPageInfo = ({
                       rel="noopener noreferrer"
                       target="_blank">
                       <>
-                        <span className="tw-mr-1">{info.value}</span>
+                        <span className="tw-mr-1">
+                          {info.placeholderText || info.value}
+                        </span>
                         <SVGIcons
                           alt="external-link"
                           className="tw-align-middle"

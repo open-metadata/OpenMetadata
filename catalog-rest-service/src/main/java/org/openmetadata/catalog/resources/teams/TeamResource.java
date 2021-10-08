@@ -198,7 +198,7 @@ public class TeamResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The team",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Team.class))),
+                          schema = @Schema(implementation = CreateTeam.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,

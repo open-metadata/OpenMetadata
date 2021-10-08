@@ -48,7 +48,6 @@ Type: `object`
    9. _"Athena"_
    10. _"Presto"_
    11. _"Vertica"_
-
-
+   12. _"Trino"_
 
 _This document was updated on: Thursday, September 16, 2021_

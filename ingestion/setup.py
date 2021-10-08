@@ -98,6 +98,7 @@ plugins: Dict[str, Set[str]] = {
     "oracle": {"cx_Oracle"},
     "pii-processor": pii_requirements,
     "presto": {"pyhive~=0.6.3"},
+    "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
     "redshift": {"openmetadata-sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},

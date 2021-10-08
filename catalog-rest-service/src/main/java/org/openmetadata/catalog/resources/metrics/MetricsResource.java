@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.resources.metrics;
 
 import com.google.inject.Inject;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -110,7 +109,7 @@ public class MetricsResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The metrics",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = Metrics.class))),
                   @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
           })
   public Metrics get(@Context UriInfo uriInfo,

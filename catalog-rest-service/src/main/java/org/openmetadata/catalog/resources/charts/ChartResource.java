@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -175,7 +174,7 @@ public class ChartResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Dashboard.class))),
+                                  schema = @Schema(implementation = Chart.class))),
                   @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Chart get(@Context UriInfo uriInfo, @PathParam("id") String id,
@@ -214,7 +213,7 @@ public class ChartResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The chart",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class))),
+                                  schema = @Schema(implementation = CreateChart.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -262,7 +261,7 @@ public class ChartResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated chart ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Chart.class)))
+                                  schema = @Schema(implementation = CreateChart.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,

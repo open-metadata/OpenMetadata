@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.resources.reports;
 
 import com.google.inject.Inject;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -110,7 +109,7 @@ public class ReportResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The report",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = Report.class))),
                   @ApiResponse(responseCode = "404", description = "Report for instance {id} is not found")
           })
   public Report get(@Context UriInfo uriInfo, @PathParam("id") String id,

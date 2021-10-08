@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -193,7 +192,7 @@ public class TopicResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The topic",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Dashboard.class))),
+                                  schema = @Schema(implementation = Topic.class))),
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
   public Response getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
@@ -213,7 +212,7 @@ public class TopicResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The topic",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Topic.class))),
+                                  schema = @Schema(implementation = CreateTopic.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -264,7 +263,7 @@ public class TopicResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated topic ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Topic.class)))
+                                  schema = @Schema(implementation = CreateTopic.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,

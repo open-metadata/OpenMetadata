@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -179,7 +178,7 @@ public class DatabaseResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = Database.class))),
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
           })
   public Response get(@Context UriInfo uriInfo, @PathParam("id") String id,
@@ -200,7 +199,7 @@ public class DatabaseResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = Database.class))),
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
           })
   public Response getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
@@ -220,7 +219,7 @@ public class DatabaseResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The database",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Database.class))),
+                          schema = @Schema(implementation = CreateDatabase.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -261,7 +260,7 @@ public class DatabaseResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The updated database ",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Database.class)))
+                          schema = @Schema(implementation = CreateDatabase.class)))
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,

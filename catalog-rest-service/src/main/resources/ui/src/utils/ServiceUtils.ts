@@ -23,6 +23,7 @@ import {
   SNOWFLAKE,
   SUPERSET,
   TABLEAU,
+  TRINO,
 } from '../constants/services.const';
 import {
   DashboardServiceType,
@@ -63,6 +64,9 @@ export const serviceTypeLogo = (type: string) => {
 
     case DatabaseServiceType.PRESTO:
       return PRESTO;
+
+    case DatabaseServiceType.TRINO:
+      return TRINO;
 
     case MessagingServiceType.KAFKA:
       return KAFKA;
@@ -206,6 +210,7 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
       case DatabaseServiceType.ORACLE:
       case DatabaseServiceType.POSTGRES:
       case DatabaseServiceType.PRESTO:
+      case DatabaseServiceType.TRINO:
       case DatabaseServiceType.REDSHIFT:
       case DatabaseServiceType.SNOWFLAKE:
         entityCounts.tableCount += bucket.doc_count;

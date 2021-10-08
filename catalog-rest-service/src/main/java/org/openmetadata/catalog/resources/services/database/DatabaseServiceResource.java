@@ -21,7 +21,6 @@ import com.google.inject.Inject;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.UpdateDatabaseService;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -111,7 +110,7 @@ public class DatabaseServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = DatabaseService.class))),
                   @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
           })
   public DatabaseService get(@Context UriInfo uriInfo,
@@ -127,7 +126,7 @@ public class DatabaseServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = DatabaseService.class))),
                   @ApiResponse(responseCode = "404", description = "Database service for instance {id} is not found")
           })
   public DatabaseService getByName(@Context UriInfo uriInfo,
@@ -142,7 +141,7 @@ public class DatabaseServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = DatabaseService.class))),
+                          schema = @Schema(implementation = CreateDatabaseService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
@@ -165,7 +164,7 @@ public class DatabaseServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Database service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = DatabaseService.class))),
+                          schema = @Schema(implementation = CreateDatabaseService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response update(@Context UriInfo uriInfo,

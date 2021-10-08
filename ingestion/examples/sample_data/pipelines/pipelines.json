@@ -7,6 +7,13 @@
 			"tasks": ["presto_task", "assert_table_exists"]
 		},
 		{
+			"name": "trino_etl",
+			"displayName": "Trino ETL",
+			"description": "Trino ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=trino_etl",
+			"tasks": ["trino_task", "assert_table_exists"]
+		},
+		{
 			"name": "hive_etl",
 			"displayName": "Hive ETL",
 			"description": "Hive ETL pipeline",
