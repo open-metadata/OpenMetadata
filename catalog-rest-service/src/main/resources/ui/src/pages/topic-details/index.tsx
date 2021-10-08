@@ -19,7 +19,10 @@ import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTeamDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { useAuth } from '../../hooks/authHooks';
@@ -351,7 +354,16 @@ const MyTopicDetailPage = () => {
             isTagEditable
             entityName={name}
             extraInfo={[
-              { key: 'Owner', value: owner?.name || '' },
+              {
+                key: 'Owner',
+                value:
+                  owner?.type === 'team'
+                    ? getTeamDetailsPath(owner?.name || '')
+                    : owner?.name || '',
+                placeholderText: owner?.displayName || '',
+                isLink: owner?.type === 'team',
+                openInNewTab: false,
+              },
               { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
               ...getConfigDetails(),
             ]}

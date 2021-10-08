@@ -16,6 +16,7 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { isNull } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -55,6 +56,7 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -79,7 +81,7 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
-
+  const { isAdminUser } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
@@ -462,7 +464,11 @@ const ServicesPage = () => {
                   className="tw-card"
                   position="right"
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <div className="tw-inline-block" style={{ width: '100%' }}>
+                  <div
+                    className={classNames('tw-inline-block', {
+                      'tw-opacity-40': !isAdminUser,
+                    })}
+                    style={{ width: '100%' }}>
                     <div
                       className="tw-cursor-pointer tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
                       data-testid="add-services"

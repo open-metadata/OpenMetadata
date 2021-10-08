@@ -25,7 +25,10 @@ import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdo
 import ManageTab from '../../components/my-data-details/ManageTab';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTeamDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
@@ -121,13 +124,23 @@ const MyDashBoardPage = () => {
   ];
 
   const extraInfo = [
-    { key: 'Owner', value: owner?.name || '' },
+    {
+      key: 'Owner',
+      value:
+        owner?.type === 'team'
+          ? getTeamDetailsPath(owner?.name || '')
+          : owner?.name || '',
+      placeholderText: owner?.displayName || '',
+      isLink: owner?.type === 'team',
+      openInNewTab: false,
+    },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,
       placeholderText: displayName,
       isLink: true,
+      openInNewTab: true,
     },
     // { key: 'Usage', value: usage },
     // { key: 'Queries', value: `${weeklyUsageCount} past week` },

@@ -52,6 +52,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={WorkflowsPage} path={ROUTES.WORKFLOWS} />
       <Route exact component={SQLBuilderPage} path={ROUTES.SQL_BUILDER} />
       <Route exact component={TeamsPage} path={ROUTES.TEAMS} />
+      <Route exact component={TeamsPage} path={ROUTES.TEAM_DETAILS} />
       <Route exact component={SettingsPage} path={ROUTES.SETTINGS} />
       <Route exact component={StorePage} path={ROUTES.STORE} />
       {/* <Route exact component={FeedsPage} path={ROUTES.FEEDS} /> */}
