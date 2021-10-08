@@ -222,7 +222,7 @@ public class UserResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = User.class))),
+                          schema = @Schema(implementation = CreateUser.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -243,7 +243,7 @@ public class UserResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = User.class))),
+                                  schema = @Schema(implementation = CreateUser.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdateUser(@Context UriInfo uriInfo,

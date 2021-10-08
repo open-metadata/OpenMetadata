@@ -26,7 +26,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.UpdateDashboardService;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
@@ -112,7 +111,7 @@ public class DashboardServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Dashboard service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = DashboardService.class))),
                   @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
           })
   public DashboardService get(@Context UriInfo uriInfo,
@@ -128,7 +127,7 @@ public class DashboardServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Dashboard service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = DashboardService.class))),
                   @ApiResponse(responseCode = "404", description = "Dashboard service for instance {id} is not found")
           })
   public DashboardService getByName(@Context UriInfo uriInfo,
@@ -143,7 +142,7 @@ public class DashboardServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Dashboard service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = DashboardService.class))),
+                          schema = @Schema(implementation = CreateDashboardService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
@@ -169,7 +168,7 @@ public class DashboardServiceResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "Dashboard service instance",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = DashboardService.class))),
+                          schema = @Schema(implementation = CreateDashboardService.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response update(@Context UriInfo uriInfo,

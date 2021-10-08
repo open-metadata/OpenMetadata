@@ -213,7 +213,7 @@ public class TableResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "table",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Table.class))),
+                          schema = @Schema(implementation = CreateTable.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo,
@@ -234,7 +234,7 @@ public class TableResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The table",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Table.class))),
+                          schema = @Schema(implementation = CreateTable.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,

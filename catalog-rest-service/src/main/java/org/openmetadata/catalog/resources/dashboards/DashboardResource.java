@@ -215,7 +215,7 @@ public class DashboardResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = CreateDashboard.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
@@ -261,7 +261,7 @@ public class DashboardResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The dashboard",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Dashboard.class))),
+                          schema = @Schema(implementation = CreateDashboard.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,

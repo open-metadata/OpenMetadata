@@ -232,7 +232,7 @@ public class TagResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  TagCategory.class))),
+                                  CreateTagCategory.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createCategory(@Context UriInfo uriInfo,
@@ -252,7 +252,7 @@ public class TagResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  Tag.class))),
+                                  CreateTag.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createPrimaryTag(@Context UriInfo uriInfo,
@@ -276,7 +276,7 @@ public class TagResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The user ",
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
-                                  Tag.class))),
+                                  CreateTag.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createSecondaryTag(@Context UriInfo uriInfo,
