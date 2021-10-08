@@ -51,7 +51,7 @@ base_requirements = {
     "typing_extensions>=3.7.4"
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic==1.7.4",
+    "pydantic==1.8.2",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
     "google-auth>=1.33.0",
@@ -85,10 +85,10 @@ base_plugins = {
 }
 plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"pybigquery >= 0.6.0"},
+    "bigquery": {"openmetadata-sqlalchemy-bigquery"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
-    "hive": {"pyhive~=0.6.3.dev0", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
+    "hive": {"openmetadata-sqlalchemy-pyhive", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk==21.12.2"},
