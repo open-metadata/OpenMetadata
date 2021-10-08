@@ -72,6 +72,7 @@ const MyPipelinePage = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pipelineUrl, setPipelineUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
+  const [serviceType, setServiceType] = useState<string>('');
   // const [usage, setUsage] = useState('');
   // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
@@ -121,7 +122,12 @@ const MyPipelinePage = () => {
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
-    { key: 'Pipeline Url', value: pipelineUrl, isLink: true },
+    {
+      key: `${serviceType} Url`,
+      value: pipelineUrl,
+      placeholderText: displayName,
+      isLink: true,
+    },
     // { key: 'Usage', value: usage },
     // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
@@ -197,6 +203,7 @@ const MyPipelinePage = () => {
       setTags(getTagsWithoutTier(tags));
       getServiceById('pipelineServices', service?.id).then(
         (serviceRes: AxiosResponse) => {
+          setServiceType(serviceRes.data.serviceType);
           setSlashedPipelineName([
             {
               name: serviceRes.data.name,

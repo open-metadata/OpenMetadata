@@ -73,6 +73,7 @@ const MyDashBoardPage = () => {
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [dashboardUrl, setDashboardUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
+  const [serviceType, setServiceType] = useState<string>('');
   // const [usage, setUsage] = useState('');
   // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedDashboardName, setSlashedDashboardName] = useState<
@@ -122,7 +123,12 @@ const MyDashBoardPage = () => {
   const extraInfo = [
     { key: 'Owner', value: owner?.name || '' },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
-    { key: 'Dashboard Url', value: dashboardUrl, isLink: true },
+    {
+      key: `${serviceType} Url`,
+      value: dashboardUrl,
+      placeholderText: displayName,
+      isLink: true,
+    },
     // { key: 'Usage', value: usage },
     // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
@@ -198,6 +204,7 @@ const MyDashBoardPage = () => {
       setTags(getTagsWithoutTier(tags));
       getServiceById('dashboardServices', service?.id).then(
         (serviceRes: AxiosResponse) => {
+          setServiceType(serviceRes.data.serviceType);
           setSlashedDashboardName([
             {
               name: serviceRes.data.name,

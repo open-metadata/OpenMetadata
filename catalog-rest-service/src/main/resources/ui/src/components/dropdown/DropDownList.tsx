@@ -17,7 +17,7 @@
 
 import classNames from 'classnames';
 import { isNil, lowerCase } from 'lodash';
-import React, { FunctionComponent, useEffect, useState } from 'react';
+import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { DropDownListItem, DropDownListProp } from './types';
 
@@ -31,6 +31,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   onSelect,
   groupType = 'label',
 }: DropDownListProp) => {
+  const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
   const [activeTab, setActiveTab] = useState<number>(1);
@@ -69,17 +70,6 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     );
   };
 
-  const getActiveTab = () => {
-    let tab = 0;
-    listGroups.forEach((grp, i) => {
-      if (getSearchedListByGroup(grp).length === 0) {
-        tab = i + 1;
-      }
-    });
-
-    return tab;
-  };
-
   useEffect(() => {
     setSearchText(searchString);
   }, [searchString]);
@@ -93,8 +83,24 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   }, [searchText, dropDownList]);
 
   useEffect(() => {
-    setActiveTab(getActiveTab() + 1);
+    if (isMounted.current) {
+      const modifiedGrp = listGroups
+        .map((grp, index) => ({
+          grp: grp,
+          length: searchedList.filter((item) => grp === item.group).length,
+          tab: index + 1,
+        }))
+        .sort((a, b) => (a.length > b.length ? -1 : 1));
+
+      setActiveTab(
+        searchText ? (modifiedGrp.length > 0 ? modifiedGrp[0].tab : 1) : 1
+      );
+    }
   }, [searchText]);
+
+  useEffect(() => {
+    isMounted.current = true;
+  }, []);
 
   return (
     <>
