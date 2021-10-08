@@ -125,7 +125,7 @@ const MyPipelinePage = () => {
     {
       key: `${serviceType} Url`,
       value: pipelineUrl,
-      plaholderText: displayName,
+      placeholderText: displayName,
       isLink: true,
     },
     // { key: 'Usage', value: usage },

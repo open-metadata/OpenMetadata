@@ -126,7 +126,7 @@ const MyDashBoardPage = () => {
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,
-      plaholderText: displayName,
+      placeholderText: displayName,
       isLink: true,
     },
     // { key: 'Usage', value: usage },
