@@ -242,7 +242,7 @@ class GenerateFakeSampleData:
                 value = None
                 if "id" in col_name:
                     value = uuid.uuid4()
-                elif "price" in col_name:
+                elif "price" in col_name or "currency" in col_name:
                     value = fake.pricetag()
                 elif "barcode" in col_name:
                     value = fake.ean(length=13)
