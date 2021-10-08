@@ -59,9 +59,25 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
-      const description = isEmpty(table.highlight?.description)
-        ? table.description
-        : table.highlight?.description.join(' ');
+      let tDesc = table.description;
+      const highLightedTexts = !isEmpty(table.highlight?.description)
+        ? table.highlight?.description.join(' ') || ''
+        : '';
+      const highlightTxtMatch = highLightedTexts.match(
+        /<span(.*?)>(.*?)<\/span>/g
+      );
+      if (highlightTxtMatch) {
+        const matchTextArr = highlightTxtMatch.map((val) =>
+          val.replace(/<\/?span(.*?)>/g, '')
+        );
+        matchTextArr.forEach((text) => {
+          const regEx = new RegExp(`\\b${text}\\b`, 'g');
+          tDesc = tDesc.replace(
+            regEx,
+            `<span class="text-highlighter">${text}</span>`
+          );
+        });
+      }
 
       const name = isEmpty(table.highlight?.table_name)
         ? table.name
@@ -70,7 +86,7 @@ const SearchedData: React.FC<SearchedDataProp> = ({
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCard
-            description={description}
+            description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
             indexType={table.index}
             name={name}
