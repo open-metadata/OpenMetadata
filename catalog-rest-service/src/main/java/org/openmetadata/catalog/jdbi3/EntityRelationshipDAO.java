@@ -30,6 +30,9 @@ public interface EntityRelationshipDAO {
   int insert(@Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("fromEntity") String fromEntity,
              @Bind("toEntity") String toEntity, @Bind("relation") int relation);
 
+  //
+  // Find to operations
+  //
   @SqlQuery("SELECT toId, toEntity FROM entity_relationship WHERE fromId = :fromId AND relation = :relation")
   @RegisterMapper(ToEntityReferenceMapper.class)
   List<EntityReference> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation);
@@ -43,6 +46,9 @@ public interface EntityRelationshipDAO {
           "fromId = :fromId AND relation = :relation AND toEntity = :toEntity ORDER BY fromId")
   int findToCount(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
+  //
+  // Find from operations
+  //
   @SqlQuery("SELECT fromId FROM entity_relationship WHERE " +
           "toId = :toId AND relation = :relation AND fromEntity = :fromEntity ORDER BY fromId")
   List<String> findFrom(@Bind("toId") String toId, @Bind("relation") int relation,
@@ -59,6 +65,9 @@ public interface EntityRelationshipDAO {
   List<EntityReference> findFromEntity(@Bind("toId") String toId, @Bind("relation") int relation,
                                        @Bind("fromEntity") String fromEntity);
 
+  //
+  // Delete Operations
+  //
   @SqlUpdate("DELETE from entity_relationship WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
   void delete(@Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("relation") int relation);
 

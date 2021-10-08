@@ -35,7 +35,6 @@ public enum Relationship {
   CONTAINS("contains"),
 
   // User/Bot --- created ---> Thread
-  // Pipeline --- created ---> Table
   CREATED("createdBy"),
 
   // User/Bot --- repliedTo ---> Thread
@@ -70,7 +69,13 @@ public enum Relationship {
   FOLLOWS("follows"),
 
   // {Table.Column...} --- joinedWith ---> {Table.Column}
-  JOINED_WITH("joinedWith");
+  JOINED_WITH("joinedWith"),
+
+  // Lineage relationship
+  // {Table1} --- upstream ---> {Table2} (Table1 is used for creating Table2}
+  // {Pipeline} --- upstream ---> {Table2} (Pipeline creates Table2)
+  // {Table} --- upstream ---> {Dashboard} (Table was used to  create Dashboard)
+  UPSTREAM("upstream");
   /*** Add new enums to the end of the list **/
 
   private final String value;
