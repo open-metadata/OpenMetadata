@@ -43,6 +43,7 @@ const PLACEHOLDER_ROUTE_SERVICE_FQN = ':serviceFQN';
 const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
+const PLACEHOLDER_ROUTE_TEAM = ':team';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -106,6 +107,7 @@ export const ROUTES = {
   WORKFLOWS: '/workflows',
   SQL_BUILDER: '/sql-builder',
   TEAMS: '/teams',
+  TEAM_DETAILS: `/teams/${PLACEHOLDER_ROUTE_TEAM}`,
   SETTINGS: '/settings',
   STORE: '/store',
   FEEDS: '/feeds',
@@ -183,6 +185,12 @@ export const getDashboardDetailsPath = (dashboardFQN: string) => {
 export const getPipelineDetailsPath = (pipelineFQN: string) => {
   let path = ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
+
+  return path;
+};
+export const getTeamDetailsPath = (teamName: string) => {
+  let path = ROUTES.TEAM_DETAILS;
+  path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);
 
   return path;
 };

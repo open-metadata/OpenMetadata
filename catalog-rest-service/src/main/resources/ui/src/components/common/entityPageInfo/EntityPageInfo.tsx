@@ -21,6 +21,7 @@ type ExtraInfo = {
   value: string | number;
   isLink?: boolean;
   placeholderText?: string;
+  openInNewTab?: boolean;
 };
 
 type Props = {
@@ -184,17 +185,19 @@ const EntityPageInfo = ({
                       className="link-text"
                       href={info.value as string}
                       rel="noopener noreferrer"
-                      target="_blank">
+                      target={info.openInNewTab ? '_blank' : '_self'}>
                       <>
                         <span className="tw-mr-1">
                           {info.placeholderText || info.value}
                         </span>
-                        <SVGIcons
-                          alt="external-link"
-                          className="tw-align-middle"
-                          icon="external-link"
-                          width="12px"
-                        />
+                        {info.openInNewTab && (
+                          <SVGIcons
+                            alt="external-link"
+                            className="tw-align-middle"
+                            icon="external-link"
+                            width="12px"
+                          />
+                        )}
                       </>
                     </a>
                   ) : (

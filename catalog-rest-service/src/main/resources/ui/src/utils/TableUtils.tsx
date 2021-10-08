@@ -100,7 +100,8 @@ export const getOwnerFromId = (
       const team = AppState.userTeams.find((item) => item.id === id);
       if (team) {
         retVal = {
-          name: team.displayName || team.name,
+          name: team.name,
+          displayName: team.displayName || team.name,
           id: team.id,
           type: 'team',
         };

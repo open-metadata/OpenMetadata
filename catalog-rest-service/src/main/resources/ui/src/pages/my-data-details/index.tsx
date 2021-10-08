@@ -44,6 +44,7 @@ import SchemaTab from '../../components/my-data-details/SchemaTab';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
+  getTeamDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -118,7 +119,9 @@ const MyDataDetailsPage = () => {
   });
   const [tableTags, setTableTags] = useState<Array<ColumnTags>>([]);
   const [isEdit, setIsEdit] = useState(false);
-  const [owner, setOwner] = useState<Table['owner']>();
+  const [owner, setOwner] = useState<
+    Table['owner'] & { displayName?: string }
+  >();
   const [tableJoinData, setTableJoinData] = useState<TableJoins>({
     startDate: new Date(),
     dayCount: 0,
@@ -178,8 +181,20 @@ const MyDataDetailsPage = () => {
   const extraInfo: Array<{
     key?: string;
     value: string | number;
+    isLink?: boolean;
+    placeholderText?: string;
+    openInNewTab?: boolean;
   }> = [
-    { key: 'Owner', value: owner?.name || '' },
+    {
+      key: 'Owner',
+      value:
+        owner?.type === 'team'
+          ? getTeamDetailsPath(owner?.name || '')
+          : owner?.name || '',
+      placeholderText: owner?.displayName || '',
+      isLink: owner?.type === 'team',
+      openInNewTab: false,
+    },
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
     { key: 'Usage', value: usage },
     { key: 'Queries', value: `${weeklyUsageCount} past week` },

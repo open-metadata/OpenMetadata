@@ -19,7 +19,7 @@ import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import {
   createTeam,
@@ -37,6 +37,7 @@ import FormModal from '../../components/Modals/FormModal';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import {
   ERROR404,
+  getTeamDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
@@ -49,6 +50,8 @@ import Form from './Form';
 import UserCard from './UserCard';
 
 const TeamsPage = () => {
+  const { team } = useParams() as Record<string, string>;
+  const history = useHistory();
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [error, setError] = useState<string>('');
@@ -58,22 +61,6 @@ const TeamsPage = () => {
   const [isAddingTeam, setIsAddingTeam] = useState<boolean>(false);
   const [isAddingUsers, setIsAddingUsers] = useState<boolean>(false);
   const [userList, setUserList] = useState<Array<User>>([]);
-  const fetchTeams = () => {
-    setIsLoading(true);
-    getTeams(['users', 'owns'])
-      .then((res: AxiosResponse) => {
-        setTeams(res.data.data);
-        setCurrentTeam(res.data.data[0]);
-        setIsLoading(false);
-      })
-      .catch((err: AxiosError) => {
-        if (err?.response?.data.code) {
-          setError(ERROR404);
-        }
-        setIsLoading(false);
-      });
-  };
-
   const fetchCurrentTeam = (name: string, update = false) => {
     if (currentTeam?.name !== name || update) {
       setIsLoading(true);
@@ -89,6 +76,24 @@ const TeamsPage = () => {
           setIsLoading(false);
         });
     }
+  };
+
+  const fetchTeams = () => {
+    setIsLoading(true);
+    getTeams(['users', 'owns'])
+      .then((res: AxiosResponse) => {
+        if (!team) {
+          setCurrentTeam(res.data.data[0]);
+        }
+        setTeams(res.data.data);
+        setIsLoading(false);
+      })
+      .catch((err: AxiosError) => {
+        if (err?.response?.data.code) {
+          setError(ERROR404);
+        }
+        setIsLoading(false);
+      });
   };
 
   const createNewTeam = (data: Team) => {
@@ -147,6 +152,9 @@ const TeamsPage = () => {
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
+  const changeCurrentTeam = (name: string) => {
+    history.push(getTeamDetailsPath(name));
+  };
 
   const getTabs = () => {
     return (
@@ -200,7 +208,7 @@ const TeamsPage = () => {
     return (
       <>
         <div
-          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
+          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
           data-testid="user-card-container">
           {currentTeam?.users?.map((user, index) => {
             const User = {
@@ -245,7 +253,7 @@ const TeamsPage = () => {
     return (
       <>
         <div
-          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-2 tw-gap-4"
+          className="tw-grid xl:tw-grid-cols-4 md:tw-grid-cols-3 tw-gap-4"
           data-testid="dataset-card">
           {' '}
           {currentTeam?.owns?.map((dataset, index) => {
@@ -287,8 +295,7 @@ const TeamsPage = () => {
               )}`}
               key={team.name}
               onClick={() => {
-                fetchCurrentTeam(team.name);
-                setCurrentTab(1);
+                changeCurrentTeam(team.name);
               }}>
               <p className="tw-text-center tag-category tw-self-center">
                 {team.displayName}
@@ -350,6 +357,11 @@ const TeamsPage = () => {
   useEffect(() => {
     setUserList(AppState.users);
   }, [AppState.users]);
+
+  useEffect(() => {
+    fetchCurrentTeam(team);
+    setCurrentTab(1);
+  }, [team]);
 
   return (
     <>

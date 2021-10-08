@@ -130,6 +130,7 @@ declare module 'Models' {
       name?: string;
       id: string;
       type: 'user' | 'team';
+      displayName?: string;
     };
     tags: Array<ColumnTags>;
     usageSummary: UsageSummary;
