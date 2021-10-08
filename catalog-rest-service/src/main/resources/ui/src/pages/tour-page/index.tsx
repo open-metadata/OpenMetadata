@@ -13,7 +13,6 @@ const TourPage = () => {
 
   const handleFirstTimeUser = () => {
     setShowFirstTimeUserModal(false);
-    // handleIsTourOpen(true);
   };
 
   return (

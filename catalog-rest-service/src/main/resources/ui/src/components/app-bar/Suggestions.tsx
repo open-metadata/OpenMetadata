@@ -149,7 +149,7 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         <Link
           className="tw-block tw-px-4 tw-py-2 tw-text-sm"
           data-testid="data-name"
-          id={fqdn}
+          id={fqdn.replace(/\./g, '')}
           to={getEntityLink(index, fqdn)}
           onClick={() => setIsOpen(false)}>
           {name}

@@ -168,7 +168,7 @@ const Appbar: React.FC = (): JSX.Element => {
         <div className="tw-h-14 tw-py-2 tw-px-5 tw-border-b-2 tw-border-separator">
           <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap">
             <div className="tw-flex tw-items-center tw-flex-row tw-justify-between tw-flex-nowrap tw-mr-auto">
-              <NavLink to="/">
+              <NavLink id="openmetadata_logo" to="/">
                 <SVGIcons
                   alt="OpenMetadata Logo"
                   icon={Icons.LOGO_SMALL}
