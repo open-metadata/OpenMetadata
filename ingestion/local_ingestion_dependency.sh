@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+pip install --upgrade setuptools '.[sample-dßata, elasticsearch]'
 while ! wget -O /dev/null -o /dev/null localhost:8585; do sleep 5; done
-pip install --upgrade setuptools '.[sample-data, elasticsearch]'
 metadata ingest -c pipelines/sample_data.json
 metadata ingest -c pipelines/sample_users.json
 metadata ingest -c pipelines/sample_usage.json
