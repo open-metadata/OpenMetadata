@@ -17,7 +17,7 @@
 #
 
 while ! curl -o - localhost:3306; do sleep 5; done
-cp /openmetadata.yaml /openmetadata-0.3.0/conf/openmetadata.yaml
-cd /openmetadata-0.3.0
+cp /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
+cd /openmetadata-*/
 ./bootstrap/bootstrap_storage.sh migrate
 ./bin/openmetadata-server-start.sh conf/openmetadata.yaml

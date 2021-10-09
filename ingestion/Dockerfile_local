@@ -6,7 +6,7 @@ COPY ./. /openmetadata-ingestion/.
 WORKDIR /openmetadata-ingestion
 
 RUN apt-get update && \
-    apt-get install -y curl gcc libsasl2-dev unixodbc-dev --no-install-recommends && \
+    apt-get install -y wget gcc libsasl2-dev unixodbc-dev --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
 RUN chmod 777 local_ingestion_dependency.sh
