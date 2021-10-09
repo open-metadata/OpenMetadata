@@ -195,7 +195,8 @@ public final class TestUtils {
     // Ensure data entities use fully qualified name
     if (List.of("table", "database", "metrics", "dashboard", "pipeline", "report", "topic", "chart")
             .contains(ref.getType())) {
-      assertTrue(ref.getName().contains(".")); // FullyQualifiedName has "." as separator
+      // FullyQualifiedName has "." as separator
+      assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
     }
   }
 

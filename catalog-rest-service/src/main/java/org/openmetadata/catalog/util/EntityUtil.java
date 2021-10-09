@@ -308,40 +308,31 @@ public final class EntityUtil {
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = EntityUtil.validate(fqn, tableDAO.findByFQN(fqn), Table.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TABLE)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
       Database instance = EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DATABASE)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
       Metrics instance = EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.METRICS)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
       Report instance = EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.REPORT)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
       Topic instance = EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TOPIC)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       Chart instance = EntityUtil.validate(fqn, chartDAO.findByFQN(fqn), Chart.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.CHART)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.DASHBOARD)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.TASK)) {
       Task instance = EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.TASK)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       Model instance = EntityUtil.validate(fqn, modelDAO.findByFQN(fqn), Model.class);
-      return new EntityReference().withId(instance.getId()).withName(instance.getName()).withType(Entity.MODEL)
-              .withDescription(instance.getDescription());
+      return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }

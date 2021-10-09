@@ -93,8 +93,7 @@ public class UsageResource {
                   "(default = currentDate)")
           @QueryParam("date") String date) throws IOException {
     // TODO add href
-    int actualDays = Math.min(30, days);
-    actualDays = Math.max(1, actualDays);
+    int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
     return addHref(uriInfo, dao.get(entity, id, actualDate, actualDays));
   }
@@ -128,8 +127,7 @@ public class UsageResource {
           @QueryParam("date") String date
   ) throws IOException {
     // TODO add href
-    int actualDays = Math.min(30, days);
-    actualDays = Math.max(1, actualDays);
+    int actualDays = Math.min(Math.max(days, 1), 30);
     String actualDate = date == null ? RestUtil.DATE_FORMAT.format(new Date()) : date;
     return addHref(uriInfo, dao.getByName(entity, fqn, actualDate, actualDays));
   }
