@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import traceback
 import logging
 import uuid
 import re
@@ -291,6 +292,9 @@ class SQLSource(Source):
             service=EntityReference(id=self.service.id, type=self.config.service_type)
         )
 
+    def parse_raw_data_type(self,raw_data_type):
+        return raw_data_type
+
     def _get_columns(self, schema: str, table: str, inspector: Inspector) -> List[Column]:
         pk_constraints = inspector.get_pk_constraint(table, schema)
         pk_columns = pk_constraints['column_constraints'] if len(
@@ -311,33 +315,42 @@ class SQLSource(Source):
         row_order = 1
         try:
             for column in columns:
+                if '.' in column['name']:
+                    continue
                 children = None
                 data_type_display = None
                 col_data_length = None
                 arr_data_type = None
-                if 'raw_data_type' in column and 'raw_data_type' is not None:
-                    if re.match(r'(struct<)(?:.*)', column['raw_data_type']):
+                if 'raw_data_type' in column and column['raw_data_type'] is not None:
+                    column['raw_data_type'] = self.parse_raw_data_type(column['raw_data_type'])
+                    if column['raw_data_type'].startswith('struct<'):
                         col_type = 'STRUCT'
-                        # plucked = re.match(r'(?:struct<)(.*)(?:>)',column['raw_data_type']).groups()[0]
-
-                        children = _handle_complex_data_types(
+                        col_obj = _handle_complex_data_types(
                             self.status, dataset_name, f"{column['name']}:{column['raw_data_type']}"
-                        )['children']
-                        data_type_display = column['raw_data_type']
-                    elif re.match(r'(map<|array<)(?:.*)', column['raw_data_type']):
-                        if re.match(r'(map<)(?:.*)', column['raw_data_type']):
-                            col_type = 'MAP'
-                        else:
-                            col_type = 'ARRAY'
-                            arr_data_type = re.match(
-                                r'(?:array<)(\w*)(?:.*)', column['raw_data_type']
-                            )
-                            arr_data_type = arr_data_type.groups()[0].upper()
-                        data_type_display = column['raw_data_type']
+                        )
+                        if 'children' in col_obj and col_obj['children'] is not None:
+                            children = col_obj['children']
+                    elif column['raw_data_type'].startswith('map<'):
+                        col_type = 'MAP'
+                    elif column['raw_data_type'].startswith('array<'):
+                        col_type = 'ARRAY'
+                        arr_data_type = re.match(
+                            r'(?:array<)(\w*)(?:.*)', column['raw_data_type']
+                        )
+                        arr_data_type = arr_data_type.groups()[0].upper()
+                    elif column['raw_data_type'].startswith('uniontype<'):
+                        col_type = 'UNION'
                     else:
                         col_type = get_column_type(self.status, dataset_name, column['type'])
+                        data_type_display = col_type
+                    if data_type_display is None:
+                        data_type_display = column['raw_data_type']
                 else:
                     col_type = get_column_type(self.status, dataset_name, column['type'])
+                    if col_type == 'ARRAY':
+                        if re.match(r'(?:\w*)(?:\()(\w*)(?:.*))',str(column['type'])):
+                            arr_data_type = re.match(r'(?:\w*)(?:[(]*)(\w*)(?:.*))',str(column['type'])).groups()
+                            data_type_display = column['type']
                 col_constraint = None
                 if column['nullable']:
                     col_constraint = Constraint.NULL
@@ -351,20 +364,24 @@ class SQLSource(Source):
                     col_data_length = column['type'].length
                 if col_data_length is None:
                     col_data_length = 1
-                om_column = Column(
-                    name=column['name'],
-                    description=column.get("comment", None),
-                    dataType=col_type,
-                    dataTypeDisplay="{}({})".format(col_type, col_data_length) if data_type_display
-                                                                                  is None else
-                    f"{data_type_display}",
-                    dataLength=col_data_length,
-                    constraint=col_constraint,
-                    ordinalPosition=row_order,
-                    children=children if children is not None else None,
-                    arrayDataType=arr_data_type
-                )
-
+                try:
+                    om_column = Column(
+                        name=column['name'],
+                        description=column.get("comment", None),
+                        dataType=col_type,
+                        dataTypeDisplay="{}({})".format(col_type, col_data_length) if data_type_display
+                                                                                    is None else f"{data_type_display}",
+                        dataLength=col_data_length,
+                        constraint=col_constraint,
+                        ordinalPosition=row_order,
+                        children=children if children is not None else None,
+                        arrayDataType=arr_data_type
+                    )
+                except Exception as err:
+                    logger.error(traceback.format_exc())
+                    logger.error(traceback.print_exc())
+                    logger.error(err)
+                    continue
                 table_columns.append(om_column)
                 row_order = row_order + 1
             return table_columns

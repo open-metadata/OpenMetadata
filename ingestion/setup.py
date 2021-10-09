@@ -51,7 +51,7 @@ base_requirements = {
     "typing_extensions>=3.7.4"
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic==1.7.4",
+    "pydantic==1.8.2",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
     "google-auth>=1.33.0",
@@ -85,10 +85,10 @@ base_plugins = {
 }
 plugins: Dict[str, Set[str]] = {
     "athena": {"PyAthena[SQLAlchemy]"},
-    "bigquery": {"pybigquery >= 0.6.0"},
+    "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
-    "hive": {"pyhive~=0.6.3.dev0", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
+    "hive": {"openmetadata-sqlalchemy-hive==0.2.0", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk==21.12.2"},
@@ -101,7 +101,7 @@ plugins: Dict[str, Set[str]] = {
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
-    "redshift": {"openmetadata-sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift": {"openmetadata-sqlalchemy-redshift==0.2.0", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {"sqlalchemy-redshift", "psycopg2-binary", "GeoAlchemy2"},
     "scheduler": scheduler_requirements,
     "data-profiler": {"openmetadata-data-profiler"},

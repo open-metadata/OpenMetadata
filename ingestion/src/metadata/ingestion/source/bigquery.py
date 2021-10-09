@@ -55,3 +55,6 @@ class BigquerySource(SQLSource):
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[0], segments[1]
+    
+    def parse_raw_data_type(self, raw_data_type):
+        return raw_data_type.replace(', ',',').replace(' ',':').lower()
