@@ -22,7 +22,7 @@ from .sql_source import (
     SQLSource,
 )
 from ..ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import register_custom_type
+from metadata.utils.column_helpers import register_custom_type
 register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")

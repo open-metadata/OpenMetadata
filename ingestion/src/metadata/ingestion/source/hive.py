@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 from typing import Optional
-from metadata.utils.helpers import register_custom_type
+from metadata.utils.column_helpers import register_custom_type
 from pyhive import hive  # noqa: F401
 from pyhive.sqlalchemy_hive import HiveDate, HiveDecimal, HiveTimestamp
 
