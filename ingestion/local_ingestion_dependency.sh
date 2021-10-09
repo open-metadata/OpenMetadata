@@ -14,10 +14,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-while ! curl -o - localhost:3306; do sleep 5; done
-cp /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
-cd /openmetadata-*/
-./bootstrap/bootstrap_storage.sh migrate
-./bin/openmetadata-server-start.sh conf/openmetadata.yaml
+pip install --upgrade setuptools '.[sample-dßata, elasticsearch]'
+while ! wget -O /dev/null -o /dev/null localhost:8585; do sleep 5; done
+metadata ingest -c pipelines/sample_data.json
+metadata ingest -c pipelines/sample_users.json
+metadata ingest -c pipelines/sample_usage.json
+metadata ingest -c pipelines/metadata_to_es.json

@@ -1,0 +1,88 @@
+#  Licensed to the Apache Software Foundation (ASF) under one or more
+#  contributor license agreements. See the NOTICE file distributed with
+#  this work for additional information regarding copyright ownership.
+#  The ASF licenses this file to You under the Apache License, Version 2.0
+#  (the "License"); you may not use this file except in compliance with
+#  the License. You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+version: "3.9"
+services:
+  db:
+    platform: linux/x86_64
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: openmetadata_user
+      MYSQL_PASSWORD: openmetadata_password
+      MYSQL_DATABASE: openmetadata_db
+    expose:
+      - 3306
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.10
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    environment:
+      - discovery.type=single-node
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.11
+    expose:
+      - 9200
+      - 9300
+    ports:
+      - 9200:9200
+      - 9300:9300
+
+  openmetadata-server:
+    build:
+      context: ../../.
+      dockerfile: docker/local-metadata/Dockerfile
+    expose:
+      - 8585
+      - 9200
+      - 9300
+      - 3306
+    ports:
+      - 8585:8585
+    depends_on:
+      - db
+      - elasticsearch
+    networks:
+      app_net:
+        ipv4_address: 172.16.239.12
+    extra_hosts:
+      - "localhost:172.16.239.10"
+      - "elasticsearch:172.16.239.11"
+
+  ingestion:
+    build:
+      context: ../../ingestion/.
+      dockerfile: Dockerfile_local
+    expose:
+      - 7777
+    ports:
+      - 7777:7777
+    networks:
+      - app_net
+    extra_hosts:
+      - "localhost:172.16.239.10"
+      - "localhost:172.16.239.11"
+      - "localhost:172.16.239.12"
+
+networks:
+  app_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.239.0/24"

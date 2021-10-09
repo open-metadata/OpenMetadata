@@ -1,0 +1,13 @@
+FROM python:3.8.10
+
+EXPOSE 7777
+
+COPY ./. /openmetadata-ingestion/.
+WORKDIR /openmetadata-ingestion
+
+RUN apt-get update && \
+    apt-get install -y wget gcc libsasl2-dev unixodbc-dev --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN chmod 777 local_ingestion_dependency.sh
+CMD ["./local_ingestion_dependency.sh"]

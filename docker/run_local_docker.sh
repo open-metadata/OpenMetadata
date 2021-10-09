@@ -14,10 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-while ! curl -o - localhost:3306; do sleep 5; done
-cp /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
-cd /openmetadata-*/
-./bootstrap/bootstrap_storage.sh migrate
-./bin/openmetadata-server-start.sh conf/openmetadata.yaml
+mvn -DskipTests clean package
+cd docker/local-metadata/
+docker-compose up
