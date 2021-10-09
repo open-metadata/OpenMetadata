@@ -292,8 +292,8 @@ class SQLSource(Source):
             service=EntityReference(id=self.service.id, type=self.config.service_type)
         )
 
-    def check_valid_raw_type(self,col_raw_type):
-        return col_raw_type
+    def parse_raw_data_type(self,raw_data_type):
+        return raw_data_type
 
     def _get_columns(self, schema: str, table: str, inspector: Inspector) -> List[Column]:
         pk_constraints = inspector.get_pk_constraint(table, schema)
@@ -322,8 +322,7 @@ class SQLSource(Source):
                 col_data_length = None
                 arr_data_type = None
                 if 'raw_data_type' in column and column['raw_data_type'] is not None:
-                    column['raw_data_type'] = self.check_valid_raw_type(column['raw_data_type'])
-                    
+                    column['raw_data_type'] = self.parse_raw_data_type(column['raw_data_type'])
                     if column['raw_data_type'].startswith('struct<'):
                         col_type = 'STRUCT'
                         col_obj = _handle_complex_data_types(
@@ -331,10 +330,8 @@ class SQLSource(Source):
                         )
                         if 'children' in col_obj and col_obj['children'] is not None:
                             children = col_obj['children']
-                    
                     elif column['raw_data_type'].startswith('map<'):
                         col_type = 'MAP'
-
                     elif column['raw_data_type'].startswith('array<'):
                         col_type = 'ARRAY'
                         arr_data_type = re.match(
