@@ -53,6 +53,18 @@
       "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "brokers": {
       "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
       "$ref" : "#/definitions/brokers"

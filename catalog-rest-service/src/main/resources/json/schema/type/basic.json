@@ -17,11 +17,6 @@
       "minLength": 6,
       "maxLength": 127
     },
-    "entityLink": {
-      "description": "Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.",
-      "type": "string",
-      "pattern": "^<#E/\\S+/\\S+>$"
-    },
     "timestamp": {
       "description": "Timestamp in unixTimeMillis.",
       "type": "string",
@@ -60,6 +55,18 @@
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
       "format": "date-time"
+    },
+    "entityVersion": {
+      "description" : "Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.",
+      "type" : "number",
+      "multipleOf": 0.1,
+      "default" : 0.1,
+      "minimum": 0.1
+    },
+    "entityLink": {
+      "description": "Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.",
+      "type": "string",
+      "pattern": "^<#E/\\S+/\\S+>$"
     },
     "sqlQuery": {
       "description": "SQL query statement. Example - 'select * from orders'.",

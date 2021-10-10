@@ -355,8 +355,24 @@
       "description": "Display Name that identifies this table. It could be title or label from the source services.",
       "type": "string"
     },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of a table.",
+      "type": "string"
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
       "type": "string"
     },
     "href": {
@@ -365,10 +381,6 @@
     },
     "tableType": {
       "$ref": "#/definitions/tableType"
-    },
-    "fullyQualifiedName": {
-      "description": "Fully qualified name of a table in the form `serviceName.databaseName.tableName`.",
-      "type": "string"
     },
     "columns": {
       "description": "Columns in this table.",
@@ -386,19 +398,10 @@
       },
       "default": null
     },
-    "usageSummary": {
-      "description": "Latest usage information for this table.",
-      "$ref": "../../type/usageDetails.json",
-      "default": null
-    },
     "owner": {
       "description": "Owner of this table.",
       "$ref": "../../type/entityReference.json",
       "default": null
-    },
-    "followers": {
-      "description": "Followers of this table.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "database": {
       "description": "Reference to Database that contains this table.",
@@ -415,6 +418,15 @@
         "$ref": "../../type/tagLabel.json"
       },
       "default": null
+    },
+    "usageSummary": {
+      "description": "Latest usage information for this table.",
+      "$ref": "../../type/usageDetails.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this table.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "joins": {
       "description": "Details of other tables this table is frequently joined with.",
