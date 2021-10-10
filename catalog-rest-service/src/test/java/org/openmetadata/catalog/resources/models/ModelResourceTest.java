@@ -376,14 +376,16 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void get_ModelWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description").withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
+    CreateModel create = create(test).withDescription("description")
+            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     Model model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, false);
   }
 
   @Test
   public void get_ModelByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description").withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
+    CreateModel create = create(test).withDescription("description")
+            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     Model model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, true);
   }
