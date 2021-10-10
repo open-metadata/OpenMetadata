@@ -27,12 +27,14 @@ import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
+import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -79,6 +81,9 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
+  public static String ALGORITHM = "regression";
+  public static EntityReference SUPERSET_REFERENCE;
+  public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
@@ -96,7 +101,12 @@ public class ModelResourceTest extends CatalogApplicationTest {
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
 
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    DASHBOARD_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+
+    DASHBOARD = DashboardResourceTest.createDashboard(
+            DashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
+    );
+    DASHBOARD_REFERENCE = EntityUtil.getEntityReference(DASHBOARD);
 
   }
 
@@ -340,7 +350,21 @@ public class ModelResourceTest extends CatalogApplicationTest {
     assertNull(db.getOwner());
   }
 
-  // TODO TEST put_ModelDashboardUpdate_200
+  @Test
+  public void put_ModelUpdateAlgorithm_200(TestInfo test) throws HttpResponseException {
+    CreateModel request = create(test).withDescription("");
+    createAndCheckModel(request, adminAuthHeaders());
+
+    updateAndCheckModel(request.withAlgorithm("SVM"), OK, adminAuthHeaders());
+  }
+
+  @Test
+  public void put_ModelUpdateDashboard_200(TestInfo test) throws HttpResponseException {
+    CreateModel request = create(test).withDescription("");
+    createAndCheckModel(request, adminAuthHeaders());
+
+    updateAndCheckModel(request.withDashboard(DASHBOARD_REFERENCE), OK, adminAuthHeaders());
+  }
 
   @Test
   public void get_nonExistentModel_404_notFound() {
@@ -352,14 +376,16 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void get_ModelWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
+    CreateModel create = create(test).withDescription("description")
+            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     Model model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, false);
   }
 
   @Test
   public void get_ModelByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description").withOwner(USER_OWNER1);
+    CreateModel create = create(test).withDescription("description")
+            .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
     Model model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, true);
   }
@@ -499,7 +525,25 @@ public class ModelResourceTest extends CatalogApplicationTest {
     model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getModel(model.getId(), fields, adminAuthHeaders());
     assertNotNull(model.getOwner());
-    // TODO: Add test on algorithm and dashboard EntityRef
+    assertNotNull(model.getAlgorithm());
+    assertNotNull(model.getDashboard());
+
+    // .../models?fields=owner,algorithm
+    fields = "owner,algorithm";
+    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getModel(model.getId(), fields, adminAuthHeaders());
+    assertNotNull(model.getOwner());
+    assertNotNull(model.getAlgorithm());
+    assertNotNull(model.getDashboard());
+
+    // .../models?fields=owner,algorithm, dashboard
+    fields = "owner,algorithm,dashboard";
+    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getModel(model.getId(), fields, adminAuthHeaders());
+    assertNotNull(model.getOwner());
+    assertNotNull(model.getAlgorithm());
+    assertNotNull(model.getDashboard());
+    TestUtils.validateEntityReference(model.getDashboard());
 
   }
 
@@ -514,6 +558,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
                                      EntityReference expectedOwner) {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
+    assertNotNull(model.getAlgorithm());
     assertEquals(expectedDescription, model.getDescription());
 
     // Validate owner
@@ -527,7 +572,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
     return model;
   }
 
-  // TODO ADD DASHBOARD VALIDATION
   private static Model validateModel(Model model, String expectedDescription,
                                      EntityReference expectedOwner,
                                      List<TagLabel> expectedTags) throws HttpResponseException {
@@ -653,11 +697,11 @@ public class ModelResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateModel create(TestInfo test) {
-    return new CreateModel().withName(getModelName(test));
+    return new CreateModel().withName(getModelName(test)).withAlgorithm(ALGORITHM);
   }
 
   public static CreateModel create(TestInfo test, int index) {
-    return new CreateModel().withName(getModelName(test, index));
+    return new CreateModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM);
   }
 
 }

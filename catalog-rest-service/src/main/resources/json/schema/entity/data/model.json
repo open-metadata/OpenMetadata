@@ -64,5 +64,5 @@
       "default": null
     }
   },
-  "required": ["id", "name"]
+  "required": ["id", "name", "algorithm"]
 }
