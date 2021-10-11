@@ -32,5 +32,5 @@ I worked on the ..... because ...
 <!--- OpenMetadata Community thanks you for explaining your changes in detail !-->
 <!--- If you are unsure of people to review your work, you can add anyone of these developers :) !-->
 <!--- Frontend: @shahsank3t, @darth-coder00, @Sachin-chaurasiya -->
-<!--- Backend: @sureshms -->
-<!--- Ingestion: @ayush-shah -->
+<!--- Backend: @sureshms @harshach -->
+<!--- Ingestion: @harshach @ayush-shah -->
