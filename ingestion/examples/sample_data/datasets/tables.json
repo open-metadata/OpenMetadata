@@ -2,6 +2,326 @@
   "tables": [
     {
       "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
+      "name": "raw_customer",
+      "tableType": "Regular",
+      "description": "This is a raw customers table as represented in our online DB. This contains personal, shipping and billing addresses and details of the customer store and customer profile. This table is used to build our dimensional and fact tables",
+     "columns": [
+      {
+        "name": "comments",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 1
+      },
+      {
+        "name": "creditcard",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 2
+      },
+      {
+        "name": "customer",
+        "dataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "struct<username:character varying(32),name:character varying(32),sex:char(1),address:character varying(128),mail:character varying(64),birthdate:character varying(16)>",
+        "constraint": "NULL",
+        "ordinalPosition": 3,
+        "children": [
+          {
+            "name": "username",
+            "dataType": "VARCHAR",
+            "dataLength": 32,
+            "dataTypeDisplay": "character varying(32)",
+            "constraint": "NULL"
+          },
+          {
+            "name": "name",
+            "dataType": "VARCHAR",
+            "dataLength": 32,
+            "dataTypeDisplay": "character varying(32)",
+            "constraint": "NULL"
+          },
+          {
+            "name": "sex",
+            "dataType": "CHAR",
+            "dataLength": 1,
+            "dataTypeDisplay": "char(1)",
+            "constraint": "NULL"
+          },
+          {
+            "name": "address",
+            "dataType": "VARCHAR",
+            "dataLength": 128,
+            "dataTypeDisplay": "character varying(128)",
+            "constraint": "NULL"
+          },
+          {
+            "name": "mail",
+            "dataType": "VARCHAR",
+            "dataLength": 64,
+            "dataTypeDisplay": "character varying(64)",
+            "constraint": "NULL"
+          },
+          {
+            "name": "birthdate",
+            "dataType": "VARCHAR",
+            "dataLength": 16,
+            "dataTypeDisplay": "character varying(16)",
+            "constraint": "NULL"
+          }
+        ]
+      },
+      {
+        "name": "membership",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 4
+      },
+      {
+        "name": "orders",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>",
+        "constraint": "NULL",
+        "ordinalPosition": 5
+      },
+      {
+        "name": "platform",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 6
+      },
+      {
+        "name": "preference",
+        "dataType": "MAP",
+        "dataLength": 1,
+        "dataTypeDisplay": "map&lt;character varying(32),boolean&gt;",
+        "constraint": "NULL",
+        "ordinalPosition": 7
+      },
+      {
+        "name": "shipping_address",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
+        "constraint": "NULL",
+        "ordinalPosition": 8
+      },
+      {
+        "name": "shipping_date",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 9
+      },
+      {
+        "name": "transaction_date",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 10
+      }
+    ],
+    "database": {
+      "id": "89229e26-7f74-4443-a568-85512eaeaa07",
+      "type": "database"
+    },
+    "tags": null,
+    "joins": null
+    },
+    {
+      "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
+      "name": "raw_order",
+      "tableType": "Regular",
+      "description": "This is a raw orders table as represented in our online DB. This table contains all the orders by the customers and can be used to buid our dim and fact tables",
+      "fullyQualifiedName": "bigquery.shopify.raw_order",
+     "columns": [
+      {
+        "name": "comments",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 1
+      },
+      {
+        "name": "creditcard",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 2
+      },
+      {
+        "name": "membership",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 4
+      },
+      {
+        "name": "orders",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64)>>",
+        "constraint": "NULL",
+        "ordinalPosition": 5
+      },
+      {
+        "name": "platform",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 6
+      },
+      {
+        "name": "preference",
+        "dataType": "MAP",
+        "dataLength": 1,
+        "dataTypeDisplay": "map&lt;character varying(32),boolean&gt;",
+        "constraint": "NULL",
+        "ordinalPosition": 7
+      },
+      {
+        "name": "shipping_address",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
+        "constraint": "NULL",
+        "ordinalPosition": 8
+      },
+      {
+        "name": "shipping_date",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 9
+      },
+      {
+        "name": "transaction_date",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 10
+      },
+      {
+        "name": "total_order_count",
+        "dataType": "NUMERIC",
+        "description": "The total number of orders that the customer has made from this store across their lifetime.",
+        "tags": null,
+        "ordinalPosition": 11
+      },
+      {
+        "name": "total_order_value",
+        "dataType": "NUMERIC",
+        "description": "The total amount of money that the customer has spent on orders from the store across their lifetime. The value is formatted in the store's currency.",
+        "tags": null,
+        "ordinalPosition": 12
+      },
+      {
+        "name": "first_order_date",
+        "dataType": "TIMESTAMP",
+        "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+        "tags": null,
+        "ordinalPosition": 13
+      },
+      {
+        "name": "last_order_date",
+        "dataType": "TIMESTAMP",
+        "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+        "tags": null,
+        "ordinalPosition": 14
+      }
+     ],
+    "database": {
+      "id": "89229e26-7f74-4443-a568-85512eaeaa07",
+      "type": "database"
+    },
+    "tags": null,
+    "joins": null
+    },
+     {
+      "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
+      "name": "raw_product_catalog",
+      "tableType": "Regular",
+      "description": "This is a raw product catalog table contains the product listing, price, seller etc.. represented in our online DB. ",
+      "fullyQualifiedName": "bigquery.shopify.raw_product_catalog",
+     "columns": [
+      {
+        "name": "comments",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 1
+      },
+      {
+        "name": "products",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<product_id:character varying(24),price:int,onsale:boolean,tax:int,weight:int,others:int,vendor:character varying(64), stock:int>>",
+        "constraint": "NULL",
+        "ordinalPosition": 2
+      },
+      {
+        "name": "platform",
+        "dataType": "STRING",
+        "dataLength": 1,
+        "dataTypeDisplay": "string",
+        "constraint": "NULL",
+        "ordinalPosition": 3
+      },
+      {
+        "name": "store_address",
+        "dataType": "ARRAY",
+        "arrayDataType": "STRUCT",
+        "dataLength": 1,
+        "dataTypeDisplay": "array<struct<name:character varying(32),street_address:character varying(128),city:character varying(32),postcode:character varying(8)>>",
+        "constraint": "NULL",
+        "ordinalPosition": 4
+      },
+      {
+        "name": "first_order_date",
+        "dataType": "TIMESTAMP",
+        "description": "The date (ISO 8601) and time (UTC) when the customer placed their first order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+        "tags": null,
+        "ordinalPosition": 5
+      },
+      {
+        "name": "last_order_date",
+        "dataType": "TIMESTAMP",
+        "description": "The date (ISO 8601) and time (UTC) when the customer placed their most recent order. The format is YYYY-MM-DD HH:mm:ss (for example, 2016-02-05 17:04:01).",
+        "tags": null,
+        "ordinalPosition": 6
+      }
+     ],
+    "database": {
+      "id": "89229e26-7f74-4443-a568-85512eaeaa07",
+      "type": "database"
+    },
+    "tags": null,
+    "joins": null
+    },
+    {
+      "id": "02e7ede6-9cd5-4190-9c36-3fae6b2cbac8",
       "name": "dim_address",
       "tableType": "Regular",
       "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
