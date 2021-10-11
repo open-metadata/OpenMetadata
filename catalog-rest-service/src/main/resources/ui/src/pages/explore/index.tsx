@@ -32,6 +32,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
+import PageContainer from '../../components/containers/PageContainer';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
@@ -577,6 +578,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder('desc');
+    setError('');
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
@@ -609,33 +611,38 @@ const ExplorePage: React.FC = (): React.ReactElement => {
 
   const fetchLeftPanel = () => {
     return (
-      <FacetFilter
-        aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
-        filters={getFacetedFilter()}
-        onClearFilter={(value) => onClearFilterHandler(value)}
-        onSelectHandler={handleSelectedFilter}
-      />
+      <>
+        {!error && (
+          <FacetFilter
+            aggregations={getAggrWithDefaultValue(aggregations, visibleFilters)}
+            filters={getFacetedFilter()}
+            onClearFilter={(value) => onClearFilterHandler(value)}
+            onSelectHandler={handleSelectedFilter}
+          />
+        )}
+      </>
     );
   };
 
   return (
-    <>
-      {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
-      ) : (
-        <SearchedData
-          showResultCount
-          currentPage={currentPage}
-          data={data}
-          fetchLeftPanel={fetchLeftPanel}
-          isLoading={isLoading}
-          paginate={paginate}
-          searchText={searchText}
-          totalValue={totalNumberOfValue}>
-          {getTabs()}
-        </SearchedData>
-      )}
-    </>
+    <PageContainer leftPanelContent={fetchLeftPanel()}>
+      <div className="container-fluid" data-testid="fluid-container">
+        {getTabs()}
+        {error ? (
+          <ErrorPlaceHolderES errorMessage={error} type="error" />
+        ) : (
+          <SearchedData
+            showResultCount
+            currentPage={currentPage}
+            data={data}
+            isLoading={isLoading}
+            paginate={paginate}
+            searchText={searchText}
+            totalValue={totalNumberOfValue}
+          />
+        )}
+      </div>
+    </PageContainer>
   );
 };
 

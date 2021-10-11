@@ -16,6 +16,7 @@
 */
 
 import { ServiceTypes } from 'Models';
+import noDataFound from '../assets/img/no-data-placeholder.png';
 import noService from '../assets/img/no-service.png';
 import airflow from '../assets/img/service-icon-airflow.png';
 import athena from '../assets/img/service-icon-athena.png';
@@ -39,6 +40,7 @@ import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import plus from '../assets/svg/plus.svg';
 
+export const NoDataFoundPlaceHolder = noDataFound;
 export const MYSQL = mysql;
 export const MSSQL = mssql;
 export const REDSHIFT = redshift;

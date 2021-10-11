@@ -92,7 +92,7 @@ describe('Test SearchedData Component', () => {
       }
     );
 
-    const searchedDataContainer = getByTestId(container, 'fluid-container');
+    const searchedDataContainer = getByTestId(container, 'search-container');
 
     expect(searchedDataContainer).toBeInTheDocument();
   });

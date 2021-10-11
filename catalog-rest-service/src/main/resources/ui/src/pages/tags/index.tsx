@@ -219,12 +219,12 @@ const TagsPage = () => {
 
   return (
     <>
-      {isLoading ? (
-        <Loader />
+      {error ? (
+        <p className="tw-text-2xl tw-text-center tw-m-auto">{error}</p>
       ) : (
         <PageContainer className="py-0" leftPanelContent={fetchLeftPanel()}>
-          {error ? (
-            <p className="tw-text-2xl tw-text-center tw-m-auto">{error}</p>
+          {isLoading ? (
+            <Loader />
           ) : (
             <div className="container-fluid py-3" data-testid="tags-container">
               {currentCategory && (

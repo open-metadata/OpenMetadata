@@ -27,7 +27,6 @@ import {
 } from '../../utils/TableUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import TableDataCard from '../common/table-data-card/TableDataCard';
-import PageContainer from '../containers/PageContainer';
 import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 import Pagination from '../Pagination';
@@ -55,7 +54,6 @@ const SearchedData: React.FC<SearchedDataProp> = ({
   showOnlyChildren = false,
   searchText,
   totalValue,
-  fetchLeftPanel,
 }: SearchedDataProp) => {
   const highlightSearchResult = () => {
     return data.map((table, index) => {
@@ -108,50 +106,46 @@ const SearchedData: React.FC<SearchedDataProp> = ({
 
   return (
     <>
-      <PageContainer leftPanelContent={fetchLeftPanel?.()}>
-        <div className="container-fluid" data-testid="fluid-container">
-          {isLoading ? (
-            <Loader />
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <div data-testid="search-container">
+          {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
+            <>
+              {children}
+              {!showOnlyChildren ? (
+                <>
+                  {showResultCount && searchText ? (
+                    <div className="tw-mb-1">
+                      {pluralize(totalValue, 'result')}
+                    </div>
+                  ) : null}
+                  {data.length > 0 ? (
+                    <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
+                      {highlightSearchResult()}
+                      {totalValue > PAGE_SIZE && data.length > 0 && (
+                        <Pagination
+                          currentPage={currentPage}
+                          paginate={paginate}
+                          sizePerPage={PAGE_SIZE}
+                          totalNumberOfValues={totalValue}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <Onboarding />
+                  )}
+                </>
+              ) : null}
+            </>
           ) : (
             <>
-              {totalValue > 0 || showOnboardingTemplate || showOnlyChildren ? (
-                <>
-                  {children}
-                  {!showOnlyChildren ? (
-                    <>
-                      {showResultCount && searchText ? (
-                        <div className="tw-mb-1">
-                          {pluralize(totalValue, 'result')}
-                        </div>
-                      ) : null}
-                      {data.length > 0 ? (
-                        <div className="tw-grid tw-grid-rows-1 tw-grid-cols-1">
-                          {highlightSearchResult()}
-                          {totalValue > PAGE_SIZE && data.length > 0 && (
-                            <Pagination
-                              currentPage={currentPage}
-                              paginate={paginate}
-                              sizePerPage={PAGE_SIZE}
-                              totalNumberOfValues={totalValue}
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <Onboarding />
-                      )}
-                    </>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  {children}
-                  <ErrorPlaceHolderES query={searchText} type="noData" />
-                </>
-              )}
+              {children}
+              <ErrorPlaceHolderES query={searchText} type="noData" />
             </>
           )}
         </div>
-      </PageContainer>
+      )}
     </>
   );
 };
