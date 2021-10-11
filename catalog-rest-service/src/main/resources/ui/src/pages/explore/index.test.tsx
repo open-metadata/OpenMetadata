@@ -54,10 +54,12 @@ describe('Test Explore page', () => {
     const { container } = render(<ExplorePage />, {
       wrapper: MemoryRouter,
     });
+    const pageContainer = await findByTestId(container, 'fluid-container');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, 'tab');
 
+    expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
     expect(tabs.length).toBe(4);

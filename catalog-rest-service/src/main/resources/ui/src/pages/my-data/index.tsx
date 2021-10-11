@@ -23,6 +23,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
+import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
 import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
@@ -44,6 +45,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
@@ -72,7 +74,9 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   };
 
   const fetchTableData = (setAssetCount = false) => {
-    setIsLoading(true);
+    if (!isEntityLoading) {
+      setIsLoading(true);
+    }
     searchData(
       '',
       currentPage,
@@ -91,10 +95,12 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             setAggregations(res.data.aggregations);
           }
           setIsLoading(false);
+          setIsEntityLoading(false);
         } else {
           setData([]);
           setTotalNumberOfValues(0);
           setIsLoading(false);
+          setIsEntityLoading(false);
         }
       })
       .catch((err: AxiosError) => {
@@ -104,6 +110,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
         setIsLoading(false);
+        setIsEntityLoading(false);
       });
   };
 
@@ -115,6 +122,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
             data-testid="tab"
             onClick={() => {
+              setIsEntityLoading(true);
               setCurrentTab(1);
               setFilter('');
               setCurrentPage(1);
@@ -125,6 +133,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
             data-testid="tab"
             onClick={() => {
+              setIsEntityLoading(true);
               setCurrentTab(2);
               setFilter(Ownership.OWNER);
               setCurrentPage(1);
@@ -135,6 +144,7 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
             data-testid="tab"
             onClick={() => {
+              setIsEntityLoading(true);
               setCurrentTab(3);
               setFilter(Ownership.FOLLOWERS);
               setCurrentPage(1);
@@ -163,23 +173,15 @@ const MyDataPage: React.FC = (): React.ReactElement => {
 
   return (
     <>
-      {isLoading ? (
-        <Loader />
+      {error ? (
+        <ErrorPlaceHolderES errorMessage={error} type="error" />
       ) : (
         <>
-          {error ? (
-            <ErrorPlaceHolderES errorMessage={error} type="error" />
+          {isLoading ? (
+            <Loader />
           ) : (
-            <SearchedData
-              showOnboardingTemplate
-              currentPage={currentPage}
-              data={data}
-              paginate={paginate}
-              searchText="*"
-              showOnlyChildren={currentTab === 1}
-              showResultCount={filter && data.length > 0 ? true : false}
-              totalValue={totalNumberOfValue}>
-              <>
+            <PageContainer>
+              <div className="container-fluid" data-testid="fluid-container">
                 <MyDataHeader
                   countAssets={getTotalEntityCountByService(
                     aggregations?.['sterms#Service']?.buckets as Bucket[]
@@ -190,9 +192,20 @@ const MyDataPage: React.FC = (): React.ReactElement => {
                   )}
                 />
                 {getTabs()}
-                {currentTab === 1 ? <RecentlyViewed /> : null}
-              </>
-            </SearchedData>
+                <SearchedData
+                  showOnboardingTemplate
+                  currentPage={currentPage}
+                  data={data}
+                  isLoading={isEntityLoading}
+                  paginate={paginate}
+                  searchText="*"
+                  showOnlyChildren={currentTab === 1}
+                  showResultCount={filter && data.length > 0 ? true : false}
+                  totalValue={totalNumberOfValue}>
+                  {currentTab === 1 ? <RecentlyViewed /> : null}
+                </SearchedData>
+              </div>
+            </PageContainer>
           )}
         </>
       )}

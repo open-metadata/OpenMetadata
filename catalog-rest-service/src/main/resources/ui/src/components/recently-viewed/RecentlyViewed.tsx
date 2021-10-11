@@ -27,13 +27,16 @@ import { getRecentlyViewedData } from '../../utils/CommonUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import TableDataCard from '../common/table-data-card/TableDataCard';
+import Loader from '../Loader/Loader';
 import Onboarding from '../onboarding/Onboarding';
 
 const RecentlyViewed: FunctionComponent = () => {
   const recentlyViewedData = getRecentlyViewedData();
   const [data, setData] = useState<Array<FormatedTableData>>([]);
+  const [isLoading, setIsloading] = useState<boolean>(false);
 
   const fetchRecentlyViewedEntity = async () => {
+    setIsloading(true);
     const arrData: Array<FormatedTableData> = [];
 
     for (const oData of recentlyViewedData) {
@@ -156,6 +159,7 @@ const RecentlyViewed: FunctionComponent = () => {
           break;
       }
     }
+    setIsloading(false);
     setData(arrData);
   };
 
@@ -167,27 +171,33 @@ const RecentlyViewed: FunctionComponent = () => {
 
   return (
     <>
-      {data.length ? (
-        data.map((item, index) => {
-          return (
-            <div className="tw-mb-3" key={index}>
-              <TableDataCard
-                description={item.description}
-                fullyQualifiedName={item.fullyQualifiedName}
-                indexType={item.index}
-                name={item.name}
-                owner={item.owner}
-                serviceType={item.serviceType || '--'}
-                tableType={item.tableType}
-                tags={item.tags}
-                tier={item.tier?.split('.')[1]}
-                usage={item.weeklyPercentileRank}
-              />
-            </div>
-          );
-        })
+      {isLoading ? (
+        <Loader />
       ) : (
-        <Onboarding />
+        <>
+          {data.length ? (
+            data.map((item, index) => {
+              return (
+                <div className="tw-mb-3" key={index}>
+                  <TableDataCard
+                    description={item.description}
+                    fullyQualifiedName={item.fullyQualifiedName}
+                    indexType={item.index}
+                    name={item.name}
+                    owner={item.owner}
+                    serviceType={item.serviceType || '--'}
+                    tableType={item.tableType}
+                    tags={item.tags}
+                    tier={item.tier?.split('.')[1]}
+                    usage={item.weeklyPercentileRank}
+                  />
+                </div>
+              );
+            })
+          ) : (
+            <Onboarding />
+          )}
+        </>
       )}
     </>
   );

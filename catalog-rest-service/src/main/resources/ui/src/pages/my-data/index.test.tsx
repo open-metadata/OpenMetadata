@@ -223,11 +223,13 @@ describe('Test MyData page', () => {
     const { container } = render(<MyDataPage />, {
       wrapper: MemoryRouter,
     });
+    const pageContainer = await findByTestId(container, 'fluid-container');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');
     const tabs = await findAllByTestId(container, 'tab');
     const myDataHeader = await findByText(container, /MyDataHeader/i);
 
+    expect(pageContainer).toBeInTheDocument();
     expect(searchData).toBeInTheDocument();
     expect(wrappedContent).toBeInTheDocument();
     expect(myDataHeader).toBeInTheDocument();
