@@ -44,7 +44,7 @@ import {
 } from '../../constants/constants';
 import {
   arrServiceTypes,
-  NOSERVICE,
+  NoDataFoundPlaceHolder,
   PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
@@ -81,7 +81,7 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
-  const { isAdminUser } = useAuth();
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
@@ -328,6 +328,7 @@ const ServicesPage = () => {
             value: service.collection.name,
           };
         });
+        setIsLoading(false);
       } else {
         setIsLoading(false);
       }
@@ -466,7 +467,7 @@ const ServicesPage = () => {
                   title={TITLE_FOR_NON_ADMIN_ACTION}>
                   <div
                     className={classNames('tw-inline-block', {
-                      'tw-opacity-40': !isAdminUser,
+                      'tw-opacity-40': !isAdminUser && !isAuthDisabled,
                     })}
                     style={{ width: '100%' }}>
                     <div
@@ -484,7 +485,11 @@ const ServicesPage = () => {
             ) : (
               <div className="tw-flex tw-items-center tw-flex-col">
                 <div className="tw-mt-24">
-                  <img alt="No Service" src={NOSERVICE} />
+                  <img
+                    alt="No Service"
+                    src={NoDataFoundPlaceHolder}
+                    width={250}
+                  />
                 </div>
                 <div className="tw-mt-11">
                   <p className="tw-text-lg">
