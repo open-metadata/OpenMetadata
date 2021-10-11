@@ -124,23 +124,21 @@ class REST(object):
         else:
             opts['data'] = data
 
-        retry = self._retry
-        if retry < 0:
-            retry = 0
+        total_retries = self._retry if self._retry > 0 else 0
+        retry = total_retries
         while retry >= 0:
             try:
                 logger.debug('URL {}, method {}'.format(url, method))
                 logger.debug('Data {}'.format(opts))
                 return self._one_request(method, url, opts, retry)
             except RetryException:
-                retry_wait = self._retry_wait
+                retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
                     'sleep {} seconds and retrying {} '
                     '{} more time(s)...'.format(
                         retry_wait, url, retry))
                 time.sleep(retry_wait)
                 retry -= 1
-                continue
 
     def _one_request(self, method: str, url: URL, opts: dict, retry: int):
         """
