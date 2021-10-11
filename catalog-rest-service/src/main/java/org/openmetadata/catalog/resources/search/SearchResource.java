@@ -180,9 +180,17 @@ public class SearchResource {
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
+    HighlightBuilder.Field highlightColumns =
+            new HighlightBuilder.Field("column_names");
+    highlightColumns.highlighterType("unified");
+    HighlightBuilder.Field highlightColumnDescriptions =
+            new HighlightBuilder.Field("column_descriptions");
+    highlightColumnDescriptions.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
     hb.field(highlightTableName);
+    hb.field(highlightColumns);
+    hb.field(highlightColumnDescriptions);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
@@ -202,15 +210,15 @@ public class SearchResource {
 
   private SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightTableName =
+    HighlightBuilder.Field highlightTopicName =
             new HighlightBuilder.Field("topic_name");
-    highlightTableName.highlighterType("unified");
+    highlightTopicName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
-    hb.field(highlightTableName);
+    hb.field(highlightTopicName);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
@@ -228,15 +236,24 @@ public class SearchResource {
 
   private SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightTableName =
+    HighlightBuilder.Field highlightDashboardName =
             new HighlightBuilder.Field("dashboard_name");
-    highlightTableName.highlighterType("unified");
+    highlightDashboardName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
+    HighlightBuilder.Field highlightCharts =
+            new HighlightBuilder.Field("chart_names");
+    highlightCharts.highlighterType("unified");
+    HighlightBuilder.Field highlightChartDescriptions =
+            new HighlightBuilder.Field("chart_descriptions");
+    highlightChartDescriptions.highlighterType("unified");
+
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
-    hb.field(highlightTableName);
+    hb.field(highlightDashboardName);
+    hb.field(highlightCharts);
+    hb.field(highlightChartDescriptions);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
@@ -256,15 +273,23 @@ public class SearchResource {
 
   private SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    HighlightBuilder.Field highlightTableName =
+    HighlightBuilder.Field highlightPipelineName =
             new HighlightBuilder.Field("pipeline_name");
-    highlightTableName.highlighterType("unified");
+    highlightPipelineName.highlighterType("unified");
     HighlightBuilder.Field highlightDescription =
             new HighlightBuilder.Field("description");
     highlightDescription.highlighterType("unified");
+    HighlightBuilder.Field highlightTasks =
+            new HighlightBuilder.Field("task_names");
+    highlightTasks.highlighterType("unified");
+    HighlightBuilder.Field highlightTaskDescriptions =
+            new HighlightBuilder.Field("task_descriptions");
+    highlightTaskDescriptions.highlighterType("unified");
     HighlightBuilder hb = new HighlightBuilder();
     hb.field(highlightDescription);
-    hb.field(highlightTableName);
+    hb.field(highlightPipelineName);
+    hb.field(highlightTasks);
+    hb.field(highlightTaskDescriptions);
     hb.preTags("<span class=\"text-highlighter\">");
     hb.postTags("</span>");
     searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
