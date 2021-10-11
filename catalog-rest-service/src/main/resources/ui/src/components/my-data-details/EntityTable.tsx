@@ -383,7 +383,7 @@ const EntityTable = ({
   }, []);
 
   return (
-    <div className="tw-table-responsive">
+    <div className="tw-table-responsive" id="schemaTable">
       <table className="tw-w-full" {...getTableProps()}>
         <thead>
           {/* eslint-disable-next-line */}

@@ -39,12 +39,14 @@ import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
 import MyTopicDetailPage from '../pages/topic-details';
+import TourPage from '../pages/tour-page';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
 const AuthenticatedAppRouter: FunctionComponent = () => {
   return (
     <Switch>
       <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
+      <Route exact component={TourPage} path={ROUTES.TOUR} />
       <Route exact component={ReportsPage} path={ROUTES.REPORTS} />
       <Route exact component={ExplorePage} path={ROUTES.EXPLORE} />
       <Route component={ExplorePage} path={ROUTES.EXPLORE_WITH_SEARCH} />

@@ -31,7 +31,7 @@ module.exports = {
   mode: 'development',
 
   // Input configuration
-  entry: path.join(__dirname, 'src/index.js'),
+  entry: ['@babel/polyfill', path.join(__dirname, 'src/index.js')],
 
   // Output configuration
   output: {

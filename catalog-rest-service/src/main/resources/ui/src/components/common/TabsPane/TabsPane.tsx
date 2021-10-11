@@ -25,7 +25,9 @@ const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
 
   return (
     <div className="tw-bg-transparent tw--mx-4">
-      <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
+      <nav
+        className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
+        id="tabs">
         {tabs.map((tab) =>
           tab.isProtected ? (
             <NonAdminAction

@@ -126,6 +126,7 @@ export const FirstTimeUserModal: FunctionComponent<Props> = ({
           ) : (
             <Button
               className="tw-text-primary-active"
+              id="next"
               size="regular"
               theme="primary"
               variant="text"
