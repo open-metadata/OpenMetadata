@@ -8,8 +8,10 @@ from airflow.lineage.backend import LineageBackend
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
 from metadata.generated.schema.entity.services.pipelineService import PipelineServiceType
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 from metadata.utils.helpers import convert_epoch_to_iso
@@ -168,6 +170,37 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
     pipeline = client.create_or_update_pipeline(create_pipeline)
     operator.log.info("Create Pipeline {}".format(pipeline))
 
+    operator.log.info("Parsing Lineage")
+    for table in inlets:
+        table_entity = client.get_table_by_name(table.fullyQualifiedName)
+        operator.log.debug("from entity {}".format(table_entity))
+        lineage = AddLineage(
+                edge=EntitiesEdge(fromEntity=EntityReference(id=table_entity.id, type='table'),
+                                  toEntity=EntityReference(id=pipeline.id, type='pipeline'))
+                )
+        operator.log.debug("from lineage {}".format(lineage))
+        client.create_or_update_lineage(lineage)
+
+    for table in outlets:
+        table_entity = client.get_table_by_name(table.fullyQualifiedName)
+        operator.log.debug("to entity {}".format(table_entity))
+        lineage = AddLineage(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=pipeline.id, type='pipeline'),
+                toEntity=EntityReference(id=table_entity.id, type='table'))
+        )
+        operator.log.debug("to lineage {}".format(lineage))
+        client.create_or_update_lineage(lineage)
+
+def is_airflow_version_1() -> bool:
+    try:
+        from airflow.hooks.base import BaseHook
+        return False
+    except ModuleNotFoundError:
+        from airflow.hooks.base_hook import BaseHook
+        return True
+
+
 class OpenMetadataLineageBackend(LineageBackend):
     """
         Sends lineage data from tasks to OpenMetadata.
@@ -191,20 +224,37 @@ class OpenMetadataLineageBackend(LineageBackend):
             outlets: Optional[List] = None,
             context: Dict = None,
     ) -> None:
-        config = get_lineage_config()
-        metadata_config = MetadataServerConfig.parse_obj(
-            {
-                'api_endpoint': config.api_endpoint,
-                'auth_provider_type': config.auth_provider_type,
-                'secret_key': config.secret_key
-            }
-        )
-        client = OpenMetadataAPIClient(metadata_config)
+
         try:
+            config = get_lineage_config()
+            metadata_config = MetadataServerConfig.parse_obj(
+                {
+                    'api_endpoint': config.api_endpoint,
+                    'auth_provider_type': config.auth_provider_type,
+                    'secret_key': config.secret_key
+                }
+            )
+            client = OpenMetadataAPIClient(metadata_config)
+            op_inlets = []
+            op_outlets = []
+            if (
+                    isinstance(operator._inlets, list) and len(operator._inlets) == 1
+                    and isinstance(operator._inlets[0], dict) and not is_airflow_version_1()
+            ):
+                op_inlets = operator._inlets[0].get("tables", [])
+
+            if (
+                    isinstance(operator._outlets, list) and len(operator._outlets) == 1
+                    and isinstance(operator._outlets[0], dict) and not is_airflow_version_1()
+            ):
+                op_outlets = operator._outlets[0].get("tables", [])
+            if len(op_inlets) == 0 and len(operator.inlets) != 0:
+                op_inlets = operator.inlets
+            if len(op_outlets) == 0 and len(operator.outlets) != 0:
+                op_outlets = operator.outlets
+
             parse_lineage_to_openmetadata(
-                config, context, operator, operator.inlets, operator.outlets, client
+                config, context, operator, op_inlets, op_outlets, client
             )
         except Exception as e:
-            operator.log.error(traceback.format_exc())
             operator.log.error(e)
-            operator.log.error(traceback.print_exc())

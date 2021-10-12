@@ -416,15 +416,12 @@ class SampleDataSource(Source):
 
     def ingest_lineage(self) -> Iterable[AddLineage]:
         for edge in self.lineage:
-            print(edge)
             from_entity_ref = get_lineage_entity_ref(edge['from'], self.metadata_config)
-            print("hello from {}".format(from_entity_ref))
             to_entity_ref = get_lineage_entity_ref(edge['to'], self.metadata_config)
             lineage = AddLineage(
                 edge=EntitiesEdge(fromEntity=from_entity_ref,
                                   toEntity=to_entity_ref)
             )
-            print(lineage)
             yield lineage
 
     def close(self):
