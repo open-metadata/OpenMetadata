@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineEnti
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.task import Task
@@ -90,6 +91,8 @@ class MetadataRestSink(Sink):
             self.write_tasks(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
+        elif isinstance(record, AddLineage):
+            self.write_lineage(record)
         else:
             logging.info("Ignoring the record due to unknown Record type {}".format(type(record)))
 
@@ -228,6 +231,17 @@ class MetadataRestSink(Sink):
             logger.error("Failed to ingest task {}".format(pipeline.name))
             logger.error(err)
             self.status.failure(pipeline.name)
+
+    def write_lineage(self, add_lineage: AddLineage):
+        try:
+            logger.info(add_lineage)
+            created_lineage = self.client.create_or_update_lineage(add_lineage)
+            logger.info('Successfully added Lineage {}'.format(created_lineage))
+            self.status.records_written('{}'.format(created_lineage))
+        except (APIError, ValidationError) as err:
+            logger.error("Failed to ingest task {}".format(add_lineage))
+            logger.error(err)
+            self.status.failure(add_lineage)
 
     def get_status(self):
         return self.status

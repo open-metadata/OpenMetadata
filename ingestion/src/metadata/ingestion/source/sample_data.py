@@ -27,6 +27,7 @@ from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
 from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
@@ -37,6 +38,7 @@ from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import SourceStatus, Source
@@ -97,6 +99,20 @@ def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineSer
     else:
         created_service = client.create_pipeline_service(CreatePipelineServiceEntityRequest(**service_json))
         return created_service
+
+
+def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
+    client = OpenMetadataAPIClient(metadata_config)
+    fqn = edge['fqn']
+    if edge['type'] == 'table':
+        table = client.get_table_by_name(fqn)
+        return EntityReference(id=table.id, type='table')
+    elif edge['type'] == 'pipeline':
+        pipeline = client.get_pipeline_by_name(edge['fqn'])
+        return EntityReference(id=pipeline.id, type='pipeline')
+    elif edge['type'] == 'dashboard':
+        dashboard = client.get_dashboard_by_name(fqn)
+        return EntityReference(id=dashboard.id, type='dashboard')
 
 
 def get_table_key(row: Dict[str, Any]) -> Union[TableKey, None]:
@@ -301,6 +317,7 @@ class SampleDataSource(Source):
         self.tasks = json.load(open(self.config.sample_data_folder + "/pipelines/tasks.json", 'r'))
         self.pipelines = json.load(open(self.config.sample_data_folder + "/pipelines/pipelines.json", 'r'))
         self.pipeline_service = get_pipeline_service_or_create(self.pipeline_service_json, metadata_config)
+        self.lineage = json.load(open(self.config.sample_data_folder + "/lineage/lineage.json", 'r'))
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -318,6 +335,7 @@ class SampleDataSource(Source):
         yield from self.ingest_dashboards()
         yield from self.ingest_tasks()
         yield from self.ingest_pipelines()
+        yield from self.ingest_lineage()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(id=uuid.uuid4(),
@@ -395,6 +413,19 @@ class SampleDataSource(Source):
                                    tasks=task_refs,
                                    service=EntityReference(id=self.pipeline_service.id, type='pipelineService'))
             yield pipeline_ev
+
+    def ingest_lineage(self) -> Iterable[AddLineage]:
+        for edge in self.lineage:
+            print(edge)
+            from_entity_ref = get_lineage_entity_ref(edge['from'], self.metadata_config)
+            print("hello from {}".format(from_entity_ref))
+            to_entity_ref = get_lineage_entity_ref(edge['to'], self.metadata_config)
+            lineage = AddLineage(
+                edge=EntitiesEdge(fromEntity=from_entity_ref,
+                                  toEntity=to_entity_ref)
+            )
+            print(lineage)
+            yield lineage
 
     def close(self):
         pass

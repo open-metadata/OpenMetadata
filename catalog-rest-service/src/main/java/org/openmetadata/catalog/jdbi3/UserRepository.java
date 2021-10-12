@@ -29,6 +29,7 @@ import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.jdbi3.ModelRepository.ModelDAO;
+import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineDAO;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -49,7 +50,6 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -107,6 +107,9 @@ public abstract class UserRepository {
 
   @CreateSqlObject
   abstract TaskDAO taskDAO();
+
+  @CreateSqlObject
+  abstract PipelineDAO pipelineDAO();
 
   @CreateSqlObject
   abstract ModelDAO modelDAO();
@@ -264,13 +267,13 @@ public abstract class UserRepository {
     }
     // Populate details in entity reference
     return EntityUtil.getEntityReference(ownedEntities, tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(),
-            reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO());
+            reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.getEntityReference(relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
             tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(),
-            modelDAO());
+            modelDAO(), pipelineDAO());
   }
 
   private void patchTeams(User original, User updated) throws IOException {

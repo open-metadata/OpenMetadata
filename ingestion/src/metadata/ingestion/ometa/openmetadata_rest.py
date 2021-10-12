@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineEnti
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
@@ -410,6 +411,12 @@ class OpenMetadataAPIClient(object):
         resp = self.client.put('/dashboards', data=create_dashboard_request.json())
         return Dashboard(**resp)
 
+    def get_dashboard_by_name(self, dashboard_name: str, fields: [] =  ['charts', 'service']) -> Dashboard:
+        """Get Dashboard By Name"""
+        params = {'fields': ",".join(fields)}
+        resp = self.client.get('/dashboards/name/{}'.format(dashboard_name), data=params)
+        return Dashboard(**resp)
+
     def list_dashboards(self, fields: str = None, after: str = None, limit: int = 1000) -> DashboardEntities:
         """ List all dashboards"""
 
@@ -495,6 +502,16 @@ class OpenMetadataAPIClient(object):
             total = resp['paging']['total']
             after = resp['paging']['after'] if 'after' in resp['paging'] else None
             return PipelineEntities(pipelines=pipelines, total=total, after=after)
+
+    def get_pipeline_by_name(self, pipeline_name: str, fields: [] =  ['tasks', 'service']) -> Pipeline:
+        """Get Pipeline By Name"""
+        params = {'fields': ",".join(fields)}
+        resp = self.client.get('/pipelines/name/{}'.format(pipeline_name), data=params)
+        return Pipeline(**resp)
+
+    def create_or_update_lineage(self, lineage: AddLineage):
+        resp = self.client.put('/lineage', data=lineage.json())
+        return resp
 
     def close(self):
         self.client.close()

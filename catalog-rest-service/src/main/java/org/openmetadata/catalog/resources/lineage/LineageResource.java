@@ -34,7 +34,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
@@ -116,11 +119,11 @@ public class LineageResource {
                   schema = @Schema(type = "string"))
           @PathParam("fqn") String fqn,
           @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1") @Min(0) @Max(3)
           @QueryParam("upstreamDepth") int upstreamDepth,
           @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @DefaultValue("1") @Min(0) @Max(3)
           @QueryParam("downstreamDepth") int downStreamDepth) throws IOException {
-    upstreamDepth = Math.min(Math.max(upstreamDepth, 0), 3);
-    downStreamDepth = Math.min(Math.max(downStreamDepth, 1), 3);
     return addHref(uriInfo, dao.getByName(entity, fqn, upstreamDepth, downStreamDepth));
   }
 

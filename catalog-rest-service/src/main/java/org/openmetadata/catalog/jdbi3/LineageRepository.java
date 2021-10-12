@@ -25,6 +25,7 @@ import org.openmetadata.catalog.jdbi3.ModelRepository.ModelDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
+import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
@@ -71,6 +72,9 @@ public abstract class LineageRepository {
   abstract TaskDAO taskDAO();
 
   @CreateSqlObject
+  abstract PipelineDAO pipelineDAO();
+
+  @CreateSqlObject
   abstract ModelDAO modelDAO();
 
   @CreateSqlObject
@@ -79,7 +83,7 @@ public abstract class LineageRepository {
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
     EntityReference ref = getEntityReference(entityType, UUID.fromString(id), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO());
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -87,21 +91,21 @@ public abstract class LineageRepository {
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
           throws IOException {
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, tableDAO(), databaseDAO(),
-            metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO(), taskDAO(), modelDAO());
+            metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO(), taskDAO(), modelDAO(), pipelineDAO());
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
   @Transaction
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
-    EntityReference from = addLineage.getEdge().getFrom();
+    EntityReference from = addLineage.getEdge().getFromEntity();
     from = EntityUtil.getEntityReference(from.getType(), from.getId(), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO());
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
 
     // Validate to entity
-    EntityReference to = addLineage.getEdge().getTo();
+    EntityReference to = addLineage.getEdge().getToEntity();
     to = EntityUtil.getEntityReference(to.getType(), to.getId(), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO());
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
 
     // Finally, add lineage relationship
     relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
@@ -122,7 +126,7 @@ public abstract class LineageRepository {
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
       ref = getEntityReference(ref.getType(), ref.getId(), tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(),
-              reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO());
+              reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
       lineage.getNodes().set(i, ref);
     }
     return lineage;
@@ -138,7 +142,7 @@ public abstract class LineageRepository {
 
     upstreamDepth--;
     for (EntityReference upstreamEntity : upstreamEntities) {
-      lineage.getUpstreamEdges().add(new Edge().withFrom(upstreamEntity.getId()).withTo(id));
+      lineage.getUpstreamEdges().add(new Edge().withFromEntity(upstreamEntity.getId()).withToEntity(id));
       addUpstreamLineage(upstreamEntity.getId(), lineage, upstreamDepth); // Recursively add upstream nodes and edges
     }
   }
@@ -153,7 +157,7 @@ public abstract class LineageRepository {
 
     downstreamDepth--;
     for (EntityReference entity : downStreamEntities) {
-      lineage.getDownstreamEdges().add(new Edge().withTo(entity.getId()).withFrom(id));
+      lineage.getDownstreamEdges().add(new Edge().withToEntity(entity.getId()).withFromEntity(id));
       addDownstreamLineage(entity.getId(), lineage, downstreamDepth);
     }
   }

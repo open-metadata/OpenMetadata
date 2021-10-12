@@ -121,11 +121,12 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public static Edge getEdge(UUID from, UUID to) {
-    return new Edge().withFrom(from).withTo(to);
+    return new Edge().withFromEntity(from).withToEntity(to);
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
-    EntitiesEdge edge = new EntitiesEdge().withFrom(getEntityReference(from)).withTo(getEntityReference(to));
+    EntitiesEdge edge = new EntitiesEdge().withFromEntity(getEntityReference(from))
+            .withToEntity(getEntityReference(to));
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, adminAuthHeaders());
   }
@@ -143,8 +144,8 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
   private static void validateLineage(AddLineage addLineage, Map<String, String> authHeaders)
           throws HttpResponseException {
-    EntityReference from = addLineage.getEdge().getFrom();
-    EntityReference to = addLineage.getEdge().getTo();
+    EntityReference from = addLineage.getEdge().getFromEntity();
+    EntityReference to = addLineage.getEdge().getToEntity();
     Edge expectedEdge = getEdge(from.getId(), to.getId());
 
     // Check fromEntity ---> toEntity downstream edge is returned
@@ -162,8 +163,14 @@ public class LineageResourceTest extends CatalogApplicationTest {
 
     // Total number of from and to points in an edge must be equal to the number of nodes
     List<UUID> ids = new ArrayList<>();
-    lineage.getUpstreamEdges().forEach(edge -> {ids.add(edge.getFrom()); ids.add(edge.getTo());});
-    lineage.getDownstreamEdges().forEach(edge -> {ids.add(edge.getFrom()); ids.add(edge.getTo());});
+    lineage.getUpstreamEdges().forEach(edge -> {
+      ids.add(edge.getFromEntity());
+      ids.add(edge.getToEntity());
+    });
+    lineage.getDownstreamEdges().forEach(edge -> {
+      ids.add(edge.getFromEntity());
+      ids.add(edge.getToEntity());
+    });
     if (lineage.getNodes().size() != 0) {
       assertEquals((int) ids.stream().distinct().count(), lineage.getNodes().size() + 1);
     }

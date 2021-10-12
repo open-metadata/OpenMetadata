@@ -7,6 +7,34 @@
 			"tasks": ["presto_task", "assert_table_exists"]
 		},
 		{
+		    "name": "dim_address_etl",
+			"displayName": "dim_address etl",
+			"description": "dim_address ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
+			"tasks": ["dim_address_task", "assert_table_exists"]
+		},
+		{
+		    "name": "dim_user_etl",
+			"displayName": "dim_user etl",
+			"description": "dim_user ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_user_etl",
+			"tasks": ["dim_user_task", "assert_table_exists"]
+		},
+		{
+		    "name": "dim_location_etl",
+			"displayName": "dim_location etl",
+			"description": "diim_location ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
+			"tasks": ["dim_location_task", "assert_table_exists"]
+		},
+		{
+		    "name": "dim_product_etl",
+			"displayName": "dim_product etl",
+			"description": "diim_product ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
+			"tasks": ["dim_product_task", "assert_table_exists"]
+		},
+		{
 			"name": "trino_etl",
 			"displayName": "Trino ETL",
 			"description": "Trino ETL pipeline",

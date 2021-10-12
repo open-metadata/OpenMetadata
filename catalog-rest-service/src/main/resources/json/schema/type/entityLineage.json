@@ -11,11 +11,11 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.Edge",
       "properties": {
-        "from": {
+        "fromEntity": {
           "description" : "From entity that is upstream of lineage edge.",
           "$ref" : "basic.json#/definitions/uuid"
         },
-        "to": {
+        "toEntity": {
           "description" : "To entity that is downstream of lineage edge.",
           "$ref" : "basic.json#/definitions/uuid"
         },
@@ -29,11 +29,11 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.EntitiesEdge",
       "properties": {
-        "from": {
+        "fromEntity": {
           "description" : "From entity that is upstream of lineage edge.",
           "$ref" : "entityReference.json"
         },
-        "to": {
+        "toEntity": {
           "description" : "To entity that is downstream of lineage edge.",
           "$ref" : "entityReference.json"
         },
