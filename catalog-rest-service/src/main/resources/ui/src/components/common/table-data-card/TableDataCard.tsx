@@ -15,6 +15,7 @@
   * limitations under the License.
 */
 
+import { uniqueId } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -37,6 +38,10 @@ type Props = {
   fullyQualifiedName: string;
   tags?: string[];
   indexType: string;
+  matches: {
+    key: string;
+    value: number;
+  }[];
 };
 
 const TableDataCard: FunctionComponent<Props> = ({
@@ -49,6 +54,7 @@ const TableDataCard: FunctionComponent<Props> = ({
   fullyQualifiedName,
   tags,
   indexType,
+  matches,
 }: Props) => {
   const OtherDetails = [
     { key: 'Owner', value: owner },
@@ -88,6 +94,18 @@ const TableDataCard: FunctionComponent<Props> = ({
           tags={[...new Set(tags)]}
         />
       </div>
+      {matches?.length > 0 ? (
+        <div className="tw-pt-2">
+          <span className="tw-text-grey-muted">Matches :</span>
+          {matches.map((data, i) => (
+            <span className="tw-ml-2" key={uniqueId()}>
+              {`${data.value} in ${data.key}${
+                i !== matches.length - 1 ? ',' : ''
+              }`}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };
