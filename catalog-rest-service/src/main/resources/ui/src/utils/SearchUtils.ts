@@ -8,7 +8,11 @@ export const getSearchAPIQuery = (
   searchIndex: string
 ): string => {
   const start = (from - 1) * size;
-  const query = queryString ? `*${queryString}*` : '*';
+  const query = queryString
+    ? queryString.includes(':')
+      ? queryString
+      : `*${queryString}*`
+    : '*';
 
   return `q=${query}${
     filters ? ` AND ${filters}` : ''
