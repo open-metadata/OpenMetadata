@@ -17,7 +17,7 @@
 
 import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
-import { isNull } from 'lodash';
+import { isNull, lowerCase } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -30,6 +30,7 @@ import {
 } from '../../axiosAPIs/serviceAPI';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
+import Searchbar from '../../components/common/searchbar/Searchbar';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
 import {
@@ -94,6 +95,7 @@ const ServicesPage = () => {
   const [serviceList, setServiceList] = useState<Array<ServiceDataObj>>([]);
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [searchText, setSearchText] = useState('');
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -126,7 +128,17 @@ const ServicesPage = () => {
       );
     }
   };
-
+  const handleSearchAction = (searchValue: string) => {
+    setSearchText(searchValue);
+    const curServ = services[serviceName];
+    setServiceList(
+      (curServ as unknown as Array<ServiceDataObj>).filter(
+        (serv) =>
+          serv.description?.includes(lowerCase(searchValue)) ||
+          serv.name?.includes(lowerCase(searchValue))
+      )
+    );
+  };
   const handleAddService = () => {
     setEditData(undefined);
     setIsModalOpen(true);
@@ -360,6 +372,14 @@ const ServicesPage = () => {
                 ))}
               </nav>
             </div>
+            <div className="md:tw-w-2/6 sm:tw-w-2/5">
+              <Searchbar
+                placeholder={`Search for ${servicesDisplayName[serviceName]}...`}
+                searchValue={searchText}
+                typingInterval={1500}
+                onSearch={handleSearchAction}
+              />
+            </div>
             {serviceList.length ? (
               <div
                 className="tw-grid tw-grid-cols-4 tw-gap-4"
@@ -492,8 +512,10 @@ const ServicesPage = () => {
                   />
                 </div>
                 <div className="tw-mt-11">
-                  <p className="tw-text-lg">
-                    No services found.{' '}
+                  <p className="tw-text-lg tw-text-center">
+                    No services found for {`"${searchText}"`}
+                  </p>
+                  <p className="tw-text-lg tw-text-center">
                     <button
                       className="link-text tw-underline"
                       onClick={handleAddService}>
