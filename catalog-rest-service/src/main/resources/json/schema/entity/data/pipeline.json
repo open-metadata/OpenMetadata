@@ -30,20 +30,20 @@
       "type": "string"
     },
     "pipelineUrl" : {
-      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI",
+      "description": "Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string",
       "format": "uri"
     },
     "concurrency": {
-      "description": "Concurrency of the Pipeline",
+      "description": "Concurrency of the Pipeline.",
       "type": "integer"
     },
     "pipelineLocation": {
-      "description": "Pipeline Code Location",
+      "description": "Pipeline Code Location.",
       "type": "string"
     },
     "startDate": {
-      "description": "Start date of the workflow",
+      "description": "Start date of the workflow.",
       "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "tasks": {

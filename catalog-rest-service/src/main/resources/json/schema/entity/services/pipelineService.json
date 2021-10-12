@@ -42,7 +42,7 @@
       "type": "string"
     },
     "pipelineUrl": {
-      "description": "Pipeline Service Management/UI URL",
+      "description": "Pipeline Service Management/UI URL.",
       "type": "string",
       "format": "uri"
     },
