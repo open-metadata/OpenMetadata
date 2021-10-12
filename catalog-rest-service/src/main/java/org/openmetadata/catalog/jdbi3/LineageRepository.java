@@ -105,7 +105,7 @@ public abstract class LineageRepository {
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
     to = EntityUtil.getEntityReference(to.getType(), to.getId(), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO() );
+            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
 
     // Finally, add lineage relationship
     relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
