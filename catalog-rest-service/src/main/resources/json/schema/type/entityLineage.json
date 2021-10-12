@@ -45,7 +45,7 @@
   },
   "properties": {
     "entity" : {
-      "description": "Primary entity for which this lineage graph is created",
+      "description": "Primary entity for which this lineage graph is created.",
       "$ref": "entityReference.json"
     },
     "nodes": {

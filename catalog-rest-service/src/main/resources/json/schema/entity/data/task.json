@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/data/task.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Task",
-  "description": "This schema defines the Task entity. A task is a unit of computation in a Pipeline. ",
+  "description": "This schema defines the Task entity. A task is a unit of computation in a Pipeline.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.entity.data.Task",
   "properties" : {
@@ -31,7 +31,7 @@
       "type": "string"
     },
     "taskUrl" : {
-      "description": "Task URL to visit/manage. This URL points to respective pipeline service UI",
+      "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string",
       "format": "uri"
     },
@@ -46,19 +46,19 @@
       "default": null
     },
     "taskType": {
-      "description": "Type of the Task. Usually refers to the class it implements",
+      "description": "Type of the Task. Usually refers to the class it implements.",
       "type": "string"
     },
     "taskSQL": {
-      "description": "SQL used in the task. Can be used to determine the lineage",
+      "description": "SQL used in the task. Can be used to determine the lineage.",
       "type": "string"
     },
     "startDate": {
-      "description": "Start date of the task",
+      "description": "Start date of the task.",
       "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "endDate": {
-      "description": "End date of the task",
+      "description": "End date of the task.",
       "$ref": "../../type/basic.json#/definitions/dateTime"
     },
     "tags": {

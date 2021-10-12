@@ -31,11 +31,11 @@
       "type": "string"
     },
     "algorithm": {
-      "description": "Algorithm used to train the model",
+      "description": "Algorithm used to train the model.",
       "type": "string"
     },
     "dashboard" : {
-      "description": "Performance Dashboard URL to track metric evolution",
+      "description": "Performance Dashboard URL to track metric evolution.",
       "$ref" : "../../type/entityReference.json"
     },
     "href": {
