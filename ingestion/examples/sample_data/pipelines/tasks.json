@@ -32,9 +32,42 @@
 			"taskType": "PrestoOperator"
 		},
 		{
+			"name": "dim_address_task",
+			"displayName": "dim_address Task",
+			"description": "Airflow operator to perform ETL and generate dim_address table",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_address_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PrestoOperator"
+		},
+		{
+			"name": "dim_user_task",
+			"displayName": "dim_user Task",
+			"description": "Airflow operator to perform ETL and generate dim_user table",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_user_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PrestoOperator"
+		},
+		{
+			"name": "dim_location_task",
+			"displayName": "dim_location Task",
+			"description": "Airflow operator to perform ETL and generate dim_location table",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=dim_location_task",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "PrestoOperator"
+		},
+		{
 			"name": "trino_task",
 			"displayName": "Trino Task",
 			"description": "Airflow operator to perform ETL on trino tables",
+			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
+			"downstreamTasks": ["assert_table_exists"],
+			"taskType": "TrinoOperator"
+		},
+		{
+		    "name": "dim_location_etl",
+			"displayName": "dim_location etl",
+			"description": "dim_location ETL pipeline",
+			"pipelineUrl": "http://localhost:8080/tree?dag_id=dim_address_etl",
 			"taskUrl": "http://localhost:8080/taskinstance/list/?flt1_dag_id_equals=assert_table_exists",
 			"downstreamTasks": ["assert_table_exists"],
 			"taskType": "TrinoOperator"
