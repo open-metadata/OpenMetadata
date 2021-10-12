@@ -14,13 +14,42 @@ Type: `object`
    - Name that identifies this pipeline instance uniquely.
    - Type: `string`
    - Length: between 1 and 64
+ - **displayName**
+     - Display Name that identifies this Pipeline. It could be title or label from the source services.
+     - Type: `string`
  - **fullyQualifiedName**
    - A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
    - Type: `string`
    - Length: between 1 and 64
  - **description**
-   - Description of this pipeline.
+   - Description of this Pipeline.
    - Type: `string`
+ - **pipelineUrl**
+   - Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
+   - Type: `string`
+   - String format must be a "uri"
+ - **concurrency**
+   - Concurrency of the Pipeline.
+   - Type: `integer`
+ - **pipelineLocation**
+   - Pipeline Code Location.
+   - Type: `string`
+ - **startDate**
+   - Start date of the workflow.
+   - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+ - **tasks**
+   - All the tasks that are part of pipeline.
+   - Type: `array`
+     - **Items**
+     - $ref: [../../type/entityReference.json](../types/entityreference.md)
+ - **followers**
+   - Followers of this Pipeline.
+   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+ - **tags**
+   - Tags for this Pipeline.
+   - Type: `array`
+     - **Items**
+     - $ref: [../../type/tagLabel.json](../types/taglabel.md)
  - **href**
    - Link to the resource corresponding to this entity.
    - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
@@ -31,4 +60,4 @@ Type: `object`
    - Link to service where this pipeline is hosted in.
    - $ref: [../../type/entityReference.json](../types/entityreference.md)
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

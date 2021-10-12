@@ -17,30 +17,32 @@
  */
 
 /**
- * This schema defines the Pipeline entity. A pipeline enables the flow of data from source
- * to destination through a series of processing steps. ETL is a type of pipeline where the
- * series of steps Extract, Transform and Load the data.
+ * This schema defines the Model entity. Models are algorithms trained on data to find
+ * patterns or make predictions.
  */
-export interface Pipeline {
+export interface Model {
   /**
-   * Concurrency of the Pipeline.
+   * Algorithm used to train the model.
    */
-  concurrency?: number;
+  algorithm: string;
   /**
-   * Description of this Pipeline.
+   * Performance Dashboard URL to track metric evolution.
+   */
+  dashboard?: EntityReference;
+  /**
+   * Description of the model, what it is, and how to use it.
    */
   description?: string;
   /**
-   * Display Name that identifies this Pipeline. It could be title or label from the source
-   * services.
+   * Display Name that identifies this model.
    */
   displayName?: string;
   /**
-   * Followers of this Pipeline.
+   * Followers of this model.
    */
   followers?: EntityReference[];
   /**
-   * A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
+   * A unique name that identifies a model.
    */
   fullyQualifiedName?: string;
   /**
@@ -48,54 +50,38 @@ export interface Pipeline {
    */
   href?: string;
   /**
-   * Unique identifier that identifies a pipeline instance.
+   * Unique identifier of a model instance.
    */
   id: string;
   /**
-   * Name that identifies this pipeline instance uniquely.
+   * Name that identifies this model.
    */
   name: string;
   /**
-   * Owner of this pipeline.
+   * Owner of this model.
    */
   owner?: EntityReference;
   /**
-   * Pipeline Code Location.
-   */
-  pipelineLocation?: string;
-  /**
-   * Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
-   */
-  pipelineUrl?: string;
-  /**
-   * Link to service where this pipeline is hosted in.
-   */
-  service: EntityReference;
-  /**
-   * Start date of the workflow.
-   */
-  startDate?: Date;
-  /**
-   * Tags for this Pipeline.
+   * Tags for this model.
    */
   tags?: TagLabel[];
   /**
-   * All the tasks that are part of pipeline.
+   * Latest usage information for this model.
    */
-  tasks?: EntityReference[];
+  usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
 }
 
 /**
- * Followers of this Pipeline.
+ * Performance Dashboard URL to track metric evolution.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this pipeline.
+ * Followers of this model.
  *
- * Link to service where this pipeline is hosted in.
+ * Owner of this model.
  */
 export interface EntityReference {
   /**
@@ -167,4 +153,49 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
+}
+
+/**
+ * Latest usage information for this model.
+ *
+ * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
+ * usage is computed along with the percentile rank based on the usage for a given day.
+ */
+export interface TypeUsedToReturnUsageDetailsOfAnEntity {
+  /**
+   * Daily usage stats of a data asset on the start date.
+   */
+  dailyStats: UsageStats;
+  /**
+   * Date in UTC.
+   */
+  date: Date;
+  /**
+   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+   */
+  monthlyStats?: UsageStats;
+  /**
+   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+   */
+  weeklyStats?: UsageStats;
+}
+
+/**
+ * Daily usage stats of a data asset on the start date.
+ *
+ * Type used to return usage statistics.
+ *
+ * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+ *
+ * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+ */
+export interface UsageStats {
+  /**
+   * Usage count of a data asset on the start date.
+   */
+  count: number;
+  /**
+   * Optional daily percentile rank data asset use when relevant.
+   */
+  percentileRank?: number;
 }

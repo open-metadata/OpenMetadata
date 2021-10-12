@@ -17,4 +17,4 @@ Type: `object`
    - Total number of entries available to page through.
    - Type: `integer`
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

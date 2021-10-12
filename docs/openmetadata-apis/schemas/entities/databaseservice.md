@@ -47,7 +47,7 @@ Type: `object`
    8. _"Oracle"_
    9. _"Athena"_
    10. _"Presto"_
-   11. _"Vertica"_
-   12. _"Trino"_
+   11. _"Trino"_
+   12. _"Vertica"_
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

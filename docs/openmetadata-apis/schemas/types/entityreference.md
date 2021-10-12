@@ -6,6 +6,8 @@ This schema defines the EntityReference type used for referencing an entity. Ent
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
  - **id** `required`
    - Unique identifier that identifies an entity instance.
@@ -33,4 +35,4 @@ Type: `object`
 
 
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

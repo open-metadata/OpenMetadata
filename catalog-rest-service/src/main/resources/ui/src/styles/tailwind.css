@@ -242,9 +242,7 @@
   .horz-separator {
     @apply tw-border-b tw-border-separator;
   }
-  .side-panel .activeCategory {
-    @apply tw--mx-4 tw-pl-4 tw-pr-3 tw-py-1 tw-border-r-4 tw-border-orange-400;
-  }
+
   .side-panel .activeCategory .tag-category {
     @apply tw-text-primary tw-font-medium;
   }

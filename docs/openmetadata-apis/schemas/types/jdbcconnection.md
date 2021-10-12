@@ -30,9 +30,8 @@ Type: `object`
 
 ### connectionUrl
 
- - Type used for JDBC connection URL.
+ - Type used for JDBC connection URL of format `url_scheme://<username>:<password>@<host>:<port>/<db_name>`.
  - Type: `string`
- - String format must be a "uri"
 
 
 ### jdbcInfo
@@ -47,4 +46,4 @@ Type: `object`
 
 
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_
