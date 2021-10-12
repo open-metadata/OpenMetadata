@@ -80,7 +80,7 @@ Type: `object`
    5. _"MaterializedView"_
 
 
-### columnDataType
+### dataType
 
  - This enum defines the type of data stored in a column.
  - Type: `string`
@@ -90,37 +90,38 @@ Type: `object`
    3. _"SMALLINT"_
    4. _"INT"_
    5. _"BIGINT"_
-   6. _"FLOAT"_
-   7. _"DOUBLE"_
-   8. _"DECIMAL"_
-   9. _"NUMERIC"_
-   10. _"TIMESTAMP"_
-   11. _"TIME"_
-   12. _"DATE"_
-   13. _"DATETIME"_
-   14. _"INTERVAL"_
-   15. _"STRING"_
-   16. _"MEDIUMTEXT"_
-   17. _"TEXT"_
-   18. _"CHAR"_
-   19. _"VARCHAR"_
-   20. _"BOOLEAN"_
-   21. _"BINARY"_
-   22. _"VARBINARY"_
-   23. _"ARRAY"_
-   24. _"BLOB"_
-   25. _"LONGBLOB"_
-   26. _"MEDIUMBLOB"_
-   27. _"MAP"_
-   28. _"STRUCT"_
-   29. _"UNION"_
-   30. _"SET"_
-   31. _"GEOGRAPHY"_
-   32. _"ENUM"_
-   33. _"JSON"_
+   6. _"BYTEINT"_
+   7. _"FLOAT"_
+   8. _"DOUBLE"_
+   9. _"DECIMAL"_
+   10. _"NUMERIC"_
+   11. _"TIMESTAMP"_
+   12. _"TIME"_
+   13. _"DATE"_
+   14. _"DATETIME"_
+   15. _"INTERVAL"_
+   16. _"STRING"_
+   17. _"MEDIUMTEXT"_
+   18. _"TEXT"_
+   19. _"CHAR"_
+   20. _"VARCHAR"_
+   21. _"BOOLEAN"_
+   22. _"BINARY"_
+   23. _"VARBINARY"_
+   24. _"ARRAY"_
+   25. _"BLOB"_
+   26. _"LONGBLOB"_
+   27. _"MEDIUMBLOB"_
+   28. _"MAP"_
+   29. _"STRUCT"_
+   30. _"UNION"_
+   31. _"SET"_
+   32. _"GEOGRAPHY"_
+   33. _"ENUM"_
+   34. _"JSON"_
 
 
-### columnConstraint
+### constraint
 
  - This enum defines the type for column constraint.
  - Type: `string`
@@ -152,7 +153,7 @@ Type: `object`
 
 ### columnName
 
- - Local name (not fully qualified name) of the column.
+ - Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.
  - Type: `string`
  - The value must match this pattern: `^[^.]*$`
  - Length: between 1 and 64
@@ -168,7 +169,7 @@ Type: `object`
 
 ### fullyQualifiedColumnName
 
- - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
+ - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.
  - Type: `string`
  - Length: between 1 and 256
 
@@ -177,12 +178,22 @@ Type: `object`
 
  - This schema defines the type for a column in a table.
  - Type: `object`
+ - This schema <u>does not</u> accept additional properties.
  - **Properties**
    - **name** `required`
      - $ref: [#/definitions/columnName](#columnname)
-   - **columnDataType** `required`
+   - **dataType** `required`
      - Data type of the column (int, date etc.).
-     - $ref: [#/definitions/columnDataType](#columndatatype)
+     - $ref: [#/definitions/dataType](#datatype)
+   - **arrayDataType**
+     - Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.
+     - $ref: [#/definitions/dataType](#datatype)
+   - **dataLength**
+     - Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.
+     - Type: `integer`
+   - **dataTypeDisplay**
+     - Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.
+     - Type: `string`
    - **description**
      - Description of the column.
      - Type: `string`
@@ -193,12 +204,20 @@ Type: `object`
      - Type: `array`
        - **Items**
        - $ref: [../../type/tagLabel.json](../types/taglabel.md)
-   - **columnConstraint**
+   - **constraint**
      - Column level constraint.
-     - $ref: [#/definitions/columnConstraint](#columnconstraint)
+     - $ref: [#/definitions/constraint](#constraint)
    - **ordinalPosition**
      - Ordinal position of the column.
      - Type: `integer`
+   - **jsonSchema**
+     - Json schema only if the dataType is JSON else null.
+     - Type: `string`
+   - **children**
+     - Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
+     - Type: `array`
+       - **Items**
+       - $ref: [#/definitions/column](#column)
 
 
 ### columnJoins
@@ -278,21 +297,21 @@ Type: `object`
    - **nullProportion**
      - No.of null value proportion in columns.
      - Type: `number`
-       - **min**
-         - Minimum value in a column.
-         - Type: `string`
-       - **max**
-         - Maximum value in a column.
-         - Type: `string`
-       - **mean**
-         - Avg value in a column.
-         - Type: `string`
-       - **median**
-         - Median value in a column.
-         - Type: `string`
-       - **stddev**
-         - Standard deviation of a column.
-         - Type: `number`
+   - **min**
+     - Minimum value in a column.
+     - Type: `string`
+   - **max**
+     - Maximum value in a column.
+     - Type: `string`
+   - **mean**
+     - Avg value in a column.
+     - Type: `string`
+   - **median**
+     - Median value in a column.
+     - Type: `string`
+   - **stddev**
+     - Standard deviation of a column.
+     - Type: `number`
 
 
 ### tableProfile
@@ -318,4 +337,4 @@ Type: `object`
 
 
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

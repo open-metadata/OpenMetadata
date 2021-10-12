@@ -8,6 +8,8 @@ OpenMetadata supports many common types reused across different schemas. Definin
 
 {% page-ref page="dailycount.md" %}
 
+{% page-ref page="entitylineage.md" %}
+
 {% page-ref page="entityreference.md" %}
 
 {% page-ref page="entityusage.md" %}

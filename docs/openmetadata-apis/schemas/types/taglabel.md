@@ -6,6 +6,8 @@ This schema defines the type for labeling an entity with a Tag.
 
 Type: `object`
 
+This schema <u>does not</u> accept additional properties.
+
 ## Properties
  - **tagFQN**
    - Type: `string`
@@ -30,4 +32,4 @@ Type: `object`
    - Link to the tag resource.
    - $ref: [basic.json#/definitions/href](basic.md#href)
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_

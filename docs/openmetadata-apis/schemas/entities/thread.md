@@ -5,6 +5,7 @@ This schema defines the Thread entity. A Thread is a collection of posts made by
 **$id: https://open-metadata.org/schema/entity/feed/thread.json**
 
 Type: `object`
+
 ## Properties
  - **id** `required`
    - Unique identifier that identifies an entity instance.
@@ -36,14 +37,14 @@ Type: `object`
    - **message** `required`
      - Message in markdown format. See markdown support for more details.
      - Type: `string`
-     - **postTs**
-       - Timestamp of the post.
-       - Type: `string`
-       - String format must be a "date-time"
-       - **from** `required`
-         - ID of User (regular user or a bot) posting the message.
-         - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
+   - **postTs**
+     - Timestamp of the post.
+     - Type: `string`
+     - String format must be a "date-time"
+   - **from** `required`
+     - ID of User (regular user or a bot) posting the message.
+     - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 
 
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Tuesday, October 12, 2021_
