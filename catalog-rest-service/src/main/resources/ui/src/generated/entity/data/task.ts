@@ -34,7 +34,7 @@ export interface Task {
    */
   downstreamTasks?: string[];
   /**
-   * End date of the task
+   * End date of the task.
    */
   endDate?: Date;
   /**
@@ -63,7 +63,7 @@ export interface Task {
    */
   service: EntityReference;
   /**
-   * Start date of the task
+   * Start date of the task.
    */
   startDate?: Date;
   /**
@@ -71,15 +71,15 @@ export interface Task {
    */
   tags?: TagLabel[];
   /**
-   * SQL used in the task. Can be used to determine the lineage
+   * SQL used in the task. Can be used to determine the lineage.
    */
   taskSQL?: string;
   /**
-   * Type of the Task. Usually refers to the class it implements
+   * Type of the Task. Usually refers to the class it implements.
    */
   taskType?: string;
   /**
-   * Task URL to visit/manage. This URL points to respective pipeline service UI
+   * Task URL to visit/manage. This URL points to respective pipeline service UI.
    */
   taskUrl?: string;
 }

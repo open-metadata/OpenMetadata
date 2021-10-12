@@ -41,7 +41,7 @@ export interface PipelineService {
    */
   name: string;
   /**
-   * Pipeline Service Management/UI URL
+   * Pipeline Service Management/UI URL.
    */
   pipelineUrl: string;
   /**
