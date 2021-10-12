@@ -29,17 +29,22 @@ OpenMetadata has the following high-level core entities and relationships:
 
 {% page-ref page="metrics.md" %}
 
+{% page-ref page="model.md" %}
+
 {% page-ref page="pipeline.md" %}
+
+{% page-ref page="pipelineservice.md" %}
 
 {% page-ref page="report.md" %}
 
 {% page-ref page="table.md" %}
+
+{% page-ref page="tagcategory.md" %}
+
+{% page-ref page="task.md" %}
 
 {% page-ref page="team.md" %}
 
 {% page-ref page="topic.md" %}
 
 {% page-ref page="user.md" %}
-
-{% page-ref page="tagcategory.md" %}
-
