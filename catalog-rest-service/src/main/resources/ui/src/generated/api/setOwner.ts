@@ -15,17 +15,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/**
- * Set ownership for a given entity
- */
-export interface SetOwner {
-  /**
-   * Id of the owner of the entity
-   */
-  id?: string;
-  /**
-   * Entity type of the owner typically either 'user' or 'team'
-   */
-  type?: string;
-}

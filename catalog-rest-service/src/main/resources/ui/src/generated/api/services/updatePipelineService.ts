@@ -15,38 +15,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-/**
- * Update pipeline service entity request
- */
-export interface UpdatePipelineService {
-  /**
-   * Description of Pipeline service entity.
-   */
-  description?: string;
-  /**
-   * Schedule for running metadata ingestion jobs
-   */
-  ingestionSchedule?: Schedule;
-  /**
-   * Pipeline Service UI URL.
-   */
-  pipelineUrl?: string;
-}
-
-/**
- * Schedule for running metadata ingestion jobs
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
- */
-export interface Schedule {
-  /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
-   */
-  repeatFrequency?: string;
-  /**
-   * Start date and time of the schedule.
-   */
-  startDate?: Date;
-}
