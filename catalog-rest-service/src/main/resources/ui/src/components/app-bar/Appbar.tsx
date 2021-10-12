@@ -181,7 +181,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 data-testid="appbar-item">
                 <span className="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400" />
                 <input
-                  className="tw-relative search-grey tw-rounded tw-border tw-border-main tw-bg-body-main focus:tw-outline-none tw-pl-8 tw-py-1"
+                  className="tw-relative search-grey tw-rounded tw-border tw-border-main tw-bg-body-main focus:tw-outline-none tw-pl-8 tw-py-1 tw-form-inputs"
                   id="searchBox"
                   type="text"
                   value={searchValue || ''}

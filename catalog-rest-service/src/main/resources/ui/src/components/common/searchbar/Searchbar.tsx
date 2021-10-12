@@ -70,6 +70,7 @@ const Searchbar = ({
       data-testid="search-bar-container">
       {label !== '' && <label>{label}</label>}
       <div className="tw-flex tw-bg-body-main tw-h-8">
+        <span className="fa fa-search tw-absolute tw-block tw-z-10 tw-w-9 tw-h-8 tw-leading-8 tw-text-center tw-pointer-events-none tw-text-gray-400" />
         {/* <div className="tw-flex-initial">
           <span className="input-group-text1 tw-pr-3 tw-py-1.5 tw-flex">
             <SVGIcons
@@ -80,7 +81,7 @@ const Searchbar = ({
           </span>
         </div> */}
         <input
-          className="tw-form-inputs tw-px-3 tw-py-1"
+          className="tw-form-inputs tw-relative tw-px-3 tw-py-1 tw-pl-8"
           data-testid="searchbar"
           placeholder={placeholder}
           type="text"
