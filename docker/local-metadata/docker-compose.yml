@@ -81,7 +81,7 @@ services:
   ingestion:
     build:
       context: ../../.
-      dockerfile: ingestion/Dockerfile
+      dockerfile: ingestion/Dockerfile_local
     expose:
       - 8080
     ports:
