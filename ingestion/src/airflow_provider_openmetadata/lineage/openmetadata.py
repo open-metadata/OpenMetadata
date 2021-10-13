@@ -6,14 +6,23 @@ import dateutil
 from airflow.configuration import conf
 from airflow.lineage.backend import LineageBackend
 
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
+from metadata.generated.schema.api.data.createPipeline import (
+    CreatePipelineEntityRequest,
+)
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.services.createPipelineService import CreatePipelineServiceEntityRequest
-from metadata.generated.schema.entity.services.pipelineService import PipelineServiceType
+from metadata.generated.schema.api.services.createPipelineService import (
+    CreatePipelineServiceEntityRequest,
+)
+from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineServiceType,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from metadata.ingestion.ometa.openmetadata_rest import (
+    MetadataServerConfig,
+    OpenMetadataAPIClient,
+)
 from metadata.utils.helpers import convert_epoch_to_iso
 
 if TYPE_CHECKING:
@@ -32,14 +41,22 @@ class OpenMetadataLineageConfig(ConfigModel):
 
 def get_lineage_config() -> OpenMetadataLineageConfig:
     """Load the lineage config from airflow_provider_openmetadata.cfg."""
-    airflow_service_name = conf.get("lineage", "airflow_service_name", fallback="airflow")
-    api_endpoint = conf.get("lineage", "openmetadata_api_endpoint", fallback="http://localhost:8585")
+    airflow_service_name = conf.get(
+        "lineage", "airflow_service_name", fallback="airflow"
+    )
+    api_endpoint = conf.get(
+        "lineage", "openmetadata_api_endpoint", fallback="http://localhost:8585"
+    )
     auth_provider_type = conf.get("lineage", "auth_provider_type", fallback="no-auth")
     secret_key = conf.get("lineage", "secret_key", fallback=None)
-    return OpenMetadataLineageConfig.parse_obj({'airflow_service_name': airflow_service_name,
-                                                'api_endpoint': api_endpoint,
-                                                'auth_provider_type': auth_provider_type,
-                                                'secret_key': secret_key})
+    return OpenMetadataLineageConfig.parse_obj(
+        {
+            "airflow_service_name": airflow_service_name,
+            "api_endpoint": api_endpoint,
+            "auth_provider_type": auth_provider_type,
+            "secret_key": secret_key,
+        }
+    )
 
 
 allowed_task_keys = [
@@ -73,17 +90,20 @@ allowed_flow_keys = [
 ]
 
 
-def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
-                                  context: Dict,
-                                  operator: "BaseOperator",
-                                  inlets: List,
-                                  outlets: List,
-                                  client: OpenMetadataAPIClient):
+def parse_lineage_to_openmetadata(
+    config: OpenMetadataLineageConfig,
+    context: Dict,
+    operator: "BaseOperator",
+    inlets: List,
+    outlets: List,
+    client: OpenMetadataAPIClient,
+):
     from airflow.serialization.serialized_objects import (
         SerializedBaseOperator,
         SerializedDAG,
     )
     import ast
+
     operator.log.info("Parsing Lineage for OpenMetadata")
     dag: "DAG" = context["dag"]
     task: BaseOperator = context["task"]
@@ -116,7 +136,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
 
     operator.log.info("Task Properties {}".format(task_properties))
     operator.log.info("DAG properties {}".format(dag_properties))
-    #operator.log.info("Pipeline Context {}".format(context))
+    # operator.log.info("Pipeline Context {}".format(context))
 
     timestamp = int(dateutil.parser.parse(context["ts"]).timestamp() * 1000)
     owner = dag.owner
@@ -128,7 +148,7 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         pipeline_service = CreatePipelineServiceEntityRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
-            pipelineUrl=pipeline_service_url
+            pipelineUrl=pipeline_service_url,
         )
         airflow_service_entity = client.create_pipeline_service(pipeline_service)
 
@@ -136,24 +156,32 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
     operator.log.info(task_properties)
     operator.log.info(dag_properties)
     downstream_tasks = []
-    dag_start_date = convert_epoch_to_iso(int(float(dag_properties['start_date'])))
+    dag_start_date = convert_epoch_to_iso(int(float(dag_properties["start_date"])))
 
-    if '_downstream_task_ids' in task_properties:
-        downstream_tasks = ast.literal_eval(task_properties['_downstream_task_ids'])
+    if "_downstream_task_ids" in task_properties:
+        downstream_tasks = ast.literal_eval(task_properties["_downstream_task_ids"])
 
     operator.log.info("downstream tasks {}".format(downstream_tasks))
-    task_start_date = task_properties['start_date'].isoformat() if 'start_time' in task_properties else None
-    task_end_date = task_properties['end_date'].isoformat() if 'end_time' in task_properties else None
+    task_start_date = (
+        task_properties["start_date"].isoformat()
+        if "start_time" in task_properties
+        else None
+    )
+    task_end_date = (
+        task_properties["end_date"].isoformat()
+        if "end_time" in task_properties
+        else None
+    )
 
     create_task = CreateTaskEntityRequest(
-        name=task_properties['task_id'],
-        displayName=task_properties['label'],
+        name=task_properties["task_id"],
+        displayName=task_properties["label"],
         taskUrl=task_url,
-        taskType=task_properties['_task_type'],
+        taskType=task_properties["_task_type"],
         startDate=task_start_date,
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
-        service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
+        service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
     task = client.create_or_update_task(create_task)
     operator.log.info("Created Task {}".format(task))
@@ -164,8 +192,8 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         description=dag.description,
         pipelineUrl=dag_url,
         startDate=dag_start_date,
-        tasks=[EntityReference(id=task.id, type='task')],
-        service=EntityReference(id=airflow_service_entity.id, type='pipelineService')
+        tasks=[EntityReference(id=task.id, type="task")],
+        service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
     pipeline = client.create_or_update_pipeline(create_pipeline)
     operator.log.info("Create Pipeline {}".format(pipeline))
@@ -175,9 +203,11 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         table_entity = client.get_table_by_name(table.fullyQualifiedName)
         operator.log.debug("from entity {}".format(table_entity))
         lineage = AddLineage(
-                edge=EntitiesEdge(fromEntity=EntityReference(id=table_entity.id, type='table'),
-                                  toEntity=EntityReference(id=pipeline.id, type='pipeline'))
-                )
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(id=table_entity.id, type="table"),
+                toEntity=EntityReference(id=pipeline.id, type="pipeline"),
+            )
+        )
         operator.log.debug("from lineage {}".format(lineage))
         client.create_or_update_lineage(lineage)
 
@@ -186,31 +216,35 @@ def parse_lineage_to_openmetadata(config: OpenMetadataLineageConfig,
         operator.log.debug("to entity {}".format(table_entity))
         lineage = AddLineage(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=pipeline.id, type='pipeline'),
-                toEntity=EntityReference(id=table_entity.id, type='table'))
+                fromEntity=EntityReference(id=pipeline.id, type="pipeline"),
+                toEntity=EntityReference(id=table_entity.id, type="table"),
+            )
         )
         operator.log.debug("to lineage {}".format(lineage))
         client.create_or_update_lineage(lineage)
 
+
 def is_airflow_version_1() -> bool:
     try:
         from airflow.hooks.base import BaseHook
+
         return False
     except ModuleNotFoundError:
         from airflow.hooks.base_hook import BaseHook
+
         return True
 
 
 class OpenMetadataLineageBackend(LineageBackend):
     """
-        Sends lineage data from tasks to OpenMetadata.
-        Configurable via ``airflow_provider_openmetadata.cfg`` as follows: ::
-        [lineage]
-        backend = airflow_provider_openmetadata.lineage.OpenMetadataLineageBackend
-        airflow_service_name = airflow #make sure this service_name matches the one configured in openMetadata
-        openmetadata_api_endpoint = http://localhost:8585
-        auth_provider_type = no-auth # use google here if you are configuring google as SSO
-        secret_key = google-client-secret-key # it needs to be configured only if you are using google as SSO
+    Sends lineage data from tasks to OpenMetadata.
+    Configurable via ``airflow_provider_openmetadata.cfg`` as follows: ::
+    [lineage]
+    backend = airflow_provider_openmetadata.lineage.OpenMetadataLineageBackend
+    airflow_service_name = airflow #make sure this service_name matches the one configured in openMetadata
+    openmetadata_api_endpoint = http://localhost:8585
+    auth_provider_type = no-auth # use google here if you are configuring google as SSO
+    secret_key = google-client-secret-key # it needs to be configured only if you are using google as SSO
     """
 
     def __init__(self) -> None:
@@ -219,33 +253,37 @@ class OpenMetadataLineageBackend(LineageBackend):
 
     @staticmethod
     def send_lineage(
-            operator: "BaseOperator",
-            inlets: Optional[List] = None,
-            outlets: Optional[List] = None,
-            context: Dict = None,
+        operator: "BaseOperator",
+        inlets: Optional[List] = None,
+        outlets: Optional[List] = None,
+        context: Dict = None,
     ) -> None:
 
         try:
             config = get_lineage_config()
             metadata_config = MetadataServerConfig.parse_obj(
                 {
-                    'api_endpoint': config.api_endpoint,
-                    'auth_provider_type': config.auth_provider_type,
-                    'secret_key': config.secret_key
+                    "api_endpoint": config.api_endpoint,
+                    "auth_provider_type": config.auth_provider_type,
+                    "secret_key": config.secret_key,
                 }
             )
             client = OpenMetadataAPIClient(metadata_config)
             op_inlets = []
             op_outlets = []
             if (
-                    isinstance(operator._inlets, list) and len(operator._inlets) == 1
-                    and isinstance(operator._inlets[0], dict) and not is_airflow_version_1()
+                isinstance(operator._inlets, list)
+                and len(operator._inlets) == 1
+                and isinstance(operator._inlets[0], dict)
+                and not is_airflow_version_1()
             ):
                 op_inlets = operator._inlets[0].get("tables", [])
 
             if (
-                    isinstance(operator._outlets, list) and len(operator._outlets) == 1
-                    and isinstance(operator._outlets[0], dict) and not is_airflow_version_1()
+                isinstance(operator._outlets, list)
+                and len(operator._outlets) == 1
+                and isinstance(operator._outlets[0], dict)
+                and not is_airflow_version_1()
             ):
                 op_outlets = operator._outlets[0].get("tables", [])
             if len(op_inlets) == 0 and len(operator.inlets) != 0:

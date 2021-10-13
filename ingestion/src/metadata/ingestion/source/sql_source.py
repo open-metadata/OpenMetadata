@@ -21,15 +21,22 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
-from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+)
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 
 from metadata.generated.schema.type.entityReference import EntityReference
 
 from metadata.generated.schema.entity.data.database import Database
 
-from metadata.generated.schema.entity.data.table import Table, Column, Constraint, \
-    TableData, TableProfile
+from metadata.generated.schema.entity.data.table import (
+    Table,
+    Column,
+    Constraint,
+    TableData,
+    TableProfile,
+)
 from sqlalchemy import create_engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
@@ -39,8 +46,9 @@ from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_metadata import DatasetProfile
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.utils.helpers import  get_database_service_or_create
-from metadata.utils.column_helpers import _handle_complex_data_types,get_column_type
+from metadata.utils.helpers import get_database_service_or_create
+from metadata.utils.column_helpers import _handle_complex_data_types, get_column_type
+
 logger: logging.Logger = logging.getLogger(__name__)
 
 
@@ -53,10 +61,10 @@ class SQLSourceStatus(SourceStatus):
 
     def scanned(self, table_name: str) -> None:
         self.success.append(table_name)
-        logger.info('Table Scanned: {}'.format(table_name))
+        logger.info("Table Scanned: {}".format(table_name))
 
     def filter(
-            self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
         self.filtered.append(table_name)
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
@@ -70,7 +78,7 @@ class SQLConnectionConfig(ConfigModel):
     scheme: str
     service_name: str
     service_type: str
-    query: Optional[str] = 'select * from {}.{} limit 50'
+    query: Optional[str] = "select * from {}.{} limit 50"
     options: dict = {}
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
@@ -114,8 +122,10 @@ def _get_table_description(schema: str, table: str, inspector: Inspector) -> str
 
 class SQLSource(Source):
     def __init__(
-            self, config: SQLConnectionConfig, metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext
+        self,
+        config: SQLConnectionConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -133,9 +143,9 @@ class SQLSource(Source):
             if self.config.data_profiler_enabled:
                 if self.data_profiler is None:
                     from metadata.profiler.dataprofiler import DataProfiler
+
                     self.data_profiler = DataProfiler(
-                        status=self.status,
-                        connection_str=self.connection_string
+                        status=self.status, connection_str=self.connection_string
                     )
                 return True
             return False
@@ -149,11 +159,13 @@ class SQLSource(Source):
         pass
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         pass
 
     def standardize_schema_table_names(
-            self, schema: str, table: str
+        self, schema: str, table: str
     ) -> Tuple[str, str]:
         return schema, table
 
@@ -169,7 +181,9 @@ class SQLSource(Source):
                 rows.append(row)
             return TableData(columns=cols, rows=rows)
         except Exception as err:
-            logger.error("Failed to generate sample data for {} - {}".format(table, err))
+            logger.error(
+                "Failed to generate sample data for {} - {}".format(table, err)
+            )
 
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         inspector = inspect(self.engine)
@@ -184,20 +198,22 @@ class SQLSource(Source):
                 yield from self.fetch_views(inspector, schema)
 
     def fetch_tables(
-            self,
-            inspector: Inspector,
-            schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for table_name in inspector.get_table_names(schema):
             try:
-                schema, table_name = self.standardize_schema_table_names(schema, table_name)
+                schema, table_name = self.standardize_schema_table_names(
+                    schema, table_name
+                )
                 if not self.sql_config.filter_pattern.included(table_name):
                     self.status.filter(
-                        '{}.{}'.format(self.config.get_service_name(), table_name),
-                        "Table pattern not allowed"
+                        "{}.{}".format(self.config.get_service_name(), table_name),
+                        "Table pattern not allowed",
                     )
                     continue
-                self.status.scanned('{}.{}'.format(self.config.get_service_name(), table_name))
+                self.status.scanned(
+                    "{}.{}".format(self.config.get_service_name(), table_name)
+                )
 
                 description = _get_table_description(schema, table_name, inspector)
                 fqn = f"{self.config.service_name}.{self.config.database}.{schema}.{table_name}"
@@ -205,10 +221,10 @@ class SQLSource(Source):
                 table_entity = Table(
                     id=uuid.uuid4(),
                     name=table_name,
-                    tableType='Regular',
-                    description=description if description is not None else ' ',
+                    tableType="Regular",
+                    description=description if description is not None else " ",
                     fullyQualifiedName=fqn,
-                    columns=table_columns
+                    columns=table_columns,
                 )
                 try:
                     if self.sql_config.generate_sample_data:
@@ -229,22 +245,24 @@ class SQLSource(Source):
                 yield table_and_db
             except Exception as err:
                 logger.error(err)
-                self.status.failures.append('{}.{}'.format(self.config.service_name, table_name))
+                self.status.failures.append(
+                    "{}.{}".format(self.config.service_name, table_name)
+                )
                 continue
 
     def fetch_views(
-            self,
-            inspector: Inspector,
-            schema: str
+        self, inspector: Inspector, schema: str
     ) -> Iterable[OMetaDatabaseAndTable]:
         for view_name in inspector.get_view_names(schema):
             try:
                 if self.config.scheme == "bigquery":
-                    schema, view_name = self.standardize_schema_table_names(schema, view_name)
+                    schema, view_name = self.standardize_schema_table_names(
+                        schema, view_name
+                    )
                 if not self.sql_config.filter_pattern.included(view_name):
                     self.status.filter(
-                        '{}.{}'.format(self.config.get_service_name(), view_name),
-                        "View pattern not allowed"
+                        "{}.{}".format(self.config.get_service_name(), view_name),
+                        "View pattern not allowed",
                     )
                     continue
                 try:
@@ -257,7 +275,9 @@ class SQLSource(Source):
                         view_definition = inspector.get_view_definition(
                             view_name, schema
                         )
-                    view_definition = "" if view_definition is None else str(view_definition)
+                    view_definition = (
+                        "" if view_definition is None else str(view_definition)
+                    )
                 except NotImplementedError:
                     view_definition = ""
 
@@ -267,11 +287,11 @@ class SQLSource(Source):
                 table = Table(
                     id=uuid.uuid4(),
                     name=view_name,
-                    tableType='View',
-                    description=description if description is not None else ' ',
+                    tableType="View",
+                    description=description if description is not None else " ",
                     fullyQualifiedName=fqn,
                     columns=table_columns,
-                    viewDefinition=view_definition
+                    viewDefinition=view_definition,
                 )
                 if self.sql_config.generate_sample_data:
                     table_data = self.fetch_sample_data(schema, view_name)
@@ -283,23 +303,29 @@ class SQLSource(Source):
                 yield table_and_db
             except Exception as err:
                 logger.error(err)
-                self.status.failures.append('{}.{}'.format(self.config.service_name, view_name))
+                self.status.failures.append(
+                    "{}.{}".format(self.config.service_name, view_name)
+                )
                 continue
 
     def _get_database(self, schema: str) -> Database:
         return Database(
             name=schema,
-            service=EntityReference(id=self.service.id, type=self.config.service_type)
+            service=EntityReference(id=self.service.id, type=self.config.service_type),
         )
 
-    def parse_raw_data_type(self,raw_data_type):
+    def parse_raw_data_type(self, raw_data_type):
         return raw_data_type
 
-    def _get_columns(self, schema: str, table: str, inspector: Inspector) -> List[Column]:
+    def _get_columns(
+        self, schema: str, table: str, inspector: Inspector
+    ) -> List[Column]:
         pk_constraints = inspector.get_pk_constraint(table, schema)
-        pk_columns = pk_constraints['column_constraints'] if len(
-            pk_constraints
-        ) > 0 and "column_constraints" in pk_constraints.keys() else {}
+        pk_columns = (
+            pk_constraints["column_constraints"]
+            if len(pk_constraints) > 0 and "column_constraints" in pk_constraints.keys()
+            else {}
+        )
         unique_constraints = []
         try:
             unique_constraints = inspector.get_unique_constraints(table, schema)
@@ -307,75 +333,86 @@ class SQLSource(Source):
             pass
         unique_columns = []
         for constraint in unique_constraints:
-            if 'column_names' in constraint.keys():
-                unique_columns = constraint['column_names']
+            if "column_names" in constraint.keys():
+                unique_columns = constraint["column_names"]
         dataset_name = f"{schema}.{table}"
         columns = inspector.get_columns(table, schema)
         table_columns = []
         row_order = 1
         try:
             for column in columns:
-                if '.' in column['name']:
+                if "." in column["name"]:
                     continue
                 children = None
                 data_type_display = None
                 col_data_length = None
                 arr_data_type = None
-                if 'raw_data_type' in column and column['raw_data_type'] is not None:
-                    column['raw_data_type'] = self.parse_raw_data_type(column['raw_data_type'])
-                    if column['raw_data_type'].startswith('struct<'):
-                        col_type = 'STRUCT'
+                if "raw_data_type" in column and column["raw_data_type"] is not None:
+                    column["raw_data_type"] = self.parse_raw_data_type(
+                        column["raw_data_type"]
+                    )
+                    if column["raw_data_type"].startswith("struct<"):
+                        col_type = "STRUCT"
                         col_obj = _handle_complex_data_types(
-                            self.status, dataset_name, f"{column['name']}:{column['raw_data_type']}"
+                            self.status,
+                            dataset_name,
+                            f"{column['name']}:{column['raw_data_type']}",
                         )
-                        if 'children' in col_obj and col_obj['children'] is not None:
-                            children = col_obj['children']
-                    elif column['raw_data_type'].startswith('map<'):
-                        col_type = 'MAP'
-                    elif column['raw_data_type'].startswith('array<'):
-                        col_type = 'ARRAY'
+                        if "children" in col_obj and col_obj["children"] is not None:
+                            children = col_obj["children"]
+                    elif column["raw_data_type"].startswith("map<"):
+                        col_type = "MAP"
+                    elif column["raw_data_type"].startswith("array<"):
+                        col_type = "ARRAY"
                         arr_data_type = re.match(
-                            r'(?:array<)(\w*)(?:.*)', column['raw_data_type']
+                            r"(?:array<)(\w*)(?:.*)", column["raw_data_type"]
                         )
                         arr_data_type = arr_data_type.groups()[0].upper()
-                    elif column['raw_data_type'].startswith('uniontype<'):
-                        col_type = 'UNION'
+                    elif column["raw_data_type"].startswith("uniontype<"):
+                        col_type = "UNION"
                     else:
-                        col_type = get_column_type(self.status, dataset_name, column['type'])
+                        col_type = get_column_type(
+                            self.status, dataset_name, column["type"]
+                        )
                         data_type_display = col_type
                     if data_type_display is None:
-                        data_type_display = column['raw_data_type']
+                        data_type_display = column["raw_data_type"]
                 else:
-                    col_type = get_column_type(self.status, dataset_name, column['type'])
-                    if col_type == 'ARRAY':
-                        if re.match(r'(?:\w*)(?:\()(\w*)(?:.*))',str(column['type'])):
-                            arr_data_type = re.match(r'(?:\w*)(?:[(]*)(\w*)(?:.*))',str(column['type'])).groups()
-                            data_type_display = column['type']
+                    col_type = get_column_type(
+                        self.status, dataset_name, column["type"]
+                    )
+                    if col_type == "ARRAY":
+                        if re.match(r"(?:\w*)(?:\()(\w*)(?:.*))", str(column["type"])):
+                            arr_data_type = re.match(
+                                r"(?:\w*)(?:[(]*)(\w*)(?:.*))", str(column["type"])
+                            ).groups()
+                            data_type_display = column["type"]
                 col_constraint = None
-                if column['nullable']:
+                if column["nullable"]:
                     col_constraint = Constraint.NULL
-                elif not column['nullable']:
+                elif not column["nullable"]:
                     col_constraint = Constraint.NOT_NULL
-                if column['name'] in pk_columns:
+                if column["name"] in pk_columns:
                     col_constraint = Constraint.PRIMARY_KEY
-                elif column['name'] in unique_columns:
+                elif column["name"] in unique_columns:
                     col_constraint = Constraint.UNIQUE
-                if col_type in ['CHAR', 'VARCHAR', 'BINARY', 'VARBINARY']:
-                    col_data_length = column['type'].length
+                if col_type in ["CHAR", "VARCHAR", "BINARY", "VARBINARY"]:
+                    col_data_length = column["type"].length
                 if col_data_length is None:
                     col_data_length = 1
                 try:
                     om_column = Column(
-                        name=column['name'],
+                        name=column["name"],
                         description=column.get("comment", None),
                         dataType=col_type,
-                        dataTypeDisplay="{}({})".format(col_type, col_data_length) if data_type_display
-                                                                                    is None else f"{data_type_display}",
+                        dataTypeDisplay="{}({})".format(col_type, col_data_length)
+                        if data_type_display is None
+                        else f"{data_type_display}",
                         dataLength=col_data_length,
                         constraint=col_constraint,
                         ordinalPosition=row_order,
                         children=children if children is not None else None,
-                        arrayDataType=arr_data_type
+                        arrayDataType=arr_data_type,
                     )
                 except Exception as err:
                     logger.error(traceback.format_exc())
@@ -388,17 +425,12 @@ class SQLSource(Source):
         except Exception as err:
             logger.error("{}: {} {}".format(repr(err), table, err))
 
-    def run_data_profiler(
-            self,
-            table: str,
-            schema: str
-    ) -> TableProfile:
+    def run_data_profiler(self, table: str, schema: str) -> TableProfile:
         dataset_name = f"{schema}.{table}"
         self.status.scanned(f"profile of {dataset_name}")
         logger.info(
             f"Running Profiling for {dataset_name}. "
             f"If you haven't configured offset and limit this process can take longer"
-
         )
         if self.config.scheme == "bigquery":
             table = dataset_name
@@ -408,7 +440,9 @@ class SQLSource(Source):
             table=table,
             limit=self.sql_config.data_profiler_limit,
             offset=self.sql_config.data_profiler_offset,
-            project_id=self.config.project_id if self.config.scheme == "bigquery" else None
+            project_id=self.config.project_id
+            if self.config.scheme == "bigquery"
+            else None,
         )
         logger.debug(f"Finished profiling {dataset_name}")
         return profile

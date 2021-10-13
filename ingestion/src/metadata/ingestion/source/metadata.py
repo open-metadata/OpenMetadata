@@ -48,26 +48,33 @@ class MetadataSourceStatus(SourceStatus):
 
     def scanned_table(self, table_name: str) -> None:
         self.success.append(table_name)
-        logger.info('Table Scanned: {}'.format(table_name))
+        logger.info("Table Scanned: {}".format(table_name))
 
     def scanned_topic(self, topic_name: str) -> None:
         self.success.append(topic_name)
-        logger.info('Topic Scanned: {}'.format(topic_name))
+        logger.info("Topic Scanned: {}".format(topic_name))
 
     def scanned_dashboard(self, dashboard_name: str) -> None:
         self.success.append(dashboard_name)
-        logger.info('Dashboard Scanned: {}'.format(dashboard_name))
+        logger.info("Dashboard Scanned: {}".format(dashboard_name))
 
-    def filtered(self, table_name: str, err: str, dataset_name: str = None, col_type: str = None) -> None:
+    def filtered(
+        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+    ) -> None:
         self.warnings.append(table_name)
         logger.warning("Dropped Entity {} due to {}".format(table_name, err))
+
 
 class MetadataSource(Source):
     config: MetadataTablesRestSourceConfig
     report: SourceStatus
 
-    def __init__(self, config: MetadataTablesRestSourceConfig, metadata_config: MetadataServerConfig,
-                 ctx: WorkflowContext):
+    def __init__(
+        self,
+        config: MetadataTablesRestSourceConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -81,7 +88,9 @@ class MetadataSource(Source):
         pass
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = MetadataTablesRestSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
@@ -99,7 +108,8 @@ class MetadataSource(Source):
                 table_entities = self.client.list_tables(
                     fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
                     after=after,
-                    limit=self.config.limit_records)
+                    limit=self.config.limit_records,
+                )
                 for table in table_entities.tables:
                     self.status.scanned_table(table.name.__root__)
                     yield table
@@ -112,7 +122,10 @@ class MetadataSource(Source):
             after = None
             while True:
                 topic_entities = self.client.list_topics(
-                    fields="owner,service,tags,followers", after=after, limit=self.config.limit_records)
+                    fields="owner,service,tags,followers",
+                    after=after,
+                    limit=self.config.limit_records,
+                )
                 for topic in topic_entities.topics:
                     self.status.scanned_topic(topic.name.__root__)
                     yield topic
@@ -125,8 +138,10 @@ class MetadataSource(Source):
             after = None
             while True:
                 dashboard_entities = self.client.list_dashboards(
-                    fields="owner,service,tags,followers,charts,usageSummary", after=after,
-                    limit=self.config.limit_records)
+                    fields="owner,service,tags,followers,charts,usageSummary",
+                    after=after,
+                    limit=self.config.limit_records,
+                )
                 for dashboard in dashboard_entities.dashboards:
                     self.status.scanned_dashboard(dashboard.name)
                     yield dashboard
@@ -139,8 +154,10 @@ class MetadataSource(Source):
             after = None
             while True:
                 pipeline_entities = self.client.list_pipelines(
-                    fields="owner,service,tags,followers,tasks", after=after,
-                    limit=self.config.limit_records)
+                    fields="owner,service,tags,followers,tasks",
+                    after=after,
+                    limit=self.config.limit_records,
+                )
                 for pipeline in pipeline_entities.pipelines:
                     self.status.scanned_dashboard(pipeline.name)
                     yield pipeline

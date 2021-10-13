@@ -27,14 +27,25 @@ from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
-from metadata.ingestion.sink.elasticsearch_constants import TABLE_ELASTICSEARCH_INDEX_MAPPING, \
-    TOPIC_ELASTICSEARCH_INDEX_MAPPING, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
+from metadata.ingestion.ometa.openmetadata_rest import (
+    OpenMetadataAPIClient,
+    MetadataServerConfig,
+)
+from metadata.ingestion.sink.elasticsearch_constants import (
+    TABLE_ELASTICSEARCH_INDEX_MAPPING,
+    TOPIC_ELASTICSEARCH_INDEX_MAPPING,
+    DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
+)
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
-from metadata.ingestion.models.table_metadata import TableESDocument, TopicESDocument, DashboardESDocument, \
-    PipelineESDocument
+from metadata.ingestion.models.table_metadata import (
+    TableESDocument,
+    TopicESDocument,
+    DashboardESDocument,
+    PipelineESDocument,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,38 +64,52 @@ class ElasticSearchConfig(ConfigModel):
 
 
 class ElasticsearchSink(Sink):
-    """
+    """ """
 
-    """
     DEFAULT_ELASTICSEARCH_INDEX_MAPPING = TABLE_ELASTICSEARCH_INDEX_MAPPING
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = ElasticSearchConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def __init__(self, ctx: WorkflowContext, config: ElasticSearchConfig,
-                 metadata_config: MetadataServerConfig) -> None:
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: ElasticSearchConfig,
+        metadata_config: MetadataServerConfig,
+    ) -> None:
 
         self.config = config
         self.metadata_config = metadata_config
         self.ctx = ctx
         self.status = SinkStatus()
         self.rest = OpenMetadataAPIClient(self.metadata_config)
-        self.elasticsearch_doc_type = '_doc'
-        self.elasticsearch_client = Elasticsearch([
-            {'host': self.config.es_host,
-             'port': self.config.es_port},
-        ])
+        self.elasticsearch_doc_type = "_doc"
+        self.elasticsearch_client = Elasticsearch(
+            [
+                {"host": self.config.es_host, "port": self.config.es_port},
+            ]
+        )
         if self.config.index_tables:
-            self._check_or_create_index(self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
+            )
         if self.config.index_topics:
-            self._check_or_create_index(self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.topic_index_name, TOPIC_ELASTICSEARCH_INDEX_MAPPING
+            )
         if self.config.index_dashboards:
-            self._check_or_create_index(self.config.dashboard_index_name, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.dashboard_index_name, DASHBOARD_ELASTICSEARCH_INDEX_MAPPING
+            )
         if self.config.index_pipelines:
-            self._check_or_create_index(self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING)
+            self._check_or_create_index(
+                self.config.pipeline_index_name, PIPELINE_ELASTICSEARCH_INDEX_MAPPING
+            )
 
     def _check_or_create_index(self, index_name: str, es_mapping: str):
         """
@@ -93,36 +118,56 @@ class ElasticsearchSink(Sink):
         """
         if self.elasticsearch_client.indices.exists(index_name):
             mapping = self.elasticsearch_client.indices.get_mapping()
-            if not mapping[index_name]['mappings']:
-                logger.debug(f'There are no mappings for index {index_name}. Updating the mapping')
+            if not mapping[index_name]["mappings"]:
+                logger.debug(
+                    f"There are no mappings for index {index_name}. Updating the mapping"
+                )
                 es_mapping_dict = json.loads(es_mapping)
-                es_mapping_update_dict = {'properties': es_mapping_dict['mappings']['properties']}
-                self.elasticsearch_client.indices.put_mapping(index=index_name, body=json.dumps(es_mapping_update_dict))
+                es_mapping_update_dict = {
+                    "properties": es_mapping_dict["mappings"]["properties"]
+                }
+                self.elasticsearch_client.indices.put_mapping(
+                    index=index_name, body=json.dumps(es_mapping_update_dict)
+                )
         else:
-            logger.warning("Received index not found error from Elasticsearch. "
-                           + "The index doesn't exist for a newly created ES. It's OK on first run.")
+            logger.warning(
+                "Received index not found error from Elasticsearch. "
+                + "The index doesn't exist for a newly created ES. It's OK on first run."
+            )
             # create new index with mapping
             self.elasticsearch_client.indices.create(index=index_name, body=es_mapping)
 
     def write_record(self, record: Record) -> None:
         if isinstance(record, Table):
             table_doc = self._create_table_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.table_index_name, id=str(table_doc.table_id),
-                                            body=table_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.table_index_name,
+                id=str(table_doc.table_id),
+                body=table_doc.json(),
+            )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.topic_index_name, id=str(topic_doc.topic_id),
-                                            body=topic_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.topic_index_name,
+                id=str(topic_doc.topic_id),
+                body=topic_doc.json(),
+            )
         if isinstance(record, Dashboard):
             dashboard_doc = self._create_dashboard_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.dashboard_index_name, id=str(dashboard_doc.dashboard_id),
-                                            body=dashboard_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.dashboard_index_name,
+                id=str(dashboard_doc.dashboard_id),
+                body=dashboard_doc.json(),
+            )
         if isinstance(record, Pipeline):
             pipeline_doc = self._create_pipeline_es_doc(record)
-            self.elasticsearch_client.index(index=self.config.pipeline_index_name, id=str(pipeline_doc.pipeline_id),
-                                            body=pipeline_doc.json())
+            self.elasticsearch_client.index(
+                index=self.config.pipeline_index_name,
+                id=str(pipeline_doc.pipeline_id),
+                body=pipeline_doc.json(),
+            )
 
-        if (hasattr(record.name, '__root__')):
+        if hasattr(record.name, "__root__"):
             self.status.records_written(record.name.__root__)
         else:
             self.status.records_written(record.name)
@@ -131,7 +176,10 @@ class ElasticsearchSink(Sink):
         fqdn = table.fullyQualifiedName
         database = table.database.name
         table_name = table.name
-        suggest = [{'input': [fqdn], 'weight': 5}, {'input': [table_name], 'weight': 10}]
+        suggest = [
+            {"input": [fqdn], "weight": 5},
+            {"input": [table_name], "weight": 10},
+        ]
         column_names = []
         column_descriptions = []
         tags = set()
@@ -153,44 +201,53 @@ class ElasticsearchSink(Sink):
                     tags.add(col_tag.tagFQN)
 
         database_entity = self.rest.get_database_by_id(table.database.id.__root__)
-        service_entity = self.rest.get_database_service_by_id(database_entity.service.id.__root__)
+        service_entity = self.rest.get_database_service_by_id(
+            database_entity.service.id.__root__
+        )
         table_owner = str(table.owner.id.__root__) if table.owner is not None else ""
         table_followers = []
         if table.followers:
             for follower in table.followers.__root__:
                 table_followers.append(str(follower.id.__root__))
-        table_doc = TableESDocument(table_id=str(table.id.__root__),
-                                    database=database,
-                                    service=service_entity.name,
-                                    service_type=service_entity.serviceType.name,
-                                    table_name=table.name.__root__,
-                                    suggest=suggest,
-                                    description=table.description,
-                                    table_type=table.tableType.name,
-                                    last_updated_timestamp=timestamp,
-                                    column_names=column_names,
-                                    column_descriptions=column_descriptions,
-                                    monthly_stats=table.usageSummary.monthlyStats.count,
-                                    monthly_percentile_rank=table.usageSummary.monthlyStats.percentileRank,
-                                    weekly_stats=table.usageSummary.weeklyStats.count,
-                                    weekly_percentile_rank=table.usageSummary.weeklyStats.percentileRank,
-                                    daily_stats=table.usageSummary.dailyStats.count,
-                                    daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
-                                    tier=tier,
-                                    tags=list(tags),
-                                    fqdn=fqdn,
-                                    schema_description=None,
-                                    owner=table_owner,
-                                    followers=table_followers)
+        table_doc = TableESDocument(
+            table_id=str(table.id.__root__),
+            database=database,
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            table_name=table.name.__root__,
+            suggest=suggest,
+            description=table.description,
+            table_type=table.tableType.name,
+            last_updated_timestamp=timestamp,
+            column_names=column_names,
+            column_descriptions=column_descriptions,
+            monthly_stats=table.usageSummary.monthlyStats.count,
+            monthly_percentile_rank=table.usageSummary.monthlyStats.percentileRank,
+            weekly_stats=table.usageSummary.weeklyStats.count,
+            weekly_percentile_rank=table.usageSummary.weeklyStats.percentileRank,
+            daily_stats=table.usageSummary.dailyStats.count,
+            daily_percentile_rank=table.usageSummary.dailyStats.percentileRank,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            schema_description=None,
+            owner=table_owner,
+            followers=table_followers,
+        )
         return table_doc
 
     def _create_topic_es_doc(self, topic: Topic):
         fqdn = topic.fullyQualifiedName
         topic_name = topic.name
-        suggest = [{'input': [fqdn], 'weight': 5}, {'input': [topic_name], 'weight': 10}]
+        suggest = [
+            {"input": [fqdn], "weight": 5},
+            {"input": [topic_name], "weight": 10},
+        ]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_messaging_service_by_id(str(topic.service.id.__root__))
+        service_entity = self.rest.get_messaging_service_by_id(
+            str(topic.service.id.__root__)
+        )
         topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
         topic_followers = []
         if topic.followers:
@@ -202,29 +259,35 @@ class ElasticsearchSink(Sink):
                 tier = topic_tag.tagFQN
             else:
                 tags.add(topic_tag.tagFQN)
-        topic_doc = TopicESDocument(topic_id=str(topic.id.__root__),
-                                    service=service_entity.name,
-                                    service_type=service_entity.serviceType.name,
-                                    topic_name=topic.name.__root__,
-                                    suggest=suggest,
-                                    description=topic.description,
-                                    last_updated_timestamp=timestamp,
-                                    tier=tier,
-                                    tags=list(tags),
-                                    fqdn=fqdn,
-                                    owner=topic_owner,
-                                    followers=topic_followers)
+        topic_doc = TopicESDocument(
+            topic_id=str(topic.id.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            topic_name=topic.name.__root__,
+            suggest=suggest,
+            description=topic.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=topic_owner,
+            followers=topic_followers,
+        )
 
         return topic_doc
 
     def _create_dashboard_es_doc(self, dashboard: Dashboard):
         fqdn = dashboard.fullyQualifiedName
         dashboard_name = dashboard.name
-        suggest = [{'input': [dashboard.displayName], 'weight': 10}]
+        suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_dashboard_service_by_id(str(dashboard.service.id.__root__))
-        dashboard_owner = str(dashboard.owner.id.__root__) if dashboard.owner is not None else ""
+        service_entity = self.rest.get_dashboard_service_by_id(
+            str(dashboard.service.id.__root__)
+        )
+        dashboard_owner = (
+            str(dashboard.owner.id.__root__) if dashboard.owner is not None else ""
+        )
         dashboard_followers = []
         if dashboard.followers:
             for follower in dashboard.followers.__root__:
@@ -245,37 +308,42 @@ class ElasticsearchSink(Sink):
             if len(chart.tags) > 0:
                 for col_tag in chart.tags:
                     tags.add(col_tag.tagFQN)
-        dashboard_doc = DashboardESDocument(dashboard_id=str(dashboard.id.__root__),
-                                            service=service_entity.name,
-                                            service_type=service_entity.serviceType.name,
-                                            dashboard_name=dashboard.displayName,
-                                            chart_names=chart_names,
-                                            chart_descriptions=chart_descriptions,
-                                            suggest=suggest,
-                                            description=dashboard.description,
-                                            last_updated_timestamp=timestamp,
-                                            tier=tier,
-                                            tags=list(tags),
-                                            fqdn=fqdn,
-                                            owner=dashboard_owner,
-                                            followers=dashboard_followers,
-                                            monthly_stats=dashboard.usageSummary.monthlyStats.count,
-                                            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
-                                            weekly_stats=dashboard.usageSummary.weeklyStats.count,
-                                            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
-                                            daily_stats=dashboard.usageSummary.dailyStats.count,
-                                            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
-                                            )
+        dashboard_doc = DashboardESDocument(
+            dashboard_id=str(dashboard.id.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            dashboard_name=dashboard.displayName,
+            chart_names=chart_names,
+            chart_descriptions=chart_descriptions,
+            suggest=suggest,
+            description=dashboard.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=dashboard_owner,
+            followers=dashboard_followers,
+            monthly_stats=dashboard.usageSummary.monthlyStats.count,
+            monthly_percentile_rank=dashboard.usageSummary.monthlyStats.percentileRank,
+            weekly_stats=dashboard.usageSummary.weeklyStats.count,
+            weekly_percentile_rank=dashboard.usageSummary.weeklyStats.percentileRank,
+            daily_stats=dashboard.usageSummary.dailyStats.count,
+            daily_percentile_rank=dashboard.usageSummary.dailyStats.percentileRank,
+        )
 
         return dashboard_doc
 
     def _create_pipeline_es_doc(self, pipeline: Pipeline):
         fqdn = pipeline.fullyQualifiedName
-        suggest = [{'input': [pipeline.displayName], 'weight': 10}]
+        suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_pipeline_service_by_id(str(pipeline.service.id.__root__))
-        pipeline_owner = str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
+        service_entity = self.rest.get_pipeline_service_by_id(
+            str(pipeline.service.id.__root__)
+        )
+        pipeline_owner = (
+            str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
+        )
         pipeline_followers = []
         if pipeline.followers:
             for follower in pipeline.followers.__root__:
@@ -297,21 +365,22 @@ class ElasticsearchSink(Sink):
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
 
-        pipeline_doc = PipelineESDocument(pipeline_id=str(pipeline.id.__root__),
-                                          service=service_entity.name,
-                                          service_type=service_entity.serviceType.name,
-                                          pipeline_name=pipeline.displayName,
-                                          task_names=task_names,
-                                          task_descriptions=task_descriptions,
-                                          suggest=suggest,
-                                          description=pipeline.description,
-                                          last_updated_timestamp=timestamp,
-                                          tier=tier,
-                                          tags=list(tags),
-                                          fqdn=fqdn,
-                                          owner=pipeline_owner,
-                                          followers=pipeline_followers
-                                          )
+        pipeline_doc = PipelineESDocument(
+            pipeline_id=str(pipeline.id.__root__),
+            service=service_entity.name,
+            service_type=service_entity.serviceType.name,
+            pipeline_name=pipeline.displayName,
+            task_names=task_names,
+            task_descriptions=task_descriptions,
+            suggest=suggest,
+            description=pipeline.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=pipeline_owner,
+            followers=pipeline_followers,
+        )
 
         return pipeline_doc
 

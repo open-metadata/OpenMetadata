@@ -7,8 +7,12 @@ from typing import Iterable, List
 from faker import Faker
 
 from metadata.generated.schema.api.data.createTopic import CreateTopic
-from metadata.generated.schema.api.services.createDashboardService import CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceEntityRequest,
+)
+from metadata.generated.schema.api.services.createMessagingService import (
+    CreateMessagingServiceEntityRequest,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Table, Column
 from metadata.generated.schema.entity.data.topic import Topic
@@ -28,7 +32,9 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.utils.helpers import snake_to_camel
 from metadata.ingestion.processor.pii import ColumnNameScanner
 
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -57,7 +63,7 @@ class SampleEntitySourceStatus(SourceStatus):
 
     def scanned(self, entity_type: str, entity_name: str) -> None:
         self.success.append(entity_name)
-        logger.info('{} Scanned: {}'.format(entity_type, entity_name))
+        logger.info("{} Scanned: {}".format(entity_type, entity_name))
 
     def filtered(self, entity_type: str, entity_name: str, err: str) -> None:
         self.warnings.append(entity_name)
@@ -65,8 +71,12 @@ class SampleEntitySourceStatus(SourceStatus):
 
 
 class SampleEntitySource(Source):
-
-    def __init__(self, config: SampleEntitySourceConfig, metadata_config: MetadataServerConfig, ctx):
+    def __init__(
+        self,
+        config: SampleEntitySourceConfig,
+        metadata_config: MetadataServerConfig,
+        ctx,
+    ):
         super().__init__(ctx)
         self.faker = Faker()
         self.status = SampleEntitySourceStatus()
@@ -75,8 +85,9 @@ class SampleEntitySource(Source):
         self.client = OpenMetadataAPIClient(metadata_config)
         self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
-        self.service_type = lambda: random.choice(['BigQuery', 'Hive', 'MSSQL', 'MySQL', 'Postgres', 'Redshift',
-                                                   'Snowflake'])
+        self.service_type = lambda: random.choice(
+            ["BigQuery", "Hive", "MSSQL", "MySQL", "Postgres", "Redshift", "Snowflake"]
+        )
         self.database_name = lambda: self.faker.word()
         self.table_name = lambda: self.faker.word()
         self.column_name = lambda: self.faker.word()
@@ -84,13 +95,18 @@ class SampleEntitySource(Source):
         self.chart_ids = lambda: self.faker.random_int()
         self.tags = self.__get_tags()
         self.tagFQN = lambda: self.faker.first_name()
-        self.labelType = lambda: random.choice(['Automated', 'Derived', 'Manual', 'Propagated'])
-        self.state = lambda: random.choice(['Confirmed', 'Suggested'])
+        self.labelType = lambda: random.choice(
+            ["Automated", "Derived", "Manual", "Propagated"]
+        )
+        self.state = lambda: random.choice(["Confirmed", "Suggested"])
         self.href = lambda: self.faker.url()
-        self.col_type = lambda: random.choice(['INT', 'STRING', 'VARCHAR', 'DATE'])
-        self.chart_type = lambda: random.choice(['Area', 'Line', 'Table', 'Bar', 'Pie', 'Histogram', 'Scatter', 'Text'])
+        self.col_type = lambda: random.choice(["INT", "STRING", "VARCHAR", "DATE"])
+        self.chart_type = lambda: random.choice(
+            ["Area", "Line", "Table", "Bar", "Pie", "Histogram", "Scatter", "Text"]
+        )
         self.col_constraint = lambda: random.choice(
-            [Constraint.UNIQUE, Constraint.NOT_NULL, Constraint.NULL])
+            [Constraint.UNIQUE, Constraint.NOT_NULL, Constraint.NULL]
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -123,50 +139,75 @@ class SampleEntitySource(Source):
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         for h in range(self.config.no_of_services):
-            service = {'jdbc': {'connectionUrl': f'jdbc://localhost', 'driverClass': 'jdbc'},
-                       'name': self.service_name(), 'description': self.description(),
-                       'serviceType': self.service_type()}
+            service = {
+                "jdbc": {"connectionUrl": f"jdbc://localhost", "driverClass": "jdbc"},
+                "name": self.service_name(),
+                "description": self.description(),
+                "serviceType": self.service_type(),
+            }
             create_service = None
             while True:
                 try:
-                    create_service = self.client.create_database_service(CreateDatabaseServiceEntityRequest(**service))
+                    create_service = self.client.create_database_service(
+                        CreateDatabaseServiceEntityRequest(**service)
+                    )
                     break
                 except APIError as err:
                     continue
 
-            logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
+            logger.info(
+                "Ingesting service {}/{}".format(h + 1, self.config.no_of_services)
+            )
             for i in range(self.config.no_of_databases):
-                db = Database(id=uuid.uuid4(),
-                              name=self.database_name().replace(".", "_"),
-                              description=self.description(),
-                              service=EntityReference(id=create_service.id, type=self.config.service_type))
+                db = Database(
+                    id=uuid.uuid4(),
+                    name=self.database_name().replace(".", "_"),
+                    description=self.description(),
+                    service=EntityReference(
+                        id=create_service.id, type=self.config.service_type
+                    ),
+                )
 
-                logger.info('Ingesting database {}/{} in service: {}/{}'
-                            .format(i + 1, self.config.no_of_databases, h + 1, self.config.no_of_services))
+                logger.info(
+                    "Ingesting database {}/{} in service: {}/{}".format(
+                        i + 1,
+                        self.config.no_of_databases,
+                        h + 1,
+                        self.config.no_of_services,
+                    )
+                )
 
                 for j in range(self.config.no_of_tables):
                     table_columns = []
-                    table_entity = Table(id=uuid.uuid4(),
-                                         name=self.table_name().replace(".", "_"),
-                                         tableType='Regular',
-                                         description=self.description(),
-                                         columns=table_columns)
+                    table_entity = Table(
+                        id=uuid.uuid4(),
+                        name=self.table_name().replace(".", "_"),
+                        tableType="Regular",
+                        description=self.description(),
+                        columns=table_columns,
+                    )
                     row_order = 0
                     for t in range(self.config.no_of_columns):
                         tag_labels = []
                         tag_entity = random.choice(self.tags)
-                        tag_labels.append(TagLabel(tagFQN=tag_entity.fullyQualifiedName,
-                                                   labelType='Automated',
-                                                   state='Suggested',
-                                                   href=tag_entity.href))
+                        tag_labels.append(
+                            TagLabel(
+                                tagFQN=tag_entity.fullyQualifiedName,
+                                labelType="Automated",
+                                state="Suggested",
+                                href=tag_entity.href,
+                            )
+                        )
                         table_columns.append(
-                            Column(name=self.column_name(),
-                                   description=self.description(),
-                                   dataType=self.col_type(),
-                                   constraint=self.col_constraint(),
-                                   dataLength=100,
-                                   ordinalPosition=row_order,
-                                   tags=tag_labels)
+                            Column(
+                                name=self.column_name(),
+                                description=self.description(),
+                                dataType=self.col_type(),
+                                constraint=self.col_constraint(),
+                                dataLength=100,
+                                ordinalPosition=row_order,
+                                tags=tag_labels,
+                            )
                         )
                         table_entity.columns = table_columns
                         row_order = row_order + 1
@@ -181,43 +222,63 @@ class SampleEntitySource(Source):
             create_service = None
             while True:
                 try:
-                    service = {'name': self.service_name(), 'description': self.description(),
-                               'dashboardUrl': 'http://localhost:8088',
-                               'userName': 'admin',
-                               'password': 'admin',
-                               'serviceType': 'Superset'}
+                    service = {
+                        "name": self.service_name(),
+                        "description": self.description(),
+                        "dashboardUrl": "http://localhost:8088",
+                        "userName": "admin",
+                        "password": "admin",
+                        "serviceType": "Superset",
+                    }
                     create_service = self.client.create_dashboard_service(
-                        CreateDashboardServiceEntityRequest(**service))
+                        CreateDashboardServiceEntityRequest(**service)
+                    )
                     break
                 except APIError as err:
                     continue
 
-            logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
+            logger.info(
+                "Ingesting service {}/{}".format(h + 1, self.config.no_of_services)
+            )
             for i in range(self.config.no_of_dashboards):
-                logger.info('Ingesting dashboard {}/{} in service: {}/{}'
-                            .format(i + 1, self.config.no_of_databases, h + 1, self.config.no_of_services))
+                logger.info(
+                    "Ingesting dashboard {}/{} in service: {}/{}".format(
+                        i + 1,
+                        self.config.no_of_databases,
+                        h + 1,
+                        self.config.no_of_services,
+                    )
+                )
                 chart_ids = []
                 for j in range(self.config.no_of_charts):
                     charts = []
                     chart_id = self.chart_ids()
-                    chart_entity = Chart(id=uuid.uuid4(),
-                                         name=str(chart_id),
-                                         displayName=self.table_name(),
-                                         description=self.description(),
-                                         chart_type=self.chart_type(),
-                                         chartId=str(chart_id),
-                                         url='http://superset:8080/chartUrl',
-                                         service=EntityReference(id=create_service.id, type="dashboardService"))
+                    chart_entity = Chart(
+                        id=uuid.uuid4(),
+                        name=str(chart_id),
+                        displayName=self.table_name(),
+                        description=self.description(),
+                        chart_type=self.chart_type(),
+                        chartId=str(chart_id),
+                        url="http://superset:8080/chartUrl",
+                        service=EntityReference(
+                            id=create_service.id, type="dashboardService"
+                        ),
+                    )
                     chart_ids.append(str(chart_id))
                     yield chart_entity
 
-                dashboard = Dashboard(id=uuid.uuid4(),
-                                      name=str(self.chart_ids()),
-                                      displayName=self.table_name(),
-                                      description=self.description(),
-                                      url='http://superset:8080/dashboardUrl',
-                                      charts=chart_ids,
-                                      service=EntityReference(id=create_service.id, type="dashboardService"))
+                dashboard = Dashboard(
+                    id=uuid.uuid4(),
+                    name=str(self.chart_ids()),
+                    displayName=self.table_name(),
+                    description=self.description(),
+                    url="http://superset:8080/dashboardUrl",
+                    charts=chart_ids,
+                    service=EntityReference(
+                        id=create_service.id, type="dashboardService"
+                    ),
+                )
                 yield dashboard
 
     def ingest_topics(self) -> Iterable[CreateTopic]:
@@ -225,29 +286,38 @@ class SampleEntitySource(Source):
             create_service = None
             while True:
                 try:
-                    service = {'name': self.service_name(), 'description': self.description(),
-                               'brokers': ["localhost:9092"],
-                               'schemaRegistry': 'http://localhost:8081',
-                               'serviceType': 'Kafka'}
+                    service = {
+                        "name": self.service_name(),
+                        "description": self.description(),
+                        "brokers": ["localhost:9092"],
+                        "schemaRegistry": "http://localhost:8081",
+                        "serviceType": "Kafka",
+                    }
                     create_service = self.client.create_messaging_service(
-                        CreateMessagingServiceEntityRequest(**service))
+                        CreateMessagingServiceEntityRequest(**service)
+                    )
                     break
                 except APIError as err:
                     continue
 
-            logger.info('Ingesting service {}/{}'.format(h + 1, self.config.no_of_services))
+            logger.info(
+                "Ingesting service {}/{}".format(h + 1, self.config.no_of_services)
+            )
             for j in range(self.config.no_of_topics):
                 topic_entity = CreateTopic(
-                                     name=self.table_name(),
-                                     description=self.description(),
-                                     partitions=self.chart_ids(),
-                                     retentionSize=322122382273,
-                                     replicationFactor=2,
-                                     maximumMessageSize=167,
-                                     cleanupPolicies=["delete"],
-                                     schemaType="Avro",
-                                     schemaText="{\"namespace\":\"org.open-metadata.kafka\",\"name\":\"Customer\",\"type\":\"record\",\"fields\":[{\"name\":\"id\",\"type\":\"string\"},{\"name\":\"first_name\",\"type\":\"string\"},{\"name\":\"last_name\",\"type\":\"string\"},{\"name\":\"email\",\"type\":\"string\"},{\"name\":\"address_line_1\",\"type\":\"string\"},{\"name\":\"address_line_2\",\"type\":\"string\"},{\"name\":\"post_code\",\"type\":\"string\"},{\"name\":\"country\",\"type\":\"string\"}]}",
-                                     service=EntityReference(id=create_service.id, type="messagingService"))
+                    name=self.table_name(),
+                    description=self.description(),
+                    partitions=self.chart_ids(),
+                    retentionSize=322122382273,
+                    replicationFactor=2,
+                    maximumMessageSize=167,
+                    cleanupPolicies=["delete"],
+                    schemaType="Avro",
+                    schemaText='{"namespace":"org.open-metadata.kafka","name":"Customer","type":"record","fields":[{"name":"id","type":"string"},{"name":"first_name","type":"string"},{"name":"last_name","type":"string"},{"name":"email","type":"string"},{"name":"address_line_1","type":"string"},{"name":"address_line_2","type":"string"},{"name":"post_code","type":"string"},{"name":"country","type":"string"}]}',
+                    service=EntityReference(
+                        id=create_service.id, type="messagingService"
+                    ),
+                )
                 yield topic_entity
 
     def close(self):

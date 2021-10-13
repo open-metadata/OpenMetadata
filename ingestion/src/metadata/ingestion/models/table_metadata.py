@@ -21,12 +21,14 @@ from metadata.generated.schema.type.entityReference import EntityReference
 
 
 class Table(BaseModel):
-    """Table Fully Qualified Name """
+    """Table Fully Qualified Name"""
+
     fullyQualifiedName: str
 
 
 class TableESDocument(BaseModel):
-    """ Elastic Search Mapping doc """
+    """Elastic Search Mapping doc"""
+
     table_id: str
     database: str
     service: str
@@ -53,7 +55,8 @@ class TableESDocument(BaseModel):
 
 
 class TopicESDocument(BaseModel):
-    """ Topic Elastic Search Mapping doc """
+    """Topic Elastic Search Mapping doc"""
+
     topic_id: str
     service: str
     service_type: str
@@ -70,7 +73,8 @@ class TopicESDocument(BaseModel):
 
 
 class DashboardESDocument(BaseModel):
-    """ Elastic Search Mapping doc for Dashboards """
+    """Elastic Search Mapping doc for Dashboards"""
+
     dashboard_id: str
     service: str
     service_type: str
@@ -94,7 +98,8 @@ class DashboardESDocument(BaseModel):
 
 
 class PipelineESDocument(BaseModel):
-    """ Elastic Search Mapping doc for Pipelines """
+    """Elastic Search Mapping doc for Pipelines"""
+
     pipeline_id: str
     service: str
     service_type: str
@@ -113,6 +118,7 @@ class PipelineESDocument(BaseModel):
 
 class DashboardOwner(BaseModel):
     """Dashboard owner"""
+
     username: str
     first_name: str
     last_name: str
@@ -120,6 +126,7 @@ class DashboardOwner(BaseModel):
 
 class Chart(BaseModel):
     """Chart"""
+
     name: str
     displayName: str
     description: str
@@ -134,6 +141,7 @@ class Chart(BaseModel):
 
 class Dashboard(BaseModel):
     """Dashboard"""
+
     name: str
     displayName: str
     description: str
@@ -146,24 +154,28 @@ class Dashboard(BaseModel):
 
 class ValueFrequency(BaseModel):
     """Profiler ValueFrequency"""
+
     value: str
     frequency: int
 
 
 class Histogram(BaseModel):
     """Histogram"""
+
     boundaries: List[str]
     heights: List[str]
 
 
 class Quantile(BaseModel):
     """Quantile"""
+
     quantile: str
     value: str
 
 
 class DatasetColumnProfile(BaseModel):
-    """Dataset Column Profile stats """
+    """Dataset Column Profile stats"""
+
     fqdn: str
     unique_count: int = None
     unique_proportion: int = None
@@ -182,6 +194,7 @@ class DatasetColumnProfile(BaseModel):
 
 class DatasetProfile(BaseModel):
     """Dataset(table) stats"""
+
     timestamp: int
     table_name: str
     row_count: int = None

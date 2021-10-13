@@ -13,9 +13,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-CLUSTER_NODE_LABEL = 'Cluster'
+CLUSTER_NODE_LABEL = "Cluster"
 
-CLUSTER_RELATION_TYPE = 'CLUSTER'
-CLUSTER_REVERSE_RELATION_TYPE = 'CLUSTER_OF'
+CLUSTER_RELATION_TYPE = "CLUSTER"
+CLUSTER_REVERSE_RELATION_TYPE = "CLUSTER_OF"
 
-CLUSTER_NAME_PROP_KEY = 'name'
+CLUSTER_NAME_PROP_KEY = "name"

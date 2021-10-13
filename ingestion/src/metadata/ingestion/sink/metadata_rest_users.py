@@ -19,7 +19,10 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from metadata.ingestion.ometa.openmetadata_rest import (
+    MetadataServerConfig,
+    OpenMetadataAPIClient,
+)
 from metadata.ingestion.ometa.client import APIError
 
 logger = logging.getLogger(__name__)
@@ -34,7 +37,12 @@ class MetadataRestUsersSink(Sink):
     metadata_config: MetadataServerConfig
     status: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: MetadataUsersSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: MetadataUsersSinkConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -49,7 +57,9 @@ class MetadataRestUsersSink(Sink):
         self._bootstrap_entities()
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = MetadataUsersSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
@@ -61,17 +71,15 @@ class MetadataRestUsersSink(Sink):
         # Fetch teams per org
 
         team_response = self.client.get(self.api_team_get)
-        for team in team_response['data']:
-            self.team_entities[team['displayName']] = team['id']
+        for team in team_response["data"]:
+            self.team_entities[team["displayName"]] = team["id"]
 
     def _create_team(self, record: MetadataUser) -> None:
         team_name = record.team_name
-        metadata_team = MetadataTeam(team_name, 'Team Name')
+        metadata_team = MetadataTeam(team_name, "Team Name")
         try:
-            r = self.client.post(self.api_team_post,
-                                 data=metadata_team.to_json()
-                                 )
-            instance_id = r['id']
+            r = self.client.post(self.api_team_post, data=metadata_team.to_json())
+            instance_id = r["id"]
             self.team_entities[team_name] = instance_id
         except APIError:
             pass
@@ -81,10 +89,12 @@ class MetadataRestUsersSink(Sink):
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
         # Using github username for generating a login name
-        metadata_user = MetadataUser(name=record.github_username,
-                                     display_name=record.name,
-                                     email=record.email,
-                                     teams=teams)
+        metadata_user = MetadataUser(
+            name=record.github_username,
+            display_name=record.name,
+            email=record.email,
+            teams=teams,
+        )
         try:
             self.client.put(self.api_users, data=metadata_user.to_json())
             self.status.records_written(record.github_username)

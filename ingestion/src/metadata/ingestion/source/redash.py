@@ -27,7 +27,9 @@ from metadata.ingestion.models.table_metadata import Dashboard
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from redash_toolbelt import Redash
 from metadata.utils.helpers import get_dashboard_service_or_create
-from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
 
 
 class RedashSourceConfig(ConfigModel):
@@ -56,21 +58,30 @@ class RedashSource(Source):
     status: RedashSourceStatus
     platform = "redash"
 
-    def __init__(self, config: RedashSourceConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
+    def __init__(
+        self,
+        config: RedashSourceConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.status = RedashSourceStatus()
         self.client = Redash(self.config.uri, self.config.api_key)
-        self.service = get_dashboard_service_or_create(config.service_name,
-                                                       DashboardServiceType.Redash.name,
-                                                       config.username,
-                                                       config.api_key,
-                                                       config.uri,
-                                                       metadata_config)
+        self.service = get_dashboard_service_or_create(
+            config.service_name,
+            DashboardServiceType.Redash.name,
+            config.username,
+            config.api_key,
+            config.uri,
+            metadata_config,
+        )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = RedashSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
@@ -87,16 +98,24 @@ class RedashSource(Source):
         for query_info in query_info["results"]:
             query_id = query_info["id"]
             query_name = query_info["name"]
-            query_data = requests.get(f"{self.config.uri}/api/queries/{query_id}").json()
+            query_data = requests.get(
+                f"{self.config.uri}/api/queries/{query_id}"
+            ).json()
             for visualization in query_data.get("Visualizations", []):
                 chart_type = visualization.get("type", "")
-                chart_description = visualization.get("description", "") if visualization.get("description", "") else ""
+                chart_description = (
+                    visualization.get("description", "")
+                    if visualization.get("description", "")
+                    else ""
+                )
                 yield Chart(
                     id=uuid.uuid4(),
                     name=query_id,
                     displayName=query_name,
                     chartType=chart_type,
-                    service=EntityReference(id=self.service.id, type="dashboardService"),
+                    service=EntityReference(
+                        id=self.service.id, type="dashboardService"
+                    ),
                     description=chart_description,
                 )
 
@@ -108,7 +127,9 @@ class RedashSource(Source):
             if dashboard_info["id"] is not None:
                 self.status.item_scanned_status()
                 dashboard_data = self.client.dashboard(dashboard_id)
-                dashboard_url = f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
+                dashboard_url = (
+                    f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
+                )
                 for widgets in dashboard_data.get("widgets", []):
                     dashboard_description = widgets.get("text")
                 yield Dashboard(
@@ -118,8 +139,10 @@ class RedashSource(Source):
                     description=dashboard_description if dashboard_info else "",
                     charts=charts,
                     usageSummary=None,
-                    service=EntityReference(id=self.service.id, type="dashboardService"),
-                    url=dashboard_url
+                    service=EntityReference(
+                        id=self.service.id, type="dashboardService"
+                    ),
+                    url=dashboard_url,
                 )
 
     def get_status(self) -> SourceStatus:

@@ -20,9 +20,15 @@ from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardEntityRequest
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
-from metadata.generated.schema.api.data.createPipeline import CreatePipelineEntityRequest
+from metadata.generated.schema.api.data.createDashboard import (
+    CreateDashboardEntityRequest,
+)
+from metadata.generated.schema.api.data.createDatabase import (
+    CreateDatabaseEntityRequest,
+)
+from metadata.generated.schema.api.data.createPipeline import (
+    CreatePipelineEntityRequest,
+)
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopic
@@ -36,7 +42,11 @@ from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig, TableProfiles
+from metadata.ingestion.ometa.openmetadata_rest import (
+    OpenMetadataAPIClient,
+    MetadataServerConfig,
+    TableProfiles,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +61,7 @@ om_chart_type_dict = {
     "dual_line": ChartType.Line,
     "line_multi": ChartType.Line,
     "treemap": ChartType.Area,
-    "box_plot": ChartType.Bar
+    "box_plot": ChartType.Bar,
 }
 
 
@@ -63,7 +73,12 @@ class MetadataRestSink(Sink):
     config: MetadataRestSinkConfig
     status: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: MetadataRestSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: MetadataRestSinkConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -73,7 +88,9 @@ class MetadataRestSink(Sink):
         self.client = OpenMetadataAPIClient(self.metadata_config)
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = MetadataRestSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
@@ -94,40 +111,64 @@ class MetadataRestSink(Sink):
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
         else:
-            logging.info("Ignoring the record due to unknown Record type {}".format(type(record)))
+            logging.info(
+                "Ignoring the record due to unknown Record type {}".format(type(record))
+            )
 
     def write_tables(self, table_and_db: OMetaDatabaseAndTable):
         try:
-            db_request = CreateDatabaseEntityRequest(name=table_and_db.database.name,
-                                                     description=table_and_db.database.description,
-                                                     service=EntityReference(id=table_and_db.database.service.id,
-                                                                             type="databaseService"))
+            db_request = CreateDatabaseEntityRequest(
+                name=table_and_db.database.name,
+                description=table_and_db.database.description,
+                service=EntityReference(
+                    id=table_and_db.database.service.id, type="databaseService"
+                ),
+            )
             db = self.client.create_database(db_request)
-            table_request = CreateTableEntityRequest(name=table_and_db.table.name,
-                                                     tableType=table_and_db.table.tableType,
-                                                     columns=table_and_db.table.columns,
-                                                     description=table_and_db.table.description,
-                                                     database=db.id)
+            table_request = CreateTableEntityRequest(
+                name=table_and_db.table.name,
+                tableType=table_and_db.table.tableType,
+                columns=table_and_db.table.columns,
+                description=table_and_db.table.description,
+                database=db.id,
+            )
 
-            if table_and_db.table.viewDefinition is not None and table_and_db.table.viewDefinition != "":
-                table_request.viewDefinition = table_and_db.table.viewDefinition.__root__
+            if (
+                table_and_db.table.viewDefinition is not None
+                and table_and_db.table.viewDefinition != ""
+            ):
+                table_request.viewDefinition = (
+                    table_and_db.table.viewDefinition.__root__
+                )
 
             created_table = self.client.create_or_update_table(table_request)
             if table_and_db.table.sampleData is not None:
-                self.client.ingest_sample_data(table_id=created_table.id, sample_data=table_and_db.table.sampleData)
+                self.client.ingest_sample_data(
+                    table_id=created_table.id, sample_data=table_and_db.table.sampleData
+                )
             if table_and_db.table.tableProfile is not None:
-                self.client.ingest_table_profile_data(table_id=created_table.id,
-                                                      table_profile=table_and_db.table.tableProfile)
+                self.client.ingest_table_profile_data(
+                    table_id=created_table.id,
+                    table_profile=table_and_db.table.tableProfile,
+                )
 
             logger.info(
-                'Successfully ingested table {}.{}'.
-                    format(table_and_db.database.name.__root__, created_table.name.__root__))
+                "Successfully ingested table {}.{}".format(
+                    table_and_db.database.name.__root__, created_table.name.__root__
+                )
+            )
             self.status.records_written(
-                '{}.{}'.format(table_and_db.database.name.__root__, created_table.name.__root__))
+                "{}.{}".format(
+                    table_and_db.database.name.__root__, created_table.name.__root__
+                )
+            )
         except (APIError, ValidationError) as err:
             logger.error(
-                "Failed to ingest table {} in database {} ".format(table_and_db.table.name.__root__,
-                                                                   table_and_db.database.name.__root__))
+                "Failed to ingest table {} in database {} ".format(
+                    table_and_db.table.name.__root__,
+                    table_and_db.database.name.__root__,
+                )
+            )
             logger.error(err)
             self.status.failure(table_and_db.table.name.__root__)
 
@@ -135,18 +176,21 @@ class MetadataRestSink(Sink):
         try:
             created_topic = self.client.create_or_update_topic(topic)
             logger.info(
-                'Successfully ingested topic {}'.format(created_topic.name.__root__))
+                "Successfully ingested topic {}".format(created_topic.name.__root__)
+            )
             self.status.records_written(created_topic.name.__root__)
         except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest topic {} ".format(topic.name.__root__))
+            logger.error("Failed to ingest topic {} ".format(topic.name.__root__))
             logger.error(err)
             self.status.failure(topic.name)
 
     def write_charts(self, chart: Chart):
         try:
             om_chart_type = ChartType.Other
-            if chart.chart_type is not None and chart.chart_type in om_chart_type_dict.keys():
+            if (
+                chart.chart_type is not None
+                and chart.chart_type in om_chart_type_dict.keys()
+            ):
                 om_chart_type = om_chart_type_dict[chart.chart_type]
 
             chart_request = CreateChartEntityRequest(
@@ -155,17 +199,18 @@ class MetadataRestSink(Sink):
                 description=chart.description,
                 chartType=om_chart_type,
                 chartUrl=chart.url,
-                service=chart.service
+                service=chart.service,
             )
             created_chart = self.client.create_or_update_chart(chart_request)
-            self.charts_dict[chart.name] = EntityReference(id=created_chart.id, type='chart')
+            self.charts_dict[chart.name] = EntityReference(
+                id=created_chart.id, type="chart"
+            )
             logger.info(
-                'Successfully ingested chart {}'.format(created_chart.displayName))
-            self.status.records_written(
-                '{}'.format(created_chart.displayName))
+                "Successfully ingested chart {}".format(created_chart.displayName)
+            )
+            self.status.records_written("{}".format(created_chart.displayName))
         except (APIError, ValidationError) as err:
-            logger.error(
-                "Failed to ingest chart {}".format(chart.displayName))
+            logger.error("Failed to ingest chart {}".format(chart.displayName))
             logger.error(err)
             self.status.failure(chart.displayName)
 
@@ -179,11 +224,17 @@ class MetadataRestSink(Sink):
                 description=dashboard.description,
                 dashboardUrl=dashboard.url,
                 charts=charts,
-                service=dashboard.service
+                service=dashboard.service,
             )
-            created_dashboard = self.client.create_or_update_dashboard(dashboard_request)
-            logger.info('Successfully ingested dashboard {}'.format(created_dashboard.displayName))
-            self.status.records_written('{}'.format(created_dashboard.displayName))
+            created_dashboard = self.client.create_or_update_dashboard(
+                dashboard_request
+            )
+            logger.info(
+                "Successfully ingested dashboard {}".format(
+                    created_dashboard.displayName
+                )
+            )
+            self.status.records_written("{}".format(created_dashboard.displayName))
         except (APIError, ValidationError) as err:
             logger.error("Failed to ingest dashboard {}".format(dashboard.name))
             logger.error(err)
@@ -204,11 +255,13 @@ class MetadataRestSink(Sink):
                 description=task.description,
                 taskUrl=task.taskUrl,
                 downstreamTasks=task.downstreamTasks,
-                service=task.service
+                service=task.service,
             )
             created_task = self.client.create_or_update_task(task_request)
-            logger.info('Successfully ingested Task {}'.format(created_task.displayName))
-            self.status.records_written('{}'.format(created_task.displayName))
+            logger.info(
+                "Successfully ingested Task {}".format(created_task.displayName)
+            )
+            self.status.records_written("{}".format(created_task.displayName))
         except (APIError, ValidationError) as err:
             logger.error("Failed to ingest task {}".format(task.name))
             logger.error(err)
@@ -222,11 +275,13 @@ class MetadataRestSink(Sink):
                 description=pipeline.description,
                 pipelineUrl=pipeline.pipelineUrl,
                 tasks=pipeline.tasks,
-                service=pipeline.service
+                service=pipeline.service,
             )
             created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
-            logger.info('Successfully ingested Task {}'.format(created_pipeline.displayName))
-            self.status.records_written('{}'.format(created_pipeline.displayName))
+            logger.info(
+                "Successfully ingested Task {}".format(created_pipeline.displayName)
+            )
+            self.status.records_written("{}".format(created_pipeline.displayName))
         except (APIError, ValidationError) as err:
             logger.error("Failed to ingest task {}".format(pipeline.name))
             logger.error(err)
@@ -236,8 +291,8 @@ class MetadataRestSink(Sink):
         try:
             logger.info(add_lineage)
             created_lineage = self.client.create_or_update_lineage(add_lineage)
-            logger.info('Successfully added Lineage {}'.format(created_lineage))
-            self.status.records_written('{}'.format(created_lineage))
+            logger.info("Successfully added Lineage {}".format(created_lineage))
+            self.status.records_written("{}".format(created_lineage))
         except (APIError, ValidationError) as err:
             logger.error("Failed to ingest task {}".format(add_lineage))
             logger.error(err)

@@ -63,8 +63,12 @@ class Workflow:
         self.config = config
         self.ctx = WorkflowContext(workflow_id=self.config.run_id)
         source_type = self.config.source.type
-        source_class = self.get('metadata.ingestion.source.{}.{}Source'.format(
-            self.typeClassFetch(source_type, True), self.typeClassFetch(source_type, False)))
+        source_class = self.get(
+            "metadata.ingestion.source.{}.{}Source".format(
+                self.typeClassFetch(source_type, True),
+                self.typeClassFetch(source_type, False),
+            )
+        )
         metadata_config = self.config.metadata_server.dict().get("config", {})
         self.source: Source = source_class.create(
             self.config.source.dict().get("config", {}), metadata_config, self.ctx
@@ -75,41 +79,67 @@ class Workflow:
 
         if self.config.processor:
             processor_type = self.config.processor.type
-            processor_class = self.get('metadata.ingestion.processor.{}.{}Processor'.format(
-                self.typeClassFetch(processor_type, True), self.typeClassFetch(processor_type, False)))
+            processor_class = self.get(
+                "metadata.ingestion.processor.{}.{}Processor".format(
+                    self.typeClassFetch(processor_type, True),
+                    self.typeClassFetch(processor_type, False),
+                )
+            )
             processor_config = self.config.processor.dict().get("config", {})
-            self.processor: Processor = processor_class.create(processor_config, metadata_config, self.ctx)
-            logger.debug(f"Processor Type: {processor_type}, {processor_class} configured")
+            self.processor: Processor = processor_class.create(
+                processor_config, metadata_config, self.ctx
+            )
+            logger.debug(
+                f"Processor Type: {processor_type}, {processor_class} configured"
+            )
 
         if self.config.stage:
             stage_type = self.config.stage.type
-            stage_class = self.get('metadata.ingestion.stage.{}.{}Stage'.format(
-                self.typeClassFetch(stage_type, True), self.typeClassFetch(stage_type, False)))
+            stage_class = self.get(
+                "metadata.ingestion.stage.{}.{}Stage".format(
+                    self.typeClassFetch(stage_type, True),
+                    self.typeClassFetch(stage_type, False),
+                )
+            )
             stage_config = self.config.stage.dict().get("config", {})
-            self.stage: Stage = stage_class.create(stage_config, metadata_config, self.ctx)
+            self.stage: Stage = stage_class.create(
+                stage_config, metadata_config, self.ctx
+            )
             logger.debug(f"Stage Type: {stage_type}, {stage_class} configured")
 
         if self.config.sink:
             sink_type = self.config.sink.type
-            sink_class = self.get('metadata.ingestion.sink.{}.{}Sink'.format(
-                self.typeClassFetch(sink_type, True), self.typeClassFetch(sink_type, False)))
+            sink_class = self.get(
+                "metadata.ingestion.sink.{}.{}Sink".format(
+                    self.typeClassFetch(sink_type, True),
+                    self.typeClassFetch(sink_type, False),
+                )
+            )
             sink_config = self.config.sink.dict().get("config", {})
             self.sink: Sink = sink_class.create(sink_config, metadata_config, self.ctx)
             logger.debug(f"Sink type:{self.config.sink.type},{sink_class} configured")
 
         if self.config.bulk_sink:
             bulk_sink_type = self.config.bulk_sink.type
-            bulk_sink_class = self.get('metadata.ingestion.bulksink.{}.{}BulkSink'.format(
-                self.typeClassFetch(bulk_sink_type, True), self.typeClassFetch(bulk_sink_type, False)))
+            bulk_sink_class = self.get(
+                "metadata.ingestion.bulksink.{}.{}BulkSink".format(
+                    self.typeClassFetch(bulk_sink_type, True),
+                    self.typeClassFetch(bulk_sink_type, False),
+                )
+            )
             bulk_sink_config = self.config.bulk_sink.dict().get("config", {})
-            self.bulk_sink: BulkSink = bulk_sink_class.create(bulk_sink_config, metadata_config, self.ctx)
-            logger.info(f"BulkSink type:{self.config.bulk_sink.type},{bulk_sink_class} configured")
+            self.bulk_sink: BulkSink = bulk_sink_class.create(
+                bulk_sink_config, metadata_config, self.ctx
+            )
+            logger.info(
+                f"BulkSink type:{self.config.bulk_sink.type},{bulk_sink_class} configured"
+            )
 
     def typeClassFetch(self, type: str, isFile: bool):
         if isFile:
-            return type.replace('-', '_')
+            return type.replace("-", "_")
         else:
-            return ''.join([i.title() for i in type.replace('-', '_').split('_')])
+            return "".join([i.title() for i in type.replace("-", "_").split("_")])
 
     def get(self, key: str) -> Type[T]:
         if key.find(".") >= 0:
@@ -126,28 +156,28 @@ class Workflow:
 
     def execute(self):
         for record in self.source.next_record():
-            self.report['Source'] = self.source.get_status().as_obj()
-            if hasattr(self, 'processor'):
+            self.report["Source"] = self.source.get_status().as_obj()
+            if hasattr(self, "processor"):
                 processed_record = self.processor.process(record)
             else:
                 processed_record = record
-            if hasattr(self, 'stage'):
+            if hasattr(self, "stage"):
                 self.stage.stage_record(processed_record)
-                self.report['Stage'] = self.stage.get_status().as_obj()
-            if hasattr(self, 'sink'):
+                self.report["Stage"] = self.stage.get_status().as_obj()
+            if hasattr(self, "sink"):
                 self.sink.write_record(processed_record)
-                self.report['sink'] = self.sink.get_status().as_obj()
+                self.report["sink"] = self.sink.get_status().as_obj()
 
     def stop(self):
-        if hasattr(self, 'processor'):
+        if hasattr(self, "processor"):
             self.processor.close()
-        if hasattr(self, 'stage'):
+        if hasattr(self, "stage"):
             self.stage.close()
-        if hasattr(self, 'bulk_sink'):
+        if hasattr(self, "bulk_sink"):
             self.bulk_sink.write_records()
-            self.report['Bulk_Sink'] = self.bulk_sink.get_status().as_obj()
+            self.report["Bulk_Sink"] = self.bulk_sink.get_status().as_obj()
             self.bulk_sink.close()
-        if hasattr(self, 'sink'):
+        if hasattr(self, "sink"):
             self.sink.close()
         self.source.close()
 
@@ -156,14 +186,18 @@ class Workflow:
             raise WorkflowExecutionError(
                 "Source reported errors", self.source.get_status()
             )
-        if hasattr(self, 'sink') and self.sink.get_status().failures:
+        if hasattr(self, "sink") and self.sink.get_status().failures:
             raise WorkflowExecutionError("Sink reported errors", self.sink.get_status())
-        if hasattr(self, 'stage') and self.stage.get_status().failures:
-            raise WorkflowExecutionError("stage reported errors", self.stage.get_status())
-        if hasattr(self, 'bulk_sink') and self.bulk_sink.get_status().failures:
-            raise WorkflowExecutionError("Bulk Sink reported errors", self.bulk_sink.get_status())
+        if hasattr(self, "stage") and self.stage.get_status().failures:
+            raise WorkflowExecutionError(
+                "stage reported errors", self.stage.get_status()
+            )
+        if hasattr(self, "bulk_sink") and self.bulk_sink.get_status().failures:
+            raise WorkflowExecutionError(
+                "Bulk Sink reported errors", self.bulk_sink.get_status()
+            )
         if raise_warnings and (
-                self.source.get_status().warnings or self.sink.get_status().warnings
+            self.source.get_status().warnings or self.sink.get_status().warnings
         ):
             raise WorkflowExecutionError(
                 "Source reported warnings", self.source.get_status()
@@ -173,23 +207,27 @@ class Workflow:
         click.echo()
         click.secho("Source Status:", bold=True)
         click.echo(self.source.get_status().as_string())
-        if hasattr(self, 'stage'):
+        if hasattr(self, "stage"):
             click.secho("Stage Status:", bold=True)
             click.echo(self.stage.get_status().as_string())
             click.echo()
-        if hasattr(self, 'sink'):
+        if hasattr(self, "sink"):
             click.secho("Sink Status:", bold=True)
             click.echo(self.sink.get_status().as_string())
             click.echo()
-        if hasattr(self, 'bulk_sink'):
+        if hasattr(self, "bulk_sink"):
             click.secho("Bulk Sink Status:", bold=True)
             click.echo(self.bulk_sink.get_status().as_string())
             click.echo()
 
-        if self.source.get_status().failures or (hasattr(self, 'sink') and self.sink.get_status().failures):
+        if self.source.get_status().failures or (
+            hasattr(self, "sink") and self.sink.get_status().failures
+        ):
             click.secho("Workflow finished with failures", fg="bright_red", bold=True)
             return 1
-        elif self.source.get_status().warnings or (hasattr(self, 'sink') and self.sink.get_status().warnings):
+        elif self.source.get_status().warnings or (
+            hasattr(self, "sink") and self.sink.get_status().warnings
+        ):
             click.secho("Workflow finished with warnings", fg="yellow", bold=True)
             return 0
         else:

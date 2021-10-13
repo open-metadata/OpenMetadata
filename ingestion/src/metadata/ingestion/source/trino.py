@@ -39,8 +39,6 @@ class TrinoConfig(SQLConnectionConfig):
                 url += f"/{quote_plus(self.schema_name)}"
         return url
 
-    
-
 
 class TrinoSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

@@ -23,6 +23,7 @@ from .sql_source import (
 )
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.column_helpers import register_custom_type
+
 register_custom_type(custom_types.TIMESTAMP_TZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_LTZ, "TIME")
 register_custom_type(custom_types.TIMESTAMP_NTZ, "TIME")
@@ -48,8 +49,6 @@ class SnowflakeConfig(SQLConnectionConfig):
         if params:
             connect_string = f"{connect_string}?{params}"
         return connect_string
-
-    
 
 
 class SnowflakeSource(SQLSource):

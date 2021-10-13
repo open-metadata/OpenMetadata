@@ -18,9 +18,16 @@ from typing import List, Iterable, Optional
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.entity.data.topic import Topic, SchemaType
-from metadata.generated.schema.entity.services.messagingService import MessagingServiceType
+from metadata.generated.schema.entity.services.messagingService import (
+    MessagingServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import IncludeFilterPattern, Record, logger, WorkflowContext
+from metadata.ingestion.api.common import (
+    IncludeFilterPattern,
+    Record,
+    logger,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import SourceStatus, Source
 
 import confluent_kafka
@@ -61,23 +68,30 @@ class KafkaSource(Source):
     admin_client: AdminClient
     report: KafkaSourceStatus
 
-    def __init__(self, config: KafkaSourceConfig, metadata_config: MetadataServerConfig, ctx: WorkflowContext):
+    def __init__(
+        self,
+        config: KafkaSourceConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.status = KafkaSourceStatus()
-        self.service = get_messaging_service_or_create(config.service_name,
-                                                       MessagingServiceType.Kafka.name,
-                                                       config.schema_registry_url,
-                                                       config.bootstrap_servers.split(","),
-                                                       metadata_config)
+        self.service = get_messaging_service_or_create(
+            config.service_name,
+            MessagingServiceType.Kafka.name,
+            config.schema_registry_url,
+            config.bootstrap_servers.split(","),
+            metadata_config,
+        )
         self.schema_registry_client = SchemaRegistryClient(
             {"url": self.config.schema_registry_url}
         )
         self.admin_client = AdminClient(
             {
                 "bootstrap.servers": self.config.bootstrap_servers,
-                "session.timeout.ms": 6000
+                "session.timeout.ms": 6000,
             }
         )
 
@@ -96,9 +110,13 @@ class KafkaSource(Source):
             if self.config.filter_pattern.included(t):
                 logger.info("Fetching topic schema {}".format(t))
                 topic_schema = self._parse_topic_metadata(t)
-                topic = CreateTopic(name=t,
-                                    service=EntityReference(id=self.service.id, type="messagingService"),
-                                    partitions=1)
+                topic = CreateTopic(
+                    name=t,
+                    service=EntityReference(
+                        id=self.service.id, type="messagingService"
+                    ),
+                    partitions=1,
+                )
                 if topic_schema is not None:
                     topic.schemaText = topic_schema.schema_str
                     if topic_schema.schema_type == "AVRO":
