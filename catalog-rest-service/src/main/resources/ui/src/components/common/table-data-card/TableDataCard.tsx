@@ -38,7 +38,7 @@ type Props = {
   fullyQualifiedName: string;
   tags?: string[];
   indexType: string;
-  matches: {
+  matches?: {
     key: string;
     value: number;
   }[];
@@ -94,7 +94,7 @@ const TableDataCard: FunctionComponent<Props> = ({
           tags={[...new Set(tags)]}
         />
       </div>
-      {matches?.length > 0 ? (
+      {matches && matches.length > 0 ? (
         <div className="tw-pt-2">
           <span className="tw-text-grey-muted">Matches :</span>
           {matches.map((data, i) => (
