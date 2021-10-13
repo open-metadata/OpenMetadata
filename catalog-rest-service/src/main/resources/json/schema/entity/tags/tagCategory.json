@@ -84,6 +84,10 @@
     "name": {
       "$ref": "#/definitions/tagName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this tag category.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the tag category.",
       "type": "string"

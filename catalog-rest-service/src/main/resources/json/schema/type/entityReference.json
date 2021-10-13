@@ -31,6 +31,10 @@
       "description": "Optional description of entity.",
       "type": "string"
     },
+    "displayName": {
+      "description": "Display Name that identifies this entity.",
+      "type": "string"
+    },
     "href": {
       "description": "Link to the entity resource.",
       "$ref": "basic.json#/definitions/href"

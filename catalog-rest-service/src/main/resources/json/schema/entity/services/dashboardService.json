@@ -41,6 +41,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this dashboard service.",
+      "type": "string"
+    },
     "serviceType": {
       "description": "Type of dashboard service such as Looker or Superset...",
       "$ref": "#/definitions/dashboardServiceType"

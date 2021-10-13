@@ -59,6 +59,10 @@
       "description": "Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.",
       "type": "string"
     },
+    "displayName": {
+      "description": "Display Name that identifies this topic. It could be title or label from the source services.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the topic instance.",
       "type": "string"

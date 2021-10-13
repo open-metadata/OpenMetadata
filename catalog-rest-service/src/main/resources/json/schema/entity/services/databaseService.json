@@ -73,6 +73,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this database service.",
+      "type": "string"
+    },
     "serviceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "$ref": "#/definitions/databaseServiceType"
