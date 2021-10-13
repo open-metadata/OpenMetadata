@@ -13,156 +13,16 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import copy
-import json
 
-from typing import Any, Dict, Iterable, List, Optional, Union
-
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.json_serializable import JsonSerializable
-
-DESCRIPTION_NODE_LABEL_VAL = 'Description'
-DESCRIPTION_NODE_LABEL = DESCRIPTION_NODE_LABEL_VAL
 
 
-class ColumnMetadata:
-
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 column_data_type: str,
-                 ordinal_position: int,
-                 pii_tags: List[str] = None
-                 ) -> None:
-        """
-        TODO: Add stats
-        :param name:
-        :param documentation:
-        :param column_data_type:
-        :param ordinal_position:
-        :param pii_tags:
-        """
-        self.name = name
-        self.documentation = documentation
-        self.column_data_type = column_data_type
-        self.ordinal_position = ordinal_position
-        self.pii_tags = pii_tags if pii_tags else []
-
-    def __repr__(self) -> str:
-        return 'ColumnMetadata({!r}, {!r}, {!r}, {!r}, {!r})'.format(self.name,
-                                                                     self.documentation,
-                                                                     self.column_data_type,
-                                                                     self.ordinal_position,
-                                                                     self.pii_tags)
-
-
-class TableMetadata:
-    """
-    Table metadata that contains columns.
-    This class can be used for both table and view metadata. If it is a View, is_view=True should be passed in.
-    """
-
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 columns: Iterable[ColumnMetadata] = None
-                 ) -> None:
-        """
-        :param name:
-        :param documentation:
-        :param columns:
-        """
-        self.name = name
-        self.documentation = documentation
-        self.columns = columns if columns else []
-
-    def add_column(self, column: ColumnMetadata):
-        self.columns.append(column)
-
-    def to_json(self):
-        return json.dumps(self, default=lambda o: o.__dict__)
-
-    def __repr__(self) -> str:
-        return 'TableMetadata({!r}, {!r}, {!r} '.format(self.name,
-                                                        self.documentation,
-                                                        self.columns)
-
-
-class DatabaseMetadata(JsonSerializable):
-    """
-    Database metadata that contains Tables.
-    This class can be used to generate catalog batch REST api representation
-    All connectors should use this to build JSON representation of catalog REST API.
-    """
-    DATABASE_NODE_LABEL = 'database'
-    CLUSTER_NODE_LABEL = 'Cluster'
-
-    @classmethod
-    def create(cls, record: Dict[str, Any], service: Dict[str, Any]):
-        name = record.name
-        documentation = record.documentation
-        service = service
-        tables = []
-        for table in record.tables:
-            table_metadata: TableMetadata = TableMetadata(table.name, table.documentation)
-            for column in table.columns:
-                column: ColumnMetadata = ColumnMetadata(column.name, column.documentation,
-                                                        column.column_data_type, column.ordinal_position,
-                                                        column.pii_tags)
-                table_metadata.add_column(column)
-            tables.append(table_metadata)
-        return cls(name, documentation, tables, service)
-
-    def __init__(self,
-                 name: str,
-                 documentation: Union[str, None],
-                 tables: Iterable[TableMetadata] = None,
-                 service: Dict[str, Any] = None,
-                 **kwargs: Any
-                 ) -> None:
-        """
-        :param name:
-        :param service:
-        :param documentation:
-        :param tables:
-        :param kwargs: Put additional attributes to the table model if there is any.
-        """
-        self.name = name
-        self.documentation = documentation
-        self.tables = tables if tables else []
-        self.service = service
-        if kwargs:
-            self.attrs = copy.deepcopy(kwargs)
-
-    def __repr__(self) -> str:
-        return 'DatabaseMetadata({!r}, {!r}, {!r})'.format(self.name,
-                                                           self.documentation,
-                                                           self.tables)
-
-    def add_table(self, table: TableMetadata) -> None:
-        self.tables.append(table)
-
-
-class JDBCMetadata(JsonSerializable):
-    def __init__(self,
-                 connection_url: str,
-                 driver_class: str):
-        self.connection_url = connection_url
-        self.driver_class = driver_class
-
-
-class ServiceMetadata(JsonSerializable):
-    """
-    Service Metadata contains the configuration to connect to a database
-    """
-
-    def __init__(self,
-                 name: str,
-                 jdbc: JDBCMetadata):
-        self.name = name
-        self.jdbc = jdbc
+class Table(BaseModel):
+    """Table Fully Qualified Name """
+    fullyQualifiedName: str
 
 
 class TableESDocument(BaseModel):
