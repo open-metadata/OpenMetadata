@@ -39,9 +39,9 @@ const Searchbar = ({
   // const typingTimer = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
-    if (searchValue !== '') {
-      setUserSearch(searchValue);
-    }
+    // if (searchValue !== '') {
+    setUserSearch(searchValue);
+    // }
   }, [searchValue]);
 
   const debouncedOnSearch = useCallback(
