@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
-from metadata.ingestion.models.table_metadata import DatabaseMetadata
 from metadata.ingestion.models.user import User
 
 
@@ -100,7 +99,7 @@ class SampleUsersSource(Source):
     def prepare(self):
         pass
 
-    def next_record(self) -> Iterable[DatabaseMetadata]:
+    def next_record(self) -> Iterable[User]:
         for user in self.sample_columns:
             user_metadata = User(user['email'],
                                  user['first_name'],
