@@ -47,7 +47,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 import DropDown from '../dropdown/DropDown';
 import { WhatsNewModal } from '../Modals/WhatsNewModal';
 import { COOKIE_VERSION } from '../Modals/WhatsNewModal/whatsNewData';
-import Tour from '../tour/Tour';
+// import Tour from '../tour/Tour';
 import { ReactComponent as IconDefaultUserProfile } from './../../assets/svg/ic-default-profile.svg';
 import SearchOptions from './SearchOptions';
 import Suggestions from './Suggestions';
@@ -253,7 +253,7 @@ const Appbar: React.FC = (): JSX.Element => {
               />
               <span>What&#39;s new</span>
             </button>
-            <NavLink
+            {/* <NavLink
               className="tw-nav focus:tw-no-underline hover:tw-underline"
               style={navStyle(location.pathname.startsWith('/explore'))}
               to={{
@@ -266,7 +266,7 @@ const Appbar: React.FC = (): JSX.Element => {
                 width="16"
               />
               <span>Tour</span>
-            </NavLink>
+            </NavLink> */}
             <div>
               <DropDown
                 dropDownList={supportLinks}
@@ -337,7 +337,7 @@ const Appbar: React.FC = (): JSX.Element => {
           )}
         </div>
       ) : null}
-      <Tour />
+      {/* <Tour /> */}
     </>
   );
 };
