@@ -22,6 +22,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this metric.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of metrics instance, what it is, and how to use it.",
       "type": "string"

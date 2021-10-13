@@ -27,6 +27,10 @@
       "description": "Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.",
       "type": "string"
     },
+    "displayName": {
+      "description": "Display Name that identifies this database.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of the database instance.",
       "type": "string"

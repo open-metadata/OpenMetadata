@@ -351,6 +351,10 @@
       "description": "Name of a table. Expected to be unique within a database.",
       "$ref": "#/definitions/tableName"
     },
+    "displayName": {
+      "description": "Display Name that identifies this table. It could be title or label from the source services.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of a table.",
       "type": "string"
