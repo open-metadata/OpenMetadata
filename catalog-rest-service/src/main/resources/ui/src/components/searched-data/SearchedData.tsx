@@ -43,6 +43,14 @@ type SearchedDataProp = {
   showOnboardingTemplate?: boolean;
   showOnlyChildren?: boolean;
 };
+
+const ASSETS_NAME = [
+  'table_name',
+  'topic_name',
+  'dashboard_name',
+  'pipeline_name',
+];
+
 const SearchedData: React.FC<SearchedDataProp> = ({
   children,
   data,
@@ -81,12 +89,22 @@ const SearchedData: React.FC<SearchedDataProp> = ({
         ? table.name
         : table.highlight?.table_name.join(' ') || table.name;
 
+      const matches = table.highlight
+        ? Object.entries(table.highlight)
+            .map((d) => ({
+              key: d[0],
+              value: d[1].length,
+            }))
+            .filter((d) => !ASSETS_NAME.includes(d.key))
+        : [];
+
       return (
         <div className="tw-mb-3" key={index}>
           <TableDataCard
             description={tDesc}
             fullyQualifiedName={table.fullyQualifiedName}
             indexType={table.index}
+            matches={matches}
             name={name}
             owner={getOwnerFromId(table.owner)?.name}
             serviceType={table.serviceType || '--'}

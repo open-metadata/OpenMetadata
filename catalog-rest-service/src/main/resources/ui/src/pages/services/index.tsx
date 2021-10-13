@@ -403,7 +403,7 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div
-                        className="tw-text-grey-body tw-pb-1"
+                        className="tw-text-grey-body tw-pb-1 description-text"
                         data-testid="service-description">
                         {service.description ? (
                           <RichTextEditorPreviewer
