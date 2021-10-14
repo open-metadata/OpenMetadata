@@ -15,12 +15,15 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from metadata.generated.schema.api.services.createDashboardService import \
-    CreateDashboardServiceEntityRequest
-from metadata.generated.schema.api.services.createDatabaseService import \
-    CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.services.createMessagingService import \
-    CreateMessagingServiceEntityRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceEntityRequest,
+)
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
+from metadata.generated.schema.api.services.createMessagingService import (
+    CreateMessagingServiceEntityRequest,
+)
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -29,17 +32,19 @@ from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
 
 def get_start_and_end(duration):
     today = datetime.utcnow()
-    start = (today + timedelta(0 - duration)).replace(hour=0, minute=0, second=0, microsecond=0)
+    start = (today + timedelta(0 - duration)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
     end = (today + timedelta(3)).replace(hour=0, minute=0, second=0, microsecond=0)
     return start, end
 
 
 def snake_to_camel(s):
-    a = s.split('_')
+    a = s.split("_")
     a[0] = a[0].capitalize()
     if len(a) > 1:
         a[1:] = [u.title() for u in a[1:]]
-    return ''.join(a)
+    return "".join(a)
 
 
 def get_database_service_or_create(config, metadata_config) -> DatabaseService:
@@ -48,9 +53,15 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
     if service is not None:
         return service
     else:
-        service = {'jdbc': {'connectionUrl': f'jdbc://{config.host_port}', 'driverClass': 'jdbc'},
-                   'name': config.service_name, 'description': '',
-                   'serviceType': config.get_service_type()}
+        service = {
+            "jdbc": {
+                "connectionUrl": f"jdbc://{config.host_port}",
+                "driverClass": "jdbc",
+            },
+            "name": config.service_name,
+            "description": "",
+            "serviceType": config.get_service_type(),
+        }
         print(service)
         created_service = client.create_database_service(
             CreateDatabaseServiceEntityRequest(**service)
@@ -59,11 +70,11 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
 
 
 def get_messaging_service_or_create(
-        service_name: str,
-        message_service_type: str,
-        schema_registry_url: str,
-        brokers: List[str],
-        metadata_config
+    service_name: str,
+    message_service_type: str,
+    schema_registry_url: str,
+    brokers: List[str],
+    metadata_config,
 ) -> MessagingService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_messaging_service(service_name)
@@ -74,19 +85,21 @@ def get_messaging_service_or_create(
             name=service_name,
             serviceType=message_service_type,
             brokers=brokers,
-            schemaRegistry=schema_registry_url
+            schemaRegistry=schema_registry_url,
         )
-        created_service = client.create_messaging_service(create_messaging_service_request)
+        created_service = client.create_messaging_service(
+            create_messaging_service_request
+        )
         return created_service
 
 
 def get_dashboard_service_or_create(
-        service_name: str,
-        dashboard_service_type: str,
-        username: str,
-        password: str,
-        dashboard_url: str,
-        metadata_config
+    service_name: str,
+    dashboard_service_type: str,
+    username: str,
+    password: str,
+    dashboard_url: str,
+    metadata_config,
 ) -> DashboardService:
     client = OpenMetadataAPIClient(metadata_config)
     service = client.get_dashboard_service(service_name)
@@ -98,13 +111,15 @@ def get_dashboard_service_or_create(
             serviceType=dashboard_service_type,
             username=username,
             password=password,
-            dashboardUrl=dashboard_url
+            dashboardUrl=dashboard_url,
         )
-        created_service = client.create_dashboard_service(create_dashboard_service_request)
+        created_service = client.create_dashboard_service(
+            create_dashboard_service_request
+        )
         return created_service
+
 
 def convert_epoch_to_iso(seconds_since_epoch):
     dt = datetime.utcfromtimestamp(seconds_since_epoch)
-    iso_format = dt.isoformat() + 'Z'
+    iso_format = dt.isoformat() + "Z"
     return iso_format
-  

@@ -32,7 +32,12 @@ class FileSink(Sink):
     config: FileSinkConfig
     report: SinkStatus
 
-    def __init__(self, ctx: WorkflowContext, config: FileSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: FileSinkConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -44,15 +49,14 @@ class FileSink(Sink):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = FileSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def write_record(
-        self,
-        record: Record
-    ) -> None:
+    def write_record(self, record: Record) -> None:
 
         if self.wrote_something:
             self.file.write(",\n")

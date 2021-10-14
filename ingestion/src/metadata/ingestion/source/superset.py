@@ -4,7 +4,9 @@ import dateutil.parser as dateparser
 
 from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.api.source import Source, SourceStatus
@@ -40,9 +42,9 @@ def get_owners(owners_obj):
     owners = []
     for owner in owners_obj:
         dashboard_owner = DashboardOwner(
-            first_name=owner['first_name'],
-            last_name=owner['last_name'],
-            username=owner['username']
+            first_name=owner["first_name"],
+            last_name=owner["last_name"],
+            username=owner["username"],
         )
         owners.append(dashboard_owner)
     return owners
@@ -55,10 +57,7 @@ def get_service_type_from_database_uri(uri: str) -> str:
         return "druid"
     if uri.startswith("mssql"):
         return "mssql"
-    if (
-            uri.startswith("jdbc:postgres:")
-            and uri.index("redshift.amazonaws") > 0
-    ):
+    if uri.startswith("jdbc:postgres:") and uri.index("redshift.amazonaws") > 0:
         return "redshift"
     if uri.startswith("snowflake"):
         return "snowflake"
@@ -89,8 +88,10 @@ class SupersetSource(Source):
     service_type = "Superset"
 
     def __init__(
-            self, config: SupersetConfig, metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext
+        self,
+        config: SupersetConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
     ):
         super().__init__(ctx)
         self.config = config
@@ -103,11 +104,13 @@ class SupersetSource(Source):
             config.username,
             config.password,
             config.url,
-            metadata_config
+            metadata_config,
         )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = SupersetConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
@@ -120,13 +123,14 @@ class SupersetSource(Source):
         yield from self._fetch_dashboards()
 
     def _build_dashboard(self, dashboard_json) -> Dashboard:
-        dashboard_id = dashboard_json['id']
-        name = dashboard_json['dashboard_title']
+        dashboard_id = dashboard_json["id"]
+        name = dashboard_json["dashboard_title"]
         dashboard_url = f"{self.config.url[:-1]}{dashboard_json['url']}"
-        last_modified = dateparser.parse(
-            dashboard_json.get("changed_on_utc", "now")
-        ).timestamp() * 1000
-        owners = get_owners(dashboard_json['owners'])
+        last_modified = (
+            dateparser.parse(dashboard_json.get("changed_on_utc", "now")).timestamp()
+            * 1000
+        )
+        owners = get_owners(dashboard_json["owners"])
         raw_position_data = dashboard_json.get("position_json", "{}")
         charts = []
         if raw_position_data is not None:
@@ -134,7 +138,7 @@ class SupersetSource(Source):
             for key, value in position_data.items():
                 if not key.startswith("CHART-"):
                     continue
-                chart_id = value.get('meta', {}).get('chartId', 'unknown')
+                chart_id = value.get("meta", {}).get("chartId", "unknown")
                 charts.append(chart_id)
 
         return Dashboard(
@@ -145,7 +149,7 @@ class SupersetSource(Source):
             owners=owners,
             charts=charts,
             service=EntityReference(id=self.service.id, type="dashboardService"),
-            lastModified=last_modified
+            lastModified=last_modified,
         )
 
     def _fetch_dashboards(self) -> Iterable[Record]:
@@ -155,7 +159,7 @@ class SupersetSource(Source):
         while current_page * page_size <= total_dashboards:
             dashboards = self.client.fetch_dashboards(current_page, page_size)
             current_page += 1
-            for dashboard_json in dashboards['result']:
+            for dashboard_json in dashboards["result"]:
                 dashboard = self._build_dashboard(dashboard_json)
                 yield dashboard
 
@@ -184,16 +188,16 @@ class SupersetSource(Source):
         return None
 
     def _build_chart(self, chart_json) -> Chart:
-        chart_id = chart_json['id']
-        name = chart_json['slice_name']
-        last_modified = dateparser.parse(
-            chart_json.get("changed_on_utc", "now")
-        ).timestamp() * 1000
+        chart_id = chart_json["id"]
+        name = chart_json["slice_name"]
+        last_modified = (
+            dateparser.parse(chart_json.get("changed_on_utc", "now")).timestamp() * 1000
+        )
         chart_type = chart_json["viz_type"]
         chart_url = f"{self.config.url}{chart_json['url']}"
         datasource_id = chart_json["datasource_id"]
         datasource_fqn = self._get_datasource_from_id(datasource_id)
-        owners = get_owners(chart_json['owners'])
+        owners = get_owners(chart_json["owners"])
         params = json.loads(chart_json["params"])
         metrics = [
             get_metric_name(metric)
@@ -222,7 +226,7 @@ class SupersetSource(Source):
             datasource_fqn=datasource_fqn,
             lastModified=last_modified,
             service=EntityReference(id=self.service.id, type="dashboardService"),
-            custom_props=custom_properties
+            custom_props=custom_properties,
         )
         return chart
 
@@ -233,7 +237,7 @@ class SupersetSource(Source):
         while current_page * page_size <= total_charts:
             charts = self.client.fetch_charts(current_page, page_size)
             current_page += 1
-            for chart_json in charts['result']:
+            for chart_json in charts["result"]:
                 yield self._build_chart(chart_json)
 
     def get_status(self):

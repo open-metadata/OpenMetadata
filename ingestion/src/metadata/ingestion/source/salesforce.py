@@ -26,12 +26,18 @@ from simple_salesforce import Salesforce
 from .sql_source import SQLConnectionConfig
 from ..ometa.openmetadata_rest import MetadataServerConfig
 from ...generated.schema.entity.data.database import Database
-from ...generated.schema.entity.data.table import Column, ColumnConstraint, Table, TableData
+from ...generated.schema.entity.data.table import (
+    Column,
+    ColumnConstraint,
+    Table,
+    TableData,
+)
 from ...generated.schema.type.entityReference import EntityReference
 from metadata.utils.helpers import get_database_service_or_create
 from pydantic import ValidationError
 
 logger: logging.Logger = logging.getLogger(__name__)
+
 
 @dataclass
 class SalesforceSourceStatus(SourceStatus):
@@ -42,10 +48,10 @@ class SalesforceSourceStatus(SourceStatus):
 
     def scanned(self, table_name: str) -> None:
         self.success.append(table_name)
-        logger.info('Table Scanned: {}'.format(table_name))
+        logger.info("Table Scanned: {}".format(table_name))
 
     def filter(
-            self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
+        self, table_name: str, err: str, dataset_name: str = None, col_type: str = None
     ) -> None:
         self.filtered.append(table_name)
         logger.warning("Dropped Table {} due to {}".format(table_name, err))
@@ -65,15 +71,18 @@ class SalesforceConfig(SQLConnectionConfig):
 
 
 class SalesforceSource(Source):
-    def __init__(self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx):
+    def __init__(
+        self, config: SalesforceConfig, metadata_config: MetadataServerConfig, ctx
+    ):
         super().__init__(ctx)
         self.config = config
         self.service = get_database_service_or_create(config, metadata_config)
         self.status = SalesforceSourceStatus()
         self.sf = Salesforce(
-                username=self.config.username, password=self.config.password,
-                security_token=self.config.security_token
-            )
+            username=self.config.username,
+            password=self.config.password,
+            security_token=self.config.security_token,
+        )
 
     @classmethod
     def create(cls, config: dict, metadata_config: dict, ctx: WorkflowContext):
@@ -93,45 +102,49 @@ class SalesforceSource(Source):
     def next_record(self) -> Iterable[OMetaDatabaseAndTable]:
         yield from self.salesforce_client()
 
-    def fetch_sample_data(self,sobject_name):
+    def fetch_sample_data(self, sobject_name):
         md = self.sf.restful("sobjects/{}/describe/".format(sobject_name), params=None)
         columns = []
         rows = []
-        for column in md['fields']:
-            columns.append(column['name'])
-        query = "select {} from {}".format(str(columns)[1:-1].replace('\'',''),sobject_name)
+        for column in md["fields"]:
+            columns.append(column["name"])
+        query = "select {} from {}".format(
+            str(columns)[1:-1].replace("'", ""), sobject_name
+        )
         logger.info("Ingesting data using {}".format(query))
         resp = self.sf.query(query)
-        for record in resp['records']:
+        for record in resp["records"]:
             row = []
             for column in columns:
-                row.append(record[f'{column}'])
+                row.append(record[f"{column}"])
             rows.append(row)
         return TableData(columns=columns, rows=rows)
 
     def salesforce_client(self) -> Iterable[OMetaDatabaseAndTable]:
         try:
-            
+
             row_order = 1
             table_columns = []
-            md = self.sf.restful("sobjects/{}/describe/".format(self.config.sobject_name), params=None)
-            
-            for column in md['fields']:
+            md = self.sf.restful(
+                "sobjects/{}/describe/".format(self.config.sobject_name), params=None
+            )
+
+            for column in md["fields"]:
                 col_constraint = None
-                if column['nillable']:
+                if column["nillable"]:
                     col_constraint = ColumnConstraint.NULL
-                elif not column['nillable']:
+                elif not column["nillable"]:
                     col_constraint = ColumnConstraint.NOT_NULL
-                if column['unique']:
+                if column["unique"]:
                     col_constraint = ColumnConstraint.UNIQUE
 
                 table_columns.append(
                     Column(
-                        name=column['name'],
-                        description=column['label'],
-                        columnDataType=self.column_type(column['type'].upper()),
+                        name=column["name"],
+                        description=column["label"],
+                        columnDataType=self.column_type(column["type"].upper()),
                         columnConstraint=col_constraint,
-                        ordinalPosition=row_order
+                        ordinalPosition=row_order,
                     )
                 )
                 row_order += 1
@@ -140,21 +153,25 @@ class SalesforceSource(Source):
             table_entity = Table(
                 id=uuid.uuid4(),
                 name=self.config.sobject_name,
-                tableType='Regular',
+                tableType="Regular",
                 description=" ",
                 columns=table_columns,
-                sampleData=table_data
+                sampleData=table_data,
             )
             self.status.scanned(f"{self.config.scheme}.{self.config.sobject_name}")
             database_entity = Database(
                 name=self.config.scheme,
-                service=EntityReference(id=self.service.id, type=self.config.service_type)
+                service=EntityReference(
+                    id=self.service.id, type=self.config.service_type
+                ),
             )
-            table_and_db = OMetaDatabaseAndTable(table=table_entity, database=database_entity)
+            table_and_db = OMetaDatabaseAndTable(
+                table=table_entity, database=database_entity
+            )
             yield table_and_db
         except ValidationError as err:
             logger.error(err)
-            self.status.failure('{}'.format(self.config.sobject_name), err)
+            self.status.failure("{}".format(self.config.sobject_name), err)
 
     def prepare(self):
         pass

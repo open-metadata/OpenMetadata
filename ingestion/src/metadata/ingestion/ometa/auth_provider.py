@@ -21,7 +21,6 @@ from metadata.config.common import ConfigModel
 
 @dataclass  # type: ignore[misc]
 class AuthenticationProvider(metaclass=ABCMeta):
-
     @classmethod
     @abstractmethod
     def create(cls, config: ConfigModel) -> "AuthenticationProvider":
@@ -30,7 +29,3 @@ class AuthenticationProvider(metaclass=ABCMeta):
     @abstractmethod
     def auth_token(self) -> str:
         pass
-
-
-
-

@@ -4,9 +4,7 @@ from sqlalchemy.sql import sqltypes as types
 from metadata.ingestion.api.source import SourceStatus
 
 
-def register_custom_type(
-        tp: Type[types.TypeEngine], output: str = None
-) -> None:
+def register_custom_type(tp: Type[types.TypeEngine], output: str = None) -> None:
     if output:
         _column_type_mapping[tp] = output
     else:
@@ -32,30 +30,30 @@ _column_type_mapping: Dict[Type[types.TypeEngine], str] = {
     types.TIMESTAMP: "TIMESTAMP",
     types.NullType: "NULL",
     types.JSON: "JSON",
-    types.CHAR: "CHAR"
+    types.CHAR: "CHAR",
 }
 
 _column_string_mapping = {
-"INT": "INT", 
-"BOOLEAN": "BOOLEAN",
-"ENUM": "ENUM",
-"BYTES": "BYTES",
-"ARRAY": "ARRAY",
-"VARCHAR": "VARCHAR",
-"STRING": "STRING",
-"DATE": "DATE",
-"TIME": "TIME",
-"DATETIME": "DATETIME",
-"TIMESTAMP": "TIMESTAMP",
-"NULL": "NULL",
-"JSON": "JSON",
-"CHAR": "CHAR",
-"INT64": "BIGINT",
-"CHARACTER VARYING": "VARCHAR",
-"VARIANT": "JSON",
-"OBJECT": "JSON",
-"MAP": "MAP",
-"UNION": "UNION"
+    "INT": "INT",
+    "BOOLEAN": "BOOLEAN",
+    "ENUM": "ENUM",
+    "BYTES": "BYTES",
+    "ARRAY": "ARRAY",
+    "VARCHAR": "VARCHAR",
+    "STRING": "STRING",
+    "DATE": "DATE",
+    "TIME": "TIME",
+    "DATETIME": "DATETIME",
+    "TIMESTAMP": "TIMESTAMP",
+    "NULL": "NULL",
+    "JSON": "JSON",
+    "CHAR": "CHAR",
+    "INT64": "BIGINT",
+    "CHARACTER VARYING": "VARCHAR",
+    "VARIANT": "JSON",
+    "OBJECT": "JSON",
+    "MAP": "MAP",
+    "UNION": "UNION",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
@@ -92,9 +90,9 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
 def get_last_index(nested_str):
     counter = 1
     for index, i in enumerate(nested_str):
-        if i == '>':
+        if i == ">":
             counter -= 1
-        elif i == '<':
+        elif i == "<":
             counter += 1
         if counter == 0:
             break
@@ -104,75 +102,90 @@ def get_last_index(nested_str):
 
 def get_array_type(col_type):
     col = {}
-    col['dataType'] = 'ARRAY'
-    col_type = col_type[:get_last_index(col_type) + 2]
-    col['dataTypeDisplay'] = col_type
-    col['arrayDataType'] = re.match(
-        r'(?:array<)(\w*)(?:.*)', col_type).groups()[0].upper()
+    col["dataType"] = "ARRAY"
+    col_type = col_type[: get_last_index(col_type) + 2]
+    col["dataTypeDisplay"] = col_type
+    col["arrayDataType"] = (
+        re.match(r"(?:array<)(\w*)(?:.*)", col_type).groups()[0].upper()
+    )
     return col
 
 
 def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
     col = {}
-    if re.match(r'([\w\s]*)(:)(.*)', raw_type):
-        name, col_type = raw_type.lstrip('<').split(':', 1)
-        col['name'] = name
+    if re.match(r"([\w\s]*)(:)(.*)", raw_type):
+        name, col_type = raw_type.lstrip("<").split(":", 1)
+        col["name"] = name
     else:
-        col['name'] = f'field_{level}'
-        if raw_type.startswith('struct<'):
+        col["name"] = f"field_{level}"
+        if raw_type.startswith("struct<"):
             col_type = raw_type
         else:
-            col_type = raw_type.lstrip('<').split(':', 1)[0]
-    if col_type.startswith('struct<'):
+            col_type = raw_type.lstrip("<").split(":", 1)[0]
+    if col_type.startswith("struct<"):
         children = []
-        struct_type, col_type = re.match(r'(struct<)(.*)', col_type).groups()
+        struct_type, col_type = re.match(r"(struct<)(.*)", col_type).groups()
         pluck_index = get_last_index(col_type)
-        pluck_nested = col_type[:pluck_index + 1]
-        col['dataTypeDisplay'] = struct_type + pluck_nested
-        while pluck_nested != '':
-            col['dataType'] = 'STRUCT'
-            plucked = col_type[:get_last_index(col_type)]
+        pluck_nested = col_type[: pluck_index + 1]
+        col["dataTypeDisplay"] = struct_type + pluck_nested
+        while pluck_nested != "":
+            col["dataType"] = "STRUCT"
+            plucked = col_type[: get_last_index(col_type)]
             counter = 0
             continue_next = False
-            for index, type in enumerate(plucked.split(',')):
+            for index, type in enumerate(plucked.split(",")):
                 if continue_next:
                     continue_next = False
                     continue
-                if re.match(r'(\w*)(:)(struct)(.*)', type):
-                    col_name, datatype, rest = re.match(r'(\w*)(?::)(struct)(.*)',
-                                                        ','.join(plucked.split(',')[index:])).groups()
+                if re.match(r"(\w*)(:)(struct)(.*)", type):
+                    col_name, datatype, rest = re.match(
+                        r"(\w*)(?::)(struct)(.*)", ",".join(plucked.split(",")[index:])
+                    ).groups()
                     type = f"{col_name}:{datatype}{rest[:get_last_index(rest) + 2]}"
-                elif type.startswith('struct'):
-                    datatype, rest = re.match(r'(struct)(.*)', ','.join(plucked.split(',')[index:])).groups()
+                elif type.startswith("struct"):
+                    datatype, rest = re.match(
+                        r"(struct)(.*)", ",".join(plucked.split(",")[index:])
+                    ).groups()
                     type = f"{datatype}{rest[:get_last_index(rest) + 2]}"
-                elif re.match(r'([\w\s]*)(:?)(map)(.*)', type):
-                    get_map_type = ','.join(plucked.split(',')[index:])
-                    type, col_type = re.match(r'([\w]*:?map<[\w,]*>)(.*)', get_map_type).groups()
+                elif re.match(r"([\w\s]*)(:?)(map)(.*)", type):
+                    get_map_type = ",".join(plucked.split(",")[index:])
+                    type, col_type = re.match(
+                        r"([\w]*:?map<[\w,]*>)(.*)", get_map_type
+                    ).groups()
                     continue_next = True
-                elif re.match(r'([\w\s]*)(:?)(uniontype)(.*)', type):
-                    get_union_type = ','.join(plucked.split(',')[index:])
-                    type, col_type = re.match(r'([\w\s]*:?uniontype<[\w\s,]*>)(.*)', get_union_type).groups()
+                elif re.match(r"([\w\s]*)(:?)(uniontype)(.*)", type):
+                    get_union_type = ",".join(plucked.split(",")[index:])
+                    type, col_type = re.match(
+                        r"([\w\s]*:?uniontype<[\w\s,]*>)(.*)", get_union_type
+                    ).groups()
                     continue_next = True
-                children.append(_handle_complex_data_types(status, dataset_name, type, counter))
+                children.append(
+                    _handle_complex_data_types(status, dataset_name, type, counter)
+                )
                 if plucked.endswith(type):
                     break
                 counter += 1
-            pluck_nested = col_type[get_last_index(col_type) + 3:]
-            col['children'] = children
-    elif col_type.startswith('array'):
+            pluck_nested = col_type[get_last_index(col_type) + 3 :]
+            col["children"] = children
+    elif col_type.startswith("array"):
         col.update(get_array_type(col_type))
-    elif col_type.startswith('map'):
-        col['dataType'] = 'MAP'
-        col['dataTypeDisplay'] = col_type
-    elif col_type.startswith('uniontype'):
-        col['dataType'] = 'UNION'
-        col['dataTypeDisplay'] = col_type
+    elif col_type.startswith("map"):
+        col["dataType"] = "MAP"
+        col["dataTypeDisplay"] = col_type
+    elif col_type.startswith("uniontype"):
+        col["dataType"] = "UNION"
+        col["dataTypeDisplay"] = col_type
     else:
-        if re.match(r'(?:[\w\s]*)(?:\()([\d]*)(?:\))', col_type):
-            col['dataLength'] = re.match(r'(?:[\w\s]*)(?:\()([\d]*)(?:\))', col_type).groups()[0]
+        if re.match(r"(?:[\w\s]*)(?:\()([\d]*)(?:\))", col_type):
+            col["dataLength"] = re.match(
+                r"(?:[\w\s]*)(?:\()([\d]*)(?:\))", col_type
+            ).groups()[0]
         else:
-            col['dataLength'] = 1
-        col['dataType'] = get_column_type(status, dataset_name,
-                                          re.match('([\w\s]*)(?:.*)', col_type).groups()[0].upper())
-        col['dataTypeDisplay'] = col_type.rstrip('>')
+            col["dataLength"] = 1
+        col["dataType"] = get_column_type(
+            status,
+            dataset_name,
+            re.match("([\w\s]*)(?:.*)", col_type).groups()[0].upper(),
+        )
+        col["dataTypeDisplay"] = col_type.rstrip(">")
     return col

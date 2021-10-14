@@ -19,7 +19,12 @@ import pathlib
 
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.stage import Stage, StageStatus
-from metadata.ingestion.models.table_queries import TableUsageCount, QueryParserData, TableColumnJoin, TableColumn
+from metadata.ingestion.models.table_queries import (
+    TableUsageCount,
+    QueryParserData,
+    TableColumnJoin,
+    TableColumn,
+)
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.stage.file import FileStageConfig
 
@@ -38,11 +43,19 @@ def get_table_column_join(table, table_aliases, joins):
                     jtable, column = join.split(".")[2:]
 
             if table == jtable or jtable in table_aliases:
-                table_column = TableColumn(table=table_aliases[jtable] if jtable in table_aliases else jtable,
-                                           column=column)
+                table_column = TableColumn(
+                    table=table_aliases[jtable] if jtable in table_aliases else jtable,
+                    column=column,
+                )
             else:
-                joined_with.append(TableColumn(table=table_aliases[jtable] if jtable in table_aliases else jtable,
-                                               column=column))
+                joined_with.append(
+                    TableColumn(
+                        table=table_aliases[jtable]
+                        if jtable in table_aliases
+                        else jtable,
+                        column=column,
+                    )
+                )
         except ValueError as err:
             logger.error("Error in parsing sql query joins {}".format(err))
             pass
@@ -53,7 +66,12 @@ class TableUsageStage(Stage):
     config: FileStageConfig
     status: StageStatus
 
-    def __init__(self, ctx: WorkflowContext, config: FileStageConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: FileStageConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -64,7 +82,9 @@ class TableUsageStage(Stage):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = FileStageConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
@@ -76,20 +96,27 @@ class TableUsageStage(Stage):
                 if table in self.table_usage.keys():
                     table_usage_count = self.table_usage.get(table)
                     table_usage_count.count = table_usage_count.count + 1
-                    if 'join' in record.columns:
-                        table_usage_count.joins.append(get_table_column_join(table, record.tables_aliases,
-                                                                             record.columns['join']))
+                    if "join" in record.columns:
+                        table_usage_count.joins.append(
+                            get_table_column_join(
+                                table, record.tables_aliases, record.columns["join"]
+                            )
+                        )
                 else:
                     joins = []
-                    if 'join' in record.columns:
-                        tbl_column_join = get_table_column_join(table, record.tables_aliases, record.columns['join'])
+                    if "join" in record.columns:
+                        tbl_column_join = get_table_column_join(
+                            table, record.tables_aliases, record.columns["join"]
+                        )
                         if tbl_column_join is not None:
                             joins.append(tbl_column_join)
 
-                    table_usage_count = TableUsageCount(table=table,
-                                                        database=record.database,
-                                                        date=record.date,
-                                                        joins=joins)
+                    table_usage_count = TableUsageCount(
+                        table=table,
+                        database=record.database,
+                        date=record.date,
+                        joins=joins,
+                    )
                 self.table_usage[table] = table_usage_count
 
     def get_status(self):

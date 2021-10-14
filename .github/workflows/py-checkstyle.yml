@@ -13,9 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Pylint
+name: py-checkstyle
 
-on: [push]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
   build:
@@ -34,10 +38,10 @@ jobs:
         run: |
           python3 -m venv env
           source env/bin/activate
-          cd ingestion
-          pip install . pylint
+          make install_test
           
-      - name: Analysing the code with pylint
+      - name: Code style check
         run: |
           source env/bin/activate
-          pylint $(find ./ingestion/src -path ./ingestion/src/metadata/generated -prune -false -o  -type f -name "*.py")
+          make black_check
+          make lint

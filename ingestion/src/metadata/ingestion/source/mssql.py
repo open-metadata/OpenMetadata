@@ -20,6 +20,7 @@ import sqlalchemy_pytds  # noqa: F401
 from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
 
+
 class MssqlConfig(SQLConnectionConfig):
     host_port = "localhost:1433"
     scheme = "mssql+pytds"

@@ -21,7 +21,7 @@ K = TypeVar("K")
 
 
 def group_by(
-        iterable: Iterable[T], key: Callable[[T], K]
+    iterable: Iterable[T], key: Callable[[T], K]
 ) -> Iterable[Tuple[K, Iterable[T]]]:
 
     values = collections.defaultdict(list)

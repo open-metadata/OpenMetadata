@@ -62,13 +62,13 @@ class DataProfiler:
         self.data_context = BaseDataContext(project_config=data_context_config)
 
     def run_profiler(
-            self,
-            dataset_name: str,
-            schema: str = None,
-            table: str = None,
-            limit: int = None,
-            offset: int = None,
-            **kwargs: Any,
+        self,
+        dataset_name: str,
+        schema: str = None,
+        table: str = None,
+        limit: int = None,
+        offset: int = None,
+        **kwargs: Any,
     ) -> TableProfile:
         try:
             profile_test_results = self._profile_data_asset(
@@ -80,15 +80,16 @@ class DataProfiler:
                     **kwargs,
                 }
             )
-            profile = self._parse_test_results_to_table_profile(profile_test_results, dataset_name=dataset_name)
+            profile = self._parse_test_results_to_table_profile(
+                profile_test_results, dataset_name=dataset_name
+            )
             return profile
         except Exception as err:
             logger.error(err)
             pass
 
     def _profile_data_asset(
-            self,
-            batch_kwargs: dict
+        self, batch_kwargs: dict
     ) -> ExpectationSuiteValidationResult:
 
         profile_results = self.data_context.profile_data_asset(
@@ -109,17 +110,21 @@ class DataProfiler:
         return result.expectation_config.kwargs.get("column")
 
     def _parse_test_results_to_table_profile(
-            self, profile_test_results: ExpectationSuiteValidationResult, dataset_name: str
+        self, profile_test_results: ExpectationSuiteValidationResult, dataset_name: str
     ) -> TableProfile:
         profile = None
         column_profiles = []
         for col, col_test_result in group_by(
-                profile_test_results.results, key=self._get_column_from_result
+            profile_test_results.results, key=self._get_column_from_result
         ):
             if col is None:
-                profile = self._parse_table_test_results(col_test_result, dataset_name=dataset_name)
+                profile = self._parse_table_test_results(
+                    col_test_result, dataset_name=dataset_name
+                )
             else:
-                column_profile = self._parse_column_test_results(col, col_test_result, dataset_name=dataset_name)
+                column_profile = self._parse_column_test_results(
+                    col, col_test_result, dataset_name=dataset_name
+                )
                 column_profiles.append(column_profile)
 
         if profile is not None:
@@ -127,16 +132,16 @@ class DataProfiler:
         return profile
 
     def _parse_table_test_results(
-            self,
-            table_test_results: Iterable[ExpectationValidationResult],
-            dataset_name: str,
+        self,
+        table_test_results: Iterable[ExpectationValidationResult],
+        dataset_name: str,
     ) -> TableProfile:
-        profile = TableProfile(profileDate=datetime.now(). strftime("%Y-%m-%d"))
+        profile = TableProfile(profileDate=datetime.now().strftime("%Y-%m-%d"))
         for table_result in table_test_results:
             expectation: str = table_result.expectation_config.expectation_type
             result: dict = table_result.result
             if expectation == "expect_table_row_count_to_be_between":
-                profile.rowCount = result['observed_value']
+                profile.rowCount = result["observed_value"]
             elif expectation == "expect_table_columns_to_match_ordered_list":
                 profile.columnCount = len(result["observed_value"])
             else:
@@ -146,10 +151,10 @@ class DataProfiler:
         return profile
 
     def _parse_column_test_results(
-            self,
-            column: str,
-            col_test_results: Iterable[ExpectationValidationResult],
-            dataset_name: str,
+        self,
+        column: str,
+        col_test_results: Iterable[ExpectationValidationResult],
+        dataset_name: str,
     ) -> ColumnProfile:
         column_profile = ColumnProfile(name=column)
         for col_result in col_test_results:
@@ -157,19 +162,22 @@ class DataProfiler:
             result: dict = col_result.result
             if not result:
                 self.status.warning(
-                    f"profile of {dataset_name}", f"{expectation} did not yield any results"
+                    f"profile of {dataset_name}",
+                    f"{expectation} did not yield any results",
                 )
                 continue
 
             if expectation == "expect_column_unique_value_count_to_be_between":
                 column_profile.uniqueCount = result["observed_value"]
-            elif expectation == "expect_column_proportion_of_unique_values_to_be_between":
+            elif (
+                expectation == "expect_column_proportion_of_unique_values_to_be_between"
+            ):
                 column_profile.uniqueProportion = result["observed_value"]
             elif expectation == "expect_column_values_to_not_be_null":
                 column_profile.nullCount = result["unexpected_count"]
                 if (
-                        "unexpected_percent" in result
-                        and result["unexpected_percent"] is not None
+                    "unexpected_percent" in result
+                    and result["unexpected_percent"] is not None
                 ):
                     column_profile.nullProportion = result["unexpected_percent"] / 100
             elif expectation == "expect_column_values_to_not_match_regex":
@@ -187,9 +195,9 @@ class DataProfiler:
             elif expectation == "expect_column_quantile_values_to_be_between":
                 pass
             elif expectation == "expect_column_values_to_be_in_set":
-                #column_profile.sample_values = [
-                 #   str(v) for v in result["partial_unexpected_list"]
-                #]
+                # column_profile.sample_values = [
+                #   str(v) for v in result["partial_unexpected_list"]
+                # ]
                 pass
             elif expectation == "expect_column_kl_divergence_to_be_less_than":
                 pass

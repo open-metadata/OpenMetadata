@@ -24,8 +24,14 @@ from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 class SQLAlchemyHelper:
     """A helper class for all SQL Sources that use SQLAlchemy to extend"""
 
-    def __init__(self, config: SQLConnectionConfig, metadata_config: MetadataServerConfig,
-                 ctx: WorkflowContext, platform: str, query: str):
+    def __init__(
+        self,
+        config: SQLConnectionConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
+        platform: str,
+        query: str,
+    ):
         self.config = config
         self.platform = platform
         self.report = SQLSourceStatus()
@@ -44,12 +50,11 @@ class SQLAlchemyHelper:
         """
         Create an iterator to execute sql.
         """
-        if not hasattr(self, 'results'):
+        if not hasattr(self, "results"):
             self.results = self.connection.execute(self.query)
 
-        if hasattr(self, 'model_class'):
-            results = [self.model_class(**result)
-                       for result in self.results]
+        if hasattr(self, "model_class"):
+            results = [self.model_class(**result) for result in self.results]
         else:
             results = self.results
         return iter(results)

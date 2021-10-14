@@ -46,13 +46,15 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
     def auth_token(self) -> str:
         login_request = self._login_request()
         login_response = self.client.post("/security/login", login_request)
-        return login_response['access_token']
+        return login_response["access_token"]
 
     def _login_request(self) -> str:
-        auth_request = {'username': self.config.username,
-                        'password': self.config.password,
-                        'refresh': True,
-                        'provider': self.config.provider}
+        auth_request = {
+            "username": self.config.username,
+            "password": self.config.password,
+            "refresh": True,
+            "provider": self.config.provider,
+        }
         return json.dumps(auth_request)
 
 
@@ -63,9 +65,13 @@ class SupersetAPIClient(object):
     def __init__(self, config: SupersetConfig):
         self.config = config
         self._auth_provider = SupersetAuthenticationProvider.create(config)
-        client_config = ClientConfig(base_url=config.url, api_version="api/v1",
-                                     auth_token=f"Bearer {self._auth_provider.auth_token()}",
-                                     auth_header="Authorization", allow_redirects=True)
+        client_config = ClientConfig(
+            base_url=config.url,
+            api_version="api/v1",
+            auth_token=f"Bearer {self._auth_provider.auth_token()}",
+            auth_header="Authorization",
+            allow_redirects=True,
+        )
         self.client = REST(client_config)
 
     def fetch_total_dashboards(self) -> int:
@@ -73,7 +79,9 @@ class SupersetAPIClient(object):
         return response.get("count") or 0
 
     def fetch_dashboards(self, current_page: int, page_size: int):
-        response = self.client.get(f"/dashboard?q=(page:{current_page},page_size:{page_size})")
+        response = self.client.get(
+            f"/dashboard?q=(page:{current_page},page_size:{page_size})"
+        )
         return response
 
     def fetch_total_charts(self) -> int:
@@ -81,7 +89,9 @@ class SupersetAPIClient(object):
         return response.get("count") or 0
 
     def fetch_charts(self, current_page: int, page_size: int):
-        response = self.client.get(f"/chart?q=(page:{current_page},page_size:{page_size})")
+        response = self.client.get(
+            f"/chart?q=(page:{current_page},page_size:{page_size})"
+        )
         return response
 
     def fetch_datasource(self, datasource_id: str):
@@ -91,5 +101,3 @@ class SupersetAPIClient(object):
     def fetch_database(self, database_id: str):
         response = self.client.get(f"/database/{database_id}")
         return response
-
-

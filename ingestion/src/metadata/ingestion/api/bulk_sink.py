@@ -43,7 +43,9 @@ class BulkSink(Closeable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "BulkSink":
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ) -> "BulkSink":
         pass
 
     @abstractmethod

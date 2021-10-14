@@ -21,10 +21,17 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import ColumnJoins, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.models.table_queries import TableUsageCount, TableUsageRequest, TableColumn, \
-    ColumnJoinedWith
+from metadata.ingestion.models.table_queries import (
+    TableUsageCount,
+    TableUsageRequest,
+    TableColumn,
+    ColumnJoinedWith,
+)
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
+from metadata.ingestion.ometa.openmetadata_rest import (
+    OpenMetadataAPIClient,
+    MetadataServerConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,27 +43,34 @@ class MetadataUsageSinkConfig(ConfigModel):
 class MetadataUsageBulkSink(BulkSink):
     config: MetadataUsageSinkConfig
 
-    def __init__(self, ctx: WorkflowContext, config: MetadataUsageSinkConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: MetadataUsageSinkConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
         self.wrote_something = False
-        self.file_handler = open(self.config.filename, 'r')
+        self.file_handler = open(self.config.filename, "r")
         self.client = OpenMetadataAPIClient(self.metadata_config)
         self.status = BulkSinkStatus()
         self.tables_dict = {}
         self.table_join_dict = {}
         self.__map_tables()
-        self.today = datetime.today().strftime('%Y-%m-%d')
+        self.today = datetime.today().strftime("%Y-%m-%d")
 
     def __map_tables(self):
-        table_entities = self.client.list_tables('columns')
+        table_entities = self.client.list_tables("columns")
         for table in table_entities.tables:
             if table.name.__root__ not in self.tables_dict.keys():
                 self.tables_dict[table.name.__root__] = table
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = MetadataUsageSinkConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
@@ -71,32 +85,52 @@ class MetadataUsageBulkSink(BulkSink):
         usage_records = [json.loads(l) for l in self.file_handler.readlines()]
         for record in usage_records:
             table_usage = TableUsageCount(**json.loads(record))
-            if '.' in table_usage.table:
+            if "." in table_usage.table:
                 table_usage.table = table_usage.table.split(".")[1]
             if table_usage.table in self.tables_dict:
                 table_entity = self.tables_dict[table_usage.table]
-                table_usage_request = TableUsageRequest(date=table_usage.date, count=table_usage.count)
+                table_usage_request = TableUsageRequest(
+                    date=table_usage.date, count=table_usage.count
+                )
                 try:
-                    self.client.publish_usage_for_a_table(table_entity, table_usage_request)
+                    self.client.publish_usage_for_a_table(
+                        table_entity, table_usage_request
+                    )
                 except APIError as err:
                     self.status.failures.append(table_usage_request)
-                    logger.error("Failed to update usage for {} {}".format(table_usage.table, err))
+                    logger.error(
+                        "Failed to update usage for {} {}".format(
+                            table_usage.table, err
+                        )
+                    )
 
                 table_join_request = self.__get_table_joins(table_usage)
                 logger.debug("table join request {}".format(table_join_request))
                 try:
-                    if table_join_request is not None and len(table_join_request.columnJoins) > 0:
-                        self.client.publish_frequently_joined_with(table_entity, table_join_request)
+                    if (
+                        table_join_request is not None
+                        and len(table_join_request.columnJoins) > 0
+                    ):
+                        self.client.publish_frequently_joined_with(
+                            table_entity, table_join_request
+                        )
                 except APIError as err:
                     self.status.failures.append(table_join_request)
-                    logger.error("Failed to update query join for {}, {}".format(table_usage.table, err))
+                    logger.error(
+                        "Failed to update query join for {}, {}".format(
+                            table_usage.table, err
+                        )
+                    )
 
             else:
-                logger.warning("Table does not exist, skipping usage publish {}, {}".format(table_usage.table,
-                                                                                            table_usage.database))
+                logger.warning(
+                    "Table does not exist, skipping usage publish {}, {}".format(
+                        table_usage.table, table_usage.database
+                    )
+                )
         try:
-            self.client.compute_percentile('table', self.today)
-            self.client.compute_percentile('database', self.today)
+            self.client.compute_percentile("table", self.today)
+            self.client.compute_percentile("database", self.today)
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
@@ -122,15 +156,17 @@ class MetadataUsageBulkSink(BulkSink):
                     column_joined_with.joinCount += 1
                     joined_with[joined_column_fqdn] = column_joined_with
                 elif joined_column_fqdn is not None:
-                    joined_with[joined_column_fqdn] = ColumnJoinedWith(fullyQualifiedName=joined_column_fqdn,
-                                                                       joinCount=1)
+                    joined_with[joined_column_fqdn] = ColumnJoinedWith(
+                        fullyQualifiedName=joined_column_fqdn, joinCount=1
+                    )
                 else:
                     logger.info("Skipping join columns for {}".format(column))
             column_joins_dict[column_join.table_column.column] = joined_with
 
         for key, value in column_joins_dict.items():
-            table_joins.columnJoins.append(ColumnJoins(columnName=key,
-                                                       joinedWith=list(value.values())))
+            table_joins.columnJoins.append(
+                ColumnJoins(columnName=key, joinedWith=list(value.values()))
+            )
         return table_joins
 
     def __get_column_fqdn(self, table_column: TableColumn):

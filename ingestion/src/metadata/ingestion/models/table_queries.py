@@ -22,25 +22,24 @@ from metadata.ingestion.models.json_serializable import JsonSerializable
 
 
 class TableQuery(JsonSerializable):
-    """
-    """
+    """ """
 
-    def __init__(self,
-                 query: str,
-                 label: str,
-                 userid: int,
-                 xid: int,
-                 pid: int,
-                 starttime: str,
-                 endtime: str,
-                 analysis_date: str,
-                 duration: int,
-                 database: str,
-                 aborted: bool,
-                 sql: str,
-                 ) -> None:
-        """
-        """
+    def __init__(
+        self,
+        query: str,
+        label: str,
+        userid: int,
+        xid: int,
+        pid: int,
+        starttime: str,
+        endtime: str,
+        analysis_date: str,
+        duration: int,
+        database: str,
+        aborted: bool,
+        sql: str,
+    ) -> None:
+        """ """
         self.query = query
         self.label = label
         self.userid = userid

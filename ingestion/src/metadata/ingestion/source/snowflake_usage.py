@@ -16,7 +16,10 @@
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_alchemy_helper import SQLAlchemyHelper, SQLSourceStatus
+from metadata.ingestion.source.sql_alchemy_helper import (
+    SQLAlchemyHelper,
+    SQLSourceStatus,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
 from typing import Iterator, Union, Dict, Any, Iterable
 
@@ -35,13 +38,13 @@ class SnowflakeUsageSource(Source):
         """
 
     # CONFIG KEYS
-    WHERE_CLAUSE_SUFFIX_KEY = 'where_clause'
-    CLUSTER_SOURCE = 'cluster_source'
-    CLUSTER_KEY = 'cluster_key'
-    USE_CATALOG_AS_CLUSTER_NAME = 'use_catalog_as_cluster_name'
-    DATABASE_KEY = 'database_key'
-    SERVICE_TYPE = 'Snowflake'
-    DEFAULT_CLUSTER_SOURCE = 'CURRENT_DATABASE()'
+    WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
+    CLUSTER_SOURCE = "cluster_source"
+    CLUSTER_KEY = "cluster_key"
+    USE_CATALOG_AS_CLUSTER_NAME = "use_catalog_as_cluster_name"
+    DATABASE_KEY = "database_key"
+    SERVICE_TYPE = "Snowflake"
+    DEFAULT_CLUSTER_SOURCE = "CURRENT_DATABASE()"
 
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
@@ -49,12 +52,13 @@ class SnowflakeUsageSource(Source):
         print(start)
         print(end)
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
-            start_date=start,
-            end_date=end
+            start_date=start, end_date=end
         )
-        self.alchemy_helper = SQLAlchemyHelper(config, metadata_config, ctx, "Snowflake", self.sql_stmt)
+        self.alchemy_helper = SQLAlchemyHelper(
+            config, metadata_config, ctx, "Snowflake", self.sql_stmt
+        )
         self._extract_iter: Union[None, Iterator] = None
-        self._database = 'Snowflake'
+        self._database = "Snowflake"
         self.report = SQLSourceStatus()
 
     @classmethod
@@ -77,13 +81,25 @@ class SnowflakeUsageSource(Source):
 
     def next_record(self) -> Iterable[TableQuery]:
         """
-                Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
-                :return:
-                """
+        Using itertools.groupby and raw level iterator, it groups to table and yields TableMetadata
+        :return:
+        """
         for row in self._get_raw_extract_iter():
-            tq = TableQuery(row['query'], row['label'], 0, 0, 0, str(row['starttime']),
-                            str(row['endtime']), str(row['starttime'])[0:19], 2, row['database'], 0, row['sql'])
-            if row['schema_name'] is not None:
+            tq = TableQuery(
+                row["query"],
+                row["label"],
+                0,
+                0,
+                0,
+                str(row["starttime"]),
+                str(row["endtime"]),
+                str(row["starttime"])[0:19],
+                2,
+                row["database"],
+                0,
+                row["sql"],
+            )
+            if row["schema_name"] is not None:
                 self.report.scanned(f"{row['database']}.{row['schema_name']}")
             else:
                 self.report.scanned(f"{row['database']}")

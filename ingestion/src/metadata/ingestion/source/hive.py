@@ -38,7 +38,7 @@ class HiveConfig(SQLConnectionConfig):
     def get_connection_url(self):
         url = super().get_connection_url()
         if self.auth_options is not None:
-            return f'{url};{self.auth_options}'
+            return f"{url};{self.auth_options}"
         else:
             return url
 

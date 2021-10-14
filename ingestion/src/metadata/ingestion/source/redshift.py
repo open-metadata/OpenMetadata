@@ -21,6 +21,7 @@ from metadata.ingestion.api.source import SourceStatus
 
 logger = logging.getLogger(__name__)
 
+
 class RedshiftConfig(SQLConnectionConfig):
     scheme = "redshift+psycopg2"
     where_clause: Optional[str] = None

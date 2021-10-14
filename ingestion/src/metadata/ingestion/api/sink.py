@@ -38,7 +38,6 @@ class SinkStatus(Status):
         self.failures.append(info)
 
 
-
 @dataclass  # type: ignore[misc]
 class Sink(Closeable, metaclass=ABCMeta):
     """All Sinks must inherit this base class."""
@@ -47,7 +46,9 @@ class Sink(Closeable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Sink":
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ) -> "Sink":
         pass
 
     @abstractmethod
