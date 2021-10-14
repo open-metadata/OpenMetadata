@@ -28,4 +28,4 @@ black:
 	black $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
 
 black_check:
-	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated --config ingestion/pyproject.toml
+	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
