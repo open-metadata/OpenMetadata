@@ -8,13 +8,13 @@ We ❤️ all contributions, big and small!
 
 Look for issues under [github/issues tab](https://github.com/open-metadata/OpenMetadata/issues) . If you have a feature request or found a bug please file an issue. This will help us track and will help community overall as well.
 
-![./images/new-issue.png](../../.gitbook/assets/new-issue.png)
+![./images/new-issue.png](../../../.gitbook/assets/new-issue.png)
 
 ## Fork Github project
 
 OpenMetadata Github repository can be accessed here [https://github.com/open-metadata/OpenMetadata](https://github.com/open-metadata/OpenMetadata) .
 
-![./images/fork-github.png](../../.gitbook/assets/fork-github%20%281%29.png)
+![./images/fork-github.png](<../../../.gitbook/assets/fork-github (1).png>)
 
 Create a local clone of your fork
 
@@ -49,15 +49,13 @@ git push origin HEAD:refs/heads/issue-200
 ## Open a PR
 
 1. Go to [https://github.com/open-metadata/OpenMetadata/pulls](https://github.com/open-metadata/OpenMetadata/pulls)
-2. It should show an option to open a pull request. ![./images/pull-request-1.png](../../.gitbook/assets/pull-request-1.png)
-3. If not, click on "New Pull request"
+2. It should show an option to open a pull request. ![./images/pull-request-1.png](../../../.gitbook/assets/pull-request-1.png)
+3.  If not, click on "New Pull request"
 
-   ![./images/pull-request.png](../../.gitbook/assets/pull-request.png)
-
-4. Select your fork repository and branch ![./images/pull-request-2.png](../../.gitbook/assets/pull-request-2.png)
+    ![./images/pull-request.png](../../../.gitbook/assets/pull-request.png)
+4. Select your fork repository and branch ![./images/pull-request-2.png](../../../.gitbook/assets/pull-request-2.png)
 5. Click "Create pull request"
 
 ## We are here to help
 
-Please reach out to us anytime you need any help. [Slack](https://slack.open-metadata.org/) would be fastest way to get a response.
-
+Please reach out to us anytime you need any help. [Slack](https://slack.open-metadata.org) would be fastest way to get a response.

@@ -2,29 +2,61 @@
 
 OpenMetadata supports connectors to some popular data sources. We will continue as a community to provide more integrations to get all your metadata into a central repository.
 
-{% page-ref page="athena.md" %}
+{% content-ref url="athena.md" %}
+[athena.md](athena.md)
+{% endcontent-ref %}
 
-{% page-ref page="bigquery.md" %}
+{% content-ref url="bigquery.md" %}
+[bigquery.md](bigquery.md)
+{% endcontent-ref %}
 
-{% page-ref page="elastic-search.md" %}
+{% content-ref url="elastic-search.md" %}
+[elastic-search.md](elastic-search.md)
+{% endcontent-ref %}
 
-{% page-ref page="hive.md" %}
+{% content-ref url="mssql.md" %}
+[mssql.md](mssql.md)
+{% endcontent-ref %}
 
-{% page-ref page="mssql.md" %}
+{% content-ref url="mysql.md" %}
+[mysql.md](mysql.md)
+{% endcontent-ref %}
 
-{% page-ref page="mysql.md" %}
+{% content-ref url="hive.md" %}
+[hive.md](hive.md)
+{% endcontent-ref %}
 
-{% page-ref page="oracle.md" %}
+{% content-ref url="oracle.md" %}
+[oracle.md](oracle.md)
+{% endcontent-ref %}
 
-{% page-ref page="postgres.md" %}
+{% content-ref url="postgres.md" %}
+[postgres.md](postgres.md)
+{% endcontent-ref %}
 
-{% page-ref page="redshift-usage.md" %}
+{% content-ref url="redshift.md" %}
+[redshift.md](redshift.md)
+{% endcontent-ref %}
 
-{% page-ref page="salesforce.md" %}
+{% content-ref url="redshift-usage.md" %}
+[redshift-usage.md](redshift-usage.md)
+{% endcontent-ref %}
 
-{% page-ref page="snowflake.md" %}
+{% content-ref url="salesforce.md" %}
+[salesforce.md](salesforce.md)
+{% endcontent-ref %}
 
-{% page-ref page="snowflake-usage.md" %}
+{% content-ref url="snowflake.md" %}
+[snowflake.md](snowflake.md)
+{% endcontent-ref %}
+
+{% content-ref url="snowflake-usage.md" %}
+[snowflake-usage.md](snowflake-usage.md)
+{% endcontent-ref %}
+
+{% content-ref url="vertica.md" %}
+[vertica.md](vertica.md)
+{% endcontent-ref %}
 
 {% page-ref page="trino.md" %}
 

@@ -2,7 +2,7 @@
 
 This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.
 
-**$id: https://open-metadata.org/schema/entity/data/table.json**
+**$id: **[https://open-metadata.org/schema/entity/data/table.json](https://open-metadata.org/schema/entity/data/table.json)
 
 Type: `object`
 
@@ -69,106 +69,157 @@ Type: `object`
      - **Items**
      - $ref: [#/definitions/tableProfile](#tableprofile)
 
+* **id** `required`
+  * Unique identifier of this table instance.
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
+* **name** `required`
+  * Name of a table. Expected to be unique within a database.
+  * $ref: [#/definitions/tableName](table.md#tablename)
+* **description**
+  * Description of a table.
+  * Type: `string`
+* **href**
+  * Link to this table resource.
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
+* **tableType**
+  * $ref: [#/definitions/tableType](table.md#tabletype)
+* **fullyQualifiedName**
+  * Fully qualified name of a table in the form `serviceName.databaseName.tableName`.
+  * Type: `string`
+* **columns** `required`
+  * Columns in this table.
+  * Type: `array`
+    * **Items**
+    * $ref: [#/definitions/column](table.md#column)
+* **tableConstraints**
+  * Table constraints.
+  * Type: `array`
+    * **Items**
+    * $ref: [#/definitions/tableConstraint](table.md#tableconstraint)
+* **usageSummary**
+  * Latest usage information for this table.
+  * $ref: [../../type/usageDetails.json](../types/usagedetails.md)
+* **owner**
+  * Owner of this table.
+  * $ref: [../../type/entityReference.json](../types/entityreference.md)
+* **followers**
+  * Followers of this table.
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+* **database**
+  * Reference to Database that contains this table.
+  * $ref: [../../type/entityReference.json](../types/entityreference.md)
+* **viewDefinition**
+  * View Definition in SQL. Applies to TableType.View only.
+  * $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
+* **tags**
+  * Tags for this table.
+  * Type: `array`
+    * **Items**
+    * $ref: [../../type/tagLabel.json](../types/taglabel.md)
+* **joins**
+  * Details of other tables this table is frequently joined with.
+  * $ref: [#/definitions/tableJoins](table.md#tablejoins)
+* **sampleData**
+  * Sample data for a table.
+  * $ref: [#/definitions/tableData](table.md#tabledata)
+* **tableProfile**
+  * Data profile for a table.
+  * Type: `array`
+    * **Items**
+    * $ref: [#/definitions/tableProfile](table.md#tableprofile)
 
 ## Type definitions in this schema
 ### tableType
 
- - This schema defines the type used for describing different types of tables.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"Regular"_
-   2. _"External"_
-   3. _"View"_
-   4. _"SecureView"_
-   5. _"MaterializedView"_
+* This schema defines the type used for describing different types of tables.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Regular"_
+  2. _"External"_
+  3. _"View"_
+  4. _"SecureView"_
+  5. _"MaterializedView"_
 
+### columnDataType
 
-### dataType
+* This enum defines the type of data stored in a column.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"NUMBER"_
+  2. _"TINYINT"_
+  3. _"SMALLINT"_
+  4. _"INT"_
+  5. _"BIGINT"_
+  6. _"FLOAT"_
+  7. _"DOUBLE"_
+  8. _"DECIMAL"_
+  9. _"NUMERIC"_
+  10. _"TIMESTAMP"_
+  11. _"TIME"_
+  12. _"DATE"_
+  13. _"DATETIME"_
+  14. _"INTERVAL"_
+  15. _"STRING"_
+  16. _"MEDIUMTEXT"_
+  17. _"TEXT"_
+  18. _"CHAR"_
+  19. _"VARCHAR"_
+  20. _"BOOLEAN"_
+  21. _"BINARY"_
+  22. _"VARBINARY"_
+  23. _"ARRAY"_
+  24. _"BLOB"_
+  25. _"LONGBLOB"_
+  26. _"MEDIUMBLOB"_
+  27. _"MAP"_
+  28. _"STRUCT"_
+  29. _"UNION"_
+  30. _"SET"_
+  31. _"GEOGRAPHY"_
+  32. _"ENUM"_
+  33. _"JSON"_
 
- - This enum defines the type of data stored in a column.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"NUMBER"_
-   2. _"TINYINT"_
-   3. _"SMALLINT"_
-   4. _"INT"_
-   5. _"BIGINT"_
-   6. _"BYTEINT"_
-   7. _"FLOAT"_
-   8. _"DOUBLE"_
-   9. _"DECIMAL"_
-   10. _"NUMERIC"_
-   11. _"TIMESTAMP"_
-   12. _"TIME"_
-   13. _"DATE"_
-   14. _"DATETIME"_
-   15. _"INTERVAL"_
-   16. _"STRING"_
-   17. _"MEDIUMTEXT"_
-   18. _"TEXT"_
-   19. _"CHAR"_
-   20. _"VARCHAR"_
-   21. _"BOOLEAN"_
-   22. _"BINARY"_
-   23. _"VARBINARY"_
-   24. _"ARRAY"_
-   25. _"BLOB"_
-   26. _"LONGBLOB"_
-   27. _"MEDIUMBLOB"_
-   28. _"MAP"_
-   29. _"STRUCT"_
-   30. _"UNION"_
-   31. _"SET"_
-   32. _"GEOGRAPHY"_
-   33. _"ENUM"_
-   34. _"JSON"_
+### columnConstraint
 
-
-### constraint
-
- - This enum defines the type for column constraint.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"NULL"_
-   2. _"NOT_NULL"_
-   3. _"UNIQUE"_
-   4. _"PRIMARY_KEY"_
- - Default: _"NULL"_
-
+* This enum defines the type for column constraint.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"NULL"_
+  2. _"NOT_NULL"_
+  3. _"UNIQUE"_
+  4. _"PRIMARY_KEY"_
+* Default: _"NULL"_
 
 ### tableConstraint
 
- - This enum defines the type for table constraint.
- - Type: `object`
- - **Properties**
-   - **constraintType**
-     - Type: `string`
-     - The value is restricted to the following: 
-       1. _"UNIQUE"_
-       2. _"PRIMARY_KEY"_
-       3. _"FOREIGN_KEY"_
-   - **columns**
-     - List of column names corresponding to the constraint.
-     - Type: `array`
-       - **Items**
-       - Type: `string`
-
+* This enum defines the type for table constraint.
+* Type: `object`
+* **Properties**
+  * **constraintType**
+    * Type: `string`
+    * The value is restricted to the following: 
+      1. _"UNIQUE"_
+      2. _"PRIMARY_KEY"_
+      3. _"FOREIGN_KEY"_
+  * **columns**
+    * List of column names corresponding to the constraint.
+    * Type: `array`
+      * **Items**
+      * Type: `string`
 
 ### columnName
 
- - Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.
- - Type: `string`
- - The value must match this pattern: `^[^.]*$`
- - Length: between 1 and 64
-
+* Local name (not fully qualified name) of the column.
+* Type: `string`
+* The value must match this pattern: `^[^.]*$`
+* Length: between 1 and 64
 
 ### tableName
 
- - Local name (not fully qualified name) of a table.
- - Type: `string`
- - The value must match this pattern: `^[^.]*$`
- - Length: between 1 and 64
-
+* Local name (not fully qualified name) of a table.
+* Type: `string`
+* The value must match this pattern: `^[^.]*$`
+* Length: between 1 and 64
 
 ### fullyQualifiedColumnName
 
@@ -179,106 +230,84 @@ Type: `object`
 
 ### column
 
- - This schema defines the type for a column in a table.
- - Type: `object`
- - This schema <u>does not</u> accept additional properties.
- - **Properties**
-   - **name** `required`
-     - $ref: [#/definitions/columnName](#columnname)
-   - **dataType** `required`
-     - Data type of the column (int, date etc.).
-     - $ref: [#/definitions/dataType](#datatype)
-   - **arrayDataType**
-     - Data type used array in dataType. For example, `array<int>` has dataType as `array` and arrayDataType as `int`.
-     - $ref: [#/definitions/dataType](#datatype)
-   - **dataLength**
-     - Length of `char`, `varchar`, `binary`, `varbinary` `dataTypes`, else null. For example, `varchar(20)` has dataType as `varchar` and dataLength as `20`.
-     - Type: `integer`
-   - **dataTypeDisplay**
-     - Display name used for dataType. This is useful for complex types, such as `array<int>, map<int,string>, struct<>, and union types.
-     - Type: `string`
-   - **description**
-     - Description of the column.
-     - Type: `string`
-   - **fullyQualifiedName**
-     - $ref: [#/definitions/fullyQualifiedColumnName](#fullyqualifiedcolumnname)
-   - **tags**
-     - Tags associated with the column.
-     - Type: `array`
-       - **Items**
-       - $ref: [../../type/tagLabel.json](../types/taglabel.md)
-   - **constraint**
-     - Column level constraint.
-     - $ref: [#/definitions/constraint](#constraint)
-   - **ordinalPosition**
-     - Ordinal position of the column.
-     - Type: `integer`
-   - **jsonSchema**
-     - Json schema only if the dataType is JSON else null.
-     - Type: `string`
-   - **children**
-     - Child columns if dataType or arrayDataType is `map`, `struct`, or `union` else `null`.
-     - Type: `array`
-       - **Items**
-       - $ref: [#/definitions/column](#column)
-
+* This schema defines the type for a column in a table.
+* Type: `object`
+* **Properties**
+  * **name** `required`
+    * $ref: [#/definitions/columnName](table.md#columnname)
+  * **columnDataType** `required`
+    * Data type of the column (int, date etc.).
+    * $ref: [#/definitions/columnDataType](table.md#columndatatype)
+  * **description**
+    * Description of the column.
+    * Type: `string`
+  * **fullyQualifiedName**
+    * $ref: [#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
+  * **tags**
+    * Tags associated with the column.
+    * Type: `array`
+      * **Items**
+      * $ref: [../../type/tagLabel.json](../types/taglabel.md)
+  * **columnConstraint**
+    * Column level constraint.
+    * $ref: [#/definitions/columnConstraint](table.md#columnconstraint)
+  * **ordinalPosition**
+    * Ordinal position of the column.
+    * Type: `integer`
 
 ### columnJoins
 
- - This schema defines the type to capture how frequently a column is joined with columns in the other tables.
- - Type: `object`
- - This schema <u>does not</u> accept additional properties.
- - **Properties**
-   - **columnName**
-     - $ref: [#/definitions/columnName](#columnname)
-   - **joinedWith**
-     - Fully qualified names of the columns that this column is joined with.
-     - Type: `array`
-       - **Items**
-       - Type: `object`
- - **Properties**
-   - **fullyQualifiedName**
-     - $ref: [#/definitions/fullyQualifiedColumnName](#fullyqualifiedcolumnname)
-   - **joinCount**
-     - Type: `integer`
-
+* This schema defines the type to capture how frequently a column is joined with columns in the other tables.
+* Type: `object`
+* This schema does not accept additional properties.
+* **Properties**
+  * **columnName**
+    * $ref: [#/definitions/columnName](table.md#columnname)
+  * **joinedWith**
+    * Fully qualified names of the columns that this column is joined with.
+    * Type: `array`
+      * **Items**
+      * Type: `object`
+* **Properties**
+  * **fullyQualifiedName**
+    * $ref: [#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
+  * **joinCount**
+    * Type: `integer`
 
 ### tableJoins
 
- - This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.
- - Type: `object`
- - This schema <u>does not</u> accept additional properties.
- - **Properties**
-   - **startDate**
-     - Date can be only from today going back to last 29 days.
-     - $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
-   - **dayCount**
-     - Type: `integer`
-     - Default: `1`
-   - **columnJoins**
-     - Type: `array`
-       - **Items**
-         - $ref: [#/definitions/columnJoins](#columnjoins)
-
+* This schema defines the type to capture information about how columns in this table are joined with columns in the other tables.
+* Type: `object`
+* This schema does not accept additional properties.
+* **Properties**
+  * **startDate**
+    * Date can be only from today going back to last 29 days.
+    * $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
+  * **dayCount**
+    * Type: `integer`
+    * Default: `1`
+  * **columnJoins**
+    * Type: `array`
+      * **Items**
+        * $ref: [#/definitions/columnJoins](table.md#columnjoins)
 
 ### tableData
 
- - This schema defines the type to capture rows of sample data for a table.
- - Type: `object`
- - This schema <u>does not</u> accept additional properties.
- - **Properties**
- - **columns**
-   - List of local column names (not fully qualified column names) of the table.
-   - Type: `array`
-     - **Items**
-     - $ref: [#/definitions/columnName](#columnname)
- - **rows**
-   - Data for multiple rows of the table.
-   - Type: `array`
-     - **Items**
-     - Data for a single row of the table within the same order as columns fields.
-     - Type: `array`
-
+* This schema defines the type to capture rows of sample data for a table.
+* Type: `object`
+* This schema does not accept additional properties.
+* **Properties**
+* **columns**
+  * List of local column names (not fully qualified column names) of the table.
+  * Type: `array`
+    * **Items**
+    * $ref: [#/definitions/columnName](table.md#columnname)
+* **rows**
+  * Data for multiple rows of the table.
+  * Type: `array`
+    * **Items**
+    * Data for a single row of the table within the same order as columns fields.
+    * Type: `array`
 
 ### columnProfile
 
@@ -317,27 +346,23 @@ Type: `object`
      - Type: `number`
 
 
-### tableProfile
+* This schema defines the type to capture the table's data profile.
+* Type: `object`
+* This schema does not accept additional properties.
+  * **Properties**
+    * **profileDate**
+      * Data one which profile is taken.
+      * $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
+    * **columnCount**
+      * No.of columns in the table.
+      * Type: `number`
+    * **rowCount**
+      * No.of rows in the table.
+      * Type: `number`
+    * **columnProfile**
+      * List of local column profiles of the table.
+      * Type: `array`
+    * **Items**
+      * $ref: [#/definitions/columnProfile](table.md#columnprofile)
 
- - This schema defines the type to capture the table's data profile.
- - Type: `object`
- - This schema <u>does not</u> accept additional properties.
-   - **Properties**
-     - **profileDate**
-       - Data one which profile is taken.
-       - $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
-     - **columnCount**
-       - No.of columns in the table.
-       - Type: `number`
-     - **rowCount**
-       - No.of rows in the table.
-       - Type: `number`
-     - **columnProfile**
-       - List of local column profiles of the table.
-       - Type: `array`
-     - **Items**
-       - $ref: [#/definitions/columnProfile](#columnprofile)
-
-
-
-_This document was updated on: Thursday, October 14, 2021_
+_This document was updated on: Thursday, September 16, 2021_
