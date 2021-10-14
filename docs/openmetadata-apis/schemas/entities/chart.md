@@ -2,7 +2,7 @@
 
 This schema defines the Chart entity. Charts are built using tables or SQL queries by analyzing the data. Charts can be part of Dashboard.
 
-**$id:** [https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)
+**$id: **[https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)
 
 Type: `object`
 
@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies a chart instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies this Chart.
   * Type: `string`
@@ -26,23 +26,23 @@ Type: `object`
   * Description of the dashboard, what it is, and how to use it.
   * Type: `string`
 * **chartType**
-  * $ref: [\#/definitions/chartType](chart.md#charttype)
+  * $ref: [#/definitions/chartType](chart.md#charttype)
 * **chartUrl**
   * Chart URL, pointing to its own Service URL.
   * Type: `string`
   * String format must be a "uri"
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 * **owner**
   * Owner of this dashboard.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **tables**
   * Link to table used in this chart.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 * **followers**
   * Followers of this chart.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 * **tags**
   * Tags for this chart.
   * Type: `array`
@@ -74,4 +74,3 @@ Type: `object`
   10. _"Other"_
 
 _This document was updated on: Thursday, September 16, 2021_
-

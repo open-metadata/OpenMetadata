@@ -2,7 +2,7 @@
 
 This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.
 
-**$id:** [https://open-metadata.org/schema/type/entityReference.json](https://open-metadata.org/schema/type/entityReference.json)
+**$id: **[https://open-metadata.org/schema/type/entityReference.json](https://open-metadata.org/schema/type/entityReference.json)
 
 Type: `object`
 
@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies an entity instance.
-  * $ref: [basic.json\#/definitions/uuid](basic.md#uuid)
+  * $ref: [basic.json#/definitions/uuid](basic.md#uuid)
 * **type** `required`
   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`, `bigquery`, `snowflake`...
   * Type: `string`
@@ -22,7 +22,7 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the entity resource.
-  * $ref: [basic.json\#/definitions/href](basic.md#href)
+  * $ref: [basic.json#/definitions/href](basic.md#href)
 
 ## Type definitions in this schema
 
@@ -33,4 +33,3 @@ Type: `object`
   * $ref: [entityReference.json](entityreference.md)
 
 _This document was updated on: Thursday, September 16, 2021_
-

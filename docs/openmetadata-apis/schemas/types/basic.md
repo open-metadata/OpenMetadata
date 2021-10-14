@@ -2,7 +2,7 @@
 
 This schema defines basic common types that are used by other schemas.
 
-**$id:** [https://open-metadata.org/schema/type/basic.json](https://open-metadata.org/schema/type/basic.json)
+**$id: **[https://open-metadata.org/schema/type/basic.json](https://open-metadata.org/schema/type/basic.json)
 
 ## Type definitions in this schema
 
@@ -73,4 +73,3 @@ This schema defines basic common types that are used by other schemas.
 * Type: `string`
 
 _This document was updated on: Thursday, September 16, 2021_
-

@@ -2,7 +2,7 @@
 
 This schema defines the Audit Log type to capture the audit trail of POST, PUT, and PATCH API operations.
 
-**$id:** [https://open-metadata.org/schema/type/auditLog.json](https://open-metadata.org/schema/type/auditLog.json)
+**$id: **[https://open-metadata.org/schema/type/auditLog.json](https://open-metadata.org/schema/type/auditLog.json)
 
 Type: `object`
 
@@ -27,13 +27,12 @@ Type: `object`
   * Type: `string`
 * **dateTime**
   * Date when the API call is made.
-  * $ref: [basic.json\#/definitions/dateTime](basic.md#datetime)
+  * $ref: [basic.json#/definitions/dateTime](basic.md#datetime)
 * **entityId** `required`
   * Identifier of an entity that was modified by the operation.
-  * $ref: [basic.json\#/definitions/uuid](basic.md#uuid)
+  * $ref: [basic.json#/definitions/uuid](basic.md#uuid)
 * **entityType** `required`
   * Type of Entity that is modified by the operation.
   * Type: `string`
 
 _This document was updated on: Thursday, September 16, 2021_
-

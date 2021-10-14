@@ -2,7 +2,7 @@
 
 This schema defines the type for usage details. Daily, weekly, and monthly aggregation of usage is computed along with the percentile rank based on the usage for a given day.
 
-**$id:** [https://open-metadata.org/schema/type/usageDetails.json](https://open-metadata.org/schema/type/usageDetails.json)
+**$id: **[https://open-metadata.org/schema/type/usageDetails.json](https://open-metadata.org/schema/type/usageDetails.json)
 
 Type: `object`
 
@@ -10,16 +10,16 @@ Type: `object`
 
 * **dailyStats** `required`
   * Daily usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usagedetails.md#usagestats)
+  * $ref: [#/definitions/usageStats](usagedetails.md#usagestats)
 * **weeklyStats**
-  * Weekly \(last 7 days\) rolling usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usagedetails.md#usagestats)
+  * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
+  * $ref: [#/definitions/usageStats](usagedetails.md#usagestats)
 * **monthlyStats**
-  * Monthly \(last 30 days\) rolling usage stats of a data asset on the start date.
-  * $ref: [\#/definitions/usageStats](usagedetails.md#usagestats)
+  * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
+  * $ref: [#/definitions/usageStats](usagedetails.md#usagestats)
 * **date** `required`
   * Date in UTC.
-  * $ref: [basic.json\#/definitions/date](basic.md#date)
+  * $ref: [basic.json#/definitions/date](basic.md#date)
 
 ## Type definitions in this schema
 
@@ -39,4 +39,3 @@ Type: `object`
     * Range: between 0 and 100
 
 _This document was updated on: Thursday, September 16, 2021_
-

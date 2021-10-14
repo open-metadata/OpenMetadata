@@ -2,7 +2,7 @@
 
 This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.
 
-**$id:** [https://open-metadata.org/schema/entity/data/table.json](https://open-metadata.org/schema/entity/data/table.json)
+**$id: **[https://open-metadata.org/schema/entity/data/table.json](https://open-metadata.org/schema/entity/data/table.json)
 
 Type: `object`
 
@@ -10,18 +10,18 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier of this table instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name of a table. Expected to be unique within a database.
-  * $ref: [\#/definitions/tableName](table.md#tablename)
+  * $ref: [#/definitions/tableName](table.md#tablename)
 * **description**
   * Description of a table.
   * Type: `string`
 * **href**
   * Link to this table resource.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 * **tableType**
-  * $ref: [\#/definitions/tableType](table.md#tabletype)
+  * $ref: [#/definitions/tableType](table.md#tabletype)
 * **fullyQualifiedName**
   * Fully qualified name of a table in the form `serviceName.databaseName.tableName`.
   * Type: `string`
@@ -29,12 +29,12 @@ Type: `object`
   * Columns in this table.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/column](table.md#column)
+    * $ref: [#/definitions/column](table.md#column)
 * **tableConstraints**
   * Table constraints.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/tableConstraint](table.md#tableconstraint)
+    * $ref: [#/definitions/tableConstraint](table.md#tableconstraint)
 * **usageSummary**
   * Latest usage information for this table.
   * $ref: [../../type/usageDetails.json](../types/usagedetails.md)
@@ -43,13 +43,13 @@ Type: `object`
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **followers**
   * Followers of this table.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 * **database**
   * Reference to Database that contains this table.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **viewDefinition**
   * View Definition in SQL. Applies to TableType.View only.
-  * $ref: [../../type/basic.json\#/definitions/sqlQuery](../types/basic.md#sqlquery)
+  * $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
 * **tags**
   * Tags for this table.
   * Type: `array`
@@ -57,15 +57,15 @@ Type: `object`
     * $ref: [../../type/tagLabel.json](../types/taglabel.md)
 * **joins**
   * Details of other tables this table is frequently joined with.
-  * $ref: [\#/definitions/tableJoins](table.md#tablejoins)
+  * $ref: [#/definitions/tableJoins](table.md#tablejoins)
 * **sampleData**
   * Sample data for a table.
-  * $ref: [\#/definitions/tableData](table.md#tabledata)
+  * $ref: [#/definitions/tableData](table.md#tabledata)
 * **tableProfile**
   * Data profile for a table.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/tableProfile](table.md#tableprofile)
+    * $ref: [#/definitions/tableProfile](table.md#tableprofile)
 
 ## Type definitions in this schema
 
@@ -125,9 +125,9 @@ Type: `object`
 * Type: `string`
 * The value is restricted to the following: 
   1. _"NULL"_
-  2. _"NOT\_NULL"_
+  2. _"NOT_NULL"_
   3. _"UNIQUE"_
-  4. _"PRIMARY\_KEY"_
+  4. _"PRIMARY_KEY"_
 * Default: _"NULL"_
 
 ### tableConstraint
@@ -139,8 +139,8 @@ Type: `object`
     * Type: `string`
     * The value is restricted to the following: 
       1. _"UNIQUE"_
-      2. _"PRIMARY\_KEY"_
-      3. _"FOREIGN\_KEY"_
+      2. _"PRIMARY_KEY"_
+      3. _"FOREIGN_KEY"_
   * **columns**
     * List of column names corresponding to the constraint.
     * Type: `array`
@@ -149,14 +149,14 @@ Type: `object`
 
 ### columnName
 
-* Local name \(not fully qualified name\) of the column.
+* Local name (not fully qualified name) of the column.
 * Type: `string`
 * The value must match this pattern: `^[^.]*$`
 * Length: between 1 and 64
 
 ### tableName
 
-* Local name \(not fully qualified name\) of a table.
+* Local name (not fully qualified name) of a table.
 * Type: `string`
 * The value must match this pattern: `^[^.]*$`
 * Length: between 1 and 64
@@ -173,15 +173,15 @@ Type: `object`
 * Type: `object`
 * **Properties**
   * **name** `required`
-    * $ref: [\#/definitions/columnName](table.md#columnname)
+    * $ref: [#/definitions/columnName](table.md#columnname)
   * **columnDataType** `required`
-    * Data type of the column \(int, date etc.\).
-    * $ref: [\#/definitions/columnDataType](table.md#columndatatype)
+    * Data type of the column (int, date etc.).
+    * $ref: [#/definitions/columnDataType](table.md#columndatatype)
   * **description**
     * Description of the column.
     * Type: `string`
   * **fullyQualifiedName**
-    * $ref: [\#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
+    * $ref: [#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
   * **tags**
     * Tags associated with the column.
     * Type: `array`
@@ -189,7 +189,7 @@ Type: `object`
       * $ref: [../../type/tagLabel.json](../types/taglabel.md)
   * **columnConstraint**
     * Column level constraint.
-    * $ref: [\#/definitions/columnConstraint](table.md#columnconstraint)
+    * $ref: [#/definitions/columnConstraint](table.md#columnconstraint)
   * **ordinalPosition**
     * Ordinal position of the column.
     * Type: `integer`
@@ -201,7 +201,7 @@ Type: `object`
 * This schema does not accept additional properties.
 * **Properties**
   * **columnName**
-    * $ref: [\#/definitions/columnName](table.md#columnname)
+    * $ref: [#/definitions/columnName](table.md#columnname)
   * **joinedWith**
     * Fully qualified names of the columns that this column is joined with.
     * Type: `array`
@@ -209,7 +209,7 @@ Type: `object`
       * Type: `object`
 * **Properties**
   * **fullyQualifiedName**
-    * $ref: [\#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
+    * $ref: [#/definitions/fullyQualifiedColumnName](table.md#fullyqualifiedcolumnname)
   * **joinCount**
     * Type: `integer`
 
@@ -221,14 +221,14 @@ Type: `object`
 * **Properties**
   * **startDate**
     * Date can be only from today going back to last 29 days.
-    * $ref: [../../type/basic.json\#/definitions/date](../types/basic.md#date)
+    * $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
   * **dayCount**
     * Type: `integer`
     * Default: `1`
   * **columnJoins**
     * Type: `array`
       * **Items**
-        * $ref: [\#/definitions/columnJoins](table.md#columnjoins)
+        * $ref: [#/definitions/columnJoins](table.md#columnjoins)
 
 ### tableData
 
@@ -237,10 +237,10 @@ Type: `object`
 * This schema does not accept additional properties.
 * **Properties**
 * **columns**
-  * List of local column names \(not fully qualified column names\) of the table.
+  * List of local column names (not fully qualified column names) of the table.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/columnName](table.md#columnname)
+    * $ref: [#/definitions/columnName](table.md#columnname)
 * **rows**
   * Data for multiple rows of the table.
   * Type: `array`
@@ -292,7 +292,7 @@ Type: `object`
   * **Properties**
     * **profileDate**
       * Data one which profile is taken.
-      * $ref: [../../type/basic.json\#/definitions/date](../types/basic.md#date)
+      * $ref: [../../type/basic.json#/definitions/date](../types/basic.md#date)
     * **columnCount**
       * No.of columns in the table.
       * Type: `number`
@@ -303,7 +303,6 @@ Type: `object`
       * List of local column profiles of the table.
       * Type: `array`
     * **Items**
-      * $ref: [\#/definitions/columnProfile](table.md#columnprofile)
+      * $ref: [#/definitions/columnProfile](table.md#columnprofile)
 
 _This document was updated on: Thursday, September 16, 2021_
-

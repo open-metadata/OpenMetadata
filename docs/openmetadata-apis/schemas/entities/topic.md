@@ -2,7 +2,7 @@
 
 This schema defines the Topic entity. A topic is a feed into which messages are published by publishers and read from by consumers in a messaging service.
 
-**$id:** [https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)
+**$id: **[https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)
 
 Type: `object`
 
@@ -10,10 +10,10 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies this topic instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies the topic.
-  * $ref: [\#/definitions/topicName](topic.md#topicname)
+  * $ref: [#/definitions/topicName](topic.md#topicname)
 * **fullyQualifiedName**
   * Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.
   * Type: `string`
@@ -32,17 +32,17 @@ Type: `object`
   * Type: `string`
 * **schemaType**
   * Schema used for message serialization.
-  * $ref: [\#/definitions/schemaType](topic.md#schematype)
+  * $ref: [#/definitions/schemaType](topic.md#schematype)
 * **cleanupPolicies**
   * Topic clean up policies. For Kafka - `cleanup.policy` configuration.
   * Type: `array`
     * **Items**
-    * $ref: [\#/definitions/cleanupPolicy](topic.md#cleanuppolicy)
+    * $ref: [#/definitions/cleanupPolicy](topic.md#cleanuppolicy)
 * **retentionTime**
   * Retention time in milliseconds. For Kafka - `retention.ms` configuration.
   * Type: `number`
 * **replicationFactor**
-  * Replication Factor in integer \(more than 1\).
+  * Replication Factor in integer (more than 1).
   * Type: `integer`
 * **maximumMessageSize**
   * Maximum message size in bytes. For Kafka - `max.message.bytes` configuration.
@@ -59,7 +59,7 @@ Type: `object`
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **followers**
   * Followers of this table.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 * **tags**
   * Tags for this table.
   * Type: `array`
@@ -67,7 +67,7 @@ Type: `object`
     * $ref: [../../type/tagLabel.json](../types/taglabel.md)
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 
 ## Type definitions in this schema
 
@@ -95,4 +95,3 @@ Type: `object`
   2. _"compact"_
 
 _This document was updated on: Thursday, September 16, 2021_
-

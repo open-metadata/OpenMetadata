@@ -2,7 +2,7 @@
 
 This schema defines the Report entity. Reports are static information computed from data periodically that includes data in text, table, and visual form.
 
-**$id:** [https://open-metadata.org/schema/entity/data/report.json](https://open-metadata.org/schema/entity/data/report.json)
+**$id: **[https://open-metadata.org/schema/entity/data/report.json](https://open-metadata.org/schema/entity/data/report.json)
 
 Type: `object`
 
@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * The Unique identifier that identifies this report.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies this report instance uniquely.
   * Type: `string`
@@ -24,7 +24,7 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the resource corresponding to this report.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 * **owner**
   * Owner of this pipeline.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -36,4 +36,3 @@ Type: `object`
   * $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 
 _This document was updated on: Thursday, September 16, 2021_
-

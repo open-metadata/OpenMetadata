@@ -3,9 +3,9 @@
 ## Step 1: Create the account
 
 * Go to [Create Google Cloud Account](https://console.cloud.google.com)
-* Click on `Create Project`
+*   Click on `Create Project`
 
-  ![Create Project](../../../.gitbook/assets/g-create-project%20%282%29%20%282%29%20%282%29%20%282%29%20%282%29%20%283%29%20%281%29.png)
+    ![Create Project](<../../../../.gitbook/assets/g-create-project (2) (2) (2) (2) (2) (3) (1).png>)
 
 ## Step 2: Create a new project
 
@@ -20,7 +20,7 @@
 
 * Select the project you created above and click on **APIs & Services** on the left-side panel.
 
-![OAuth Consent](../../../.gitbook/assets/g-project-oauth-consent.png)
+![OAuth Consent](../../../../.gitbook/assets/g-project-oauth-consent.png)
 
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
 * Provide the User Type. Chose **External** if you are testing otherwise chose **Internal**
@@ -63,7 +63,7 @@
 
 * After selecting the **Application Type**, name your project and give the authorized URIs
 
-![Create OAuth](../../../.gitbook/assets/g-create-oauth.png)
+![Create OAuth](../../../../.gitbook/assets/g-create-oauth.png)
 
 * Click **Create**
 * You will get the credentials
@@ -73,11 +73,10 @@
 ## Step 5: Where to find the credentials
 
 * Go to **Credentials**
-* Click on the **pencil icon \(Edit OAuth Client\)** on the right side of the screen
+* Click on the **pencil icon (Edit OAuth Client)** on the right side of the screen
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123220675-cad08b80-d4eb-11eb-9c46-2c7c81b02509.png)
 
 * You will find the **client Id** and **client secret** in the top right corner
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123220680-cc01b880-d4eb-11eb-9479-1379f69a063b.png)
-

@@ -32,7 +32,7 @@ metadata ingest -c ./examples/workflows/metadata_to_es.json
 
 ### Configuration
 
-{% code title="metadata\_to\_es.json" %}
+{% code title="metadata_to_es.json" %}
 ```javascript
 {
   "source": {
@@ -47,9 +47,9 @@ metadata ingest -c ./examples/workflows/metadata_to_es.json
 
 Below is the configuration to publish Elastic Search data into the OpenMetadata service.
 
-Add Optionally `file` stage and `elasticsearch` bulk\_sink along with `metadata-server` config
+Add Optionally `file` stage and `elasticsearch` bulk_sink along with `metadata-server` config
 
-{% code title="metadata\_to\_es.json" %}
+{% code title="metadata_to_es.json" %}
 ```javascript
 {
   "source": {
@@ -87,4 +87,3 @@ Add Optionally `file` stage and `elasticsearch` bulk\_sink along with `metadata-
 }
 ```
 {% endcode %}
-

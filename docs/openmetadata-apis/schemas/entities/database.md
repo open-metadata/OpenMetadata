@@ -2,7 +2,7 @@
 
 This schema defines the Database entity. A database also referred to as Database Catalog is a collection of tables.
 
-**$id:** [https://open-metadata.org/schema/entity/data/database.json](https://open-metadata.org/schema/entity/data/database.json)
+**$id: **[https://open-metadata.org/schema/entity/data/database.json](https://open-metadata.org/schema/entity/data/database.json)
 
 Type: `object`
 
@@ -10,10 +10,10 @@ Type: `object`
 
 * **id**
   * Unique identifier that identifies this database instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies the database.
-  * $ref: [\#/definitions/databaseName](database.md#databasename)
+  * $ref: [#/definitions/databaseName](database.md#databasename)
 * **fullyQualifiedName**
   * Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
   * Type: `string`
@@ -22,7 +22,7 @@ Type: `object`
   * Type: `string`
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 * **owner**
   * Owner of this database.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
@@ -34,7 +34,7 @@ Type: `object`
   * $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 * **tables**
   * References to tables in the database.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 
 ## Type definitions in this schema
 
@@ -46,4 +46,3 @@ Type: `object`
 * Length: between 1 and 64
 
 _This document was updated on: Thursday, September 16, 2021_
-

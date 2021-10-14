@@ -2,7 +2,7 @@
 
 This schema defines the Dashboard entity. Dashboards are computed from data and visually present data, metrics, and KPIs. They are updated in real-time and allow interactive data exploration.
 
-**$id:** [https://open-metadata.org/schema/entity/data/dashboard.json](https://open-metadata.org/schema/entity/data/dashboard.json)
+**$id: **[https://open-metadata.org/schema/entity/data/dashboard.json](https://open-metadata.org/schema/entity/data/dashboard.json)
 
 Type: `object`
 
@@ -10,7 +10,7 @@ Type: `object`
 
 * **id** `required`
   * Unique identifier that identifies a dashboard instance.
-  * $ref: [../../type/basic.json\#/definitions/uuid](../types/basic.md#uuid)
+  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
 * **name** `required`
   * Name that identifies this dashboard.
   * Type: `string`
@@ -36,13 +36,13 @@ Type: `object`
     * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **href**
   * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json\#/definitions/href](../types/basic.md#href)
+  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
 * **owner**
   * Owner of this dashboard.
   * $ref: [../../type/entityReference.json](../types/entityreference.md)
 * **followers**
   * Followers of this dashboard.
-  * $ref: [../../type/entityReference.json\#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
+  * $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
 * **tags**
   * Tags for this dashboard.
   * Type: `array`
@@ -56,4 +56,3 @@ Type: `object`
   * $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 
 _This document was updated on: Thursday, September 16, 2021_
-
