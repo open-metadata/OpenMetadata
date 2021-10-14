@@ -275,4 +275,9 @@ public final class TestUtils {
     }
     assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
   }
+
+  public static String getPrincipal(Map<String, String> authHeaders) {
+    // Get user name from the email address
+    return authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER).split("@")[0];
+  }
 }

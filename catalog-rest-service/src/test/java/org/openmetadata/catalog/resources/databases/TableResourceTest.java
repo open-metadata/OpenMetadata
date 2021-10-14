@@ -366,7 +366,8 @@ public class TableResourceTest extends CatalogApplicationTest {
   public void put_tableCreate_200(TestInfo test) throws HttpResponseException {
     // Create a new table with put
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    updateAndCheckTable(request.withName("newName").withDescription(null), CREATED, adminAuthHeaders());
+    Table table = updateAndCheckTable(request.withName("newName").withDescription(null), CREATED, adminAuthHeaders());
+    assertEquals(0.1, table.getVersion()); // First version
   }
 
   @Test
@@ -1083,6 +1084,7 @@ public class TableResourceTest extends CatalogApplicationTest {
                                              TableType tableType, List<TableConstraint> tableConstraints,
                                              List<TagLabel> tags, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String tableJson = JsonUtils.pojoToJson(table);
 
     // Update the table attributes
@@ -1095,11 +1097,12 @@ public class TableResourceTest extends CatalogApplicationTest {
     // Validate information returned in patch response has the updates
     Table updatedTable = patchTable(tableJson, table, authHeaders);
     validateTable(updatedTable, table.getDescription(), table.getColumns(), owner, null, tableType,
-            tableConstraints, tags);
+            tableConstraints, tags, updatedBy);
 
     // GET the table and Validate information returned
     Table getTable = getTable(table.getId(), "owner,tableConstraints,columns, tags", authHeaders);
-    validateTable(getTable, table.getDescription(), table.getColumns(), owner, null, tableType, tableConstraints, tags);
+    validateTable(getTable, table.getDescription(), table.getColumns(), owner, null, tableType,
+            tableConstraints, tags, updatedBy);
     return updatedTable;
   }
 
@@ -1122,14 +1125,17 @@ public class TableResourceTest extends CatalogApplicationTest {
   public static Table createAndCheckTable(CreateTable create, Map<String, String> authHeaders)
           throws HttpResponseException {
     // Validate table created has all the information set in create request
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Table table = createTable(create, authHeaders);
-    validateTable(table, create.getDescription(), create.getColumns(), create.getOwner(),
-            create.getDatabase(), create.getTableType(), create.getTableConstraints(), create.getTags());
+    validateTable(table, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
+            create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
+    assertEquals(0.1, table.getVersion()); // First version of the table
 
     // GET table created and ensure it has all the information set in create request
     Table getTable = getTable(table.getId(), "columns,owner,database,tags,tableConstraints", authHeaders);
-    validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(),
-            create.getDatabase(), create.getTableType(), create.getTableConstraints(), create.getTags());
+    validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
+            create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
+    assertEquals(0.1, table.getVersion()); // First version of the table
 
     // If owner information is set, GET and make sure the user or team has the table in owns list
     checkOwnerOwns(create.getOwner(), table.getId(), true);
@@ -1210,13 +1216,15 @@ public class TableResourceTest extends CatalogApplicationTest {
   private static void validateTable(Table table, String expectedDescription,
                                     List<Column> expectedColumns, EntityReference expectedOwner,
                                     UUID expectedDatabaseId, TableType expectedTableType,
-                                    List<TableConstraint> expectedTableConstraints, List<TagLabel> expectedTags)
+                                    List<TableConstraint> expectedTableConstraints, List<TagLabel> expectedTags,
+                                    String expectedUpdatedByUser)
           throws HttpResponseException {
     assertNotNull(table.getId());
     assertNotNull(table.getHref());
     assertNotNull(table.getFullyQualifiedName());
     assertEquals(expectedDescription, table.getDescription());
     assertEquals(expectedTableType, table.getTableType());
+    assertEquals(expectedUpdatedByUser, table.getUpdatedBy());
 
     validateColumns(expectedColumns, table.getColumns());
 
@@ -1332,14 +1340,15 @@ public class TableResourceTest extends CatalogApplicationTest {
 
   public static Table updateAndCheckTable(CreateTable create, Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Table updatedTable = updateTable(create, status, authHeaders);
     validateTable(updatedTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
-            create.getTableType(), create.getTableConstraints(), create.getTags());
+            create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
 
     // GET the newly updated database and validate
     Table getTable = getTable(updatedTable.getId(), "columns,database,owner,tableConstraints,tags", authHeaders);
     validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
-            create.getTableType(), create.getTableConstraints(), create.getTags());
+            create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
     // TODO columns check
     return updatedTable;
   }

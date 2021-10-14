@@ -177,9 +177,10 @@ public abstract class TableRepository {
   }
 
   @Transaction
-  public Table patch(String id, JsonPatch patch) throws IOException, ParseException {
+  public Table patch(String id, String user, JsonPatch patch) throws IOException, ParseException {
     Table original = setFields(validateTable(id), TABLE_PATCH_FIELDS);
     Table updated = JsonUtils.applyPatch(original, patch, Table.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }
