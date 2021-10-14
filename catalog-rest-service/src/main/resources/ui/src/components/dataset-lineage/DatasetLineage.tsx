@@ -255,7 +255,7 @@ const DatasetLineage = ({
             onNodeMouseEnter={onNodeMouseEnter}
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}>
-            <Controls />
+            <Controls showInteractive={false} />
           </ReactFlow>
         </ReactFlowProvider>
       ) : (
