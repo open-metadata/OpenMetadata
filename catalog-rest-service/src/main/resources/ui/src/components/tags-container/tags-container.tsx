@@ -205,6 +205,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           <span className="tw-relative">
             <input
               className="tw-flex-1 tw-border-0 tw-px-1 focus:tw-outline-none"
+              data-testid="associatedTagName"
               placeholder="Enter tag name..."
               ref={inputRef}
               // style={{ width: inputWidth, minWidth: inputMinWidth }}
@@ -240,6 +241,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
         <div className="tw-flex tw-justify-end tw-mt-2" data-testid="buttons">
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm tw-mr-1"
+            data-testid="cancelAssociatedTag"
             size="custom"
             theme="primary"
             variant="contained"
@@ -248,6 +250,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
           </Button>
           <Button
             className="tw-px-1 tw-py-1 tw-rounded tw-text-sm"
+            data-testid="saveAssociatedTag"
             size="custom"
             theme="primary"
             variant="contained"

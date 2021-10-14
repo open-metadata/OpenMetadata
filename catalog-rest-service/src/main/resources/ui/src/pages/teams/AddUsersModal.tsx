@@ -99,6 +99,7 @@ const AddUsersModal = ({ header, list, onCancel, onSave }: Props) => {
             Discard
           </Button>
           <Button
+            data-testid="AddUserSave"
             size="regular"
             theme="primary"
             type="submit"

@@ -38,6 +38,7 @@ const FeaturesCarousel = ({ data }: Props) => {
 
   const settings = {
     dots: true,
+    dotsClass: 'slick-dots testid-dots-button',
     arrows: false,
     infinite: true,
     speed: 500,

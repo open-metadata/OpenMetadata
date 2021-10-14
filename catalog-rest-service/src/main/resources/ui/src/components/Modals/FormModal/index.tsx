@@ -72,6 +72,7 @@ const FormModal = ({
               Cancel
             </Button>
             <Button
+              data-testid="saveButton"
               size="regular"
               theme="primary"
               type="submit"

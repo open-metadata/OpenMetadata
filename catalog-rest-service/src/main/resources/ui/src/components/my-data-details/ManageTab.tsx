@@ -291,6 +291,7 @@ const ManageTab: FunctionComponent<Props> = ({
         ) : (
           <Button
             className="tw-w-16 tw-h-10"
+            data-testid="saveManageTab"
             size="regular"
             theme="primary"
             variant="contained"

@@ -127,6 +127,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
               <div className="has-search tw-p-4 tw-pb-2">
                 <input
                   className="tw-form-inputs tw-px-3 tw-py-1"
+                  data-testid="searchInputText"
                   placeholder="Search..."
                   type="text"
                   onChange={(e) => {
