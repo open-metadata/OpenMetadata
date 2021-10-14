@@ -36,11 +36,6 @@ def get_long_description():
     return description
 
 
-scheduler_requirements = {
-    "apns@git+git://github.com/djacobs/PyAPNs.git#egg=apns",
-    "simplescheduler@git+git://github.com/open-metadata/simplescheduler.git#egg=simplescheduler"
-}
-
 
 base_requirements = {
     "commonregex",
@@ -103,7 +98,6 @@ plugins: Dict[str, Set[str]] = {
     "redash": {"redash-toolbelt==0.1.4"},
     "redshift": {"openmetadata-sqlalchemy-redshift==0.2.1", "psycopg2-binary", "GeoAlchemy2"},
     "redshift-usage": {"openmetadata-sqlalchemy-redshift==0.2.1", "psycopg2-binary", "GeoAlchemy2"},
-    "scheduler": scheduler_requirements,
     "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},

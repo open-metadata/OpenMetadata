@@ -16,5 +16,19 @@
 # limitations under the License.
 #
 
-set -euo pipefail
-pip install --upgrade setuptools 'openmetadata-ingestion[sample-data, elasticsearch, scheduler]'
+mv /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
+airflow db init
+mkdir /airflow/dags
+mv /ingestion/examples/airflow/dags/*.py /airflow/dags/
+airflow users create \
+    --username admin \
+    --firstname Peter \
+    --lastname Parker \
+    --role Admin \
+    --email spiderman@superhero.org \
+    --password admin
+echo "AUTH_ROLE_PUBLIC = 'Admin'" >> /airflow/webserver_config.py
+airflow db check
+airflow webserver --port 8080 &
+airflow scheduler
+
