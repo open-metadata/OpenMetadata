@@ -47,8 +47,6 @@ class WorkflowTest(TestCase):
     def test_execute_200(self):
         config_file = pathlib.Path('tests/unit/mysql_test.json')
         workflow_config = load_config_file(config_file)
-        if workflow_config.get('cron'):
-            del workflow_config['cron']
         workflow = Workflow.create(workflow_config)
         workflow.execute()
         workflow.stop()

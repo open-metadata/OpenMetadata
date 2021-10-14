@@ -66,8 +66,6 @@ def ingest(config: str) -> None:
 
     try:
         logger.info(f"Using config: {workflow_config}")
-        if workflow_config.get("cron"):
-            del workflow_config["cron"]
         workflow = Workflow.create(workflow_config)
     except ValidationError as e:
         click.echo(e, err=True)
@@ -95,8 +93,6 @@ def report(config: str) -> None:
 
     try:
         logger.info(f"Using config: {workflow_config}")
-        if workflow_config.get("cron"):
-            del workflow_config["cron"]
         if workflow_config.get("sink"):
             del workflow_config["sink"]
         workflow_config["sink"] = file_sink

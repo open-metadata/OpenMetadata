@@ -54,20 +54,12 @@ config = """
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": null,
-    "hour": null,
-    "day": "*/7",
-    "month": "*",
-    "day_of_week": "*"
   }
 }
 """
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-    if workflow_config.get('cron'):
-        del workflow_config['cron']
+    
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()

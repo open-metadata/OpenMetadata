@@ -13,6 +13,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import pathlib
+import json
 from datetime import timedelta
 from airflow import DAG
 
@@ -24,7 +25,7 @@ except ModuleNotFoundError:
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
 from airflow.utils.dates import days_ago
-import json
+
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
@@ -52,21 +53,12 @@ config = """
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": "*/12",
-    "hour": null,
-    "day": null,
-    "month": null,
-    "day_of_week": null
   }
 }
 """
 
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-    if workflow_config.get('cron'):
-        del workflow_config['cron']
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
