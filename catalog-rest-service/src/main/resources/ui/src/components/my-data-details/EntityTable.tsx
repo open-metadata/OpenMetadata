@@ -458,7 +458,7 @@ const EntityTable = ({
                                 position="bottom"
                                 theme="light"
                                 trigger="click">
-                                <span className="tw-cursor-pointer show-more tw-ml-1">
+                                <span className="tw-cursor-pointer show-more tw-underline">
                                   ...
                                 </span>
                               </PopOver>
@@ -617,7 +617,7 @@ const EntityTable = ({
                                     position="bottom"
                                     theme="light"
                                     trigger="click">
-                                    <span className="show-more tw-ml-1">
+                                    <span className="show-more tw-ml-1 tw-underline">
                                       ...
                                     </span>
                                   </PopOver>
