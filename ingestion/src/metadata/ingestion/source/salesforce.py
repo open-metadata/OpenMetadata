@@ -16,15 +16,16 @@
 import logging
 import uuid
 from dataclasses import dataclass, field
-from typing import Iterable, Optional, List
+from typing import Iterable, List, Optional
+
+from pydantic import ValidationError
+from simple_salesforce import Salesforce
 
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from simple_salesforce import Salesforce
+from metadata.utils.helpers import get_database_service_or_create
 
-from .sql_source import SQLConnectionConfig
-from ..ometa.openmetadata_rest import MetadataServerConfig
 from ...generated.schema.entity.data.database import Database
 from ...generated.schema.entity.data.table import (
     Column,
@@ -33,8 +34,8 @@ from ...generated.schema.entity.data.table import (
     TableData,
 )
 from ...generated.schema.type.entityReference import EntityReference
-from metadata.utils.helpers import get_database_service_or_create
-from pydantic import ValidationError
+from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig
 
 logger: logging.Logger = logging.getLogger(__name__)
 

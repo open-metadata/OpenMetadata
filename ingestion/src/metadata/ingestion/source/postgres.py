@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 from collections import namedtuple
+
 import pymysql  # noqa: F401
 
 # This import verifies that the dependencies are available.
@@ -21,8 +22,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.ingestion.api.source import SourceStatus
-from .sql_source import SQLConnectionConfig, SQLSource
+
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 

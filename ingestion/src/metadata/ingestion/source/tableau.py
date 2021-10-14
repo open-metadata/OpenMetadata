@@ -1,19 +1,25 @@
 import logging
 import uuid
 from typing import Iterable, Optional
+
 import dateutil.parser as dateparser
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
+from tableau_api_lib import TableauServerConnection
+from tableau_api_lib.utils.querying import get_views_dataframe, get_workbooks_dataframe
+
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.ingestion.api.common import IncludeFilterPattern
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import (
+    ConfigModel,
+    IncludeFilterPattern,
+    Record,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.models.table_metadata import Dashboard, Chart, DashboardOwner
+from metadata.ingestion.models.table_metadata import Chart, Dashboard, DashboardOwner
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
-from tableau_api_lib import TableauServerConnection
-from tableau_api_lib.utils.querying import get_workbooks_dataframe, get_views_dataframe
 
 logger = logging.getLogger(__name__)
 

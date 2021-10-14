@@ -15,7 +15,7 @@
 
 import copy
 import json
-from typing import Any, List, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from metadata.ingestion.models.json_serializable import JsonSerializable
 

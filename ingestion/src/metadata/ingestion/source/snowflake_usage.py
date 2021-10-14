@@ -13,18 +13,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+from typing import Any, Dict, Iterable, Iterator, Union
+
+from metadata.ingestion.api.source import Source, SourceStatus
+
 # This import verifies that the dependencies are available.
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.snowflake import SnowflakeConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable
-
 from metadata.utils.helpers import get_start_and_end
-from metadata.ingestion.source.snowflake import SnowflakeConfig
 
 
 class SnowflakeUsageSource(Source):

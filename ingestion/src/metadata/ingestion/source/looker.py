@@ -15,22 +15,28 @@
 import logging
 import os
 import uuid
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
+
 import looker_sdk
-from looker_sdk.sdk.api31.models import DashboardElement, Dashboard as LookerDashboard
 from looker_sdk.error import SDKError
-from metadata.generated.schema.type.basic import Uuid
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
+from looker_sdk.sdk.api31.models import Dashboard as LookerDashboard
+from looker_sdk.sdk.api31.models import DashboardElement
+
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
-from metadata.ingestion.api.common import IncludeFilterPattern
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import (
+    ConfigModel,
+    IncludeFilterPattern,
+    Record,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 

@@ -13,12 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# This import verifies that the dependencies are available.
-from metadata.generated.schema.entity.data.table import TableData
 import sqlalchemy_pytds  # noqa: F401
 
-from .sql_source import SQLConnectionConfig, SQLSource
+# This import verifies that the dependencies are available.
+from metadata.generated.schema.entity.data.table import TableData
+
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 
 class MssqlConfig(SQLConnectionConfig):

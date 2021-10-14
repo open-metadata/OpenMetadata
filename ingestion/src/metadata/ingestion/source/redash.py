@@ -13,23 +13,22 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import uuid
-from dataclasses import dataclass
-from dataclasses import field
-from typing import List, Iterable
+from dataclasses import dataclass, field
+from typing import Iterable, List
 
 import requests
-from metadata.generated.schema.entity.data.chart import Chart
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
-from metadata.ingestion.api.source import Source
-from metadata.ingestion.api.source import SourceStatus
-from metadata.ingestion.models.table_metadata import Dashboard
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from redash_toolbelt import Redash
-from metadata.utils.helpers import get_dashboard_service_or_create
+
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardServiceType,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
+from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.table_metadata import Dashboard
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.utils.helpers import get_dashboard_service_or_create
 
 
 class RedashSourceConfig(ConfigModel):

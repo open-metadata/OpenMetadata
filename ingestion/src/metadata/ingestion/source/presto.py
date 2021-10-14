@@ -14,8 +14,8 @@
 #  limitations under the License.
 from urllib.parse import quote_plus
 
-from .sql_source import SQLSource, SQLConnectionConfig
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 
 class PrestoConfig(SQLConnectionConfig):

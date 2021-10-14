@@ -13,14 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, Tuple
 import os
+from typing import Optional, Tuple
+
 from metadata.generated.schema.entity.data.table import TableData
 
-# This import verifies that the dependencies are available.
-
-from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
+
+# This import verifies that the dependencies are available.
 
 
 class BigQueryConfig(SQLConnectionConfig, SQLSource):

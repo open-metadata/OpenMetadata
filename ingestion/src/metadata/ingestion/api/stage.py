@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, TypeVar
 
 from .closeable import Closeable
-from .common import WorkflowContext, Record
+from .common import Record, WorkflowContext
 from .status import Status
 
 
