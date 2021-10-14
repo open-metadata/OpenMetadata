@@ -8,6 +8,8 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 
 {% page-ref page="elastic-search.md" %}
 
+{% page-ref page="hive.md" %}
+
 {% page-ref page="mssql.md" %}
 
 {% page-ref page="mysql.md" %}
@@ -16,13 +18,17 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 
 {% page-ref page="postgres.md" %}
 
-{% page-ref page="redshift.md" %}
-
 {% page-ref page="redshift-usage.md" %}
+
+{% page-ref page="salesforce.md" %}
 
 {% page-ref page="snowflake.md" %}
 
 {% page-ref page="snowflake-usage.md" %}
+
+{% page-ref page="trino.md" %}
+
+{% page-ref page="vertica.md" %}
 
 
 

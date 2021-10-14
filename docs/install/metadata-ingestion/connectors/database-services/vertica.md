@@ -1,8 +1,8 @@
 ---
-description: This guide will help install Postgres connector and run manually
+description: This guide will help install Vertica Usage connector and run manually
 ---
 
-# Postgres
+# Vertica Usage
 
 {% hint style="info" %}
 **Prerequisites**
@@ -18,59 +18,62 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
-pip install 'openmetadata-ingestion[postgres]'
+pip install 'openmetadata-ingestion[vertica]'
 ```
 {% endtab %}
 {% endtabs %}
 
-### Run Manually
+## Run Manually
 
 ```bash
-metadata ingest -c ./examples/workflows/postgres.json
+metadata ingest -c ./examples/workflows/vertica.json
 ```
 
 ### Configuration
 
-{% code title="postgres.json" %}
+{% code title="vertica.json" %}
 ```javascript
 {
   "source": {
-    "type": "postgres",
+    "type": "vertica",
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "host_port": "localhost:5432",
-      "database": "pagila",
-      "service_name": "local_postgres"
+      "database": "openmetadata_db",
+      "service_name": "local_vertica",
+      "filter_pattern": {
+        "excludes": []
+      }
     }
   },
- ...
 ```
 {% endcode %}
 
-1. **username** - pass the Postgres username.
-2. **password** - the password for the Postgres username.
-3. **service\_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
+1. **username** - pass the Vertica username.
+2. **password** - the password for the Vertica username.
+3. **service\_name** - Service Name for this Vertica cluster. If you added the Vertica cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
 
-Below is the configuration to publish Postgres data into the OpenMetadata service.
+Below is the configuration to publish Vertica Usage data into the OpenMetadata service.
 
-Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage` bulk\_sink along with `metadata-server` config
 
-{% code title="postgres.json" %}
+{% code title="vertica.json" %}
 ```javascript
 {
   "source": {
-    "type": "postgres",
+    "type": "vertica",
     "config": {
       "username": "openmetadata_user",
       "password": "openmetadata_password",
-      "host_port": "localhost:5432",
-      "database": "pagila",
-      "service_name": "local_postgres"
+      "database": "openmetadata_db",
+      "service_name": "local_vertica",
+      "filter_pattern": {
+        "excludes": []
+      }
     }
   },
   "sink": {
@@ -92,6 +95,6 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
+
 ```
 {% endcode %}
-

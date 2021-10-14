@@ -54,4 +54,4 @@ Type: `object`
    - Latest usage information for this database.
    - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

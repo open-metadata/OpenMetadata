@@ -20,6 +20,9 @@ Type: `object`
  - **description**
    - Description of a pipeline service instance.
    - Type: `string`
+ - **displayName**
+     - Display Name that identifies this pipeline service. It could be title or label from the source services.
+     - Type: `string`
  - **pipelineUrl** `required`
    - Pipeline Service Management/UI URL.
    - Type: `string`
@@ -42,4 +45,4 @@ Type: `object`
    2. _"Prefect"_
 	 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

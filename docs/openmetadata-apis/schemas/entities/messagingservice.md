@@ -20,6 +20,9 @@ Type: `object`
  - **description**
    - Description of a messaging service instance.
    - Type: `string`
+ - **displayName**
+     - Display Name that identifies this messaging service. It could be title or label from the source services.
+     - Type: `string`
  - **brokers** `required`
    - Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.
    - $ref: [#/definitions/brokers](#brokers)
@@ -52,6 +55,4 @@ Type: `object`
    - **Items**    
    - Type: `string`
 
-
-
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

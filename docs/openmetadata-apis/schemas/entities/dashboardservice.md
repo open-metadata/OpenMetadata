@@ -14,6 +14,9 @@ Type: `object`
    - Name that identifies this dashboard service.
    - Type: `string`
    - Length: between 1 and 64
+ - **displayName**
+   - Display Name that identifies this dashboard service.
+   - Type: `string`
  - **serviceType** `required`
    - Type of dashboard service such as Looker or Superset...
    - $ref: [#/definitions/dashboardServiceType](#dashboardservicetype)
@@ -51,4 +54,4 @@ Type: `object`
 
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

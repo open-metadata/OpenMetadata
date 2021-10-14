@@ -10,6 +10,7 @@ description: This guide will help install Looker connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
+2. OpenMetadata Server up and running
 {% endhint %}
 
 ### Install from PyPI or Source
@@ -61,7 +62,6 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
 {% code title="looker.json" %}
 ```javascript
 {
-  {
   "source": {
     "type": "looker",
     "config": {

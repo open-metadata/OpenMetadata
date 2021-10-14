@@ -16,6 +16,9 @@ Type: `object`
  - **fullyQualifiedName**
    - Name that uniquely identifies a topic in the format 'messagingServiceName.topicName'.
    - Type: `string`
+ - **displayName**
+     - Display Name that identifies this topic. It could be title or label from the source services.
+     - Type: `string`
  - **description**
    - Description of the topic instance.
    - Type: `string`
@@ -97,4 +100,4 @@ Type: `object`
 
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

@@ -10,6 +10,7 @@ description: This guide will help install Snowflake Usage connector and run manu
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
+2. OpenMetadata Server up and running
 {% endhint %}
 
 ### Install from PyPI or Source
