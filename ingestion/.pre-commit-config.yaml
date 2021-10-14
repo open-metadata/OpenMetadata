@@ -4,7 +4,7 @@ repos:
     hooks:
       - id: black
         language_version: python3.8
-        args: ["--exclude", "ingestion/src/metadata/generated"]
+        exclude: ingestion/src/metadata/generated
   - repo: https://github.com/timothycrosley/isort
     rev: 5.9.3
     hooks:
