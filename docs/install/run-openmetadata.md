@@ -13,8 +13,8 @@ description: >-
 {% hint style="info" %}
 **Prerequisites**
 
-* Docker &gt;= 20.10.x
-* Minimum allocated memory to Docker &gt;= 4GB  \(Preferences -&gt; Advanced -&gt; Resources\)
+* Docker >= 20.10.x
+* Minimum allocated memory to Docker >= 4GB  (Preferences -> Advanced -> Resources)
 {% endhint %}
 
 ```bash
@@ -28,9 +28,9 @@ docker-compose up
 1. Docker for OpenMetadata will depend on Mysql Container to be up, It may take few seconds to run.
 2. Once OpenMetadata UI is accessible, Go to Scheduler UI -[ http://localhost:7777](http://localhost:7777), to invoke the pipelines to ingest data. 
 
-![Scheduler UI \(http://localhost:7777\)](../.gitbook/assets/localhost_7777_.png)
+![Scheduler UI (http://localhost:7777)](../../.gitbook/assets/localhost\_7777\_.png)
 
-![Invoking a Pipeline for Ingestion](../.gitbook/assets/localhost_7777_-1-.png)
+![Invoking a Pipeline for Ingestion](../../.gitbook/assets/localhost\_7777\_-1-.png)
 
 The above command brings up all the necessary services
 
@@ -105,45 +105,41 @@ cd openmetadata-0.3.0-SNAPSHOT
 #### macOS
 
 1. Setup Database
-   * Install MySQL
+   *   Install MySQL
 
-     ```text
-      brew install mysql
-     ```
+       ```
+        brew install mysql
+       ```
+   *   Configure MySQL
 
-   * Configure MySQL
+       ```
+       mysqladmin -u root password 'yourpassword'
+       mysql -u root -p
+       ```
+   *   Setup Database
 
-     ```text
-     mysqladmin -u root password 'yourpassword'
-     mysql -u root -p
-     ```
+       ```
+       mysql -u root -p
+       CREATE DATABASE openmetadata_db;
+       CREATE USER 'openmetadata_user'@'localhost' IDENTIFIED BY 'openmetadata_password';
+       GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
+       commit;
+       ```
+2.  Run bootstrap scripts to initialize the database and tables
 
-   * Setup Database
+    ```
+       cd openmetadata-0.4.0
+       ./bootstrap/bootstrap_storage.sh migrate
+    ```
+3.  Start the OpenMetadata Server
 
-     ```text
-     mysql -u root -p
-     CREATE DATABASE openmetadata_db;
-     CREATE USER 'openmetadata_user'@'localhost' IDENTIFIED BY 'openmetadata_password';
-     GRANT ALL PRIVILEGES ON openmetadata_db.* TO 'openmetadata_user'@'localhost' WITH GRANT OPTION;
-     commit;
-     ```
-2. Run bootstrap scripts to initialize the database and tables
-
-   ```text
-      cd openmetadata-0.3.0
-      ./bootstrap/bootstrap_storage.sh migrate
-   ```
-
-3. Start the OpenMetadata Server
-
-   ```text
-      cd openmetadata-0.3.0 
-      ./bin/openmetadata.sh start
-   ```
+    ```
+       cd openmetadata-0.4.0 
+       ./bin/openmetadata.sh start
+    ```
 
 ### Ingest Sample Data
 
 Previous steps start OpenMetadata server. To start using it we need to run ElasticSearch and ingest sample metadata. Please follow the below guide:
 
 [Ingest Sample Data](metadata-ingestion/ingest-sample-data.md)
-
