@@ -15,10 +15,13 @@
 
 
 from typing import Any, Iterable
-from metadata.ingestion.api.common import WorkflowContext
+
 from sqlalchemy import create_engine
-from .sql_source import SQLConnectionConfig, SQLSourceStatus
+
+from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+
+from .sql_source import SQLConnectionConfig, SQLSourceStatus
 
 
 class SQLAlchemyHelper:

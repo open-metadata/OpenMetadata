@@ -13,9 +13,17 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import http.client
+import json
 import logging
+import time
+import uuid
 from typing import List
 
+import google.auth
+import google.auth.transport.requests
+from google.oauth2 import service_account
+from jose import jwt
 from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
@@ -64,17 +72,7 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig, APIError
-
-import google.auth
-import google.auth.transport.requests
-from google.oauth2 import service_account
-import time
-import uuid
-import http.client
-import json
-
-from jose import jwt
+from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 
 logger = logging.getLogger(__name__)
 

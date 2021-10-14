@@ -15,36 +15,35 @@
 import json
 import logging
 import time
-from typing import Optional, List
+from typing import List, Optional
 
 from elasticsearch import Elasticsearch
 
+from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.type import entityReference
+from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
-from metadata.ingestion.ometa.openmetadata_rest import (
-    OpenMetadataAPIClient,
-    MetadataServerConfig,
-)
-from metadata.ingestion.sink.elasticsearch_constants import (
-    TABLE_ELASTICSEARCH_INDEX_MAPPING,
-    TOPIC_ELASTICSEARCH_INDEX_MAPPING,
-    DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
-    PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
-)
-
-from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import WorkflowContext, Record
 from metadata.ingestion.models.table_metadata import (
-    TableESDocument,
-    TopicESDocument,
     DashboardESDocument,
     PipelineESDocument,
+    TableESDocument,
+    TopicESDocument,
+)
+from metadata.ingestion.ometa.openmetadata_rest import (
+    MetadataServerConfig,
+    OpenMetadataAPIClient,
+)
+from metadata.ingestion.sink.elasticsearch_constants import (
+    DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
+    PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
+    TABLE_ELASTICSEARCH_INDEX_MAPPING,
+    TOPIC_ELASTICSEARCH_INDEX_MAPPING,
 )
 
 logger = logging.getLogger(__name__)

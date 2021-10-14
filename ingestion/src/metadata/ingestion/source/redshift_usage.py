@@ -15,16 +15,17 @@
 
 # This import verifies that the dependencies are available.
 import logging
+from typing import Any, Dict, Iterable, Iterator, Union
+
+from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.table_queries import TableQuery
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.redshift import RedshiftConfig
 from metadata.ingestion.source.sql_alchemy_helper import (
     SQLAlchemyHelper,
     SQLSourceStatus,
 )
-from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Iterator, Union, Dict, Any, Iterable
 from metadata.utils.helpers import get_start_and_end
-from metadata.ingestion.source.redshift import RedshiftConfig
 
 logger = logging.getLogger(__name__)
 

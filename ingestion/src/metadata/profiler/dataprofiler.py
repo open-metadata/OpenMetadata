@@ -29,7 +29,7 @@ from data_profiler.data_context.types.base import (
     InMemoryStoreBackendDefaults,
 )
 
-from metadata.generated.schema.entity.data.table import TableProfile, ColumnProfile
+from metadata.generated.schema.entity.data.table import ColumnProfile, TableProfile
 from metadata.ingestion.api.source import SourceStatus
 from metadata.profiler.util import group_by
 

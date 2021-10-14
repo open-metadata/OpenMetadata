@@ -15,8 +15,8 @@
 
 import os
 from typing import Tuple
-import dateutil.parser
 
+import dateutil.parser
 
 Credentials = Tuple[str, str, str]
 

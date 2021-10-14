@@ -22,15 +22,15 @@ from metadata.generated.schema.entity.data.table import ColumnJoins, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.models.table_queries import (
+    ColumnJoinedWith,
+    TableColumn,
     TableUsageCount,
     TableUsageRequest,
-    TableColumn,
-    ColumnJoinedWith,
 )
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.openmetadata_rest import (
-    OpenMetadataAPIClient,
     MetadataServerConfig,
+    OpenMetadataAPIClient,
 )
 
 logger = logging.getLogger(__name__)

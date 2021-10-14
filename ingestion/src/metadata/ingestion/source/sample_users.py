@@ -15,17 +15,19 @@
 
 import random
 import string
+from dataclasses import dataclass, field
+from typing import Iterable, List
+
 import pandas as pd
 from faker import Faker
-from typing import Iterable, List
-from dataclasses import dataclass, field
+
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
 )
-from metadata.ingestion.models.user import User
 
 
 class SampleUserSourceConfig(ConfigModel):

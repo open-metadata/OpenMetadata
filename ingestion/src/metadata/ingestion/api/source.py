@@ -16,8 +16,9 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List
+
 from .closeable import Closeable
-from .common import WorkflowContext, Record
+from .common import Record, WorkflowContext
 from .status import Status
 
 

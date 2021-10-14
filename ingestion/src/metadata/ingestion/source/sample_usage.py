@@ -1,15 +1,17 @@
-import json
 import csv
+import json
+from datetime import datetime
+from typing import Iterable
+
 from metadata.ingestion.api.source import Source
+from metadata.ingestion.models.table_queries import TableQuery
+
+from ..ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 from .sample_data import (
-    get_database_service_or_create,
     SampleDataSourceConfig,
     SampleDataSourceStatus,
+    get_database_service_or_create,
 )
-from metadata.ingestion.models.table_queries import TableQuery
-from typing import Iterable
-from datetime import datetime
-from ..ometa.openmetadata_rest import OpenMetadataAPIClient, MetadataServerConfig
 
 
 class SampleUsageSource(Source):

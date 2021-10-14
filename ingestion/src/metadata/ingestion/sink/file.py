@@ -17,7 +17,7 @@ import logging
 import pathlib
 
 from metadata.config.common import ConfigModel
-from metadata.ingestion.api.common import WorkflowContext, Record
+from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

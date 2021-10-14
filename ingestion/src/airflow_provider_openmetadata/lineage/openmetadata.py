@@ -98,11 +98,12 @@ def parse_lineage_to_openmetadata(
     outlets: List,
     client: OpenMetadataAPIClient,
 ):
+    import ast
+
     from airflow.serialization.serialized_objects import (
         SerializedBaseOperator,
         SerializedDAG,
     )
-    import ast
 
     operator.log.info("Parsing Lineage for OpenMetadata")
     dag: "DAG" = context["dag"]

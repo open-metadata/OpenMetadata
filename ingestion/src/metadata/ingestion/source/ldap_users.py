@@ -15,11 +15,12 @@
 
 import logging
 from typing import Iterable
-from ldap3 import Server, Connection, ALL, LEVEL
+
+from ldap3 import ALL, LEVEL, Connection, Server
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import WorkflowContext
-from metadata.ingestion.api.source import SourceStatus, Source
+from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.user import MetadataUser, User
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 

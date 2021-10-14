@@ -14,7 +14,7 @@
 #  limitations under the License.
 
 import collections
-from typing import TypeVar, Iterable, Callable, Tuple
+from typing import Callable, Iterable, Tuple, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")

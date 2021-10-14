@@ -13,12 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import re
-from abc import ABCMeta, abstractmethod, ABC
-from dataclasses import dataclass
-from typing import Generic, TypeVar, Dict, Any, Optional, List, IO
-from pydantic import BaseModel
 import logging
+import re
+from abc import ABC, ABCMeta, abstractmethod
+from dataclasses import dataclass
+from typing import IO, Any, Dict, Generic, List, Optional, TypeVar
+
+from pydantic import BaseModel
 
 T = TypeVar("T")
 

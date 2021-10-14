@@ -1,7 +1,7 @@
+import json
 import logging
 
 from django.shortcuts import render
-import json
 
 logger: logging.Logger = logging.getLogger(__name__)
 

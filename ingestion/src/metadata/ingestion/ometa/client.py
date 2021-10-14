@@ -14,12 +14,12 @@
 #  limitations under the License.
 
 import logging
-from typing import Optional, List
+import time
+from enum import Enum
+from typing import List, Optional
 
 import requests
 from requests.exceptions import HTTPError
-import time
-from enum import Enum
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version

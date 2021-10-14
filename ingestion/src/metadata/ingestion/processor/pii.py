@@ -13,24 +13,24 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import json
 import logging
+import re
+from abc import ABC, abstractmethod
+from enum import Enum, auto
 from typing import Optional
 
 import spacy
 from commonregex import CommonRegex
-import re
-from abc import ABC, abstractmethod
-import json
-from enum import Enum, auto
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.ingestion.api.common import WorkflowContext, Record
+from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.ometa.openmetadata_rest import (
-    OpenMetadataAPIClient,
     MetadataServerConfig,
+    OpenMetadataAPIClient,
 )
 from metadata.utils.helpers import snake_to_camel
 

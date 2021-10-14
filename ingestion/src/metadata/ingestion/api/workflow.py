@@ -32,7 +32,6 @@ from metadata.ingestion.api.processor import Processor
 from metadata.ingestion.api.sink import Sink
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.api.stage import Stage
-from metadata.ingestion.api.source import Source
 
 logger = logging.getLogger(__name__)
 

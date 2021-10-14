@@ -15,9 +15,10 @@
 
 import logging
 from typing import Optional
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
-from metadata.ingestion.source.sql_source import SQLSource, SQLConnectionConfig
+
 from metadata.ingestion.api.source import SourceStatus
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sql_source import SQLConnectionConfig, SQLSource
 
 logger = logging.getLogger(__name__)
 
