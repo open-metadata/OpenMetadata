@@ -49,6 +49,10 @@
       "description": "Description of a messaging service instance.",
       "type": "string"
     },
+    "displayName": {
+      "description": "Display Name that identifies this messaging service. It could be title or label from the source services.",
+      "type": "string"
+    },
     "brokers": {
       "description": "Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.",
       "$ref" : "#/definitions/brokers"

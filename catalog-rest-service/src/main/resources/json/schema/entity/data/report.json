@@ -22,6 +22,10 @@
       "minLength": 1,
       "maxLength": 64
     },
+    "displayName": {
+      "description": "Display Name that identifies this report. It could be title or label from the source services.",
+      "type": "string"
+    },
     "description": {
       "description": "Description of this report instance.",
       "type": "string"
