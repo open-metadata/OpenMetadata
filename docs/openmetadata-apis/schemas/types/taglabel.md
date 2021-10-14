@@ -1,6 +1,6 @@
 # Tag Label
 
-This schema defines the type for labeling an entity with a Tag.
+This schema defines the type for labelling an entity with a Tag.
 
 **$id: **[https://open-metadata.org/schema/type/tagLabel.json](https://open-metadata.org/schema/type/tagLabel.json)
 

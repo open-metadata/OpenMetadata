@@ -1,8 +1,8 @@
 ---
-description: This guide will help install Vertica Usage connector and run manually
+description: This guide will help install Vertica connector and run manually
 ---
 
-# Vertica Usage
+# Vertica
 
 {% hint style="info" %}
 **Prerequisites**
@@ -10,26 +10,25 @@ description: This guide will help install Vertica Usage connector and run manual
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
-{% tab title="Install Using PyPI" %}
-```bash
+{% tab title="Install Using PyPi" %}
+```javascript
 pip install 'openmetadata-ingestion[vertica]'
 ```
 {% endtab %}
 {% endtabs %}
 
-## Run Manually
+### Run Manually
 
-```bash
+```javascript
 metadata ingest -c ./examples/workflows/vertica.json
 ```
 
-### Configuration
+### Configurationvertica.json
 
 {% code title="vertica.json" %}
 ```javascript
@@ -46,6 +45,7 @@ metadata ingest -c ./examples/workflows/vertica.json
       }
     }
   },
+ ...
 ```
 {% endcode %}
 
@@ -56,9 +56,9 @@ metadata ingest -c ./examples/workflows/vertica.json
 
 ### Publish to OpenMetadata
 
-Below is the configuration to publish Vertica Usage data into the OpenMetadata service.
+Below is the configuration to publish MySQL data into the OpenMetadata service.
 
-Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage` bulk\_sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="vertica.json" %}
 ```javascript
@@ -85,6 +85,13 @@ Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
 

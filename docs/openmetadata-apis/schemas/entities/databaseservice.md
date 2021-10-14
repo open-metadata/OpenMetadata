@@ -7,31 +7,6 @@ This schema defines the Database Service entity, such as MySQL, BigQuery, Redshi
 Type: `object`
 
 ## Properties
- - **id** `required`
-   - Unique identifier of this database service instance.
-   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
- - **name** `required`
-   - Name that identifies this database service.
-   - Type: `string`
-   - Length: between 1 and 64
- - **displayName**
-     - Display Name that identifies this database service.
-     - Type: `string`
- - **serviceType** `required`
-   - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
-   - $ref: [#/definitions/databaseServiceType](#databaseservicetype)
- - **description**
-   - Description of a database service instance.
-   - Type: `string`
- - **href** `required`
-   - Link to the resource corresponding to this database service.
-   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
- - **jdbc** `required`
-   - JDBC connection information.
-   - $ref: [../../type/jdbcConnection.json#/definitions/jdbcInfo](../types/jdbcconnection.md#jdbcinfo)
- - **ingestionSchedule**
-   - Schedule for running metadata ingestion jobs.
-   - $ref: [../../type/schedule.json](../types/schedule.md)
 
 * **id** `required`
   * Unique identifier of this database service instance.
@@ -57,6 +32,7 @@ Type: `object`
   * $ref: [../../type/schedule.json](../types/schedule.md)
 
 ## Type definitions in this schema
+
 ### databaseServiceType
 
 * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...

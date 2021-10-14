@@ -1,4 +1,4 @@
-# JDBC connection
+# Jdbc Connection
 
 This schema defines the type used for JDBC connection information.
 
@@ -7,18 +7,6 @@ This schema defines the type used for JDBC connection information.
 Type: `object`
 
 ## Properties
- - **driverClass** `required`
-   - JDBC driver class.
-   - $ref: [#/definitions/driverClass](#driverclass)
- - **connectionUrl** `required`
-   - JDBC connection URL.
-   - $ref: [#/definitions/connectionUrl](#connectionurl)
- - **userName** `required`
-   - Login user name.
-   - Type: `string`
- - **password** `required`
-   - Login password.
-   - Type: `string`
 
 * **driverClass** `required`
   * JDBC driver class.
@@ -34,17 +22,17 @@ Type: `object`
   * Type: `string`
 
 ## Type definitions in this schema
+
 ### driverClass
 
- - Type used for JDBC driver class.
- - Type: `string`
-
+* The Type used for the JDBC driver class.
+* Type: `string`
 
 ### connectionUrl
 
- - Type used for JDBC connection URL of format `url_scheme://<username>:<password>@<host>:<port>/<db_name>`.
- - Type: `string`
-
+* The Type used for JDBC connection URL.
+* Type: `string`
+* String format must be a "uri"
 
 ### jdbcInfo
 

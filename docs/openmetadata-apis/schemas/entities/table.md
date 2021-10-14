@@ -7,67 +7,6 @@ This schema defines the Table entity. A Table organizes data in rows and columns
 Type: `object`
 
 ## Properties
- - **id** `required`
-   - Unique identifier of this table instance.
-   - $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
- - **name** `required`
-   - Name of a table. Expected to be unique within a database.
-   - $ref: [#/definitions/tableName](#tablename)
- - **displayName**
-     - Display Name that identifies this table. It could be title or label from the source services.
-     - Type: `string`
- - **description**
-   - Description of a table.
-   - Type: `string`
- - **href**
-   - Link to this table resource.
-   - $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
- - **tableType**
-   - $ref: [#/definitions/tableType](#tabletype)
- - **fullyQualifiedName**
-   - Fully qualified name of a table in the form `serviceName.databaseName.tableName`.
-   - Type: `string`
- - **columns** `required`
-   - Columns in this table.
-   - Type: `array`
-     - **Items**
-     - $ref: [#/definitions/column](#column)
- - **tableConstraints**
-   - Table constraints.
-   - Type: `array`
-     - **Items**
-     - $ref: [#/definitions/tableConstraint](#tableconstraint)
- - **usageSummary**
-   - Latest usage information for this table.
-   - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
- - **owner**
-   - Owner of this table.
-   - $ref: [../../type/entityReference.json](../types/entityreference.md)
- - **followers**
-   - Followers of this table.
-   - $ref: [../../type/entityReference.json#/definitions/entityReferenceList](../types/entityreference.md#entityreferencelist)
- - **database**
-   - Reference to Database that contains this table.
-   - $ref: [../../type/entityReference.json](../types/entityreference.md)
- - **viewDefinition**
-   - View Definition in SQL. Applies to TableType.View only.
-   - $ref: [../../type/basic.json#/definitions/sqlQuery](../types/basic.md#sqlquery)
- - **tags**
-   - Tags for this table.
-   - Type: `array`
-     - **Items**
-     - $ref: [../../type/tagLabel.json](../types/taglabel.md)
- - **joins**
-   - Details of other tables this table is frequently joined with.
-   - $ref: [#/definitions/tableJoins](#tablejoins)
- - **sampleData**
-   - Sample data for a table.
-   - $ref: [#/definitions/tableData](#tabledata)
- - **tableProfile**
-   - Data profile for a table.
-   - Type: `array`
-     - **Items**
-     - $ref: [#/definitions/tableProfile](#tableprofile)
 
 * **id** `required`
   * Unique identifier of this table instance.
@@ -129,6 +68,7 @@ Type: `object`
     * $ref: [#/definitions/tableProfile](table.md#tableprofile)
 
 ## Type definitions in this schema
+
 ### tableType
 
 * This schema defines the type used for describing different types of tables.
@@ -223,10 +163,9 @@ Type: `object`
 
 ### fullyQualifiedColumnName
 
- - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.
- - Type: `string`
- - Length: between 1 and 256
-
+* The Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
+* Type: `string`
+* Length: between 1 and 256
 
 ### column
 
@@ -311,40 +250,41 @@ Type: `object`
 
 ### columnProfile
 
- - This schema defines the type to capture the table's column profile.
- - Type: `object`
- - **Properties**
-   - **name**
-     - Column Name.
-     - Type: `string`
-   - **uniqueCount**
-     - No. of unique values in the column.
-     - Type: `number`
-   - **uniqueProportion**
-     - Proportion of number of unique values in a column.
-     - Type: `number`
-   - **nullCount**
-     - No.of null values in a column.
-     - Type: `number`
-   - **nullProportion**
-     - No.of null value proportion in columns.
-     - Type: `number`
-   - **min**
-     - Minimum value in a column.
-     - Type: `string`
-   - **max**
-     - Maximum value in a column.
-     - Type: `string`
-   - **mean**
-     - Avg value in a column.
-     - Type: `string`
-   - **median**
-     - Median value in a column.
-     - Type: `string`
-   - **stddev**
-     - Standard deviation of a column.
-     - Type: `number`
+* This schema defines the type to capture the table's column profile.
+* Type: `object`
+* **Properties**
+  * **name**
+    * Column Name.
+    * Type: `string`
+  * **uniqueCount**
+    * No. of unique values in the column.
+    * Type: `number`
+  * **uniqueProportion**
+    * The Proportion of a number of unique values in a column.
+    * Type: `number`
+  * **nullCount**
+    * No.of null values in a column.
+    * Type: `number`
+  * **nullProportion**
+    * No.of null value proportion in columns.
+    * Type: `number`
+      * **min**
+        * The minimum value in a column.
+        * Type: `string`
+      * **max**
+        * The maximum value in a column.
+        * Type: `string`
+      * **mean**
+        * Avg value in a column.
+        * Type: `string`
+      * **median**
+        * The Median value in a column.
+        * Type: `string`
+      * **stddev**
+        * The Standard deviation of a column.
+        * Type: `number`
 
+### tableProfile
 
 * This schema defines the type to capture the table's data profile.
 * Type: `object`

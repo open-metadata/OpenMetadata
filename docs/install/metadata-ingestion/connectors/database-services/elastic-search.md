@@ -12,10 +12,9 @@ description: >-
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -28,7 +27,7 @@ pip install 'openmetadata-ingestion[elasticsearch]'
 ## Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/metadata_to_es.json
+metadata ingest -c ./examples/workflows/metadata_to_es.json
 ```
 
 ### Configuration
@@ -77,8 +76,14 @@ Add Optionally `file` stage and `elasticsearch` bulk_sink along with `metadata-s
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
-
 ```
 {% endcode %}

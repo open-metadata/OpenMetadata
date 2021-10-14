@@ -10,7 +10,7 @@
 
 ## Step 2: Create the OIDC app integration.
 
-* Once done with **signup/signin** you will be redirected to the **getting started** page of okta.
+* Once done with **signup/sign in** you will be redirected to the **getting started** page of okta.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376300-e600d100-d5a7-11eb-8ceb-e90b5e265ce9.png)
 
@@ -36,11 +36,11 @@
 * Once selected, click **Next**.
 * Select **Refresh token**, **Implicit(Hybrid)**. Once selected Implicit option, select **Allow ID token with implicit grant type**. In Refresh token behavior. Select **Use persistent token**. Provide the necessary input and click **Save**.
 
-![](../../../../.gitbook/assets/screenshot-from-2021-09-20-14-14-14.png)
+![](../../../.gitbook/assets/screenshot-from-2021-09-20-14-14-14.png)
 
 * The app is now configured.
 
-![](<../../../../.gitbook/assets/screenshot-from-2021-09-20-14-11-53 (1).png>)
+![](<../../../.gitbook/assets/screenshot-from-2021-09-20-14-11-53 (1).png>)
 
 ## Step 4: Where to find the credentials
 
@@ -53,7 +53,7 @@
 * Click on your application.
 * You will find your **Client id**, **Client secret,** and **Okta domain**.
 
-![](../../../../.gitbook/assets/screenshot-from-2021-09-20-14-59-07.png)
+![](../../../.gitbook/assets/screenshot-from-2021-09-20-14-59-07.png)
 
 * To get your **issuer** and **audience** click on **Sign On** available on top of the form.
 
