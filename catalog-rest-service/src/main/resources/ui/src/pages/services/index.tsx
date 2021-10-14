@@ -16,6 +16,7 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { isNull, lowerCase } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -39,6 +40,7 @@ import {
   EditObj,
   ServiceDataObj,
 } from '../../components/Modals/AddServiceModal/AddServiceModal';
+import ConfirmationModal from '../../components/Modals/ConfirmationModal/ConfirmationModal';
 import {
   getServiceDetailsPath,
   TITLE_FOR_NON_ADMIN_ACTION,
@@ -56,6 +58,7 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
+import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -80,7 +83,13 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
+  const { isAdminUser, isAuthDisabled } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [deleteSelection, setDeleteSelection] = useState({
+    id: '',
+    name: '',
+  });
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
   const [services, setServices] = useState<ServiceRecord>({
@@ -238,6 +247,14 @@ const ServicesPage = () => {
       });
   };
 
+  const handleCancelConfirmationModal = () => {
+    setIsConfirmationModalOpen(false);
+    setDeleteSelection({
+      id: '',
+      name: '',
+    });
+  };
+
   const handleDelete = (id: string) => {
     deleteService(serviceName, id).then((res: AxiosResponse) => {
       if (res.statusText === 'OK') {
@@ -250,6 +267,16 @@ const ServicesPage = () => {
         setServiceList(updatedServiceList);
       }
     });
+
+    handleCancelConfirmationModal();
+  };
+
+  const ConfirmDelete = (id: string, name: string) => {
+    setDeleteSelection({
+      id,
+      name,
+    });
+    setIsConfirmationModalOpen(true);
   };
 
   const getServiceLogo = (serviceType: string): JSX.Element | null => {
@@ -411,7 +438,9 @@ const ServicesPage = () => {
                     position="bottom"
                     title={TITLE_FOR_NON_ADMIN_ACTION}>
                     <Button
-                      className="tw-h-8 tw-rounded tw-mb-2"
+                      className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                        'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                      })}
                       data-testid="add-new-user-button"
                       size="small"
                       theme="primary"
@@ -499,7 +528,9 @@ const ServicesPage = () => {
                           <button
                             className="focus:tw-outline-none"
                             data-testid="delete-service"
-                            onClick={() => handleDelete(service.id || '')}>
+                            onClick={() =>
+                              ConfirmDelete(service.id || '', service.name)
+                            }>
                             <SVGIcons
                               alt="delete"
                               icon="icon-delete"
@@ -560,6 +591,18 @@ const ServicesPage = () => {
                 serviceName={serviceName}
                 onCancel={handleClose}
                 onSave={handleSave}
+              />
+            )}
+
+            {isConfirmationModalOpen && (
+              <ConfirmationModal
+                bodyText={`You want to delete service ${deleteSelection.name} permanently? This action cannot be reverted.`}
+                cancelText="Discard"
+                confirmButtonCss="tw-bg-error hover:tw-bg-error focus:tw-bg-error"
+                confirmText="Delete"
+                header="Are you sure?"
+                onCancel={handleCancelConfirmationModal}
+                onConfirm={() => handleDelete(deleteSelection.id)}
               />
             )}
           </div>
