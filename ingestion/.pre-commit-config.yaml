@@ -10,3 +10,4 @@ repos:
     hooks:
       - id: isort
         args: ["--profile", "black"]
+        exclude: ingestion/src/metadata/generated
