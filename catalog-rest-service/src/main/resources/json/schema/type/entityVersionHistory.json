@@ -1,0 +1,25 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityVersionHistory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entity Version History",
+  "description": "This schema defines the type used for capturing version of history of entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.EntityLineage",
+  "properties": {
+    "entityType" : {
+      "description": "Entity type, such as `database`, `table`, `dashboard`, for which this version history is produced.",
+      "type": "string"
+    },
+    "versions": {
+      "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to the entity schema. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
+      "type" : "array",
+      "items" : {
+        "type": "object"
+      }
+    }
+  },
+  "required": [
+    "entityType", "versions"
+  ],
+  "additionalProperties": false
+}

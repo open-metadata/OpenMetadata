@@ -212,11 +212,14 @@ public abstract class TableRepository {
       // Update description only when it is empty
       updatedTable.setDescription(storedTable.getDescription());
     }
-    // Remove previous table tags. Merge table tags from the update and the existing tags.
+    // PUT operation merges tags in the request with what already exists
+    // Remove current table tags in the database. It will be added back later from the merged tag list.
     EntityUtil.removeTagsByPrefix(tagDAO(), storedTable.getFullyQualifiedName());
     updatedTable.setTags(EntityUtil.mergeTags(updatedTable.getTags(), storedTable.getTags()));
 
-    updateColumns(storedTable, updatedTable, false);
+    ColumnChanges columnChanges = new ColumnChanges();
+    updateColumns(storedTable, updatedTable, columnChanges, false);
+    compareAndVersion(storedTable, updatedTable, columnChanges);
     storeTable(updatedTable, true);
 
     updateRelationships(storedTable, updatedTable);
@@ -230,6 +233,20 @@ public abstract class TableRepository {
 //              JsonUtils.pojoToJson(tableUpdated));
 //    }
     return new PutResponse<>(Status.OK, updatedTable);
+  }
+
+  private void compareAndVersion(Table storedTable, Table updatedTable, ColumnChanges columnChanges) {
+    if (columnChanges.columnsDeleted > 0) {
+      // Backward incompatible change - bump the major version number
+      updatedTable.setVersion(Math.floor(storedTable.getVersion()) + 1.0);
+    }
+    if (columnChanges.columnsUpdated > 0 || columnChanges.columnsAdded > 0 || // Columns added or modified
+            !Objects.equals(storedTable.getDescription(), updatedTable.getDescription()) || // Description changed
+            !Objects.equals(storedTable.getOwner(), updatedTable.getOwner()) || // Owner changed
+            !Objects.equals(storedTable.getTableConstraints(), updatedTable.getTableConstraints())
+    ) {
+      updatedTable.setVersion(storedTable.getVersion() + 0.1);
+    }
   }
 
   @Transaction
@@ -472,8 +489,9 @@ public abstract class TableRepository {
     validateRelationships(updated, updated.getDatabase().getId(), updated.getOwner());
 
     // Remove previous tags. Merge tags from the update and the existing tags
-    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updateColumns(original, updated, true);
+    EntityUtil.removeTagsByPrefix(tagDAO(), original.getFullyQualifiedName());
+    ColumnChanges columnChanges = new ColumnChanges();
+    updateColumns(original, updated, columnChanges, true);
 
     storeTable(updated, true);
     updateRelationships(original, updated);
@@ -519,8 +537,8 @@ public abstract class TableRepository {
     return table == null ? null : EntityUtil.getFollowers(table.getId(), relationshipDAO(), userDAO());
   }
 
-  //TODO modified columns
-  private void updateColumns(List<Column> storedColumns, List<Column> updatedColumns, boolean patchOperation) {
+  private void updateColumns(List<Column> storedColumns, List<Column> updatedColumns,
+                             ColumnChanges changes, boolean patchOperation) {
     // Carry forward the user generated metadata from existing columns to new columns
     for (Column updated : updatedColumns) {
       // Find stored column matching name, data type and ordinal position
@@ -532,7 +550,7 @@ public abstract class TableRepository {
               .findAny()
               .orElse(null);
       if (stored == null) {
-        // TODO versioning of schema
+        changes.columnsAdded++;
         LOG.info("Column {} was newly added", updated.getFullyQualifiedName());
         continue;
       }
@@ -544,14 +562,8 @@ public abstract class TableRepository {
         updated.setDescription(stored.getDescription()); // Carry forward non-empty description
       }
 
-      // Remove all tags for the table and columns
-      EntityUtil.removeTagsByPrefix(tagDAO(), stored.getFullyQualifiedName());
-
-      // Update tags
-      updated.setTags(updated.getTags());
-
       if (updated.getChildren() != null && stored.getChildren() != null) {
-        updateColumns(stored.getChildren(), updated.getChildren(), patchOperation);
+        updateColumns(stored.getChildren(), updated.getChildren(), changes, patchOperation);
       }
     }
 
@@ -566,15 +578,15 @@ public abstract class TableRepository {
               .findAny()
               .orElse(null);
       if (updated == null) {
-        // TODO versioning of schema addedColumns.add(stored);
         LOG.info("Column {} was deleted", stored.getFullyQualifiedName());
+        changes.columnsDeleted++;
       }
     }
   }
 
-  private void updateColumns(Table storedTable, Table updatedTable, boolean patchOperation) {
-    updateColumns(storedTable.getColumns(), updatedTable.getColumns(), patchOperation);
-    storedTable.setColumns(updatedTable.getColumns());
+  // TODO remove this method
+  private void updateColumns(Table storedTable, Table updatedTable, ColumnChanges changes, boolean patchOperation) {
+    updateColumns(storedTable.getColumns(), updatedTable.getColumns(), changes, patchOperation);
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -803,5 +815,11 @@ public abstract class TableRepository {
 
     @SqlUpdate("DELETE FROM table_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  public static class ColumnChanges {
+    int columnsAdded = 0;
+    int columnsUpdated = 0;
+    int columnsDeleted = 0;
   }
 }

@@ -21,7 +21,6 @@ import org.skife.jdbi.v2.sqlobject.SqlQuery;
 import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 
 public interface EntityExtensionDAO {
-  // TODO change the ids from String to binary UUID
   @SqlUpdate("REPLACE INTO entity_extension(id, extension, jsonSchema, json) " +
           "VALUES (:id, :extension, :jsonSchema, :json)")
   void insert(@Bind("id") String id, @Bind("extension") String extension, @Bind("jsonSchema") String jsonSchema,

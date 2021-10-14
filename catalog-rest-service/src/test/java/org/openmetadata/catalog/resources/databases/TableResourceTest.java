@@ -219,7 +219,7 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException, InterruptedException {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = create(test).withDescription("description");
@@ -358,8 +358,9 @@ public class TableResourceTest extends CatalogApplicationTest {
     createAndCheckTable(request, adminAuthHeaders());
 
     // Update table two times successfully with PUT requests
-    updateAndCheckTable(request, OK, adminAuthHeaders());
-    updateAndCheckTable(request, OK, adminAuthHeaders());
+    Double version1 = updateAndCheckTable(request, OK, adminAuthHeaders()).getVersion();
+    Double version2 = updateAndCheckTable(request, OK, adminAuthHeaders()).getVersion();
+    assertEquals(version1, version2); // No version change
   }
 
   @Test
@@ -374,32 +375,35 @@ public class TableResourceTest extends CatalogApplicationTest {
   public void put_tableNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with null description
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    createAndCheckTable(request, adminAuthHeaders());
+    Table table = createAndCheckTable(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Table table = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", table.getDescription());
+    Table updatedTable = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    assertEquals("newDescription", updatedTable.getDescription());
+    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion());
   }
 
   @Test
   public void put_tableEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    createAndCheckTable(request, adminAuthHeaders());
+    Table table = createAndCheckTable(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Table table = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", table.getDescription());
+    Table updatedTable = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    assertEquals("newDescription", updatedTable.getDescription());
+    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion());
   }
 
   @Test
   public void put_tableNonEmptyDescriptionUpdateIgnored_200(TestInfo test) throws HttpResponseException {
     CreateTable request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    createAndCheckTable(request, adminAuthHeaders());
+    Table table = createAndCheckTable(request, adminAuthHeaders());
 
     // Updating non-empty description is ignored
-    Table table = updateTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", table.getDescription());
+    Table updatedTable = updateTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    assertEquals("description", updatedTable.getDescription());
+    assertEquals(table.getVersion(), updatedTable.getVersion()); // No version change since description remained the same
   }
 
   @Test
@@ -409,14 +413,16 @@ public class TableResourceTest extends CatalogApplicationTest {
     checkOwnerOwns(USER_OWNER1, table.getId(), true);
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckTable(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
-    checkOwnerOwns(USER_OWNER1, table.getId(), false);
-    checkOwnerOwns(TEAM_OWNER1, table.getId(), true);
+    Table updatedTable = updateAndCheckTable(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    checkOwnerOwns(USER_OWNER1, updatedTable.getId(), false);
+    checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), true);
+    assertEquals(updatedTable.getVersion() + 0.1, updatedTable.getVersion());
 
     // Remove ownership
-    table = updateAndCheckTable(request.withOwner(null), OK, adminAuthHeaders());
-    assertNull(table.getOwner());
-    checkOwnerOwns(TEAM_OWNER1, table.getId(), false);
+    updatedTable = updateAndCheckTable(request.withOwner(null), OK, adminAuthHeaders());
+    assertNull(updatedTable.getOwner());
+    checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), false);
+    assertEquals(table.getVersion() + 0.2, updatedTable.getVersion());
   }
 
   @Test
@@ -428,7 +434,14 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Update the table with constraints
     request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    updateAndCheckTable(request, OK, adminAuthHeaders());
+    Table updatedTable = updateAndCheckTable(request, OK, adminAuthHeaders());
+    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion()); // Adding constraint is backward compatible
+
+    // Update the table with new constraints
+    request = create(test).withOwner(USER_OWNER1).withDescription("description");
+    updatedTable = updateAndCheckTable(request, OK, adminAuthHeaders());
+    assertEquals(Math.floor(table.getVersion()) + 1.0, updatedTable.getVersion()); // Changing constraint is backward
+    // incompatible
   }
 
   @Test
