@@ -14,7 +14,7 @@
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376300-e600d100-d5a7-11eb-8ceb-e90b5e265ce9.png)
 
-* Click **Applications -&gt; Applications** available on the left side of the panel.
+* Click **Applications -> Applications** available on the left side of the panel.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376308-e7ca9480-d5a7-11eb-84f8-9d8dce921c68.png)
 
@@ -34,18 +34,18 @@
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376314-e9945800-d5a7-11eb-866b-5af5ca003f1e.png)
 
 * Once selected, click **Next**.
-* Provide the necessary input and click **Save**.
+* Select **Refresh token**, **Implicit(Hybrid)**. Once selected Implicit option, select **Allow ID token with implicit grant type**. In Refresh token behavior. Select **Use persistent token**. Provide the necessary input and click **Save**.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376319-eac58500-d5a7-11eb-9167-a0d1cb8aedce.png)
+![](../../../../.gitbook/assets/screenshot-from-2021-09-20-14-14-14.png)
 
 * The app is now configured.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
+![](<../../../../.gitbook/assets/screenshot-from-2021-09-20-14-11-53 (1).png>)
 
 ## Step 4: Where to find the credentials
 
 * Once the app is configured, now the **Client Id** and **Client secret** can be used.
-* You can also go to **Application -&gt; Application** like in step 2.
+* You can also go to **Application -> Application** like in step 2.
 * You should be able to see your application in the list.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123376803-b605fd80-d5a8-11eb-94ce-42f38dca99a1.png)
@@ -53,7 +53,7 @@
 * Click on your application.
 * You will find your **Client id**, **Client secret,** and **Okta domain**.
 
-![Alt text](https://user-images.githubusercontent.com/83201188/123376795-b43c3a00-d5a8-11eb-8a83-f146959f31c9.png)
+![](../../../../.gitbook/assets/screenshot-from-2021-09-20-14-59-07.png)
 
 * To get your **issuer** and **audience** click on **Sign On** available on top of the form.
 
@@ -61,9 +61,8 @@
 
 ## Step 5: Adding the details in openmetadata-security.yaml
 
-* Once the **Client Id**, **Client secret**, **issuer,** and **audience** are generated.
+*   Once the **Client Id**, **Client secret**, **issuer,** and **audience** are generated.
 
-  Add those details in the openmetadata-security.yaml file in the respective field.
+    Add those details in the openmetadata-security.yaml file in the respective field.
 
 ![Alt text](https://user-images.githubusercontent.com/83201188/123380400-054e2d00-d5ad-11eb-9937-2813f69cb268.png)
-

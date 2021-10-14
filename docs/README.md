@@ -5,7 +5,7 @@ Metadata enables you to unlock the value of data assets in the common use cases 
 
 ### **OpenMetadata is an open standard with a centralized metadata store that unifies all your data assets end-to-end to enable data discovery, user collaboration, and tool interoperability.**
 
-![](.gitbook/assets/openmetadata-overview%20%281%29.png)
+![](<../.gitbook/assets/openmetadata-overview (1).png>)
 
 OpenMetadata includes the following:
 
@@ -18,4 +18,3 @@ OpenMetadata includes the following:
 ## License
 
 OpenMetadata is released under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-

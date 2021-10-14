@@ -2,9 +2,11 @@
 
 We highly recommend using Airflow or similar schedulers to run Metadata Connectors. Below is the sample code example you can refer to integrate with Airflow
 
-## Airflow Example for Hive
+## Airflow Example for Sample Data
 
 ```python
+import pathlib
+import json
 from datetime import timedelta
 from airflow import DAG
 
@@ -25,22 +27,44 @@ default_args = {
     "execution_timeout": timedelta(minutes=60),
 }
 
+config = """
+{
+  "source": {
+    "type": "sample-data",
+    "config": {
+      "sample_data_folder": "./examples/sample_data"
+    }
+  },
+  "sink": {
+    "type": "metadata-rest",
+    "config": {}
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
+"""
 
 def metadata_ingestion_workflow():
-    config = load_config_file("examples/workflows/hive.json")
-    workflow = Workflow.create(config)
-    workflow.run()
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
     workflow.stop()
 
 
 with DAG(
-    "hive_metadata_ingestion_workflow"
+    "sample_data",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
-    schedule_interval=timedelta(days=1),
-    start_date=days_ago(30),
+    start_date=days_ago(1),
+    is_paused_upon_creation=False,
+    schedule_interval='*/5 * * * *', 
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(
@@ -53,13 +77,12 @@ we are using a python method like below
 
 ```python
 def metadata_ingestion_workflow():
-    config = load_config_file("examples/workflows/hive.json")
-    workflow = Workflow.create(config)
-    workflow.run()
+    workflow_config = json.loads(config)
+    workflow = Workflow.create(workflow_config)
+    workflow.execute()
     workflow.raise_from_status()
     workflow.print_status()
-    workflow.stop()
+    workflow.stop
 ```
 
-Create a Workflow instance and pass a hive configuration which will read metadata from Hive and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](connectors/).
-
+Create a Workflow instance and pass a sample-data configuration which will read metadata from Json files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](connectors/).

@@ -31,7 +31,7 @@ metadata ingest -c ./examples/workflows/snowflake_usage.json
 
 ### Configuration
 
-{% code title="snowflake\_usage.json" %}
+{% code title="snowflake_usage.json" %}
 ```javascript
 {
   "source": {
@@ -51,17 +51,17 @@ metadata ingest -c ./examples/workflows/snowflake_usage.json
 
 1. **username** - pass the Snowflake username.
 2. **password** - the password for the Snowflake username.
-3. **service\_name** - Service Name for this Snowflake cluster. If you added the Snowflake cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
+3. **service_name** - Service Name for this Snowflake cluster. If you added the Snowflake cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
 
 ### Publish to OpenMetadata
 
 Below is the configuration to publish Snowflake Usage data into the OpenMetadata service.
 
-Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage` bulk\_sink along with `metadata-server` config
+Add Optionally `query-parser` processor, `table-usage` stage and`metadata-usage` bulk_sink along with `metadata-server` config
 
-{% code title="snowflake\_usage.json" %}
+{% code title="snowflake_usage.json" %}
 ```javascript
 {
   "source": {
@@ -112,4 +112,3 @@ Add Optionally `query-parser` processor, `table-usage` stage  and`metadata-usage
 
 ```
 {% endcode %}
-

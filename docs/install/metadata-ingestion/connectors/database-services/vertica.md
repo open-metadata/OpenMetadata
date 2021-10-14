@@ -49,11 +49,10 @@ metadata ingest -c ./examples/workflows/vertica.json
 ```
 {% endcode %}
 
-1. **username** - pass the Vertica username.
-2. **password** - the password for the Vertica username.
-3. **service\_name** - Service Name for this Vertica cluster. If you added the Vertica cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
-5. **database -** Database name from where data is to be fetched.
+1. **username **- pass the Vertica username.
+2. **password** - password for the username.
+3. **service_name** - Service Name for this Vertica cluster. If you added Vertica cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ### Publish to OpenMetadata
 
