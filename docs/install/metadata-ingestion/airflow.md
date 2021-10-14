@@ -17,14 +17,15 @@ except ModuleNotFoundError:
 
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
+from airflow.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
-    "email_on_failure": True,
+    "email_on_failure": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60),
+    "execution_timeout": timedelta(minutes=60)
 }
 
 config = """
@@ -69,7 +70,7 @@ with DAG(
 ) as dag:
     ingest_task = PythonOperator(
         task_id="ingest_using_recipe",
-        python_callable=metadata_ingestion_workflow(),
+        python_callable=metadata_ingestion_workflow,
     )
 ```
 

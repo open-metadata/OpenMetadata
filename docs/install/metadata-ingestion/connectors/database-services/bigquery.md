@@ -10,10 +10,9 @@ description: This guide will help install BigQuery connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -26,13 +25,12 @@ pip install 'openmetadata-ingestion[bigquery]'
 ## Run Manually
 
 ```bash
-export GOOGLE_APPLICATION_CREDENTIALS="$PWD/examples/creds/bigquery-cred.json"
 metadata ingest -c ./examples/workflows/bigquery.json
 ```
 
 ### Configuration
 
-{% code title="bigquery-creds.json \(boilerplate\)" %}
+{% code title="bigquery-creds.json (boilerplate)" %}
 ```javascript
 {
   "type": "service_account",
@@ -46,7 +44,6 @@ metadata ingest -c ./examples/workflows/bigquery.json
   "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
   "client_x509_cert_url": ""
 }
-
 ```
 {% endcode %}
 
@@ -60,6 +57,9 @@ metadata ingest -c ./examples/workflows/bigquery.json
       "host_port": "bigquery.googleapis.com",
       "username": "username",
       "service_name": "gcp_bigquery",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
@@ -77,15 +77,18 @@ metadata ingest -c ./examples/workflows/bigquery.json
 
 1. **username** - pass the Bigquery username.
 2. **password** - the password for the Bigquery username.
-3. **service\_name** - Service Name for this Bigquery cluster. If you added the Bigquery cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
+3. **service_name** - Service Name for this Bigquery cluster. If you added the Bigquery cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
+6. **data_profiler_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
+7. **data_profiler_offset** - Specify offset.
+8. **data_profiler_limit** - Specify limit.
 
 ### Publish to OpenMetadata
 
 Below is the configuration to publish Bigquery data into the OpenMetadata service.
 
-Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally`pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="bigquery.json" %}
 ```javascript
@@ -97,6 +100,9 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
       "host_port": "bigquery.googleapis.com",
       "username": "username",
       "service_name": "gcp_bigquery",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "options": {
         "credentials_path": "examples/creds/bigquery-cred.json"
       },
@@ -121,9 +127,14 @@ Add Optionally`pii` processor and `metadata-rest-tables` sink along with `metada
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
-
 ```
 {% endcode %}
-

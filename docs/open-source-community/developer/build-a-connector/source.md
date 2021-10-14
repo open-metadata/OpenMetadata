@@ -1,6 +1,6 @@
 # Source
 
-Source is the connector to external systems and outputs a record for downstream to process and push to OpenMetadata.
+The Source is the connector to external systems and outputs a record for downstream to process and push to OpenMetadata.
 
 ## Source API
 
@@ -31,9 +31,9 @@ class Source(Closeable, metaclass=ABCMeta):
 
 **prepare** will be called through Python's init method. This will be a place where you could make connections to external sources or initiate the client library
 
-**next\_record** is where the client can connect to external resource and emit the data downstream
+**next_record** is where the client can connect to an external resource and emit the data downstream
 
-**get\_status** is for [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings
+**get_status** is for the [workflow](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/api/workflow.py) to call and report the status of the source such as how many records its processed any failures or warnings
 
 ## Example
 
@@ -79,4 +79,3 @@ class SampleTablesSource(Source):
     def get_status(self):
         return self.status
 ```
-

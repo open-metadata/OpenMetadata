@@ -58,9 +58,3 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 [vertica.md](vertica.md)
 {% endcontent-ref %}
 
-{% page-ref page="trino.md" %}
-
-{% page-ref page="vertica.md" %}
-
-
-

@@ -10,16 +10,14 @@ description: This guide will help install Kafka connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
 ```bash
 pip install 'openmetadata-ingestion[kafka]'
-python -m spacy download en_core_web_sm
 ```
 {% endtab %}
 {% endtabs %}
@@ -27,7 +25,7 @@ python -m spacy download en_core_web_sm
 ### Run Manually
 
 ```bash
-metadata ingest -c ./pipelines/confluent_kafka.json
+metadata ingest -c ./examples/workflows/confluent_kafka.json
 ```
 
 ### Configuration
@@ -57,7 +55,7 @@ metadata ingest -c ./pipelines/confluent_kafka.json
 
 Below is the configuration to publish Kafka data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="confluent_kafka.json" %}
 ```javascript
@@ -84,6 +82,13 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
 ```

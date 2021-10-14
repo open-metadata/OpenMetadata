@@ -1,6 +1,6 @@
 # Stage
 
-**Stage** is an optional component in workflow. It can be used to store the records in a file or data store and can be used to aggregate the work done by a processor.
+The **Stage** is an optional component in the workflow. It can be used to store the records in a file or data store and can be used to aggregate the work done by a processor.
 
 ## API
 
@@ -27,17 +27,17 @@ class Stage(Closeable, metaclass=ABCMeta):
         pass
 ```
 
-**create** method is called during the workflow instantiation and creates a instance of the processor
+**create** method is called during the workflow instantiation and creates an instance of the processor
 
-**stage\_record** this method is called for each record coming down in workflow chain and can be used to store the record. This method doesn't emit anything for the downstream to process on.
+**stage_record** this method is called for each record coming down in the workflow chain and can be used to store the record. This method doesn't emit anything for the downstream to process on.
 
-**get\_status** to report the status of the stage ex: how many records, failures or warnings etc..
+**get_status** to report the status of the stage ex: how many records, failures or warnings etc.
 
-**close** gets called before the workflow stops. Can be used to cleanup any connections or other resources.
+**close** gets called before the workflow stops. Can be used to clean up any connections or other resources.
 
 ## Example
 
-Example implmentation
+Example implementation
 
 ```python
 class FileStage(Stage):
@@ -74,4 +74,3 @@ class FileStage(Stage):
     def close(self):
         self.file.close()
 ```
-

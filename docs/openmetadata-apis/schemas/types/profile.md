@@ -7,13 +7,12 @@ This schema defines the type for a profile of a user, team, or organization.
 Type: `object`
 
 ## Properties
- - **images**
-   - $ref: [#/definitions/imageList](#imagelist)
 
 * **images**
   * $ref: [#/definitions/imageList](profile.md#imagelist)
 
 ## Type definitions in this schema
+
 ### imageList
 
 * Links to a list of images of varying resolutions/sizes.

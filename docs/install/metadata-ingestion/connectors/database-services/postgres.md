@@ -10,10 +10,9 @@ description: This guide will help install Postgres connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+## Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -23,13 +22,13 @@ pip install 'openmetadata-ingestion[postgres]'
 {% endtab %}
 {% endtabs %}
 
-### Run Manually
+## Run Manually
 
 ```bash
 metadata ingest -c ./examples/workflows/postgres.json
 ```
 
-### Configuration
+## Configuration
 
 {% code title="postgres.json" %}
 ```javascript
@@ -41,7 +40,10 @@ metadata ingest -c ./examples/workflows/postgres.json
       "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
-      "service_name": "local_postgres"
+      "service_name": "local_postgres",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
  ...
@@ -50,15 +52,18 @@ metadata ingest -c ./examples/workflows/postgres.json
 
 1. **username** - pass the Postgres username.
 2. **password** - the password for the Postgres username.
-3. **service\_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
+3. **service_name** - Service Name for this Postgres cluster. If you added the Postgres cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.
+6. **data_profiler_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
+7. **data_profiler_offset** - Specify offset.
+8. **data_profiler_limit** - Specify limit.
 
-### Publish to OpenMetadata
+## Publish to OpenMetadata
 
 Below is the configuration to publish Postgres data into the OpenMetadata service.
 
-Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="postgres.json" %}
 ```javascript
@@ -70,7 +75,10 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "password": "openmetadata_password",
       "host_port": "localhost:5432",
       "database": "pagila",
-      "service_name": "local_postgres"
+      "service_name": "local_postgres",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000"
     }
   },
   "sink": {
@@ -83,8 +91,14 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
 ```
 {% endcode %}
-

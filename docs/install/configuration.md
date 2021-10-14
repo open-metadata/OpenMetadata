@@ -4,7 +4,7 @@ description: This document describes OpenMetadata Server Configuration
 
 # Configuration
 
-```text
+```
 swagger:
   resourcePackage: org.openmetadata.catalog.resources
 
@@ -70,7 +70,7 @@ health:
 
 ## Server Port
 
-```text
+```
 server:
   rootPath: '/api/*'
   applicationConnectors:
@@ -85,7 +85,7 @@ By default, the OpenMetadata server runs on port 8585. It uses Jetty Server. The
 
 ## Database
 
-```text
+```
 database:
   # the name of the JDBC driver, mysql in our case
   driverClass: com.mysql.cj.jdbc.Driver
@@ -100,7 +100,7 @@ The above section is database connection details to MySQL database. We recommend
 
 ## ElasticSearch
 
-```text
+```
 elasticsearch:
   host: localhost
   port: 9200
@@ -110,18 +110,18 @@ ElasticSearch is one of the pre-requisites to run OpenMetadata. Default configur
 
 ## EventHandlers
 
-```text
+```
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
     - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
 ```
 
-EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you to leave it there as it enhances the user experience.
+EventHandler configuration is optional. It will update the AuditLog in MySQL DB and also ElasticSearch indexes whenever any entity is updated either through UI or API interactions. We recommend you leave it there as it enhances the user experience.
 
 ## Healthcheck
 
-```text
+```
 health:
   delayedShutdownHandlerEnabled: true
   shutdownWaitPeriod: 1s
@@ -140,5 +140,4 @@ Healthcheck API provides an API endpoint to check the OpenMetadata server health
 
 ## Security
 
-Please follow our [Enable Security Guide](https://github.com/open-metadata/OpenMetadata/tree/63c66391cf27d4d77c4b5c21750d9c09bfa44049/install/enable-security.md) guide to configure security for your OpenMetadata installation.
-
+Please follow our [Enable Security Guide](https://docs.open-metadata.org/install/enable-security) guide to configure security for your OpenMetadata installation.
