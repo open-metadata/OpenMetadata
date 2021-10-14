@@ -39,8 +39,7 @@ config = """
 def metadata_ingestion_workflow():
     config_file = pathlib.Path("/ingestion/pipelines/metadata_to_es.json")
     workflow_config = load_config_file(config_file)
-    if workflow_config.get('cron'):
-        del workflow_config['cron']
+    
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
