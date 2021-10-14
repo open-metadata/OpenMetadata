@@ -16,7 +16,6 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import classNames from 'classnames';
 import { isNull, lowerCase } from 'lodash';
 import { ServiceCollection, ServiceData, ServiceTypes } from 'Models';
 import React, { useEffect, useState } from 'react';
@@ -28,6 +27,7 @@ import {
   postService,
   updateService,
 } from '../../axiosAPIs/serviceAPI';
+import { Button } from '../../components/buttons/Button/Button';
 import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import Searchbar from '../../components/common/searchbar/Searchbar';
@@ -46,7 +46,6 @@ import {
 import {
   arrServiceTypes,
   NoDataFoundPlaceHolder,
-  PLUS,
   servicesDisplayName,
 } from '../../constants/services.const';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -57,7 +56,6 @@ import {
 import { DatabaseService } from '../../generated/entity/services/databaseService';
 import { MessagingService } from '../../generated/entity/services/messagingService';
 import { PipelineService } from '../../generated/entity/services/pipelineService';
-import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
 import { getCountBadge, getTabClasses } from '../../utils/CommonUtils';
 import { getFrequencyTime, serviceTypeLogo } from '../../utils/ServiceUtils';
@@ -82,7 +80,6 @@ export type ApiData = {
 
 const ServicesPage = () => {
   const showToast = useToastContext();
-  const { isAdminUser, isAuthDisabled } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [serviceName, setServiceName] =
     useState<ServiceTypes>('databaseServices');
@@ -96,6 +93,12 @@ const ServicesPage = () => {
   const [editData, setEditData] = useState<ServiceDataObj>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchText, setSearchText] = useState('');
+  const [servicesCount, setServicesCount] = useState({
+    databaseServices: 0,
+    messagingServices: 0,
+    dashboardServices: 0,
+    pipelineServices: 0,
+  });
 
   const updateServiceList = (
     allServiceCollectionArr: Array<ServiceCollection>
@@ -119,6 +122,12 @@ const ServicesPage = () => {
                 serviceArr[i];
             }
             setServices(serviceRecord);
+            setServicesCount({
+              databaseServices: serviceRecord.databaseServices.length,
+              messagingServices: serviceRecord.messagingServices.length,
+              dashboardServices: serviceRecord.dashboardServices.length,
+              pipelineServices: serviceRecord.pipelineServices.length,
+            });
             setServiceList(
               serviceRecord[serviceName] as unknown as Array<ServiceDataObj>
             );
@@ -131,13 +140,13 @@ const ServicesPage = () => {
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
     const curServ = services[serviceName];
-    setServiceList(
-      (curServ as unknown as Array<ServiceDataObj>).filter(
-        (serv) =>
-          serv.description?.includes(lowerCase(searchValue)) ||
-          serv.name?.includes(lowerCase(searchValue))
-      )
+    const updatedResult = (curServ as unknown as Array<ServiceDataObj>).filter(
+      (serv) =>
+        serv.description?.includes(lowerCase(searchValue)) ||
+        serv.name?.includes(lowerCase(searchValue))
     );
+    setServiceList(updatedResult);
+    setServicesCount({ ...servicesCount, [serviceName]: updatedResult.length });
   };
   const handleAddService = () => {
     setEditData(undefined);
@@ -192,6 +201,10 @@ const ServicesPage = () => {
           };
           const updatedServiceList = [...serviceList, updatedData];
           setServices({ ...services, [serviceName]: updatedServiceList });
+          setServicesCount((pre) => ({
+            ...servicesCount,
+            [serviceName]: pre[serviceName] + 1,
+          }));
           setServiceList(updatedServiceList);
           resolve();
         })
@@ -230,6 +243,10 @@ const ServicesPage = () => {
       if (res.statusText === 'OK') {
         const updatedServiceList = serviceList.filter((s) => s.id !== id);
         setServices({ ...services, [serviceName]: updatedServiceList });
+        setServicesCount((pre) => ({
+          ...servicesCount,
+          [serviceName]: pre[serviceName] - 1,
+        }));
         setServiceList(updatedServiceList);
       }
     });
@@ -258,6 +275,16 @@ const ServicesPage = () => {
           displayName: servicesDisplayName[type],
         };
       });
+  };
+
+  const handleTabChange = (tabName: ServiceTypes) => {
+    setSearchText('');
+    setServicesCount({
+      ...servicesCount,
+      [serviceName]: services[serviceName].length,
+    });
+    setServiceName(tabName);
+    setServiceList(services[tabName] as unknown as Array<ServiceDataObj>);
   };
 
   const getOptionalFields = (service: ServiceDataObj): JSX.Element => {
@@ -360,25 +387,41 @@ const ServicesPage = () => {
                     className={getTabClasses(tab.name, serviceName)}
                     data-testid="tab"
                     key={index}
-                    onClick={() => {
-                      setServiceName(tab.name);
-                      setServiceList(
-                        services[tab.name] as unknown as Array<ServiceDataObj>
-                      );
-                    }}>
+                    onClick={() => handleTabChange(tab.name)}>
                     {tab.displayName}
-                    {getCountBadge(services[tab.name].length)}
+                    {getCountBadge(servicesCount[tab.name])}
                   </button>
                 ))}
               </nav>
             </div>
-            <div className="md:tw-w-2/6 sm:tw-w-2/5">
-              <Searchbar
-                placeholder={`Search for ${servicesDisplayName[serviceName]}...`}
-                searchValue={searchText}
-                typingInterval={1500}
-                onSearch={handleSearchAction}
-              />
+            <div className="tw-flex">
+              <div className="tw-w-4/12">
+                {searchText || serviceList.length > 0 ? (
+                  <Searchbar
+                    placeholder={`Search for ${servicesDisplayName[serviceName]}...`}
+                    searchValue={searchText}
+                    typingInterval={100}
+                    onSearch={handleSearchAction}
+                  />
+                ) : null}
+              </div>
+              <div className="tw-w-8/12 tw-flex tw-justify-end">
+                {serviceList.length > 0 ? (
+                  <NonAdminAction
+                    position="bottom"
+                    title={TITLE_FOR_NON_ADMIN_ACTION}>
+                    <Button
+                      className="tw-h-8 tw-rounded tw-mb-2"
+                      data-testid="add-new-user-button"
+                      size="small"
+                      theme="primary"
+                      variant="contained"
+                      onClick={() => handleAddService()}>
+                      Add New Service
+                    </Button>
+                  </NonAdminAction>
+                ) : null}
+              </div>
             </div>
             {serviceList.length ? (
               <div
@@ -481,26 +524,6 @@ const ServicesPage = () => {
                     </div>
                   </div>
                 ))}
-                <NonAdminAction
-                  className="tw-card"
-                  position="right"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <div
-                    className={classNames('tw-inline-block', {
-                      'tw-opacity-40': !isAdminUser && !isAuthDisabled,
-                    })}
-                    style={{ width: '100%' }}>
-                    <div
-                      className="tw-cursor-pointer tw-flex tw-flex-col tw-justify-center tw-items-center tw-py-6"
-                      data-testid="add-services"
-                      onClick={() => handleAddService()}>
-                      <img alt="Add service" src={PLUS} />
-                      <p className="tw-text-base tw-font-normal tw-mt-4">
-                        Add new {servicesDisplayName[serviceName]}
-                      </p>
-                    </div>
-                  </div>
-                </NonAdminAction>
               </div>
             ) : (
               <div className="tw-flex tw-items-center tw-flex-col">
@@ -513,7 +536,9 @@ const ServicesPage = () => {
                 </div>
                 <div className="tw-mt-11">
                   <p className="tw-text-lg tw-text-center">
-                    No services found for {`"${searchText}"`}
+                    {`No services found ${
+                      searchText ? `for "${searchText}"` : ''
+                    }`}
                   </p>
                   <p className="tw-text-lg tw-text-center">
                     <button
