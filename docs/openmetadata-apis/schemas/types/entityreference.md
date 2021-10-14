@@ -21,6 +21,9 @@ This schema <u>does not</u> accept additional properties.
  - **description**
    - Optional description of entity.
    - Type: `string`
+ - **displayName**
+   - Display Name that identifies this entity.
+   - Type: `string`
  - **href**
    - Link to the entity resource.
    - $ref: [basic.json#/definitions/href](basic.md#href)
@@ -35,4 +38,4 @@ This schema <u>does not</u> accept additional properties.
 
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

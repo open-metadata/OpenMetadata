@@ -9,6 +9,7 @@ description: This guide will help install Hive connector and run manually
 
 1. Python 3.7 or above
 2. Library: **libsasl2-dev** Hive connector uses `pyhive` to connect and fetch metadata. Pyhive has python sasl dependency and which requires libsasl2-dev to be installed. In some cases, you may need to set LD\_LIBRARY\_PATH to point to where libsasl2-dev is installed. Please check on how to install libsasl2 for your Linux Distro.
+3. OpenMetadata Server up and running
 {% endhint %}
 
 ### Install from PyPI or Source
@@ -77,7 +78,6 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
     "day_of_week": null
   }
 }
-
 
 ```
 {% endcode %}

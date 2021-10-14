@@ -16,6 +16,9 @@ Type: `object`
  - **fullyQualifiedName**
    - Name that uniquely identifies a database in the format 'ServiceName.DatabaseName'.
    - Type: `string`
+ - **displayName**
+     - Display Name that identifies this database.
+     - Type: `string`
  - **description**
    - Description of the database instance.
    - Type: `string`
@@ -46,4 +49,4 @@ Type: `object`
 
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

@@ -14,6 +14,9 @@ Type: `object`
    - Name that identifies this database service.
    - Type: `string`
    - Length: between 1 and 64
+ - **displayName**
+     - Display Name that identifies this database service.
+     - Type: `string`
  - **serviceType** `required`
    - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
    - $ref: [#/definitions/databaseServiceType](#databaseservicetype)
@@ -50,4 +53,4 @@ Type: `object`
    11. _"Trino"_
    12. _"Vertica"_
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

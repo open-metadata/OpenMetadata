@@ -18,6 +18,9 @@ Type: `object`
    - A unique name that identifies a metric in the format 'ServiceName.MetricName'.
    - Type: `string`
    - Length: between 1 and 64
+ - **displayName**
+     - Display Name that identifies this metric.
+     - Type: `string`
  - **description**
    - Description of metrics instance, what it is, and how to use it.
    - Type: `string`
@@ -34,4 +37,4 @@ Type: `object`
    - Latest usage information for this database.
    - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

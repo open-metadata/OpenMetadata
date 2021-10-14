@@ -34,12 +34,13 @@ metadata ingest -c ./examples/workflows/trino.json
 {% code title="trino.json" %}
 
 ```javascript
+{
   "source": {
     "type": "trino",
     "config": {
       "service_name": "local_trino",
-      "host_port": "192.168.1.32:8080",
-      "database": "default"
+      "host_port": "localhost:8080",
+      "catalog": "system"
     }
   }, ...
 ```
@@ -63,11 +64,11 @@ add `metadata-rest-tables` sink along with `metadata-server` config
 ```javascript
 {
   "source": {
-    "type": "Trino",
+    "type": "trino",
     "config": {
       "service_name": "local_trino",
-      "host_port": "192.168.1.32:8080",
-      "database": "default"
+      "host_port": "localhost:8080",
+      "catalog": "system"
     }
   },
   "sink": {

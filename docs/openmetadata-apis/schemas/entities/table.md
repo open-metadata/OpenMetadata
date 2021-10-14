@@ -13,6 +13,9 @@ Type: `object`
  - **name** `required`
    - Name of a table. Expected to be unique within a database.
    - $ref: [#/definitions/tableName](#tablename)
+ - **displayName**
+     - Display Name that identifies this table. It could be title or label from the source services.
+     - Type: `string`
  - **description**
    - Description of a table.
    - Type: `string`
@@ -337,4 +340,4 @@ Type: `object`
 
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

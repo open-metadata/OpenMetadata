@@ -34,4 +34,4 @@ Type: `object`
    - Type of Entity that is modified by the operation.
    - Type: `string`
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

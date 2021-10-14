@@ -57,4 +57,4 @@ This schema <u>does not</u> accept additional properties.
      - Type: `string`
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_

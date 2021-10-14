@@ -11,6 +11,9 @@ This schema <u>does not</u> accept additional properties.
 ## Properties
  - **name** `required`
    - $ref: [#/definitions/tagName](#tagname)
+ - **displayName**
+     - Display Name that identifies this tag category.
+     - Type: `string`
  - **description** `required`
    - Description of the tag category.
    - Type: `string`
@@ -49,4 +52,4 @@ This schema <u>does not</u> accept additional properties.
 ### tag
 
 
-_This document was updated on: Tuesday, October 12, 2021_
+_This document was updated on: Thursday, October 14, 2021_
