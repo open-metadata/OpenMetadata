@@ -417,7 +417,7 @@ const ServicesPage = () => {
                       theme="primary"
                       variant="contained"
                       onClick={() => handleAddService()}>
-                      Add Service
+                      Add New Service
                     </Button>
                   </NonAdminAction>
                 ) : null}
@@ -537,9 +537,7 @@ const ServicesPage = () => {
                 <div className="tw-mt-11">
                   <p className="tw-text-lg tw-text-center">
                     {`No services found ${
-                      searchText || serviceList.length > 0
-                        ? `for "${searchText}"`
-                        : ''
+                      searchText ? `for "${searchText}"` : ''
                     }`}
                   </p>
                   <p className="tw-text-lg tw-text-center">
