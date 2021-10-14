@@ -1,6 +1,6 @@
 # Chart
 
-This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.
+This schema defines the Chart entity. Charts are built using tables or SQL queries by analyzing the data. Charts can be part of Dashboard.
 
 **$id: [https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)**
 
@@ -65,21 +65,21 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### chartType
 
- - This schema defines the type used for describing different types of charts.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"Line"_
-   2. _"Table"_
-   3. _"Bar"_
-   4. _"Area"_
-   5. _"Pie"_
-   6. _"Histogram"_
-   7. _"Scatter"_
-   8. _"Text"_
-   9. _"BoxPlot"_
-   10. _"Other"_
-
+* This schema defines the type used for describing different types of charts.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Line"_
+  2. _"Table"_
+  3. _"Bar"_
+  4. _"Area"_
+  5. _"Pie"_
+  6. _"Histogram"_
+  7. _"Scatter"_
+  8. _"Text"_
+  9. _"BoxPlot"_
+  10. _"Other"_
 
 _This document was updated on: Monday, October 18, 2021_

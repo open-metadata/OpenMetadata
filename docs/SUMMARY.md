@@ -13,7 +13,6 @@
     * [Audit Log](openmetadata-apis/schemas/types/auditlog.md)
     * [Basic Types](openmetadata-apis/schemas/types/basic.md)
     * [Daily Count](openmetadata-apis/schemas/types/dailycount.md)
-    * [Entity Lineage](openmetadata-apis/schemas/types/entitylineage.md)
     * [Entity Reference](openmetadata-apis/schemas/types/entityreference.md)
     * [Entity Usage](openmetadata-apis/schemas/types/entityusage.md)
     * [Jdbc Connection](openmetadata-apis/schemas/types/jdbcconnection.md)
@@ -32,21 +31,17 @@
     * [Messaging Service](openmetadata-apis/schemas/entities/messagingservice.md)
     * [Feed](openmetadata-apis/schemas/entities/thread.md)
     * [Metrics](openmetadata-apis/schemas/entities/metrics.md)
-    * [Model](openmetadata-apis/schemas/entities/model.md)
     * [Pipeline](openmetadata-apis/schemas/entities/pipeline.md)
-    * [Pipeline Service](openmetadata-apis/schemas/entities/pipelineservice.md)
     * [Report](openmetadata-apis/schemas/entities/report.md)
     * [Table](openmetadata-apis/schemas/entities/table.md)
-    * [Tag Category](openmetadata-apis/schemas/entities/tagcategory.md)
-    * [Task](openmetadata-apis/schemas/entities/task.md)
     * [Team](openmetadata-apis/schemas/entities/team.md)
     * [Topic](openmetadata-apis/schemas/entities/topic.md)
+    * [Tag Category](openmetadata-apis/schemas/entities/tagcategory.md)
     * [User](openmetadata-apis/schemas/entities/user.md)
 * [APIs](openmetadata-apis/apis/README.md)
   * [Overview](openmetadata-apis/apis/overview.md)
   * [API Organization](openmetadata-apis/apis/api-organization.md)
   * [Implementation notes](openmetadata-apis/apis/implementation-notes.md)
-  
 
 ## Install
 
@@ -91,7 +86,6 @@
       * [Salesforce](install/metadata-ingestion/connectors/database-services/salesforce.md)
       * [Snowflake](install/metadata-ingestion/connectors/database-services/snowflake.md)
       * [Snowflake Usage](install/metadata-ingestion/connectors/database-services/snowflake-usage.md)
-      * [Trino](install/metadata-ingestion/connectors/database-services/trino.md)
       * [Vertica](install/metadata-ingestion/connectors/database-services/vertica.md)
     * [Messaging Services](install/metadata-ingestion/connectors/messaging-services/README.md)
       * [Kafka](install/metadata-ingestion/connectors/messaging-services/kafka.md)

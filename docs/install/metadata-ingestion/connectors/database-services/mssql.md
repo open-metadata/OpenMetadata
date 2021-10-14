@@ -10,10 +10,9 @@ description: This guide will help install MsSQL connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -54,16 +53,16 @@ metadata ingest -c ./examples/workflows/mssql.json
 
 1. **username** - pass the mssql username.
 2. **password** - the password for the mssql username.
-3. **service\_name** - Service Name for this mssql cluster. If you added the mssql cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **host\_port** - Hostname and Port number where the service is being initialized.
-5. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+3. **service_name** - Service Name for this mssql cluster. If you added the mssql cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **host_port** - Hostname and Port number where the service is being initialized.
+5. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 6. **database** - Database name from where data is to be fetched from.
 
 ## Publish to OpenMetadata
 
 Below is the configuration to publish mssql data into the OpenMetadata service.
 
-Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add Optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="mssql.json" %}
 ```javascript
@@ -92,10 +91,16 @@ Add Optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
 
  ...
 ```
 {% endcode %}
-

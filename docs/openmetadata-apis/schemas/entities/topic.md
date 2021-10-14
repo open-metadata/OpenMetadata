@@ -1,6 +1,6 @@
 # Topic
 
-This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.
+This schema defines the Topic entity. A topic is a feed into which messages are published by publishers and read from by consumers in a messaging service.
 
 **$id: [https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)**
 
@@ -82,30 +82,28 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### topicName
 
- - Name that identifies a topic.
- - Type: `string`
- - The value must match this pattern: `^[^.]*$`
- - Length: between 1 and 64
-
+* Name that identifies a topic.
+* Type: `string`
+* The value must match this pattern: `^[^.]*$`
+* Length: between 1 and 64
 
 ### schemaType
 
- - Schema type used for the message.
- - The value is restricted to the following: 
-   1. _"Avro"_
-   2. _"Protobuf"_
-   3. _"JSON"_
-   4. _"Other"_
-
+* Schema type used for the message.
+* The value is restricted to the following: 
+  1. _"Avro"_
+  2. _"Protobuf"_
+  3. _"JSON"_
+  4. _"Other"_
 
 ### cleanupPolicy
 
- - Topic clean up policy. For Kafka - `cleanup.policy` configuration.
- - The value is restricted to the following: 
-   1. _"delete"_
-   2. _"compact"_
-
+* Topic cleans up policy. For Kafka - `cleanup.policy` configuration.
+* The value is restricted to the following: 
+  1. _"delete"_
+  2. _"compact"_
 
 _This document was updated on: Monday, October 18, 2021_

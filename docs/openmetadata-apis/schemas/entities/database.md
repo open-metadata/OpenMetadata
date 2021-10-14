@@ -49,13 +49,13 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### databaseName
 
- - Name that identifies the database.
- - Type: `string`
- - The value must match this pattern: `^[^.]*$`
- - Length: between 1 and 64
-
+* Name that identifies the database.
+* Type: `string`
+* The value must match this pattern: `^[^.]*$`
+* Length: between 1 and 64
 
 
 _This document was updated on: Monday, October 18, 2021_

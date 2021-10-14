@@ -44,6 +44,7 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### databaseServiceType
 
 - Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...

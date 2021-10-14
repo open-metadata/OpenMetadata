@@ -37,7 +37,7 @@ The following commands must be run from the top-level directory.
 
 `mvn clean install`
 
-If you wish to skip the unit tests you can do this by adding `-DskipTests` to the command line.
+If you wish to skip the unit tests you can do this by adding`-DskipTests`to the command line.
 
 ## Create a distribution (packaging)
 
@@ -61,33 +61,33 @@ dist/target/open-metadata-<version>.tar.gz
 
 Add a new Run/Debug configuration like the below screenshot.
 
-![Intellij Run Configuration](<../../../.gitbook/assets/image (1).png>)
+![Intellij Run Configuration](<../../.gitbook/assets/image (1).png>)
 
 ## Add missing dependency
 
 Right-click on catalog-rest-service
 
-![](../../../.gitbook/assets/image-1-.png)
+![](../../.gitbook/assets/image-1-.png)
 
 Click on "Open Module Settings"
 
-![](../../../.gitbook/assets/image-2-.png)
+![](../../.gitbook/assets/image-2-.png)
 
 Go to "Dependencies"
 
-![](../../../.gitbook/assets/image-3-.png)
+![](../../.gitbook/assets/image-3-.png)
 
 Click “+” at the bottom of the dialog box and click "Add"
 
-![](../../../.gitbook/assets/image-4-.png)
+![](../../.gitbook/assets/image-4-.png)
 
 Click on Library
 
-![](../../../.gitbook/assets/image-5-.png)
+![](../../.gitbook/assets/image-5-.png)
 
 In that list look for "jersey-client:2.25.1"
 
-![](../../../.gitbook/assets/image-6-.png)
+![](../../.gitbook/assets/image-6-.png)
 
 Select it and click "OK". Now run/debug the application.
 

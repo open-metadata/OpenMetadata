@@ -6,7 +6,7 @@ This schema defines the Tag Category entity. A Tag Category contains tags called
 
 Type: `object`
 
-This schema <u>does not</u> accept additional properties.
+This schema does not accept additional properties.
 
 ## Properties
  - **name** `required`
@@ -42,21 +42,20 @@ This schema <u>does not</u> accept additional properties.
 
 
 ## Type definitions in this schema
+
 ### tagName
 
- - Name of the tag.
- - Type: `string`
- - Length: between 2 and 25
-
+* Name of the tag.
+* Type: `string`
+* Length: between 2 and 25
 
 ### tagCategoryType
 
- - Type of tag category.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"Descriptive"_
-   2. _"Classification"_
-
+* Type of tag category.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Descriptive"_
+  2. _"Classification"_
 
 ### tag
 

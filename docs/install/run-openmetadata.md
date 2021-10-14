@@ -28,9 +28,9 @@ docker-compose up
 1. Docker for OpenMetadata will depend on Mysql Container to be up, It may take few seconds to run.
 2. Once OpenMetadata UI is accessible, Go to Scheduler UI -[ http://localhost:7777](http://localhost:7777), to invoke the pipelines to ingest data. 
 
-![Scheduler UI (http://localhost:7777)](../../.gitbook/assets/localhost\_7777\_.png)
+![Scheduler UI (http://localhost:7777)](../.gitbook/assets/localhost\_7777\_.png)
 
-![Invoking a Pipeline for Ingestion](../../.gitbook/assets/localhost\_7777\_-1-.png)
+![Invoking a Pipeline for Ingestion](../.gitbook/assets/localhost\_7777\_-1-.png)
 
 The above command brings up all the necessary services
 
@@ -51,7 +51,7 @@ Scheduler UI available at [http://localhost:7777](http://localhost:7777)
 This is a quick start guide that will show you how to quickly start a standalone server.
 {% endhint %}
 
-### Build from source or download the distribution
+### Download the distribution
 
 **Prerequisites**
 
@@ -64,38 +64,14 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 {% tabs %}
 {% tab title="Download the release" %}
-Download the latest binary release from [OpenMetadata](https://open-metadata.org/download/), Once you have the tar file,
+Download the latest binary release from [OpenMetadata](https://github.com/open-metadata/OpenMetadata/releases/download/0.4.0/openmetadata-0.4.0.tar.gz), Once you have the tar file,
 
 ```bash
 # untar it
-tar -zxvf openmetadata-0.3.0.tar.gz
+tar -zxvf openmetadata-0.4.0.tar.gz
 
 # navigate to directory containing the launcher scripts
-cd openmetadata-0.3.0
-```
-{% endtab %}
-
-{% tab title="Build from source " %}
-Follow these steps to checkout code from [Github](https://github.com/open-metadata/OpenMetadata) and build OpenMetadata locally
-
-{% hint style="info" %}
-**Prerequisites**
-
-Install [Apache Maven](https://maven.apache.org/install.html) 3.6 or higher
-{% endhint %}
-
-```bash
-# checkout OpenMetadata
-git clone https://github.com/open-metadata/OpenMetadata
-cd OpenMetadata
-
-# build OpenMetadata
-mvn install package -DskipTests
-
-# navigate to directory containing the setup scripts
-cd dist/target/
-tar -zxvf openmetadata-0.3.0-SNAPSHOT.tar.gz
-cd openmetadata-0.3.0-SNAPSHOT
+cd openmetadata-0.4.0
 ```
 {% endtab %}
 {% endtabs %}

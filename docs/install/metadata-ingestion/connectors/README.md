@@ -1,7 +1,20 @@
+# Connectors
+
 OpenMetadata supports connectors to some popular services. We will continue as a community to provide more integrations to get all your metadata into a central repository.
 
-{% page-ref page="dashboard-services/" %}
+{% content-ref url="dashboard-services/" %}
+[dashboard-services](dashboard-services/)
+{% endcontent-ref %}
 
-{% page-ref page="database-services/" %}
+{% content-ref url="database-services/" %}
+[database-services](database-services/)
+{% endcontent-ref %}
 
-{% page-ref page="messaging-services/" %}
+{% content-ref url="messaging-services/" %}
+[messaging-services](messaging-services/)
+{% endcontent-ref %}
+
+{% content-ref url="processors/" %}
+[processors](processors/)
+{% endcontent-ref %}
+

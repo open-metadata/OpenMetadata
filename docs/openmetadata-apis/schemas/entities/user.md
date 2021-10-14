@@ -6,7 +6,7 @@ This schema defines the User entity. A user can be part of 0 or more teams. A sp
 
 Type: `object`
 
-This schema <u>does not</u> accept additional properties.
+This schema does not accept additional properties.
 
 ## Properties
  - **id** `required`
@@ -60,10 +60,11 @@ This schema <u>does not</u> accept additional properties.
 
 
 ## Type definitions in this schema
+
 ### userName
 
- - A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.
- - Type: `string`
- - Length: between 1 and 64
+* A unique name of the user, typically the user ID from an identity provider. Example - uuid from LDAP.
+* Type: `string`
+* Length: between 1 and 64
 
 _This document was updated on: Monday, October 18, 2021_

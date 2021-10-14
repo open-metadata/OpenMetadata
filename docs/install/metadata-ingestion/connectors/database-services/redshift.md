@@ -39,11 +39,13 @@ metadata ingest -c ./examples/workflows/redshift.json
       "password": "strong_password",
       "database": "warehouse",
       "service_name": "aws_redshift",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "filter_pattern": {
         "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
       }
-    }
-  },
+    },
 ...
 ```
 {% endcode %}
@@ -53,6 +55,9 @@ metadata ingest -c ./examples/workflows/redshift.json
 3. **service_name** - Service Name for this Redshift cluster. If you added the Redshift cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata.
 5. **database -** Database name from where data is to be fetched.‌
+6. **data_profiler_enabled** - Enable data-profiling (Optional). It will provide you the newly ingested data.
+7. **data_profiler_offset** - Specify offset.
+8. **data_profiler_limit** - Specify limit.
 
 ## Publish to OpenMetadata <a href="publish-to-openmetadata" id="publish-to-openmetadata"></a>
 
@@ -71,11 +76,13 @@ Add Optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
       "password": "strong_password",
       "database": "warehouse",
       "service_name": "aws_redshift",
+      "data_profiler_enabled": "true",
+      "data_profiler_offset": "0",
+      "data_profiler_limit": "50000",
       "filter_pattern": {
         "excludes": ["information_schema.*", "[\\w]*event_vw.*"]
       }
-    }
-  },
+    },
   "sink": {
     "type": "metadata-rest",
     "config": {}

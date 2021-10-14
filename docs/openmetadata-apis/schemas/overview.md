@@ -12,15 +12,15 @@ An Entity is a special type that has an identity and represents an object that i
 
 **Attributes** represent an Entity’s data. Entities MUST include an attribute called **ID** that uniquely identifies an instance of an entity. It might optionally include a human-readable **fullyQualitifedName** attribute that uniquely identifies the entity. An attribute of an entity MUST not be another Entity and should be captured through a relationship. Entities typically SHOULD have the following common attributes:
 
-| Abstract | Extensible |
-| :--- | :--- |
-| **id** | Mandatory attribute of type `UUID` that identifies the entity instance |
-| **name** | Name of the entity \(example database name\). For some entities, the name may uniquely identify an entity. |
+| Abstract               | Extensible                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **id**                 | Mandatory attribute of type `UUID` that identifies the entity instance                                                                                                                                                                                                                                                                                            |
+| **name**               | Name of the entity (example database name). For some entities, the name may uniquely identify an entity.                                                                                                                                                                                                                                                          |
 | **fullyQualifiedName** | Human-readable name that uniquely identifies an entity that is formed using all the names in the hierarchy above the given entity. Example - `databaseService.database.table.` Attributes of an entity may also have `FQN` to uniquely identify a field. For example, a column of a table has `fqn` attribute set to `databaseService.database.table.columnName.` |
-| **displayName** | Optional name used for display purposes. For example, the name could be`john.smith@domain.com` and `displayName` could be `John Smith.` |
-| **description** | Description of the entity instance. Not all entities need a description. For example, a User entity might not need a description and just the name of the user might suffice. A `Database` entity needs `description` to provide details of what is stored in the database when to use it and other information on how to use it. |
-| **Owner** | Optional attribute used to capture the ownership information. Not all entities have ownership information \(for example `User, Team`, and `Organization`\). |
-| **href** | An attribute generated on the fly as part of API response to provide the URL link to the entity returned. |
+| **displayName**        | Optional name used for display purposes. For example, the name could be`john.smith@domain.com` and `displayName` could be `John Smith.`                                                                                                                                                                                                                           |
+| **description**        | Description of the entity instance. Not all entities need a description. For example, a User entity might not need a description and just the name of the user might suffice. An`Database` entity needs `description` to provide details of what is stored in the database when to use it and other information on how to use it.                                 |
+| **Owner**              | The Optional attribute is used to capture the ownership information. Not all entities have ownership information (for example `User, Team`, and `Organization`).                                                                                                                                                                                                  |
+| **href**               | An attribute generated on the fly as part of API response to provide the URL link to the entity returned.                                                                                                                                                                                                                                                         |
 
 ### **Relationships**
 
@@ -30,9 +30,9 @@ An Entity is a special type that has an identity and represents an object that i
 * One-to-many: a Database contains multiple Tables.
 * Many-to-many: A User belongs to multiple Teams. A team has multiple Users.
 
-All relationships are captured using the `EntityReference` type.
+All relationships are captured using the`EntityReference`type.
 
-Following is an example of a JSON schema of the User entity with attributes id, displayName, and email. User entity has one-to-many relationships to another entity Team \(user is member of multiple teams\).
+Following is an example of a JSON schema of the User entity with attributes id, displayName, and email. User entity has one-to-many relationships to another entity Team (user is member of multiple teams).
 
 ```javascript
 {
@@ -62,6 +62,3 @@ Following is an example of a JSON schema of the User entity with attributes id, 
   }
 }
 ```
-
-## 
-

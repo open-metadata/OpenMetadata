@@ -10,10 +10,9 @@ description: This guide will help install Athena connector and run manually
 OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 1. Python 3.7 or above
-2. OpenMetadata Server up and running
 {% endhint %}
 
-### Install from PyPI or Source
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -44,14 +43,14 @@ pip install 'openmetadata-ingestion[athena]'
 
 1. **username** - pass the Athena username. We recommend creating a user with read-only permissions to all the databases in your Athena installation
 2. **password** - password for the username
-3. **service\_name** - Service Name for this Athena cluster. If you added the Athena cluster through OpenMetadata UI, make sure the service name matches the same.
-4. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+3. **service_name** - Service Name for this Athena cluster. If you added the Athena cluster through OpenMetadata UI, make sure the service name matches the same.
+4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
 Below is the configuration to publish Athena data into the OpenMetadata service.
 
-Add optionally `pii` processor and `metadata-rest-tables` sink along with `metadata-server` config
+Add optionally `pii` processor and `metadata-rest` sink along with `metadata-server` config
 
 {% code title="athena.json" %}
 ```javascript
@@ -83,8 +82,14 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "api_endpoint": "http://localhost:8585/api",
         "auth_provider_type": "no-auth"
     }
+  },
+  "cron": {
+    "minute": "*/5",
+    "hour": null,
+    "day": null,
+    "month": null,
+    "day_of_week": null
   }
 }
 ```
 {% endcode %}
-

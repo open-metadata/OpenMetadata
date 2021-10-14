@@ -80,6 +80,7 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### tableType
 
  - This schema defines the type used for describing different types of tables.
@@ -180,10 +181,9 @@ Type: `object`
 
 ### fullyQualifiedColumnName
 
- - Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName[.nestedColumnName]`. When columnName is null for dataType struct fields, `field_#` where `#` is field index is used. For map dataType, for key the field name `key` is used and for the value field `value` is used.
- - Type: `string`
- - Length: between 1 and 256
-
+* The Fully qualified name of the column that includes `serviceName.databaseName.tableName.columnName`.
+* Type: `string`
+* Length: between 1 and 256
 
 ### column
 
@@ -290,40 +290,41 @@ Type: `object`
 
 ### columnProfile
 
- - This schema defines the type to capture the table's column profile.
- - Type: `object`
- - **Properties**
-   - **name**
-     - Column Name.
-     - Type: `string`
-   - **uniqueCount**
-     - No. of unique values in the column.
-     - Type: `number`
-   - **uniqueProportion**
-     - Proportion of number of unique values in a column.
-     - Type: `number`
-   - **nullCount**
-     - No.of null values in a column.
-     - Type: `number`
-   - **nullProportion**
-     - No.of null value proportion in columns.
-     - Type: `number`
-   - **min**
-     - Minimum value in a column.
-     - Type: `string`
-   - **max**
-     - Maximum value in a column.
-     - Type: `string`
-   - **mean**
-     - Avg value in a column.
-     - Type: `string`
-   - **median**
-     - Median value in a column.
-     - Type: `string`
-   - **stddev**
-     - Standard deviation of a column.
-     - Type: `number`
+* This schema defines the type to capture the table's column profile.
+* Type: `object`
+* **Properties**
+  * **name**
+    * Column Name.
+    * Type: `string`
+  * **uniqueCount**
+    * No. of unique values in the column.
+    * Type: `number`
+  * **uniqueProportion**
+    * The Proportion of a number of unique values in a column.
+    * Type: `number`
+  * **nullCount**
+    * No.of null values in a column.
+    * Type: `number`
+  * **nullProportion**
+    * No.of null value proportion in columns.
+    * Type: `number`
+      * **min**
+        * The minimum value in a column.
+        * Type: `string`
+      * **max**
+        * The maximum value in a column.
+        * Type: `string`
+      * **mean**
+        * Avg value in a column.
+        * Type: `string`
+      * **median**
+        * The Median value in a column.
+        * Type: `string`
+      * **stddev**
+        * The Standard deviation of a column.
+        * Type: `number`
 
+### tableProfile
 
 ### tableProfile
 

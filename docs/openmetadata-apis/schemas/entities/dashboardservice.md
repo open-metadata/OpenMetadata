@@ -1,6 +1,6 @@
 # Dashboard Service
 
-This schema defines the Dashboard Service entity, such as Looker and Superset.
+This schema defines the Messaging Service entity, such as Kafka and Pulsar.
 
 **$id: [https://open-metadata.org/schema/entity/services/dashboardService.json](https://open-metadata.org/schema/entity/services/dashboardService.json)**
 
@@ -51,16 +51,16 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### dashboardServiceType
 
- - Type of Dashboard service - Superset, Looker, Redash or Tableau.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"Superset"_
-   2. _"Looker"_
-   3. _"Tableau"_
-   4. _"Redash"_
-
+* Type of Dashboard service - Superset, Looker, Redash or Tableau.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Superset"_
+  2. _"Looker"_
+  3. _"Tableau"_
+  4. _"Redash"_
 
 
 _This document was updated on: Monday, October 18, 2021_

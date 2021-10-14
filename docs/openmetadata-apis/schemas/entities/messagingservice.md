@@ -48,14 +48,14 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### messagingServiceType
 
- - Type of messaging service - Kafka or Pulsar.
- - Type: `string`
- - The value is restricted to the following: 
-   1. _"Kafka"_
-   2. _"Pulsar"_
-
+* Type of messaging service - Kafka or Pulsar.
+* Type: `string`
+* The value is restricted to the following: 
+  1. _"Kafka"_
+  2. _"Pulsar"_
 
 ### brokers
 

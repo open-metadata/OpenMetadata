@@ -44,11 +44,11 @@ Type: `object`
 
 
 ## Type definitions in this schema
+
 ### teamName
 
- - A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.
- - Type: `string`
- - Length: between 1 and 64
-
+* A unique name of the team typically the team ID from an identity provider. Example - group Id from LDAP.
+* Type: `string`
+* Length: between 1 and 64
 
 _This document was updated on: Monday, October 18, 2021_

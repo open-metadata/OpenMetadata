@@ -5,7 +5,7 @@
 * Go to [Create Google Cloud Account](https://console.cloud.google.com)
 *   Click on `Create Project`
 
-    ![Create Project](<../../../../.gitbook/assets/g-create-project (2) (2) (2) (2) (2) (3) (1).png>)
+    ![Create Project](<../../../.gitbook/assets/g-create-project (2) (2) (2) (2) (2) (3) (1) (3).png>)
 
 ## Step 2: Create a new project
 
@@ -20,7 +20,7 @@
 
 * Select the project you created above and click on **APIs & Services** on the left-side panel.
 
-![OAuth Consent](../../../../.gitbook/assets/g-project-oauth-consent.png)
+![OAuth Consent](../../../.gitbook/assets/g-project-oauth-consent.png)
 
 * Click on the **OAuth Consent Screen** available on the left-hand side panel.
 * Provide the User Type. Chose **External** if you are testing otherwise chose **Internal**
@@ -63,7 +63,7 @@
 
 * After selecting the **Application Type**, name your project and give the authorized URIs
 
-![Create OAuth](../../../../.gitbook/assets/g-create-oauth.png)
+![Create OAuth](../../../.gitbook/assets/g-create-oauth.png)
 
 * Click **Create**
 * You will get the credentials
