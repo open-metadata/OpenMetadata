@@ -5,6 +5,7 @@ import { ColumnTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
+import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import {
   addFollower,
   getPipelineByFqn,
@@ -20,6 +21,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
+import DatasetLineage from '../../components/dataset-lineage/DatasetLineage';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import ManageTab from '../../components/my-data-details/ManageTab';
@@ -33,6 +35,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Task } from '../../generated/entity/data/task';
 import { User } from '../../generated/entity/teams/user';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
@@ -90,7 +93,9 @@ const MyPipelinePage = () => {
     task: Task;
     index: number;
   }>();
-
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -110,6 +115,16 @@ const MyPipelinePage = () => {
       position: 1,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -118,7 +133,7 @@ const MyPipelinePage = () => {
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 2,
+      position: 3,
     },
   ];
 
@@ -431,6 +446,10 @@ const MyPipelinePage = () => {
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
+    setActiveTab(1);
+    getLineageByFQN(pipelineFQN, EntityType.PIPELINE).then(
+      (res: AxiosResponse) => setEntityLineage(res.data)
+    );
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -599,6 +618,11 @@ const MyPipelinePage = () => {
                 </>
               )}
               {activeTab === 2 && (
+                <div className="tw-w-full tw-h-96">
+                  <DatasetLineage entityLineage={entityLineage} />
+                </div>
+              )}
+              {activeTab === 3 && (
                 <ManageTab
                   currentTier={tier}
                   currentUser={owner?.id}

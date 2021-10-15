@@ -15,10 +15,16 @@
   * limitations under the License.
 */
 
-export enum EntityType {
-  DATASET = 'dataset',
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  PIPELINE = 'pipeline',
-}
+import { AxiosResponse } from 'axios';
+import APIClient from './index';
+
+export const getLineageByFQN: Function = (
+  fqn: string,
+  type: string,
+  upstreamDepth = 3,
+  downstreamDepth = 3
+): Promise<AxiosResponse> => {
+  return APIClient.get(
+    `/lineage/${type}/name/${fqn}?upstreamDepth=${upstreamDepth}&downstreamDepth=${downstreamDepth}`
+  );
+};

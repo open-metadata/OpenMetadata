@@ -25,6 +25,7 @@ import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { postFeed } from '../../axiosAPIs/feedsAPI';
+import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
   addFollower,
@@ -37,6 +38,7 @@ import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInf
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
+import DatasetLineage from '../../components/dataset-lineage/DatasetLineage';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import ProfilerTable from '../../components/my-data-details/ProfilerTable';
@@ -55,6 +57,7 @@ import {
   TableJoins,
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
+import { EntityLineage } from '../../generated/type/entityLineage';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import useToastContext from '../../hooks/useToastContext';
@@ -131,9 +134,10 @@ const MyDataDetailsPage = () => {
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const [activeTab, setActiveTab] = useState<number>(1);
   const { datasetFQN: tableFQN } = useParams() as Record<string, string>;
-
   const showToast = useToastContext();
-
+  const [entityLineage, setEntityLineage] = useState<EntityLineage>(
+    {} as EntityLineage
+  );
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -164,6 +168,16 @@ const MyDataDetailsPage = () => {
       position: 2,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+      },
+      isProtected: false,
+      position: 3,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -172,7 +186,7 @@ const MyDataDetailsPage = () => {
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 3,
+      position: 4,
     },
   ];
 
@@ -468,6 +482,10 @@ const MyDataDetailsPage = () => {
         setTableJoinData(joins);
       }
     });
+    setActiveTab(1);
+    getLineageByFQN(tableFQN, EntityType.TABLE).then((res: AxiosResponse) =>
+      setEntityLineage(res.data)
+    );
   }, [tableFQN]);
 
   useEffect(() => {
@@ -543,6 +561,11 @@ const MyDataDetailsPage = () => {
               />
             )}
             {activeTab === 3 && (
+              <div className="tw-w-full tw-h-96">
+                <DatasetLineage entityLineage={entityLineage} />
+              </div>
+            )}
+            {activeTab === 4 && (
               <ManageTab
                 currentTier={tier}
                 currentUser={owner?.id}
