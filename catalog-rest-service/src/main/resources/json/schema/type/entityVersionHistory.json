@@ -5,6 +5,21 @@
   "description": "This schema defines the type used for capturing version of history of entity.",
   "type": "object",
   "javaType": "org.openmetadata.catalog.type.EntityLineage",
+  "definitions": {
+    "entityVersion" : {
+      "type": "object",
+      "properties" : {
+        "changeDescription" : {
+          "description": "Description of the change.",
+          "type" : "string"
+        },
+        "entity" : {
+          "description": "JSON payload corresponding to a version of the entity.",
+          "type" : "object"
+        }
+      }
+    }
+  },
   "properties": {
     "entityType" : {
       "description": "Entity type, such as `database`, `table`, `dashboard`, for which this version history is produced.",
@@ -14,7 +29,7 @@
       "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to the entity schema. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
       "type" : "array",
       "items" : {
-        "type": "object"
+        "$ref": "#/definitions/entityVersion"
       }
     }
   },

@@ -42,6 +42,7 @@ import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
@@ -58,6 +59,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,6 +101,9 @@ import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -219,7 +224,7 @@ public class TableResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException, InterruptedException {
+  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = create(test).withDescription("description");
@@ -259,9 +264,10 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Test PUT operation
     CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2));
-    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.CREATED, adminAuthHeaders());
+    Table table2= updateAndCheckTable(null, create2.withName("put_complexColumnType"), Status.CREATED,
+            adminAuthHeaders(), NO_CHANGE);
     // Update without any change
-    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders());
+    updateAndCheckTable(table2, create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders(), NO_CHANGE);
 
     //
     // Update the complex columns
@@ -272,15 +278,14 @@ public class TableResourceTest extends CatalogApplicationTest {
     // c2 from -> to
     // struct<a:int, b:char, c:struct<d:int>>>
     // struct<-----, b:char, c:struct<d:int, e:char>, f:char>
-    c2_b.withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // Change c2.b tag
+    c2_b.withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add new tag to c2.b tag
     c2_c.getChildren().add(getColumn("e", INT,USER_ADDRESS_TAG_LABEL)); // Add c2.c.e
     c2.getChildren().remove(0); // Remove c2.a from struct
     c2.getChildren().add(getColumn("f", CHAR, USER_ADDRESS_TAG_LABEL)); // Add c2.f
     create2 = create2.withColumns(Arrays.asList(c1, c2));
 
-    // Update the columns with put operation and validate update
-    updateAndCheckTable(create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders());
-
+    // Update the columns with PUT operation and validate update
+    updateAndCheckTable(table2, create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders(), MAJOR_UPDATE);
 
     //
     // Patch operations on table1 created by POST operation. Columns can't be added or deleted. Only tags and
@@ -355,20 +360,19 @@ public class TableResourceTest extends CatalogApplicationTest {
   @Test
   public void put_tableUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    createAndCheckTable(request, adminAuthHeaders());
+    Table table = createAndCheckTable(request, adminAuthHeaders());
 
     // Update table two times successfully with PUT requests
-    Double version1 = updateAndCheckTable(request, OK, adminAuthHeaders()).getVersion();
-    Double version2 = updateAndCheckTable(request, OK, adminAuthHeaders()).getVersion();
-    assertEquals(version1, version2); // No version change
+    updateAndCheckTable(table, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckTable(table, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_tableCreate_200(TestInfo test) throws HttpResponseException {
     // Create a new table with put
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    Table table = updateAndCheckTable(request.withName("newName").withDescription(null), CREATED, adminAuthHeaders());
-    assertEquals(0.1, table.getVersion()); // First version
+    updateAndCheckTable(null, request.withName("newName").withDescription(null), CREATED,
+            adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
@@ -378,9 +382,7 @@ public class TableResourceTest extends CatalogApplicationTest {
     Table table = createAndCheckTable(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Table updatedTable = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", updatedTable.getDescription());
-    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion());
+    updateAndCheckTable(table, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -389,10 +391,8 @@ public class TableResourceTest extends CatalogApplicationTest {
     CreateTable request = create(test).withOwner(USER_OWNER1);
     Table table = createAndCheckTable(request, adminAuthHeaders());
 
-    // Update empty description with a new description
-    Table updatedTable = updateAndCheckTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", updatedTable.getDescription());
-    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion());
+    // Update empty description with a new description and expect minor version update
+    updateAndCheckTable(table, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -413,16 +413,14 @@ public class TableResourceTest extends CatalogApplicationTest {
     checkOwnerOwns(USER_OWNER1, table.getId(), true);
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    Table updatedTable = updateAndCheckTable(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    Table updatedTable = updateAndCheckTable(table, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
     checkOwnerOwns(USER_OWNER1, updatedTable.getId(), false);
     checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), true);
-    assertEquals(updatedTable.getVersion() + 0.1, updatedTable.getVersion());
 
     // Remove ownership
-    updatedTable = updateAndCheckTable(request.withOwner(null), OK, adminAuthHeaders());
+    updatedTable = updateAndCheckTable(updatedTable, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
     assertNull(updatedTable.getOwner());
     checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), false);
-    assertEquals(table.getVersion() + 0.2, updatedTable.getVersion());
   }
 
   @Test
@@ -432,16 +430,42 @@ public class TableResourceTest extends CatalogApplicationTest {
     Table table = createAndCheckTable(request, adminAuthHeaders());
     checkOwnerOwns(USER_OWNER1, table.getId(), true);
 
-    // Update the table with constraints
-    request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    Table updatedTable = updateAndCheckTable(request, OK, adminAuthHeaders());
-    assertEquals(table.getVersion() + 0.1, updatedTable.getVersion()); // Adding constraint is backward compatible
+    // Update the table with constraints and ensure minor version change
+    TableConstraint constraint = new TableConstraint().withConstraintType(ConstraintType.UNIQUE)
+            .withColumns(List.of(COLUMNS.get(0).getName()));
+    request = request.withTableConstraints(List.of(constraint));
+    Table updatedTable = updateAndCheckTable(table, request, OK, adminAuthHeaders(), MINOR_UPDATE);
+
+    // Update again with no change. Version must not change
+    updatedTable = updateAndCheckTable(updatedTable, request, OK, adminAuthHeaders(), NO_CHANGE);
 
     // Update the table with new constraints
-    request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    updatedTable = updateAndCheckTable(request, OK, adminAuthHeaders());
-    assertEquals(Math.floor(table.getVersion()) + 1.0, updatedTable.getVersion()); // Changing constraint is backward
-    // incompatible
+    constraint = constraint.withConstraintType(ConstraintType.PRIMARY_KEY);
+    request = request.withTableConstraints(List.of(constraint));
+    updatedTable = updateAndCheckTable(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE);
+
+    // Remove table constraint and ensure minor version changes
+    request = request.withTableConstraints(null);
+    updateAndCheckTable(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE);
+  }
+
+  @Test
+  public void put_columnConstraintUpdate_200(TestInfo test) throws HttpResponseException {
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("c1", INT, null).withConstraint(ColumnConstraint.NULL));
+    columns.add(getColumn("c2", INT, null).withConstraint(ColumnConstraint.UNIQUE));
+    CreateTable request = create(test).withColumns(columns);
+    Table table = createAndCheckTable(request, adminAuthHeaders());
+
+    // Change the the column constraints and expect minor version change
+    request.getColumns().get(0).withConstraint(ColumnConstraint.NOT_NULL);
+    request.getColumns().get(1).withConstraint(ColumnConstraint.PRIMARY_KEY);
+    Table updatedTable = updateAndCheckTable(table, request, OK, adminAuthHeaders(), MINOR_UPDATE);
+
+    // Remove column constraints and expect minor version change
+    request.getColumns().get(0).withConstraint(null);
+    request.getColumns().get(1).withConstraint(null);
+    updateAndCheckTable(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -469,13 +493,13 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(bankTagUsageCount, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
 
     //
-    // Update the c1 with additional tag USER_BANK_ACCOUNT_TAG_LABEL
+    // Update the c1 tags to  USER_ADDRESS_TAB_LABEL, USER_BANK_ACCOUNT_TAG_LABEL (newly added)
     // Ensure description and previous tag is carried forward during update
     //
     tags.add(USER_BANK_ACCOUNT_TAG_LABEL);
     List<Column> updatedColumns = new ArrayList<>();
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
-    table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
+    table = updateAndCheckTable(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Ensure tag usage counts are updated
     assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -483,14 +507,11 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
 
     //
-    // Add a new column and make sure it is added by PUT
+    // Add a new column using PUT
     //
     updatedColumns.add(getColumn("c2", BINARY, null).withOrdinalPosition(2)
-            .withDataLength(10).withFullyQualifiedName(table.getFullyQualifiedName() + ".c2").withTags(tags));
-    table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
-    assertEquals(2, table.getColumns().size());
-    TestUtils.validateTags(updatedColumns.get(0).getTags(), table.getColumns().get(0).getTags());
-    TestUtils.validateTags(updatedColumns.get(1).getTags(), table.getColumns().get(1).getTags());
+            .withDataLength(10).withTags(tags));
+    table = updateAndCheckTable(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Ensure tag usage counts are updated - column c2 added both address and bank tags
     assertEquals(tagCategoryUsageCount + 4, getTagCategoryUsageCount("user", userAuthHeaders()));
@@ -501,14 +522,18 @@ public class TableResourceTest extends CatalogApplicationTest {
     // Remove a column c2 and make sure it is deleted by PUT
     //
     updatedColumns.remove(1);
-    table = updateAndCheckTable(request.withColumns(updatedColumns), OK, adminAuthHeaders());
+    table = updateAndCheckTable(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE);
     assertEquals(1, table.getColumns().size());
-    TestUtils.validateTags(columns.get(0).getTags(), table.getColumns().get(0).getTags());
+    validateTags(columns.get(0), table.getColumns().get(0));
 
     // Ensure tag usage counts are updated to reflect removal of column c2
     assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
     assertEquals(addressTagUsageCount + 1, getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders()));
     assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
+  }
+
+  private void validateTags(Column expected, Column actual) throws HttpResponseException {
+    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), actual.getTags());
   }
 
   @Test
@@ -650,39 +675,11 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(actual.getDayCount(), 30);
 
     // Sort the columnJoins and the joinedWith to account for different ordering
-    expected.sort(new ColumnJoinComparator());
-    expected.forEach(c -> c.getJoinedWith().sort(new JoinedWithComparator()));
-    actual.getColumnJoins().sort(new ColumnJoinComparator());
-    actual.getColumnJoins().forEach(c -> c.getJoinedWith().sort(new JoinedWithComparator()));
+    expected.sort(Comparator.comparing(ColumnJoin::getColumnName));
+    expected.forEach(c -> c.getJoinedWith().sort(Comparator.comparing(JoinedWith::getFullyQualifiedName)));
+    actual.getColumnJoins().sort(Comparator.comparing(ColumnJoin::getColumnName));
+    actual.getColumnJoins().forEach(c -> c.getJoinedWith().sort(Comparator.comparing(JoinedWith::getFullyQualifiedName)));
     assertEquals(expected, actual.getColumnJoins());
-  }
-
-  public static class TagLabelComparator implements Comparator<TagLabel> {
-    @Override
-    public int compare(TagLabel label, TagLabel t1) {
-      return label.getTagFQN().compareTo(t1.getTagFQN());
-    }
-  }
-
-  public static class ColumnComparator implements Comparator<Column> {
-    @Override
-    public int compare(Column column, Column t1) {
-      return column.getName().compareTo(t1.getName());
-    }
-  }
-
-  public static class ColumnJoinComparator implements Comparator<ColumnJoin> {
-    @Override
-    public int compare(ColumnJoin columnJoin, ColumnJoin t1) {
-      return columnJoin.getColumnName().compareTo(t1.getColumnName());
-    }
-  }
-
-  public static class JoinedWithComparator implements Comparator<JoinedWith> {
-    @Override
-    public int compare(JoinedWith joinedWith, JoinedWith t1) {
-      return joinedWith.getFullyQualifiedName().compareTo(t1.getFullyQualifiedName());
-    }
   }
 
   @Test
@@ -1130,11 +1127,6 @@ public class TableResourceTest extends CatalogApplicationTest {
     return patchTable(tableJson, table, authHeaders);
   }
 
-  // TODO disallow changing href, usage
-  // TODO allow changing columns, tableConstraints
-  // TODO Change column attributes
-  // TODO Add column
-  // TODO Remove column
   public static Table createAndCheckTable(CreateTable create, Map<String, String> authHeaders)
           throws HttpResponseException {
     // Validate table created has all the information set in create request
@@ -1255,10 +1247,9 @@ public class TableResourceTest extends CatalogApplicationTest {
       assertEquals(expectedDatabaseId, table.getDatabase().getId());
     }
 
-
     // Validate table constraints
     assertEquals(expectedTableConstraints, table.getTableConstraints());
-    TestUtils.validateTags(expectedTags, table.getTags());
+    TestUtils.validateTags(table.getFullyQualifiedName(), expectedTags, table.getTags());
     TestUtils.validateEntityReference(table.getFollowers());
   }
 
@@ -1268,10 +1259,11 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(expectedColumn.getDescription(), actualColumn.getDescription());
     assertEquals(expectedColumn.getDataType(), actualColumn.getDataType());
     assertEquals(expectedColumn.getArrayDataType(), actualColumn.getArrayDataType());
+    assertEquals(expectedColumn.getConstraint(), actualColumn.getConstraint());
     if (expectedColumn.getDataTypeDisplay() != null) {
       assertEquals(expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT), actualColumn.getDataTypeDisplay());
     }
-    TestUtils.validateTags(expectedColumn.getTags(), actualColumn.getTags());
+    TestUtils.validateTags(actualColumn.getFullyQualifiedName(), expectedColumn.getTags(), actualColumn.getTags());
 
     // Check the nested columns
     validateColumns(expectedColumn.getChildren(), actualColumn.getChildren());
@@ -1351,17 +1343,32 @@ public class TableResourceTest extends CatalogApplicationTest {
     return createTable(create, adminAuthHeaders());
   }
 
-  public static Table updateAndCheckTable(CreateTable create, Status status, Map<String, String> authHeaders)
+  public static Table updateAndCheckTable(Table before, CreateTable create, Status status,
+                                          Map<String, String> authHeaders,
+                                          UpdateType updateType)
           throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Table updatedTable = updateTable(create, status, authHeaders);
     validateTable(updatedTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
             create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
 
+    if (before == null) {
+      // First version created
+      assertEquals(0.1, updatedTable.getVersion());
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedTable.getVersion(), updateType);
+    }
+
     // GET the newly updated database and validate
     Table getTable = getTable(updatedTable.getId(), "columns,database,owner,tableConstraints,tags", authHeaders);
     validateTable(getTable, create.getDescription(), create.getColumns(), create.getOwner(), create.getDatabase(),
             create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
+    if (before == null) {
+      // First version created
+      assertEquals(0.1, updatedTable.getVersion());
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedTable.getVersion(), updateType);
+    }
     // TODO columns check
     return updatedTable;
   }

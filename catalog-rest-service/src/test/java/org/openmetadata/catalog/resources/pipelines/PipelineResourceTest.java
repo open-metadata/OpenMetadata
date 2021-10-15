@@ -671,7 +671,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getType(), pipeline.getService().getType());
     }
     validatePipelineTASKs(pipeline, tasks);
-    TestUtils.validateTags(expectedTags, pipeline.getTags());
+    TestUtils.validateTags(pipeline.getFullyQualifiedName(), expectedTags, pipeline.getTags());
     return pipeline;
   }
 

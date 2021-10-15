@@ -222,7 +222,7 @@ public final class EntityUtil {
                               EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
-      LOG.info("Owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      LOG.info("Adding owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
       dao.insert(owner.getId().toString(), ownedEntityId.toString(), owner.getType(), ownedEntityType,
               Relationship.OWNS.ordinal());
     }
@@ -243,7 +243,7 @@ public final class EntityUtil {
                                  UUID ownedEntityId, String ownedEntityType) {
     // TODO inefficient use replace instead of delete and add?
     // TODO check for orig and new owners being the same
-    EntityUtil.unassignOwner(dao, originalOwner, ownedEntityId.toString());
+    unassignOwner(dao, originalOwner, ownedEntityId.toString());
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
@@ -560,7 +560,6 @@ public final class EntityUtil {
       Tag tag = JsonUtils.readValue(json, Tag.class);
 
       // Apply tagLabel to targetFQN that identifies an entity or field
-      LOG.info("Applying tag {} to targetFQN {}", tagLabel.getTagFQN(), targetFQN);
       tagDAO.applyTag(tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(),
               tagLabel.getState().ordinal());
 
@@ -578,6 +577,28 @@ public final class EntityUtil {
     return derivedTags;
   }
 
+  /**
+   * Validate given list of tags and add derived tags to it
+   */
+  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
+    List<TagLabel> updatedTagLabels = new ArrayList<>();
+    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
+      String json = tagDAO.findTag(tagLabel.getTagFQN());
+      if (json == null) {
+        // Invalid TagLabel
+        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(),
+                tagLabel.getTagFQN()));
+      }
+      Tag tag = JsonUtils.readValue(json, Tag.class);
+      updatedTagLabels.add(tagLabel);
+
+      // Apply derived tags
+      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
+      updatedTagLabels = EntityUtil.mergeTags(updatedTagLabels, derivedTags);
+    }
+    return updatedTagLabels;
+  }
+
   public static void removeTags(TagDAO tagDAO, String fullyQualifiedName) {
     tagDAO.deleteTags(fullyQualifiedName);
   }
@@ -587,9 +608,10 @@ public final class EntityUtil {
   }
 
   public static List<TagLabel> mergeTags(List<TagLabel> list1, List<TagLabel> list2) {
-    return Stream.concat(Optional.ofNullable(list1).orElse(Collections.emptyList()).stream(),
+    List<TagLabel> mergedTags = Stream.concat(Optional.ofNullable(list1).orElse(Collections.emptyList()).stream(),
             Optional.ofNullable(list2).orElse(Collections.emptyList()).stream())
             .distinct().collect(Collectors.toList());
+    return mergedTags.isEmpty() ? null : mergedTags;
   }
 
   public static void publishEntityCreatedEvent(String entity, String entityName, String event) {

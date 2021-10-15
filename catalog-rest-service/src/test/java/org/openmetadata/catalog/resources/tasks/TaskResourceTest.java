@@ -584,7 +584,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), task.getService().getId());
       assertEquals(expectedService.getType(), task.getService().getType());
     }
-    TestUtils.validateTags(expectedTags, task.getTags());
+    TestUtils.validateTags(task.getFullyQualifiedName(), expectedTags, task.getTags());
     return task;
   }
 

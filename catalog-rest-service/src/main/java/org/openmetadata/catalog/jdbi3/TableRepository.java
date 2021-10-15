@@ -35,10 +35,13 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.EventUtils;
@@ -195,35 +198,23 @@ public abstract class TableRepository {
   }
 
   @Transaction
-  public PutResponse<Table> createOrUpdate(Table updatedTable, EntityReference newOwner, UUID databaseId) throws
+  public PutResponse<Table> createOrUpdate(Table updated, EntityReference newOwner, UUID databaseId) throws
           IOException, ParseException {
     Database database = EntityUtil.validate(databaseId.toString(), databaseDAO().findById(databaseId.toString()),
             Database.class);
-    String tableFQName = database.getFullyQualifiedName() + "." + updatedTable.getName();
-    Table storedTable = JsonUtils.readValue(tableDAO().findByFQN(tableFQName), Table.class);
-    if (storedTable == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(database.getId(), updatedTable, newOwner));
+    String tableFQName = database.getFullyQualifiedName() + "." + updated.getName();
+    Table stored = JsonUtils.readValue(tableDAO().findByFQN(tableFQName), Table.class);
+    if (stored == null) {
+      return new PutResponse<>(Status.CREATED, createInternal(database.getId(), updated, newOwner));
     }
-    updatedTable.setId(storedTable.getId());
-    validateRelationships(updatedTable, database, newOwner);
+    setFields(stored, TABLE_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, database, newOwner);
 
-    // Carry forward non-empty description
-    if (storedTable.getDescription() != null && !storedTable.getDescription().isEmpty()) {
-      // Update description only when it is empty
-      updatedTable.setDescription(storedTable.getDescription());
-    }
-    // PUT operation merges tags in the request with what already exists
-    // Remove current table tags in the database. It will be added back later from the merged tag list.
-    EntityUtil.removeTagsByPrefix(tagDAO(), storedTable.getFullyQualifiedName());
-    updatedTable.setTags(EntityUtil.mergeTags(updatedTable.getTags(), storedTable.getTags()));
-
-    ColumnChanges columnChanges = new ColumnChanges();
-    updateColumns(storedTable, updatedTable, columnChanges, false);
-    compareAndVersion(storedTable, updatedTable, columnChanges);
-    storeTable(updatedTable, true);
-
-    updateRelationships(storedTable, updatedTable);
-    setFields(storedTable, TABLE_UPDATE_FIELDS);
+    TableUpdater tableUpdater = new TableUpdater(stored, updated, false);
+    tableUpdater.updateAll();
+    tableUpdater.store();
+//    setFields(updated, TABLE_UPDATE_FIELDS); // TODO remove this
 
 //    if (updated) {
 //      // TODO clean this up
@@ -232,21 +223,7 @@ public abstract class TableRepository {
 //              JsonUtils.pojoToJson(tableStored),
 //              JsonUtils.pojoToJson(tableUpdated));
 //    }
-    return new PutResponse<>(Status.OK, updatedTable);
-  }
-
-  private void compareAndVersion(Table storedTable, Table updatedTable, ColumnChanges columnChanges) {
-    if (columnChanges.columnsDeleted > 0) {
-      // Backward incompatible change - bump the major version number
-      updatedTable.setVersion(Math.floor(storedTable.getVersion()) + 1.0);
-    }
-    if (columnChanges.columnsUpdated > 0 || columnChanges.columnsAdded > 0 || // Columns added or modified
-            !Objects.equals(storedTable.getDescription(), updatedTable.getDescription()) || // Description changed
-            !Objects.equals(storedTable.getOwner(), updatedTable.getOwner()) || // Owner changed
-            !Objects.equals(storedTable.getTableConstraints(), updatedTable.getTableConstraints())
-    ) {
-      updatedTable.setVersion(storedTable.getVersion() + 0.1);
-    }
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
@@ -363,17 +340,17 @@ public abstract class TableRepository {
     });
   }
 
-  private void validateTags(List<Column> columns) {
+  private void addDerivedTags(List<Column> columns) throws IOException {
     if (columns == null || columns.isEmpty()) {
       return;
     }
 
-    columns.forEach(column -> {
-      EntityUtil.validateTags(tagDAO(), column.getTags());
+    for (Column column : columns) {
+      column.setTags(EntityUtil.addDerivedTags(tagDAO(), column.getTags()));
       if (column.getChildren() != null) {
-        validateTags(column.getChildren());
+        addDerivedTags(column.getChildren());
       }
-    });
+    }
   }
 
   private void validateRelationships(Table table, Database database, EntityReference owner) throws IOException {
@@ -385,11 +362,11 @@ public abstract class TableRepository {
     // Check if owner is valid and set the relationship
     table.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), owner));
 
-    // Validate table tags
-    EntityUtil.validateTags(tagDAO(), table.getTags());
+    // Validate table tags and add derived tags to the list
+    table.setTags(EntityUtil.addDerivedTags(tagDAO(), table.getTags()));
 
     // Validate column tags
-    validateTags(table.getColumns());
+    addDerivedTags(table.getColumns());
   }
 
   private void storeTable(Table table, boolean update) throws JsonProcessingException {
@@ -452,14 +429,7 @@ public abstract class TableRepository {
     applyTags(table);
   }
 
-  private void updateRelationships(Table origTable, Table updatedTable) throws IOException {
-    // Add owner relationship
-    origTable.setOwner(getOwner(origTable));
-    EntityUtil.updateOwner(relationshipDAO(), origTable.getOwner(), updatedTable.getOwner(), origTable.getId(),
-            Entity.TABLE);
-    applyTags(updatedTable);
-  }
-
+  // TODO remove this
   private void applyTags(List<Column> columns) throws IOException {
     // Add column level tags by adding tag to column relationship
     for (Column column : columns) {
@@ -488,13 +458,9 @@ public abstract class TableRepository {
 
     validateRelationships(updated, updated.getDatabase().getId(), updated.getOwner());
 
-    // Remove previous tags. Merge tags from the update and the existing tags
-    EntityUtil.removeTagsByPrefix(tagDAO(), original.getFullyQualifiedName());
-    ColumnChanges columnChanges = new ColumnChanges();
-    updateColumns(original, updated, columnChanges, true);
-
-    storeTable(updated, true);
-    updateRelationships(original, updated);
+    TableUpdater tableUpdater = new TableUpdater(original, updated, true);
+    tableUpdater.updateAll();
+    tableUpdater.store();
   }
 
   private Database getDatabase(Table table) throws IOException {
@@ -535,58 +501,6 @@ public abstract class TableRepository {
 
   private List<EntityReference> getFollowers(Table table) throws IOException {
     return table == null ? null : EntityUtil.getFollowers(table.getId(), relationshipDAO(), userDAO());
-  }
-
-  private void updateColumns(List<Column> storedColumns, List<Column> updatedColumns,
-                             ColumnChanges changes, boolean patchOperation) {
-    // Carry forward the user generated metadata from existing columns to new columns
-    for (Column updated : updatedColumns) {
-      // Find stored column matching name, data type and ordinal position
-      Column stored = storedColumns.stream()
-              .filter(s -> s.getName().equals(updated.getName()) &&
-                      s.getDataType() == updated.getDataType() &&
-                      s.getArrayDataType() == updated.getArrayDataType() &&
-                      Objects.equals(s.getOrdinalPosition(), updated.getOrdinalPosition()))
-              .findAny()
-              .orElse(null);
-      if (stored == null) {
-        changes.columnsAdded++;
-        LOG.info("Column {} was newly added", updated.getFullyQualifiedName());
-        continue;
-      }
-
-      // For patch operation don't overwrite updated column with stored column description
-      // For put operation overwrite updated column with non-empty or non-null stored column description
-      if (!patchOperation &&
-              stored.getDescription() != null && !stored.getDescription().isEmpty()) {
-        updated.setDescription(stored.getDescription()); // Carry forward non-empty description
-      }
-
-      if (updated.getChildren() != null && stored.getChildren() != null) {
-        updateColumns(stored.getChildren(), updated.getChildren(), changes, patchOperation);
-      }
-    }
-
-
-    for (Column stored : storedColumns) {
-      // Find updated column matching name, data type and ordinal position
-      Column  updated = updatedColumns.stream()
-              .filter(s -> s.getName().equals(stored.getName()) &&
-                      s.getDataType() == stored.getDataType() &&
-                      s.getArrayDataType() == stored.getArrayDataType() &&
-                      Objects.equals(s.getOrdinalPosition(), stored.getOrdinalPosition()))
-              .findAny()
-              .orElse(null);
-      if (updated == null) {
-        LOG.info("Column {} was deleted", stored.getFullyQualifiedName());
-        changes.columnsDeleted++;
-      }
-    }
-  }
-
-  // TODO remove this method
-  private void updateColumns(Table storedTable, Table updatedTable, ColumnChanges changes, boolean patchOperation) {
-    updateColumns(storedTable.getColumns(), updatedTable.getColumns(), changes, patchOperation);
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -817,9 +731,157 @@ public abstract class TableRepository {
     int delete(@Bind("id") String id);
   }
 
-  public static class ColumnChanges {
-    int columnsAdded = 0;
-    int columnsUpdated = 0;
-    int columnsDeleted = 0;
+  class TableEntityInterface implements EntityInterface {
+    private final Table table;
+
+    TableEntityInterface(Table table) {
+      this.table = table;
+    }
+
+    @Override
+    public UUID getId() {
+      return table.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return table.getDescription();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return table.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return table.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return table.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      table.setDescription(description);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      table.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class TableUpdater extends EntityUpdater {
+    final Table orig;
+    final Table updated;
+
+    public TableUpdater(Table orig, Table updated, boolean patchOperation) {
+      super(new TableEntityInterface(orig), new TableEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+      updateConstraints();
+      updateColumns(orig.getColumns(), updated.getColumns());
+    }
+
+    private void updateColumns(List<Column> origColumns, List<Column> updatedColumns) throws IOException {
+      // Carry forward the user generated metadata from existing columns to new columns
+      for (Column updated : updatedColumns) {
+        // Find stored column matching name, data type and ordinal position
+        Column stored = origColumns.stream()
+                .filter(s -> s.getName().equals(updated.getName()) &&
+                        s.getDataType() == updated.getDataType() &&
+                        s.getArrayDataType() == updated.getArrayDataType() &&
+                        Objects.equals(s.getOrdinalPosition(), updated.getOrdinalPosition()))
+                .findAny()
+                .orElse(null);
+        if (stored == null) {
+          fieldsAdded.add("column:" + updated.getFullyQualifiedName());
+          EntityUtil.applyTags(tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
+          continue;
+        }
+
+        updateColumnDescription(stored, updated);
+        updateColumnTags(stored, updated);
+        updateColumnConstraint(stored, updated);
+
+        if (updated.getChildren() != null && stored.getChildren() != null) {
+          updateColumns(stored.getChildren(), updated.getChildren());
+        }
+      }
+
+      for (Column stored : origColumns) {
+        // Find updated column matching name, data type and ordinal position
+        Column updated = updatedColumns.stream()
+                .filter(s -> s.getName().equals(stored.getName()) &&
+                        s.getDataType() == stored.getDataType() &&
+                        s.getArrayDataType() == stored.getArrayDataType() &&
+                        Objects.equals(s.getOrdinalPosition(), stored.getOrdinalPosition()))
+                .findAny()
+                .orElse(null);
+        if (updated == null) {
+          fieldsDeleted.add("column:" + stored.getFullyQualifiedName());
+          majorVersionChange = true;
+        }
+      }
+    }
+
+    private void updateColumnDescription(Column origColumn, Column updatedColumn) {
+      if (!patchOperation
+              && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
+        // Update description only when stored is empty to retain user authored descriptions
+        updatedColumn.setDescription(origColumn.getDescription());
+        return;
+      }
+      update("column:" + origColumn.getFullyQualifiedName() + ":description", origColumn.getDescription(),
+              updatedColumn.getDescription());
+    }
+
+    private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
+      update("column:" + orig.getFullyQualifiedName() + ":description", origColumn.getConstraint(),
+              updatedColumn.getConstraint());
+    }
+
+    private void updateConstraints() {
+      List<TableConstraint> origConstraints = orig.getTableConstraints();
+      List<TableConstraint> updatedConstraints = updated.getTableConstraints();
+      if (origConstraints != null) {
+        origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+        origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      }
+      if (updatedConstraints != null) {
+        updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+        updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      }
+
+      update("tableConstraints", origConstraints, updatedConstraints);
+    }
+
+    private void updateColumnTags(Column origColumn, Column updatedColumn) throws IOException {
+      if (!patchOperation) {
+        // PUT operation merges tags in the request with what already exists
+        updatedColumn.setTags(EntityUtil.mergeTags(updatedColumn.getTags(), origColumn.getTags()));
+      }
+
+      update("column:" + origColumn.getFullyQualifiedName() + ":tags",
+              origColumn.getTags() == null ? 0 : origColumn.getTags().size(),
+              updatedColumn.getTags() == null ? 0 : updatedColumn.getTags().size());
+      EntityUtil.applyTags(tagDAO(), updatedColumn.getTags(), updatedColumn.getFullyQualifiedName());
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeTable(updated, true);
+    }
   }
 }

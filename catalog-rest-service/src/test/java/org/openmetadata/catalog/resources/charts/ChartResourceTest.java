@@ -601,7 +601,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), chart.getService().getId());
       assertEquals(expectedService.getType(), chart.getService().getType());
     }
-    TestUtils.validateTags(expectedTags, chart.getTags());
+    TestUtils.validateTags(chart.getFullyQualifiedName(), expectedTags, chart.getTags());
     return chart;
   }
 

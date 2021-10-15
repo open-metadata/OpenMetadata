@@ -86,7 +86,7 @@
         "UNIQUE",
         "PRIMARY_KEY"
       ],
-      "default": "NULL"
+      "default": null
     },
     "tableConstraint": {
       "type": "object",

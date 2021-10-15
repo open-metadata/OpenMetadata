@@ -620,7 +620,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), topic.getService().getId());
       assertEquals(expectedService.getType(), topic.getService().getType());
     }
-    TestUtils.validateTags(expectedTags, topic.getTags());
+    TestUtils.validateTags(topic.getFullyQualifiedName(), expectedTags, topic.getTags());
     return topic;
   }
 

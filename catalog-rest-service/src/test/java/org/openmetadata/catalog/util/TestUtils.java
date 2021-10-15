@@ -20,7 +20,6 @@ import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.resources.databases.TableResourceTest.TagLabelComparator;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
@@ -40,6 +39,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +60,12 @@ public final class TestUtils {
   public static JdbcInfo JDBC_INFO;
   public static URI DASHBOARD_URL;
   public static URI PIPELINE_URL;
+
+  public enum UpdateType {
+    NO_CHANGE,    // PUT/PATCH made no change
+    MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
+    MAJOR_UPDATE    // PUT/PATCH made backward incompatible minor version change
+  }
 
   static {
     JDBC_INFO = new JdbcInfo().withConnectionUrl("scheme://user_name:password#_@%:localhost:1000/test")
@@ -230,11 +236,12 @@ public final class TestUtils {
     return headers;
   }
 
-  public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
+  public static void validateTags(String fqn, List<TagLabel> expectedList, List<TagLabel> actualList)
           throws HttpResponseException {
     if (expectedList == null) {
       return;
     }
+    actualList = Optional.ofNullable(actualList).orElse(Collections.emptyList());
     // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
     // So add to the expectedList, the derived tags before validating the tags
     List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
@@ -244,10 +251,10 @@ public final class TestUtils {
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-    updatedExpectedList.sort(new TagLabelComparator());
-    actualList.sort(new TagLabelComparator());
+    updatedExpectedList.sort(Comparator.comparing(TagLabel::getTagFQN));
+    actualList.sort(Comparator.comparing(TagLabel::getTagFQN));
 
-    assertEquals(updatedExpectedList.size(), actualList.size());
+    assertEquals(updatedExpectedList.size(), actualList.size(), fqn);
     for (int i = 0; i < actualList.size(); i++) {
       assertEquals(updatedExpectedList.get(i), actualList.get(i));
     }
@@ -279,5 +286,15 @@ public final class TestUtils {
   public static String getPrincipal(Map<String, String> authHeaders) {
     // Get user name from the email address
     return authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER).split("@")[0];
+  }
+
+  public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {
+    if (updateType == UpdateType.NO_CHANGE) {
+      assertEquals(previousVersion, newVersion); // No change in the version
+    } else if (updateType == UpdateType.MINOR_UPDATE) {
+      assertEquals(previousVersion + 0.1, newVersion); // Minor version change
+    } else if (updateType == UpdateType.MAJOR_UPDATE) {
+      assertEquals(previousVersion + 1.0, newVersion); // Minor version change
+    }
   }
 }

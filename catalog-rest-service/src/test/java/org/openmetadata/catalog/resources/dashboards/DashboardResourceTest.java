@@ -666,7 +666,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getType(), dashboard.getService().getType());
     }
     validateDashboardCharts(dashboard, charts);
-    TestUtils.validateTags(expectedTags, dashboard.getTags());
+    TestUtils.validateTags(dashboard.getFullyQualifiedName(), expectedTags, dashboard.getTags());
     return dashboard;
   }
 
