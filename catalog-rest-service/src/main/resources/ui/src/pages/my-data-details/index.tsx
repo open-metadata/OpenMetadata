@@ -483,7 +483,7 @@ const MyDataDetailsPage = () => {
       }
     });
     setActiveTab(1);
-    getLineageByFQN(tableFQN, 'table').then((res: AxiosResponse) =>
+    getLineageByFQN(tableFQN, EntityType.TABLE).then((res: AxiosResponse) =>
       setEntityLineage(res.data)
     );
   }, [tableFQN]);

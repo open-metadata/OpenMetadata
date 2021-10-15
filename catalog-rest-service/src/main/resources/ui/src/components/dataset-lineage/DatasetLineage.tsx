@@ -1,5 +1,3 @@
-/* eslint-disable */
-
 import React, {
   MouseEvent as ReactMouseEvent,
   useEffect,
@@ -27,17 +25,19 @@ import { EntityReference } from '../../generated/type/entityReference';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
 };
-
+/* eslint-disable-next-line */
 const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node | Edge) => {
   return;
 };
-
+/* eslint-disable-next-line */
 const onNodeMouseMove = (_event: ReactMouseEvent, _node: Node | Edge) => {
   return;
 };
+/* eslint-disable-next-line */
 const onNodeMouseLeave = (_event: ReactMouseEvent, _node: Node | Edge) => {
   return;
 };
+/* eslint-disable-next-line */
 const onNodeContextMenu = (_event: ReactMouseEvent, _node: Node | Edge) => {
   _event.preventDefault();
 };
@@ -104,6 +104,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
             });
           }
           upDepth += 1;
+
           return {
             ...up,
             isMapped: true,
@@ -147,6 +148,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
             });
           }
           downDepth += 1;
+
           return {
             ...down,
             isMapped: true,
@@ -218,6 +220,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
     ...DOWNStreamNodes,
     ...lineageEdges,
   ];
+
   return lineageData;
 };
 
@@ -244,10 +247,9 @@ const DatasetLineage = ({
       (entityLineage.upstreamEdges ?? []).length ? (
         <ReactFlowProvider>
           <ReactFlow
+            panOnScroll
             elements={elements as Elements}
             nodesConnectable={false}
-            selectNodesOnDrag={false}
-            panOnScroll={true}
             onConnect={onConnect}
             onElementsRemove={onElementsRemove}
             onLoad={onLoad}

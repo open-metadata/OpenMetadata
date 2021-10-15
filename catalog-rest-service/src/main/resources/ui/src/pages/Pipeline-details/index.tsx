@@ -447,8 +447,8 @@ const MyPipelinePage = () => {
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
     setActiveTab(1);
-    getLineageByFQN(pipelineFQN, 'pipeline').then((res: AxiosResponse) =>
-      setEntityLineage(res.data)
+    getLineageByFQN(pipelineFQN, EntityType.PIPELINE).then(
+      (res: AxiosResponse) => setEntityLineage(res.data)
     );
   }, [pipelineFQN]);
 
