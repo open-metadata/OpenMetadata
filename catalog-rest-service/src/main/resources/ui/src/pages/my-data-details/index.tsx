@@ -427,7 +427,7 @@ const MyDataDetailsPage = () => {
                   : undefined,
               },
               {
-                name: database.name,
+                name: resDB.data.name,
                 url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
               },
               {
