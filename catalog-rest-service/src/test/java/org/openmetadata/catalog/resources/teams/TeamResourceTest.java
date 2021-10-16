@@ -214,7 +214,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
 
   /**
    * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList#ResultList(List, int, String, String)
+   * @see org.openmetadata.catalog.util.ResultList
    *
    * The tests and various CASES referenced are base on that.
    */
@@ -426,18 +426,22 @@ public class TeamResourceTest extends CatalogApplicationTest {
 
   public static Team createAndCheckTeam(CreateTeam create, Map<String, String> authHeaders)
           throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Team team = createTeam(create, authHeaders);
+    assertEquals(0.1, team.getVersion());
     List<User> expectedUsers = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getUsers()).orElse(Collections.emptyList())) {
       expectedUsers.add(new User().withId(teamId));
     }
+
     assertEquals(team.getName(), create.getName());
-    validateTeam(team, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers);
+    validateTeam(team, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers, updatedBy);
 
     // Get the newly created team and validate it
     Team getTeam = getTeam(team.getId(), "profile,users", authHeaders);
     assertEquals(team.getName(), create.getName());
-    validateTeam(getTeam, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers);
+    validateTeam(getTeam, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers,
+            updatedBy);
     return team;
   }
 
@@ -474,10 +478,11 @@ public class TeamResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateTeam(Team team, String expectedDescription, String expectedDisplayName,
-                                   Profile expectedProfile, List<User> expectedUsers) {
+                                   Profile expectedProfile, List<User> expectedUsers, String expectedUpdatedBy) {
     assertNotNull(team.getId());
     assertNotNull(team.getHref());
     assertEquals(expectedDescription, team.getDescription());
+    assertEquals(expectedUpdatedBy, team.getUpdatedBy());
     assertEquals(expectedDisplayName, team.getDisplayName());
     assertEquals(expectedProfile, team.getProfile());
     if (expectedUsers != null && !expectedUsers.isEmpty()) {
@@ -500,20 +505,21 @@ public class TeamResourceTest extends CatalogApplicationTest {
   /** Validate returned fields GET .../teams/{id}?fields="..." or GET .../teams/name/{name}?fields="..." */
   private void validateGetWithDifferentFields(Team expectedTeam, boolean byName, Map<String, String> authHeaders)
           throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     // .../teams?fields=profile
     String fields = "profile";
     Team getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields,
             authHeaders);
-    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(),
-            expectedTeam.getProfile(), null);
+    validateTeam(getTeam, expectedTeam.getDescription(), expectedTeam.getDisplayName(), expectedTeam.getProfile(),
+            null, updatedBy);
     assertNull(getTeam.getOwns());
 
     // .../teams?fields=users,owns
-    fields = "users,owns";
+    fields = "users,owns,profile";
     getTeam = byName ? getTeamByName(expectedTeam.getName(), fields, authHeaders) : getTeam(expectedTeam.getId(), fields, authHeaders);
-    assertNotNull(expectedTeam.getProfile());
-    validateEntityReference(expectedTeam.getUsers());
-    validateEntityReference(expectedTeam.getOwns());
+    assertNotNull(getTeam.getProfile());
+    validateEntityReference(getTeam.getUsers());
+    validateEntityReference(getTeam.getOwns());
   }
 
   private Team patchTeam(UUID teamId, String originalJson, Team updated, Map<String, String> authHeaders)
@@ -531,6 +537,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
   private Team patchTeamAttributesAndCheck(Team team, String displayName, String description, Profile profile,
                                            List<User> users, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
     String tableJson = JsonUtils.pojoToJson(team);
 
@@ -542,11 +549,11 @@ public class TeamResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Team updatedTeam = patchTeam(tableJson, team, authHeaders);
-    validateTeam(updatedTeam, description, displayName, profile, users);
+    validateTeam(updatedTeam, description, displayName, profile, users, updatedBy);
 
     // GET the table and Validate information returned
     Team getTeam = getTeam(team.getId(), "users,profile", authHeaders);
-    validateTeam(getTeam, description, displayName, profile, users);
+    validateTeam(getTeam, description, displayName, profile, users, updatedBy);
     return  getTeam;
   }
 

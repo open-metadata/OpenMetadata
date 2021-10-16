@@ -469,41 +469,45 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   public static Model createAndCheckModel(CreateModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Model model = createModel(create, authHeaders);
-    validateModel(model, create.getDisplayName(),
-            create.getDescription(), create.getOwner());
-    return getAndValidate(model.getId(), create, authHeaders);
+    validateModel(model, create.getDisplayName(), create.getDescription(), create.getOwner(), updatedBy);
+    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
   public static Model createAndCheckModel(CreateModel create, EntityReference dashboard,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withDashboard(dashboard);
     Model model = createModel(create, authHeaders);
-    validateModel(model, create.getDescription(), create.getOwner(), create.getTags());
-    return getAndValidate(model.getId(), create, authHeaders);
+    assertEquals(0.1, model.getVersion());
+    validateModel(model, create.getDescription(), create.getOwner(), create.getTags(), updatedBy);
+    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
   public static Model updateAndCheckModel(CreateModel create,
                                           Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Model updatedModel = updateModel(create, status, authHeaders);
-    validateModel(updatedModel, create.getDescription(), create.getOwner());
+    validateModel(updatedModel, create.getDescription(), create.getOwner(), updatedBy);
 
-    return getAndValidate(updatedModel.getId(), create, authHeaders);
+    return getAndValidate(updatedModel.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned Model has all the required information passed during creation
   public static Model getAndValidate(UUID modelId,
                                      CreateModel create,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+                                     Map<String, String> authHeaders,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created Model by ID and validate
     Model model = getModel(modelId, "owner", authHeaders);
-    validateModel(model, create.getDescription(), create.getOwner());
+    validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
 
     // GET the newly created Model by name and validate
     String fqn = model.getFullyQualifiedName();
     model = getModelByName(fqn, "owner", authHeaders);
-    return validateModel(model, create.getDescription(), create.getOwner());
+    return validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
   }
 
   public static Model updateModel(CreateModel create,
@@ -549,17 +553,19 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   private static Model validateModel(Model model, String expectedDisplayName,
                                      String expectedDescription,
-                                     EntityReference expectedOwner) {
-    Model newModel = validateModel(model, expectedDescription, expectedOwner);
+                                     EntityReference expectedOwner,
+                                     String expectedUpdatedBy) {
+    Model newModel = validateModel(model, expectedDescription, expectedOwner, expectedUpdatedBy);
     assertEquals(expectedDisplayName, newModel.getDisplayName());
     return newModel;
   }
   private static Model validateModel(Model model, String expectedDescription,
-                                     EntityReference expectedOwner) {
+                                     EntityReference expectedOwner, String expectedUpdatedBy) {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
     assertNotNull(model.getAlgorithm());
     assertEquals(expectedDescription, model.getDescription());
+    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -574,10 +580,12 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   private static Model validateModel(Model model, String expectedDescription,
                                      EntityReference expectedOwner,
-                                     List<TagLabel> expectedTags) throws HttpResponseException {
+                                     List<TagLabel> expectedTags,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
     assertEquals(expectedDescription, model.getDescription());
+    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -614,6 +622,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
                                                  EntityReference newOwner, List<TagLabel> tags,
                                                  Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String modelJson = JsonUtils.pojoToJson(model);
 
     // Update the table attributes
@@ -623,11 +632,11 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Model updatedModel = patchModel(modelJson, model, authHeaders);
-    validateModel(updatedModel, model.getDescription(), newOwner, tags);
+    validateModel(updatedModel, model.getDescription(), newOwner, tags, updatedBy);
 
     // GET the table and Validate information returned
-    Model getModel = getModel(model.getId(), "owner", authHeaders);
-    validateModel(updatedModel, model.getDescription(), newOwner, tags);
+    Model getModel = getModel(model.getId(), "owner,tags", authHeaders);
+    validateModel(getModel, model.getDescription(), newOwner, tags, updatedBy);
     return updatedModel;
   }
 
@@ -662,11 +671,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("models/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, Model.class, authHeaders);
-  }
-
-  public static ModelList listModels(String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listModels(fields, null, null, null, authHeaders);
   }
 
   public static ModelList listModels(String fields, Integer limitParam,

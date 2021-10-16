@@ -231,19 +231,21 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
   public static DatabaseService createAndCheckService(CreateDatabaseService create,
                                                       Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     DatabaseService service = createService(create, authHeaders);
+    assertEquals(0.1, service.getVersion());
     validateService(service, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+            create.getIngestionSchedule(), updatedBy);
 
     // GET the newly created service and validate
     DatabaseService getService = getService(service.getId(), authHeaders);
     validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+            create.getIngestionSchedule(), updatedBy);
 
     // GET the newly created service by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
     validateService(getService, create.getName(), create.getDescription(), create.getJdbc(),
-            create.getIngestionSchedule());
+            create.getIngestionSchedule(), updatedBy);
     return service;
   }
 
@@ -254,11 +256,12 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateService(DatabaseService service, String expectedName, String expectedDescription,
-                                      JdbcInfo expectedJdbc, Schedule expectedIngestion) {
+                                      JdbcInfo expectedJdbc, Schedule expectedIngestion, String expectedUpdatedBy) {
     assertNotNull(service.getId());
     assertNotNull(service.getHref());
     assertEquals(expectedName, service.getName());
     assertEquals(expectedDescription, service.getDescription());
+    assertEquals(expectedUpdatedBy, service.getUpdatedBy());
 
     // Validate jdbc
     assertEquals(expectedJdbc, service.getJdbc());
@@ -347,19 +350,20 @@ public class DatabaseServiceResourceTest extends CatalogApplicationTest {
 
   public static void updateAndCheckService(String id, UpdateDatabaseService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     DatabaseService service = updateDatabaseService(id, update, status, authHeaders);
     validateService(service, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+            update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated database and validate
     DatabaseService getService = getService(service.getId(), authHeaders);
     validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+            update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated database by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
     validateService(getService, service.getName(), update.getDescription(), service.getJdbc(),
-            update.getIngestionSchedule());
+            update.getIngestionSchedule(), updatedBy);
   }
 
   public static DatabaseService updateDatabaseService(String id, UpdateDatabaseService updated,

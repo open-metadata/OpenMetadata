@@ -45,6 +45,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -181,9 +182,10 @@ public abstract class PipelineRepository {
   }
 
   @Transaction
-  public Pipeline patch(String id, JsonPatch patch) throws IOException {
+  public Pipeline patch(String id, String user, JsonPatch patch) throws IOException {
     Pipeline original = setFields(validatePipeline(id), PIPELINE_PATCH_FIELDS);
     Pipeline updated = JsonUtils.applyPatch(original, patch, Pipeline.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

@@ -32,7 +32,6 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
@@ -186,7 +185,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createDashboard(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, String.format("Invalid service type %s",
-            SUPERSET_INVALID_SERVICE_REFERENCE.getType().toString()));
+            SUPERSET_INVALID_SERVICE_REFERENCE.getType()));
 
   }
 
@@ -532,43 +531,45 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   public static Dashboard createAndCheckDashboard(CreateDashboard create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Dashboard dashboard = createDashboard(create, authHeaders);
     validateDashboard(dashboard, create.getDisplayName(),
-            create.getDescription(), create.getOwner(), create.getService());
-    return getAndValidate(dashboard.getId(), create, authHeaders);
+            create.getDescription(), create.getOwner(), create.getService(), updatedBy);
+    return getAndValidate(dashboard.getId(), create, authHeaders, updatedBy);
   }
 
   public static Dashboard createAndCheckDashboard(CreateDashboard create, List<EntityReference> charts,
                                                   Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withCharts(charts);
     Dashboard dashboard = createDashboard(create, authHeaders);
     validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            charts);
-    return getAndValidate(dashboard.getId(), create, authHeaders);
+            charts, updatedBy);
+    return getAndValidate(dashboard.getId(), create, authHeaders, updatedBy);
   }
 
   public static Dashboard updateAndCheckDashboard(CreateDashboard create,
                                                 Status status,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Dashboard updatedDashboard = updateDashboard(create, status, authHeaders);
-    validateDashboard(updatedDashboard, create.getDescription(), create.getOwner(), create.getService());
+    validateDashboard(updatedDashboard, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
 
     // GET the newly updated Dashboard and validate
-    return getAndValidate(updatedDashboard.getId(), create, authHeaders);
+    return getAndValidate(updatedDashboard.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned Dashboard has all the required information passed during creation
-  public static Dashboard getAndValidate(UUID dashboardId,
-                                        CreateDashboard create,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+  public static Dashboard getAndValidate(UUID dashboardId, CreateDashboard create, Map<String, String> authHeaders,
+                                         String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created Dashboard by ID and validate
     Dashboard dashboard = getDashboard(dashboardId, "service,owner,charts", authHeaders);
-    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
+    validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), expectedUpdatedBy);
 
     // GET the newly created Dashboard by name and validate
     String fqn = dashboard.getFullyQualifiedName();
     dashboard = getDashboardByName(fqn, "service,owner,charts", authHeaders);
-    return validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService());
+    return validateDashboard(dashboard, create.getDescription(), create.getOwner(), create.getService(), expectedUpdatedBy);
   }
 
   public static Dashboard updateDashboard(CreateDashboard create,
@@ -615,16 +616,21 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   private static Dashboard validateDashboard(Dashboard dashboard, String expectedDisplayName,
                                              String expectedDescription,
-                                             EntityReference expectedOwner, EntityReference expectedService) {
-    Dashboard newDashboard = validateDashboard(dashboard, expectedDescription, expectedOwner, expectedService);
+                                             EntityReference expectedOwner, EntityReference expectedService,
+                                             String expectedUpdatedBy) {
+    Dashboard newDashboard = validateDashboard(dashboard, expectedDescription, expectedOwner, expectedService,
+            expectedUpdatedBy);
     assertEquals(expectedDisplayName, newDashboard.getDisplayName());
     return newDashboard;
   }
+
   private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription,
-                                            EntityReference expectedOwner, EntityReference expectedService) {
+                                             EntityReference expectedOwner, EntityReference expectedService,
+                                             String expectedUpdatedBy) {
     assertNotNull(dashboard.getId());
     assertNotNull(dashboard.getHref());
     assertEquals(expectedDescription, dashboard.getDescription());
+    assertEquals(expectedUpdatedBy, dashboard.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -645,11 +651,12 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   private static Dashboard validateDashboard(Dashboard dashboard, String expectedDescription,
                                              EntityReference expectedOwner, EntityReference expectedService,
-                                              List<TagLabel> expectedTags,
-                                              List<EntityReference> charts) throws HttpResponseException {
+                                              List<TagLabel> expectedTags, List<EntityReference> charts,
+                                             String expectedUpdatedBy) throws HttpResponseException {
     assertNotNull(dashboard.getId());
     assertNotNull(dashboard.getHref());
     assertEquals(expectedDescription, dashboard.getDescription());
+    assertEquals(expectedUpdatedBy, dashboard.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -689,6 +696,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
                                                      EntityReference newOwner, List<TagLabel> tags,
                                                      Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String dashboardJson = JsonUtils.pojoToJson(dashboard);
 
     // Update the table attributes
@@ -699,12 +707,12 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     // Validate information returned in patch response has the updates
     Dashboard updatedDashboard = patchDashboard(dashboardJson, dashboard, authHeaders);
     validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null, tags,
-            dashboard.getCharts());
+            dashboard.getCharts(), updatedBy);
 
     // GET the table and Validate information returned
-    Dashboard getDashboard = getDashboard(dashboard.getId(), "service,owner", authHeaders);
-    validateDashboard(updatedDashboard, dashboard.getDescription(), newOwner, null, tags,
-            dashboard.getCharts());
+    Dashboard getDashboard = getDashboard(dashboard.getId(), "service,owner,charts,tags", authHeaders);
+    validateDashboard(getDashboard, dashboard.getDescription(), newOwner, null, tags,
+            dashboard.getCharts(), updatedBy);
     return updatedDashboard;
   }
 

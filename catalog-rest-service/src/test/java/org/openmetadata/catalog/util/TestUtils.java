@@ -285,7 +285,11 @@ public final class TestUtils {
 
   public static String getPrincipal(Map<String, String> authHeaders) {
     // Get user name from the email address
-    return authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER).split("@")[0];
+    if (authHeaders == null) {
+      return null;
+    }
+    String principal = authHeaders.get(CatalogOpenIdAuthorizationRequestFilter.X_AUTH_PARAMS_EMAIL_HEADER);
+    return principal == null ? null : principal.split("@")[0];
   }
 
   public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {

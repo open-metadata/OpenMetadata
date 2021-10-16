@@ -65,6 +65,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -232,7 +233,9 @@ public class UserResource {
     }
     User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
             .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone());
+            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     addHref(uriInfo, dao.create(user, create.getTeams()));
     return Response.created(user.getHref()).entity(user).build();
   }
@@ -254,7 +257,10 @@ public class UserResource {
     }
     User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
             .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone());
+            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
+
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(user));
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
     user = addHref(uriInfo, response.getEntity());
@@ -280,7 +286,7 @@ public class UserResource {
     User user = dao.get(id);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(user));
-    return addHref(uriInfo, dao.patch(id, patch));
+    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE

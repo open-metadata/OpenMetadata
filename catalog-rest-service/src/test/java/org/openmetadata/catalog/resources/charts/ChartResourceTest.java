@@ -287,7 +287,8 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
     // Update chart two times successfully with PUT requests
     updateAndCheckChart(request, OK, adminAuthHeaders());
-    updateAndCheckChart(request, OK, adminAuthHeaders());
+    Chart chart = updateAndCheckChart(request, OK, adminAuthHeaders());
+    assertEquals(0.1, chart.getVersion());
   }
 
   @Test
@@ -505,34 +506,38 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   public static Chart createAndCheckChart(CreateChart create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Chart chart = createChart(create, authHeaders);
     validateChart(chart, chart.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
-            create.getTags());
-    return getAndValidate(chart.getId(), create, authHeaders);
+            create.getTags(), updatedBy);
+    assertEquals(0.1, chart.getVersion());
+    return getAndValidate(chart.getId(), create, authHeaders, updatedBy);
   }
 
   public static Chart updateAndCheckChart(CreateChart create,
                                           Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Chart updatedChart = updateChart(create, status, authHeaders);
-    validateChart(updatedChart, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateChart(updatedChart, create.getDescription(), create.getOwner(), create.getService(),
+            create.getTags(), updatedBy);
 
     // GET the newly updated chart and validate
-    return getAndValidate(updatedChart.getId(), create, authHeaders);
+    return getAndValidate(updatedChart.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned chart has all the required information passed during creation
-  public static Chart getAndValidate(UUID chartId,
-                                     CreateChart create,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+  public static Chart getAndValidate(UUID chartId, CreateChart create, Map<String, String> authHeaders,
+                                     String updatedBy) throws HttpResponseException {
     // GET the newly created chart by ID and validate
     Chart chart = getChart(chartId, "service,owner", authHeaders);
-    validateChart(chart, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateChart(chart, create.getDescription(), create.getOwner(), create.getService(), create.getTags(), updatedBy);
 
     // GET the newly created chart by name and validate
     String fqn = chart.getFullyQualifiedName();
     chart = getChartByName(fqn, "service,owner", authHeaders);
-    return validateChart(chart, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    return validateChart(chart, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            updatedBy);
   }
 
   public static Chart updateChart(CreateChart create,
@@ -574,18 +579,22 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   private static Chart validateChart(Chart  chart, String expectedDisplayName, String expectedDescription,
                                      EntityReference expectedOwner, EntityReference expectedService,
-                                     List<TagLabel> expectedTags) throws HttpResponseException {
-    Chart newChart = validateChart(chart, expectedDescription, expectedOwner, expectedService, expectedTags);
+                                     List<TagLabel> expectedTags, String expectedUpdatedBy) throws HttpResponseException {
+    Chart newChart = validateChart(chart, expectedDescription, expectedOwner, expectedService, expectedTags,
+            expectedUpdatedBy);
     assertEquals(expectedDisplayName, newChart.getDisplayName());
+    assertEquals(expectedUpdatedBy, newChart.getUpdatedBy());
     return chart;
   }
 
   private static Chart validateChart(Chart chart, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService, List<TagLabel> expectedTags)
+                                     EntityReference expectedService, List<TagLabel> expectedTags,
+                                     String expectedUpdatedBy)
           throws HttpResponseException {
     assertNotNull(chart.getId());
     assertNotNull(chart.getHref());
     assertEquals(expectedDescription, chart.getDescription());
+    assertEquals(expectedUpdatedBy, chart.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -610,6 +619,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
                                              List<TagLabel> tags,
                                              Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String chartJson = JsonUtils.pojoToJson(chart);
 
     // Update the chart attributes
@@ -619,11 +629,11 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Chart updateChart = patchChart(chartJson, chart, authHeaders);
-    validateChart(updateChart, chart.getDescription(), newOwner, null, tags);
+    validateChart(updateChart, chart.getDescription(), newOwner, null, tags, updatedBy);
 
     // GET the chart and Validate information returned
     Chart getChart = getChart(chart.getId(), "service,owner,tags", authHeaders);
-    validateChart(getChart, chart.getDescription(), newOwner, null, tags);
+    validateChart(getChart, chart.getDescription(), newOwner, null, tags, updatedBy);
     return updateChart;
   }
 

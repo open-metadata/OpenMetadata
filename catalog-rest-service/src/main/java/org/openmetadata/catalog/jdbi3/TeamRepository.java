@@ -51,6 +51,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -181,10 +182,11 @@ public abstract class TeamRepository {
   }
 
   @Transaction
-  public Team patch(String teamId, JsonPatch patch) throws IOException {
+  public Team patch(String teamId, String user, JsonPatch patch) throws IOException {
     Team original = setFields(EntityUtil.validate(teamId, teamDAO().findById(teamId), Team.class),
             TEAM_PATCH_FIELDS);
     Team updated = JsonUtils.applyPatch(original, patch, Team.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

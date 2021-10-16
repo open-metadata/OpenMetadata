@@ -17,20 +17,20 @@
 package org.openmetadata.catalog.resources.reports;
 
 import com.google.inject.Inject;
-import org.openmetadata.catalog.entity.data.Report;
-import org.openmetadata.catalog.jdbi3.ReportRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.catalog.util.ResultList;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.entity.data.Report;
+import org.openmetadata.catalog.jdbi3.ReportRepository;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -44,9 +44,11 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -129,8 +131,11 @@ public class ReportResource {
                           schema = @Schema(implementation = Report.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
-  public Response create(@Context UriInfo uriInfo, @Valid Report report) throws IOException {
-    report.setId(UUID.randomUUID());
+  public Response create(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Valid Report report) throws IOException {
+    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     addHref(uriInfo, dao.create(report, report.getService(), report.getOwner()));
     return Response.created(report.getHref()).entity(report).build();
   }
@@ -144,11 +149,13 @@ public class ReportResource {
                           schema = @Schema(implementation = Report.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
-  public Response createOrUpdate(@Context UriInfo uriInfo, @Valid Report report) throws IOException {
-    report.setId(UUID.randomUUID());
+  public Response createOrUpdate(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Valid Report report) throws IOException {
+    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     PutResponse<Report> response = dao.createOrUpdate(report, report.getService(), report.getOwner());
     addHref(uriInfo, report);
     return Response.status(response.getStatus()).entity(report).build();
   }
 }
-

@@ -56,9 +56,13 @@ CREATE TABLE IF NOT EXISTS dbservice_entity (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS messaging_service_entity (
@@ -66,9 +70,13 @@ CREATE TABLE IF NOT EXISTS messaging_service_entity (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS dashboard_service_entity (
@@ -76,9 +84,13 @@ CREATE TABLE IF NOT EXISTS dashboard_service_entity (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS pipeline_service_entity (
@@ -86,9 +98,13 @@ CREATE TABLE IF NOT EXISTS pipeline_service_entity (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 --
@@ -98,9 +114,13 @@ CREATE TABLE IF NOT EXISTS database_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS table_entity (
@@ -119,72 +139,104 @@ CREATE TABLE IF NOT EXISTS metric_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS report_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS dashboard_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS pipeline_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS topic_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS chart_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS task_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 --
@@ -204,9 +256,13 @@ CREATE TABLE IF NOT EXISTS team_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS user_entity (
@@ -215,18 +271,26 @@ CREATE TABLE IF NOT EXISTS user_entity (
     email VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.email') NOT NULL,
     deactivated VARCHAR(8) GENERATED ALWAYS AS (json ->> '$.deactivated'),
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS bot_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name(name)
+    UNIQUE KEY unique_name(name),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS role_entity (
@@ -260,15 +324,23 @@ CREATE TABLE IF NOT EXISTS entity_usage (
 CREATE TABLE IF NOT EXISTS tag_category (
     name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
     json JSON NOT NULL, -- JSON stores category information and does not store children
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
-    UNIQUE KEY unique_name(name) -- Unique tag category name
+    UNIQUE KEY unique_name(name), -- Unique tag category name
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS tag (
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL, -- JSON stores all tag attributes and does not store children
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
     timestamp BIGINT,
-    UNIQUE KEY unique_name(fullyQualifiedName)
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
 );
 
 CREATE TABLE IF NOT EXISTS tag_usage (

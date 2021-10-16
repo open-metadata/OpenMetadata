@@ -66,6 +66,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -225,7 +226,9 @@ public class ChartResource {
                     .withService(create.getService())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner());
+                    .withOwner(create.getOwner())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
     chart = addHref(uriInfo, dao.create(chart, create.getService(), create.getOwner()));
     return Response.created(chart.getHref()).entity(chart).build();
   }
@@ -251,7 +254,7 @@ public class ChartResource {
     Chart chart = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(chart));
-    chart = dao.patch(id, patch);
+    chart = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, chart);
   }
 
@@ -273,7 +276,9 @@ public class ChartResource {
                     .withService(create.getService())
                     .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
                     .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner());
+                    .withOwner(create.getOwner())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
     PutResponse<Chart> response = dao.createOrUpdate(chart, create.getService(), create.getOwner());
     chart = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(chart).build();

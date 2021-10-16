@@ -43,6 +43,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -157,9 +158,10 @@ public abstract class ModelRepository {
   }
 
   @Transaction
-  public Model patch(String id, JsonPatch patch) throws IOException {
+  public Model patch(String id, String user, JsonPatch patch) throws IOException {
     Model original = setFields(validateModel(id), MODEL_PATCH_FIELDS);
     Model updated = JsonUtils.applyPatch(original, patch, Model.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

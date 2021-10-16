@@ -66,6 +66,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -227,7 +228,10 @@ public class TopicResource {
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
                     .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags());
+                    .withTags(create.getTags())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
+
     topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
     return Response.created(topic.getHref()).entity(topic).build();
   }
@@ -253,7 +257,7 @@ public class TopicResource {
     Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(topic));
-    topic = dao.patch(id, patch);
+    topic = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, topic);
   }
 
@@ -278,7 +282,10 @@ public class TopicResource {
                     .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
                     .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags());
+                    .withTags(create.getTags())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
+
     PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();

@@ -488,34 +488,41 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
   public static Task createAndCheckTask(CreateTask create,
                                         Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Task task = createTask(create, authHeaders);
+    assertEquals(0.1, task.getVersion());
     validateTask(task, task.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
-            create.getTags());
-    return getAndValidate(task.getId(), create, authHeaders);
+            create.getTags(), updatedBy);
+    return getAndValidate(task.getId(), create, authHeaders, updatedBy);
   }
 
   public static Task updateAndCheckTask(CreateTask create,
                                         Status status,
                                         Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Task updatedTask = updateTask(create, status, authHeaders);
-    validateTask(updatedTask, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTask(updatedTask, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            updatedBy);
 
     // GET the newly updated task and validate
-    return getAndValidate(updatedTask.getId(), create, authHeaders);
+    return getAndValidate(updatedTask.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned task has all the required information passed during creation
   public static Task getAndValidate(UUID taskId,
-                                   CreateTask create,
-                                   Map<String, String> authHeaders) throws HttpResponseException {
+                                    CreateTask create,
+                                    Map<String, String> authHeaders,
+                                    String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created task by ID and validate
     Task task = getTask(taskId, "service,owner", authHeaders);
-    validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
 
     // GET the newly created task by name and validate
     String fqn = task.getFullyQualifiedName();
     task = getTaskByName(fqn, "service,owner", authHeaders);
-    return validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    return validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
   }
 
   public static Task updateTask(CreateTask create,
@@ -557,18 +564,22 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
   private static Task validateTask(Task  task, String expectedDisplayName, String expectedDescription,
                                      EntityReference expectedOwner, EntityReference expectedService,
-                                     List<TagLabel> expectedTags) throws HttpResponseException {
-    Task newTask = validateTask(task, expectedDescription, expectedOwner, expectedService, expectedTags);
+                                     List<TagLabel> expectedTags, String expectedUpdatedBy)
+          throws HttpResponseException {
+    Task newTask = validateTask(task, expectedDescription, expectedOwner, expectedService, expectedTags,
+            expectedUpdatedBy);
     assertEquals(expectedDisplayName, newTask.getDisplayName());
     return task;
   }
 
   private static Task validateTask(Task task, String expectedDescription, EntityReference expectedOwner,
-                                    EntityReference expectedService, List<TagLabel> expectedTags)
+                                    EntityReference expectedService, List<TagLabel> expectedTags,
+                                   String expectedUpdatedBy)
           throws HttpResponseException {
     assertNotNull(task.getId());
     assertNotNull(task.getHref());
     assertEquals(expectedDescription, task.getDescription());
+    assertEquals(expectedUpdatedBy, task.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -593,6 +604,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
                                              List<TagLabel> tags,
                                              Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String taskJson = JsonUtils.pojoToJson(task);
 
     // Update the task attributes
@@ -602,11 +614,11 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Task updateTask = patchTask(taskJson, task, authHeaders);
-    validateTask(updateTask, task.getDescription(), newOwner, null, tags);
+    validateTask(updateTask, task.getDescription(), newOwner, null, tags, updatedBy);
 
     // GET the task and Validate information returned
     Task getTask = getTask(task.getId(), "service,owner,tags", authHeaders);
-    validateTask(getTask, task.getDescription(), newOwner, null, tags);
+    validateTask(getTask, task.getDescription(), newOwner, null, tags, updatedBy);
     return updateTask;
   }
 

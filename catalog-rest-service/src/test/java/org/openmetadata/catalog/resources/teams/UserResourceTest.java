@@ -277,7 +277,7 @@ public class UserResourceTest extends CatalogApplicationTest {
 
   /**
    * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList#ResultList(List, int, String, String)
+   * @see org.openmetadata.catalog.util.ResultList
    *
    * The tests and various CASES referenced are base on that.
    */
@@ -521,6 +521,7 @@ public class UserResourceTest extends CatalogApplicationTest {
                                            String timezone, Boolean isBot, Boolean isAdmin,
                                            Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Optional.ofNullable(user.getTeams()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
     String userJson = JsonUtils.pojoToJson(user);
 
@@ -534,47 +535,50 @@ public class UserResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     User updatedUser = patchUser(userJson, user, authHeaders);
-    validateUser(updatedUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin);
+    validateUser(updatedUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin, updatedBy);
 
     // GET the user and Validate information returned
     User getUser = getUser(user.getId(), "teams,profile", authHeaders);
-    validateUser(getUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin);
+    validateUser(getUser, user.getName(), displayName, teams, profile, timezone, isBot, isAdmin, updatedBy);
     return getUser;
   }
 
 
   public static User createAndCheckUser(CreateUser create, Map<String, String> authHeaders)
           throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     final User user = createUser(create, authHeaders);
+    assertEquals(0.1, user.getVersion());
     List<Team> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new Team().withId(teamId));
     }
     validateUser(user, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
 
     // GET the newly created user and validate
     User getUser = getUser(user.getId(), "profile,teams", authHeaders);
     validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
     return user;
   }
 
   public static User createOrUpdateAndCheckUser(CreateUser create, Response.Status expectedStatus,
                                                 Map<String, String> authHeaders)
           throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     final User user = putUser(create, expectedStatus, authHeaders);
     List<Team> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
       expectedTeams.add(new Team().withId(teamId));
     }
     validateUser(user, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
 
     // GET the newly created user and validate
     User getUser = getUser(user.getId(), "profile,teams", authHeaders);
     validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin());
+            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
     return user;
   }
 
@@ -592,9 +596,10 @@ public class UserResourceTest extends CatalogApplicationTest {
 
   public static void validateUser(User user, String expectedName, String expectedDisplayName, List<Team> expectedTeams,
                                   Profile expectedProfile, String expectedTimeZone, Boolean expectedIsBot,
-                                  Boolean expectedIsAdmin) {
+                                  Boolean expectedIsAdmin, String expectedUpdatedBy) {
     assertEquals(expectedName, user.getName());
     assertEquals(expectedDisplayName, user.getDisplayName());
+    assertEquals(expectedUpdatedBy, user.getUpdatedBy());
     assertEquals(expectedTimeZone, user.getTimezone());
     assertEquals(expectedIsBot, user.getIsBot());
     assertEquals(expectedIsAdmin, user.getIsAdmin());

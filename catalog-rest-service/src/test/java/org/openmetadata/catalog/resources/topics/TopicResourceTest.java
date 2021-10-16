@@ -533,33 +533,38 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   public static Topic createAndCheckTopic(CreateTopic create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Topic topic = createTopic(create, authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
-    return getAndValidate(topic.getId(), create, authHeaders);
+    assertEquals(0.1, topic.getVersion());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(), updatedBy);
+    return getAndValidate(topic.getId(), create, authHeaders, updatedBy);
   }
 
   public static Topic updateAndCheckTopic(CreateTopic create,
                                           Status status,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Topic updatedTopic = updateTopic(create, status, authHeaders);
-    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            updatedBy);
 
     // GET the newly updated topic and validate
-    return getAndValidate(updatedTopic.getId(), create, authHeaders);
+    return getAndValidate(updatedTopic.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned topic has all the required information passed during creation
-  public static Topic getAndValidate(UUID topicId,
-                                     CreateTopic create,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+  public static Topic getAndValidate(UUID topicId, CreateTopic create, Map<String, String> authHeaders,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created topic by ID and validate
     Topic topic = getTopic(topicId, "service,owner", authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
 
     // GET the newly created topic by name and validate
     String fqn = topic.getFullyQualifiedName();
     topic = getTopicByName(fqn, "service,owner", authHeaders);
-    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
   }
 
   public static Topic updateTopic(CreateTopic create,
@@ -600,11 +605,13 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   private static Topic validateTopic(Topic topic, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService, List<TagLabel> expectedTags)
+                                     EntityReference expectedService, List<TagLabel> expectedTags,
+                                     String expectedUpdatedBy)
           throws HttpResponseException {
     assertNotNull(topic.getId());
     assertNotNull(topic.getHref());
     assertEquals(expectedDescription, topic.getDescription());
+    assertEquals(expectedUpdatedBy, topic.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -629,6 +636,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
                                              List<TagLabel> tags,
                                              Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String topicJson = JsonUtils.pojoToJson(topic);
 
     // Update the topic attributes
@@ -638,11 +646,11 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Topic updateTopic = patchTopic(topicJson, topic, authHeaders);
-    validateTopic(updateTopic, topic.getDescription(), newOwner, null, tags);
+    validateTopic(updateTopic, topic.getDescription(), newOwner, null, tags, updatedBy);
 
     // GET the topic and Validate information returned
     Topic getTopic = getTopic(topic.getId(), "service,owner,tags", authHeaders);
-    validateTopic(getTopic, topic.getDescription(), newOwner, null, tags);
+    validateTopic(getTopic, topic.getDescription(), newOwner, null, tags, updatedBy);
     return updateTopic;
   }
 

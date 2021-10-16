@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -68,27 +69,13 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
-                } else {
-                  return true;
                 }
-              } catch (IOException |EntityNotFoundException ex) {
+                return true;
+              } catch (IOException | EntityNotFoundException ex) {
                 return true;
               }
             })
-            .forEach(name -> {
-              User user = new User().withId(UUID.randomUUID())
-                      .withName(name)
-                      .withEmail(name + "@" + principalDomain)
-                      .withIsAdmin(true);
-              try {
-                User addedUser = userRepository.create(user, null);
-                LOG.debug("Added admin user entry: {}", addedUser);
-              } catch (DuplicateEntityException | IOException exception) {
-                // In HA setup the other server may have already added the user.
-                LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
-                LOG.debug("Admin user entry: {} already exists.", user);
-              }
-            });
+            .forEach(this::addUser);
   }
 
   private void mayBeAddBotUsers() {
@@ -101,27 +88,13 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
-                } else {
-                  return true;
                 }
+                return true;
               } catch (IOException |EntityNotFoundException ex) {
                 return true;
               }
             })
-            .forEach(name -> {
-              User user = new User().withId(UUID.randomUUID())
-                      .withName(name)
-                      .withEmail(name + "@" + principalDomain)
-                      .withIsBot(true);
-              try {
-                User addedUser = userRepository.create(user, null);
-                LOG.debug("Added bot user entry: {}", addedUser);
-              } catch (DuplicateEntityException | IOException exception) {
-                // In HA setup the other server may have already added the user.
-                LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
-                LOG.debug("Bot user entry: {} already exists.", user);
-              }
-            });
+            .forEach(this::addUser);
   }
 
 
@@ -183,11 +156,27 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     }
   }
 
-
-
   private void validateAuthenticationContext(AuthenticationContext ctx) {
     if (ctx == null || ctx.getPrincipal() == null) {
       throw new AuthenticationException("No principal in AuthenticationContext");
+    }
+  }
+
+  private void addUser(String name) {
+    User user = new User().withId(UUID.randomUUID())
+            .withName(name)
+            .withEmail(name + "@" + principalDomain)
+            .withIsAdmin(true)
+            .withUpdatedBy(name)
+            .withUpdatedAt(new Date());
+
+    try {
+      User addedUser = userRepository.create(user, null);
+      LOG.debug("Added bot user entry: {}", addedUser);
+    } catch (DuplicateEntityException | IOException exception) {
+      // In HA setup the other server may have already added the user.
+      LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
+      LOG.debug("Bot user entry: {} already exists.", user);
     }
   }
 }

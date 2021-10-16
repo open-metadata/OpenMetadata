@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -178,9 +179,10 @@ public abstract class TopicRepository {
   }
 
   @Transaction
-  public Topic patch(String id, JsonPatch patch) throws IOException {
+  public Topic patch(String id, String user, JsonPatch patch) throws IOException {
     Topic original = setFields(validateTopic(id), TOPIC_PATCH_FIELDS);
     Topic updated = JsonUtils.applyPatch(original, patch, Topic.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

@@ -488,33 +488,38 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
   public static Database createAndCheckDatabase(CreateDatabase create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Database database = createDatabase(create, authHeaders);
-    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService());
-    return getAndValidate(database.getId(), create, authHeaders);
+    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
+    assertEquals(0.1, database.getVersion());
+    return getAndValidate(database.getId(), create, authHeaders, updatedBy);
   }
 
   public static Database updateAndCheckDatabase(CreateDatabase create,
                                                 Status status,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Database updatedDb = updateDatabase(create, status, authHeaders);
-    validateDatabase(updatedDb, create.getDescription(), create.getOwner(), create.getService());
+    validateDatabase(updatedDb, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
 
     // GET the newly updated database and validate
-    return getAndValidate(updatedDb.getId(), create, authHeaders);
+    return getAndValidate(updatedDb.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned database has all the required information passed during creation
   public static Database getAndValidate(UUID databaseId,
                                         CreateDatabase create,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+                                        Map<String, String> authHeaders,
+                                        String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created database by ID and validate
     Database database = getDatabase(databaseId, "service,owner", authHeaders);
-    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService());
+    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(), expectedUpdatedBy);
 
     // GET the newly created database by name and validate
     String fqn = database.getFullyQualifiedName();
     database = getDatabaseByName(fqn, "service,owner", authHeaders);
-    return validateDatabase(database, create.getDescription(), create.getOwner(), create.getService());
+    return validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(),
+            expectedUpdatedBy);
   }
 
   public static Database updateDatabase(CreateDatabase create,
@@ -560,10 +565,11 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   }
 
   private static Database validateDatabase(Database database, String expectedDescription, EntityReference expectedOwner,
-                                           EntityReference expectedService) {
+                                           EntityReference expectedService, String expectedUpdatedBy) {
     assertNotNull(database.getId());
     assertNotNull(database.getHref());
     assertEquals(expectedDescription, database.getDescription());
+    assertEquals(expectedUpdatedBy, database.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -585,6 +591,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   private Database patchDatabaseAttributesAndCheck(Database database, String newDescription,
                                                 EntityReference newOwner, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     String databaseJson = JsonUtils.pojoToJson(database);
 
     // Update the table attributes
@@ -593,11 +600,11 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Database updatedDatabase = patchDatabase(databaseJson, database, authHeaders);
-    validateDatabase(updatedDatabase, database.getDescription(), newOwner, null);
+    validateDatabase(updatedDatabase, database.getDescription(), newOwner, null, updatedBy);
 
     // GET the table and Validate information returned
     Database getDatabase = getDatabase(database.getId(), "service,owner", authHeaders);
-    validateDatabase(getDatabase, database.getDescription(), newOwner, null);
+    validateDatabase(getDatabase, database.getDescription(), newOwner, null, updatedBy);
     return updatedDatabase;
   }
 

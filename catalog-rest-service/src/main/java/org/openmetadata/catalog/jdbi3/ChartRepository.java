@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -184,9 +185,10 @@ public abstract class ChartRepository {
   }
 
   @Transaction
-  public Chart patch(String id, JsonPatch patch) throws IOException {
+  public Chart patch(String id, String user, JsonPatch patch) throws IOException {
     Chart original = setFields(validateChart(id), CHART_PATCH_FIELDS);
     Chart updated = JsonUtils.applyPatch(original, patch, Chart.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

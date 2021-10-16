@@ -46,6 +46,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -185,9 +186,10 @@ public abstract class TaskRepository {
   }
 
   @Transaction
-  public Task patch(String id, JsonPatch patch) throws IOException {
+  public Task patch(String id, String user, JsonPatch patch) throws IOException {
     Task original = setFields(validateTask(id), TASK_PATCH_FIELDS);
     Task updated = JsonUtils.applyPatch(original, patch, Task.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

@@ -50,6 +50,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -179,9 +180,10 @@ public abstract class DashboardRepository {
   }
 
   @Transaction
-  public Dashboard patch(String id, JsonPatch patch) throws IOException {
+  public Dashboard patch(String id, String user, JsonPatch patch) throws IOException {
     Dashboard original = setFields(validateDashboard(id), DASHBOARD_PATCH_FIELDS);
     Dashboard updated = JsonUtils.applyPatch(original, patch, Dashboard.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

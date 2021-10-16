@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -217,10 +218,11 @@ public abstract class UserRepository {
   }
 
   @Transaction
-  public User patch(String id, JsonPatch patch) throws IOException {
+  public User patch(String id, String user, JsonPatch patch) throws IOException {
     User original = setFields(validateUser(id), USER_PATCH_FIELDS); // Query 1 - find user by Id
     JsonUtils.getJsonStructure(original);
     User updated = JsonUtils.applyPatch(original, patch, User.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }

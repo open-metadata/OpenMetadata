@@ -49,6 +49,7 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -192,10 +193,11 @@ public abstract class DatabaseRepository {
   }
 
   @Transaction
-  public Database patch(String id, JsonPatch patch) throws IOException {
+  public Database patch(String id, String user, JsonPatch patch) throws IOException {
     Database original = setFields(validateDatabase(id), DATABASE_PATCH_FIELDS);
     LOG.info("Database summary in original {}", original.getUsageSummary());
     Database updated = JsonUtils.applyPatch(original, patch, Database.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
 
     // TODO disallow updating tables
