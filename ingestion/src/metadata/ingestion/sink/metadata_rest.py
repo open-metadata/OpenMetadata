@@ -34,6 +34,7 @@ from metadata.generated.schema.api.data.createTask import CreateTaskEntityReques
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -110,6 +111,8 @@ class MetadataRestSink(Sink):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
+        elif isinstance(record, Model):
+            self.write_model(record)
         else:
             logging.info(
                 "Ignoring the record due to unknown Record type {}".format(type(record))
@@ -279,11 +282,11 @@ class MetadataRestSink(Sink):
             )
             created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
             logger.info(
-                "Successfully ingested Task {}".format(created_pipeline.displayName)
+                "Successfully ingested Pipeline {}".format(created_pipeline.displayName)
             )
             self.status.records_written("{}".format(created_pipeline.displayName))
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest task {}".format(pipeline.name))
+            logger.error("Failed to ingest pipeline {}".format(pipeline.name))
             logger.error(err)
             self.status.failure(pipeline.name)
 
@@ -294,9 +297,20 @@ class MetadataRestSink(Sink):
             logger.info("Successfully added Lineage {}".format(created_lineage))
             self.status.records_written("{}".format(created_lineage))
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest task {}".format(add_lineage))
+            logger.error("Failed to ingest lineage {}".format(add_lineage))
             logger.error(err)
             self.status.failure(add_lineage)
+
+    def write_model(self, model: Model):
+        try:
+            logger.info(model)
+            created_model = self.client.create_or_update_model(model)
+            logger.info("Successfully added Model {}".format(created_model))
+            self.status.records_written("{}".format(created_model))
+        except (APIError, ValidationError) as err:
+            logger.error("Failed to ingest Model {}".format(model.name))
+            logger.error(err)
+            self.status.failure(model.name)
 
     def get_status(self):
         return self.status

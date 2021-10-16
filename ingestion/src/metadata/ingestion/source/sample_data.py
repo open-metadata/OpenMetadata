@@ -42,6 +42,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.task import Task
@@ -68,6 +69,12 @@ KEY_TYPE = "Key type"
 DATA_TYPE = "Data type"
 COL_DESCRIPTION = "Description"
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
+
+
+class InvalidSampleDataException(Exception):
+    """
+    Sample data is not valid to be ingested
+    """
 
 
 def get_database_service_or_create(service_json, metadata_config) -> DatabaseService:
@@ -386,6 +393,9 @@ class SampleDataSource(Source):
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
         )
+        self.models = json.load(
+            open(self.config.sample_data_folder + "/models/models.json", "r")
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -404,6 +414,7 @@ class SampleDataSource(Source):
         yield from self.ingest_tasks()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
+        yield from self.ingest_models()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
@@ -516,6 +527,41 @@ class SampleDataSource(Source):
                 edge=EntitiesEdge(fromEntity=from_entity_ref, toEntity=to_entity_ref)
             )
             yield lineage
+
+    def ingest_models(self) -> Iterable[Model]:
+        """
+        Convert sample model data into a Model Entity
+        to feed the metastore
+        """
+        for model in self.models:
+            # Fetch linked dashboard ID from name
+            dashboard_name = model["dashboard"]
+            dashboard_id = next(
+                iter(
+                    [
+                        dash["id"]
+                        for dash in self.dashboards["dashboards"]
+                        if dash["name"] == dashboard_name
+                    ]
+                ),
+                None,
+            )
+
+            if not dashboard_id:
+                raise InvalidSampleDataException(
+                    f"Cannot find {dashboard_name} in Sample Dashboards"
+                )
+
+            model_ev = Model(
+                id=uuid.uuid4(),
+                name=model["name"],
+                displayName=model["displayName"],
+                description=model["description"],
+                algorithm=model["algorithm"],
+                dashboard=EntityReference(id=dashboard_id, type="dashboard"),
+            )
+
+            yield model_ev
 
     def close(self):
         pass
