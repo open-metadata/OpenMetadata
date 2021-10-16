@@ -28,7 +28,7 @@ class SinkStatus(Status):
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def records_written(self, record: Record):
+    def records_written(self, record: str) -> None:
         self.records.append(record)
 
     def warning(self, info: Any) -> None:
