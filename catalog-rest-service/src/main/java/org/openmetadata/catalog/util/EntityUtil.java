@@ -38,6 +38,7 @@ import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseDAO;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.ModelRepository.ModelDAO;
@@ -72,12 +73,15 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.common.utils.CipherText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -164,7 +168,7 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       PipelineServiceResource.addHref(uriInfo, ref);
     } else {
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
     }
   }
 
@@ -185,7 +189,7 @@ public final class EntityUtil {
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
-    return  ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
+    return ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   /**
@@ -293,7 +297,7 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       Pipeline instance = EntityUtil.validate(id, pipelineDAO.findById(id), Pipeline.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
-    }  else if (entity.equalsIgnoreCase(Entity.MODEL)) {
+    } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       Model instance = EntityUtil.validate(id, modelDAO.findById(id), Model.class);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
@@ -340,7 +344,7 @@ public final class EntityUtil {
     } else if (entity.equalsIgnoreCase(Entity.TASK)) {
       Task instance = EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class);
       return getEntityReference(instance);
-    }  else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
+    } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       Pipeline instance = EntityUtil.validate(fqn, pipelineDAO.findByFQN(fqn), Pipeline.class);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
@@ -431,7 +435,7 @@ public final class EntityUtil {
           throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityId();
-    if(entityType.equalsIgnoreCase(Entity.USER)) {
+    if (entityType.equalsIgnoreCase(Entity.USER)) {
       return getEntityReference(EntityUtil.validate(fqn, userDAO.findByName(fqn), User.class));
     } else if (entityType.equalsIgnoreCase(Entity.TEAM)) {
       return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
@@ -649,5 +653,48 @@ public final class EntityUtil {
     public boolean contains(String field) {
       return fieldList.contains(field);
     }
+  }
+
+  public static <T> ResultList<T> listAfter(EntityRepository<T> dao, Class<T> clz, Fields fields, String prefixFqn,
+                                            int limitParam, String after)
+          throws IOException, ParseException, GeneralSecurityException {
+    // forward scrolling, if after == null then first page is being asked being asked
+    List<String> jsons = dao.listAfter(prefixFqn, limitParam + 1, after == null ? "" :
+            CipherText.instance().decrypt(after));
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(dao.setFields(JsonUtils.readValue(json, clz), fields));
+    }
+    int total = dao.listCount(prefixFqn);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : dao.getFullyQualifiedName(entities.get(0));
+    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      entities.remove(limitParam);
+      afterCursor = dao.getFullyQualifiedName(entities.get(limitParam - 1));
+    }
+    return dao.getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  public static <T> ResultList<T> listBefore(EntityRepository<T> dao, Class<T> clz, Fields fields, String databaseFQN,
+                                             int limitParam, String before)
+          throws IOException, ParseException, GeneralSecurityException {
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = dao.listBefore(databaseFQN, limitParam + 1, CipherText.instance().decrypt(before));
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(dao.setFields(JsonUtils.readValue(json, clz), fields));
+    }
+    int total = dao.listCount(databaseFQN);
+
+    String beforeCursor = null, afterCursor;
+    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      entities.remove(0);
+      beforeCursor = dao.getFullyQualifiedName(entities.get(0));
+    }
+    afterCursor = dao.getFullyQualifiedName(entities.get(entities.size() - 1));
+    return dao.getResultList(entities, beforeCursor, afterCursor, total);
   }
 }
