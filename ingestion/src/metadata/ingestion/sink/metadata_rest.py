@@ -115,7 +115,7 @@ class MetadataRestSink(Sink):
             self.write_model(record)
         else:
             logging.info(
-                "Ignoring the record due to unknown Record type {}".format(type(record))
+                f"Ignoring the record due to unknown Record type {type(record)}"
             )
 
     def write_tables(self, table_and_db: OMetaDatabaseAndTable):
@@ -161,9 +161,7 @@ class MetadataRestSink(Sink):
                 )
             )
             self.status.records_written(
-                "{}.{}".format(
-                    table_and_db.database.name.__root__, created_table.name.__root__
-                )
+                f"{table_and_db.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, ValidationError) as err:
             logger.error(
