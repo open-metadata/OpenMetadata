@@ -19,8 +19,10 @@ package org.openmetadata.catalog.util;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.function.Executable;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.resources.databases.TableResourceTest.TagLabelComparator;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
@@ -257,5 +259,20 @@ public final class TestUtils {
 
   public static Map<String, String> userAuthHeaders() {
     return authHeaders("test@open-metadata.org");
+  }
+
+  public static void checkUserFollowing(UUID userId, UUID entityId, boolean expectedFollowing,
+                                         Map<String, String> authHeaders) throws HttpResponseException {
+    // GET .../users/{userId} shows user as following table
+    boolean following = false;
+    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
+    for (EntityReference follows : user.getFollows()) {
+      TestUtils.validateEntityReference(follows);
+      if (follows.getId().equals(entityId)) {
+        following = true;
+        break;
+      }
+    }
+    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
   }
 }
