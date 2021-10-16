@@ -130,31 +130,31 @@ public class TableResource {
                   content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = TableList.class)))
           })
-  public TableList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Table> list(@Context UriInfo uriInfo,
+                                @Context SecurityContext securityContext,
+                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter tables by database fully qualified name",
+                                @Parameter(description = "Filter tables by database fully qualified name",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @QueryParam("database") String databaseParam,
-                        @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
+                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @DefaultValue("10")
                         @Min(1)
                         @Max(1000000)
                         @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of tables before this cursor",
+                                @Parameter(description = "Returns list of tables before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of tables after this cursor",
+                                @Parameter(description = "Returns list of tables after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after)
           throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    TableList tables;
+    ResultList<Table> tables;
     if (before != null) { // Reverse paging
       tables = dao.listBefore(fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page

@@ -45,6 +45,7 @@ import org.openmetadata.catalog.util.EventUtils;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
 import org.skife.jdbi.v2.sqlobject.Bind;
@@ -58,6 +59,7 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -113,47 +115,49 @@ public abstract class TableRepository {
   @CreateSqlObject
   abstract TagDAO tagDAO();
 
+  EntityRepository<Table> entityRepository = new EntityRepository<Table>() {
+    @Override
+    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+      return tableDAO().listAfter(fqnPrefix, limitParam, after);
+    }
+
+    @Override
+    public List<String> listBefore(String fqnPrefix, int limitParam, String after) {
+      return tableDAO().listBefore(fqnPrefix, limitParam, after);
+    }
+
+    @Override
+    public int listCount(String fqnPrefix) {
+      return tableDAO().listCount(fqnPrefix);
+    }
+
+    @Override
+    public String getFullyQualifiedName(Table entity) {
+      return entity.getFullyQualifiedName();
+    }
+
+    @Override
+    public Table setFields(Table entity, Fields fields) throws IOException, ParseException {
+      return TableRepository.this.setFields(entity, fields);
+    }
+
+    @Override
+    public ResultList<Table> getResultList(List<Table> entities, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      return new TableList(entities, beforeCursor, afterCursor, total);
+    }
+  };
+
   @Transaction
-  public TableList listAfter(Fields fields, String databaseFQN, int limitParam, String after) throws IOException,
-          ParseException, GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = tableDAO().listAfter(databaseFQN, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Table> tables = new ArrayList<>();
-    for (String json : jsons) {
-      tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
-    }
-    int total = tableDAO().listCount(databaseFQN);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : tables.get(0).getFullyQualifiedName();
-    if (tables.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      tables.remove(limitParam);
-      afterCursor = tables.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new TableList(tables, beforeCursor, afterCursor, total);
+  public ResultList<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after)
+          throws IOException, ParseException, GeneralSecurityException {
+      return EntityUtil.listAfter(entityRepository, Table.class, fields, databaseFQN, limitParam, after);
   }
 
   @Transaction
-  public TableList listBefore(Fields fields, String databaseFQN, int limitParam, String before) throws IOException,
-          ParseException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = tableDAO().listBefore(databaseFQN, limitParam + 1, CipherText.instance().decrypt(before));
-
-    List<Table> tables = new ArrayList<>();
-    for (String json : jsons) {
-      tables.add(setFields(JsonUtils.readValue(json, Table.class), fields));
-    }
-    int total = tableDAO().listCount(databaseFQN);
-
-    String beforeCursor = null, afterCursor;
-    if (tables.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      tables.remove(0);
-      beforeCursor = tables.get(0).getFullyQualifiedName();
-    }
-    afterCursor = tables.get(tables.size() - 1).getFullyQualifiedName();
-    return new TableList(tables, beforeCursor, afterCursor, total);
+  public ResultList<Table> listBefore(Fields fields, String databaseFQN, int limitParam, String before)
+          throws IOException, ParseException, GeneralSecurityException {
+    return EntityUtil.listBefore(entityRepository, Table.class, fields, databaseFQN, limitParam, before);
   }
 
   @Transaction
