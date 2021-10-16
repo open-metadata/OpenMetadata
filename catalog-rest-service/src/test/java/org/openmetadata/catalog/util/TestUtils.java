@@ -261,14 +261,14 @@ public final class TestUtils {
     return authHeaders("test@open-metadata.org");
   }
 
-  public static void checkUserFollowing(UUID userId, UUID chartId, boolean expectedFollowing,
+  public static void checkUserFollowing(UUID userId, UUID entityId, boolean expectedFollowing,
                                          Map<String, String> authHeaders) throws HttpResponseException {
     // GET .../users/{userId} shows user as following table
     boolean following = false;
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
     for (EntityReference follows : user.getFollows()) {
       TestUtils.validateEntityReference(follows);
-      if (follows.getId().equals(chartId)) {
+      if (follows.getId().equals(entityId)) {
         following = true;
         break;
       }
