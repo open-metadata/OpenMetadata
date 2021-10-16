@@ -246,7 +246,7 @@ class SQLSource(Source):
                 yield table_and_db
             except Exception as err:
                 logger.error(err)
-                self.status.failures.append(
+                self.status.warnings.append(
                     "{}.{}".format(self.config.service_name, table_name)
                 )
                 continue
@@ -304,7 +304,7 @@ class SQLSource(Source):
                 yield table_and_db
             except Exception as err:
                 logger.error(err)
-                self.status.failures.append(
+                self.status.warnings.append(
                     "{}.{}".format(self.config.service_name, view_name)
                 )
                 continue
