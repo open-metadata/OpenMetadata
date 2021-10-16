@@ -108,9 +108,8 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void post_databaseWithLongName_400_badRequest(TestInfo test) {
     // Create database with mandatory name field empty
     CreateDatabase create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDatabase(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createDatabase(create, adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
   }
 
   @Test

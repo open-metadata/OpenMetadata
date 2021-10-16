@@ -16,13 +16,14 @@
 
 package org.openmetadata.catalog.util;
 
+import org.apache.http.client.HttpResponseException;
+import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.function.Executable;
 import org.openmetadata.catalog.resources.databases.TableResourceTest.TagLabelComparator;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.security.CatalogOpenIdAuthorizationRequestFilter;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.apache.http.client.HttpResponseException;
-import org.eclipse.jetty.http.HttpStatus;
 import org.openmetadata.catalog.type.TagLabel;
 
 import javax.json.JsonObject;
@@ -47,6 +48,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class TestUtils {
@@ -109,6 +111,20 @@ public final class TestUtils {
     }
     assertEquals(expectedResponse, response.getStatus());
     return response.readEntity(clz);
+  }
+
+  public static void assertResponse(Executable executable, Response.Status expectedStatus, String expectedReason) {
+    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
+    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertEquals(expectedReason, exception.getReasonPhrase());
+  }
+
+  public static void assertResponseContains(Executable executable, Response.Status expectedStatus,
+                                          String expectedReason) {
+    HttpResponseException exception = assertThrows(HttpResponseException.class, executable);
+    assertEquals(expectedStatus.getStatusCode(), exception.getStatusCode());
+    assertTrue(exception.getReasonPhrase().contains(expectedReason),
+            expectedReason + " not in actual " + exception.getReasonPhrase());
   }
 
   public static void assertResponse(HttpResponseException exception, Status expectedCode, String expectedReason) {

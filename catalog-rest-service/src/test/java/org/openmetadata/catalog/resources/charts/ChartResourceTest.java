@@ -31,11 +31,10 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
-import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -51,13 +50,10 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -70,6 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
@@ -116,18 +113,15 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void post_chartWithLongName_400_badRequest(TestInfo test) {
     // Create chart with mandatory name field empty
     CreateChart create = create(test).withName(LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createChart(create, adminAuthHeaders()),
+            BAD_REQUEST, "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_chartAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateChart create = create(test);
     createChart(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    assertResponse(() -> createChart(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -153,26 +147,19 @@ public class ChartResourceTest extends CatalogApplicationTest {
   @Test
   public void post_chart_as_non_admin_401(TestInfo test) {
     CreateChart create = create(test);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createChart(create, authHeaders("test@open-metadata.org")),
+            FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void post_chartWithoutRequiredFields_4xx(TestInfo test) {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create(test).withName(null), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name must not be null]");
-
-    exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create(test).withName(LONG_ENTITY_NAME), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
-
+    assertResponse(() -> createChart(create(test).withName(null), adminAuthHeaders()), BAD_REQUEST,
+            "[name must not be null]");
+    assertResponse(() -> createChart(create(test).withName(LONG_ENTITY_NAME), adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
     // Service is required field
-    exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create(test).withService(null), adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[service must not be null]");
-
+    assertResponse(() -> createChart(create(test).withService(null), adminAuthHeaders()), BAD_REQUEST,
+            "[service must not be null]");
   }
 
   @Test
@@ -189,9 +176,8 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void post_chartWithNonExistentOwner_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
     CreateChart create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createChart(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", NON_EXISTENT_ENTITY));
+    assertResponse(() -> createChart(create, adminAuthHeaders()), NOT_FOUND,
+            entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -213,25 +199,21 @@ public class ChartResourceTest extends CatalogApplicationTest {
   @Test
   public void get_chartListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listCharts(null, null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(() -> listCharts(null, null, -1, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listCharts(null, null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(() ->listCharts(null, null, 0, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listCharts(null, null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+    assertResponse(() -> listCharts(null, null, 1000001, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   public void get_chartListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listCharts(null, null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+    assertResponse(() -> listCharts(null, null, 1, "", "", adminAuthHeaders()),
+            BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
   @Test
@@ -374,9 +356,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   @Test
   public void get_nonExistentChart_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getChart(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
+    assertResponse(() -> getChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
   }
 
@@ -430,15 +410,13 @@ public class ChartResourceTest extends CatalogApplicationTest {
     UUID chartId = chart.getId();
     String chartJson = JsonUtils.pojoToJson(chart);
     chart.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartId, chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "id"));
+    assertResponse(() -> patchChart(chartId, chartJson, chart, adminAuthHeaders()),
+            BAD_REQUEST, readOnlyAttribute(Entity.CHART, "id"));
 
     // ID can't be deleted
     chart.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartId, chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "id"));
+    assertResponse(() -> patchChart(chartId, chartJson, chart, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.CHART, "id"));
   }
 
   @Test
@@ -447,15 +425,13 @@ public class ChartResourceTest extends CatalogApplicationTest {
     Chart chart = createChart(create(test), adminAuthHeaders());
     String chartJson = JsonUtils.pojoToJson(chart);
     chart.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "name"));
+    assertResponse(() -> patchChart(chartJson, chart, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.CHART, "name"));
 
     // Name can't be removed
     chart.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "name"));
+    assertResponse(() -> patchChart(chartJson, chart, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.CHART, "name"));
   }
 
   @Test
@@ -466,15 +442,13 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
     String chartJson = JsonUtils.pojoToJson(chart);
     chart.setService(LOOKER_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "service"));
+    assertResponse(() -> patchChart(chartJson, chart, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.CHART, "service"));
 
     // Service relationship can't be removed
     chart.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchChart(chartJson, chart, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.CHART, "service"));
+    assertResponse(() -> patchChart(chartJson, chart, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.CHART, "service"));
   }
 
   @Test
@@ -513,22 +487,19 @@ public class ChartResourceTest extends CatalogApplicationTest {
     Chart chart = createAndCheckChart(create(test), adminAuthHeaders());
 
     // Add non existent user as follower to the chart
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            addAndCheckFollower(chart, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+    assertResponse(() -> addAndCheckFollower(chart, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()),
+            NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
 
     // Delete non existent user as follower to the chart
-    exception = assertThrows(HttpResponseException.class, () ->
-            deleteAndCheckFollower(chart, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+    assertResponse(() -> deleteAndCheckFollower(chart, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()),
+            NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
 
   @Test
   public void delete_nonExistentChart_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
+    assertResponse(() -> deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
+            entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
   }
 
   public static Chart createAndCheckChart(CreateChart create,
@@ -709,8 +680,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
     TestUtils.delete(getResource("charts/" + id), authHeaders);
 
     // Ensure deleted chart does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getChart(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.CHART, id));
+    assertResponse(() -> getChart(id, authHeaders), NOT_FOUND, entityNotFound(Entity.CHART, id));
   }
 
   public static String getChartName(TestInfo test) {

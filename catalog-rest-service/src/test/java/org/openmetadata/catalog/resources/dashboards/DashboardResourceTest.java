@@ -67,6 +67,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -121,27 +122,23 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void post_dashboardWithLongName_400_badRequest(TestInfo test) {
     // Create dashboard with mandatory name field empty
     CreateDashboard create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_DashboardWithoutName_400_badRequest(TestInfo test) {
     // Create Dashboard with mandatory name field empty
     CreateDashboard create = create(test).withName("");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
+    assertResponse(() -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST,
+            "[name size must be between 1 and 64]");
   }
 
   @Test
   public void post_DashboardAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
     CreateDashboard create = create(test);
     createDashboard(create, adminAuthHeaders());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    assertResponse(exception, CONFLICT, CatalogExceptionMessage.ENTITY_ALREADY_EXISTS);
+    assertResponse(() -> createDashboard(create, adminAuthHeaders()), CONFLICT, ENTITY_ALREADY_EXISTS);
   }
 
   @Test
@@ -172,17 +169,15 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void post_Dashboard_as_non_admin_401(TestInfo test) {
     CreateDashboard create = create(test);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, authHeaders("test@open-metadata.org")));
-    assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
+    assertResponse(() -> createDashboard(create, authHeaders("test@open-metadata.org")), FORBIDDEN,
+            "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
   @Test
   public void post_DashboardWithoutRequiredService_4xx(TestInfo test) {
     CreateDashboard create = create(test).withService(null);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    TestUtils.assertResponseContains(exception, BAD_REQUEST, "service must not be null");
+    TestUtils.assertResponseContains(() -> createDashboard(create, adminAuthHeaders()), BAD_REQUEST,
+            "service must not be null");
   }
 
   @Test
@@ -209,9 +204,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void post_DashboardWithNonExistentOwner_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
     CreateDashboard create = create(test).withOwner(owner);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createDashboard(create, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(() -> createDashboard(create, adminAuthHeaders()), NOT_FOUND,
+            entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
@@ -233,25 +227,21 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void get_DashboardListWithInvalidLimitOffset_4xx() {
     // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listDashboards(null, null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(() -> listDashboards(null, null, -1, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listDashboards(null, null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+    assertResponse(() -> listDashboards(null, null, 0, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
 
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listDashboards(null, null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+    assertResponse(() -> listDashboards(null, null, 1000001, null, null, adminAuthHeaders()),
+            BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
   }
 
   @Test
   public void get_DashboardListWithInvalidPaginationCursors_4xx() {
     // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listDashboards(null, null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+    assertResponse(() -> listDashboards(null, null, 1, "", "", adminAuthHeaders()),
+            BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
   @Test
@@ -424,9 +414,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   @Test
   public void get_nonExistentDashboard_404_notFound() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            getDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND,
+    assertResponse(() -> getDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
   }
 
@@ -481,15 +469,13 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     UUID dashboardId = dashboard.getId();
     String dashboardJson = JsonUtils.pojoToJson(dashboard);
     dashboard.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
+    assertResponse(() -> patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "id"));
 
     // ID can't be deleted
     dashboard.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "id"));
+    assertResponse(() -> patchDashboard(dashboardId, dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "id"));
   }
 
   @Test
@@ -498,15 +484,13 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
     String dashboardJson = JsonUtils.pojoToJson(dashboard);
     dashboard.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
+    assertResponse(() -> patchDashboard(dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "name"));
 
     // Name can't be removed
     dashboard.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "name"));
+    assertResponse(() -> patchDashboard(dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "name"));
   }
 
   @Test
@@ -517,15 +501,13 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
     String dashboardJson = JsonUtils.pojoToJson(dashboard);
     dashboard.setService(LOOKER_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
+    assertResponse(() -> patchDashboard(dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "service"));
 
     // Service relationship can't be removed
     dashboard.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDashboard(dashboardJson, dashboard, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DASHBOARD, "service"));
+    assertResponse(() -> patchDashboard(dashboardJson, dashboard, adminAuthHeaders()), BAD_REQUEST,
+            readOnlyAttribute(Entity.DASHBOARD, "service"));
   }
 
   // TODO listing tables test:1
@@ -544,9 +526,8 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   @Test
   public void delete_nonExistentDashboard_404() {
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            deleteDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(() -> deleteDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
+            entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   public static Dashboard createAndCheckDashboard(CreateDashboard create,
@@ -781,8 +762,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     TestUtils.delete(getResource("dashboards/" + id), authHeaders);
 
     // Ensure deleted Dashboard does not exist
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getDashboard(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.DASHBOARD, id));
+    assertResponse(() -> getDashboard(id, authHeaders), NOT_FOUND, entityNotFound(Entity.DASHBOARD, id));
   }
 
   public static String getDashboardName(TestInfo test) {
