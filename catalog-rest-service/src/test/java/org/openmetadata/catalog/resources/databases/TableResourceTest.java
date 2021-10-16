@@ -103,6 +103,7 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
@@ -1464,21 +1465,6 @@ public class TableResourceTest extends CatalogApplicationTest {
       }
       assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
     }
-  }
-
-  private static void checkUserFollowing(UUID userId, UUID tableId, boolean expectedFollowing,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
-    // GET .../users/{userId} shows user as following table
-    boolean following = false;
-    User user = UserResourceTest.getUser(userId, "follows", authHeaders);
-    for (EntityReference follows : user.getFollows()) {
-      TestUtils.validateEntityReference(follows);
-      if (follows.getId().equals(tableId)) {
-        following = true;
-        break;
-      }
-    }
-    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
   }
 
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
