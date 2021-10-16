@@ -62,7 +62,6 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
             "description": "",
             "serviceType": config.get_service_type(),
         }
-        print(service)
         created_service = client.create_database_service(
             CreateDatabaseServiceEntityRequest(**service)
         )
