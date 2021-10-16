@@ -1,8 +1,14 @@
+[BASIC]
+# W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
+disable=W1203
+
 [MASTER]
 fail-under=6.0
 init-hook='from pylint.config import find_pylintrc; import os, sys; sys.path.append(os.path.dirname(find_pylintrc()))'
 extension-pkg-allow-list=pydantic
+
 [MESSAGES CONTROL]
 disable=no-name-in-module
+
 [TYPECHECK]
 ignored-classes=optparse.Values,thread._local,_thread._local,SQLAlchemyHelper,FieldInfo
