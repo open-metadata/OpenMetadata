@@ -646,7 +646,8 @@ class OpenMetadataAPIClient(object):
         return resp
 
     def create_or_update_model(self, model: Model):
-        return self.client.put("/models", data=model.json())
+        resp = self.client.put("/models", data=model.json())
+        return Model(**resp)
 
     def close(self):
         self.client.close()
