@@ -1,0 +1,16 @@
+[
+    {
+      "name": "eta_predictions",
+      "displayName": "ETA Predictions",
+      "description": "ETA Predictions Model",
+      "algorithm": "Neural Network",
+      "dashboard": "eta_predictions_performance"
+    },
+      {
+      "name": "forecast_sales",
+      "displayName": "Sales Forecast Predictions",
+      "description": "Sales Forecast Predictions Model",
+      "algorithm": "Time Series",
+      "dashboard": "forecast_sales_performance"
+    }
+]
