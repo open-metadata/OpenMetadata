@@ -34,6 +34,7 @@ from metadata.generated.schema.api.data.createTask import CreateTaskEntityReques
 from metadata.generated.schema.api.data.createTopic import CreateTopic
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import ChartType
+from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -110,9 +111,11 @@ class MetadataRestSink(Sink):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
+        elif isinstance(record, Model):
+            self.write_model(record)
         else:
             logging.info(
-                "Ignoring the record due to unknown Record type {}".format(type(record))
+                f"Ignoring the record due to unknown Record type {type(record)}"
             )
 
     def write_tables(self, table_and_db: OMetaDatabaseAndTable):
@@ -158,9 +161,7 @@ class MetadataRestSink(Sink):
                 )
             )
             self.status.records_written(
-                "{}.{}".format(
-                    table_and_db.database.name.__root__, created_table.name.__root__
-                )
+                f"Table: {table_and_db.database.name.__root__}.{created_table.name.__root__}"
             )
         except (APIError, ValidationError) as err:
             logger.error(
@@ -170,19 +171,17 @@ class MetadataRestSink(Sink):
                 )
             )
             logger.error(err)
-            self.status.failure(table_and_db.table.name.__root__)
+            self.status.failure(f"Table: {table_and_db.table.name.__root__}")
 
     def write_topics(self, topic: CreateTopic) -> None:
         try:
             created_topic = self.client.create_or_update_topic(topic)
-            logger.info(
-                "Successfully ingested topic {}".format(created_topic.name.__root__)
-            )
-            self.status.records_written(created_topic.name.__root__)
+            logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
+            self.status.records_written(f"Topic: {created_topic.name.__root__}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest topic {} ".format(topic.name.__root__))
+            logger.error(f"Failed to ingest topic {topic.name.__root__}")
             logger.error(err)
-            self.status.failure(topic.name)
+            self.status.failure(f"Topic: {topic.name}")
 
     def write_charts(self, chart: Chart):
         try:
@@ -205,14 +204,12 @@ class MetadataRestSink(Sink):
             self.charts_dict[chart.name] = EntityReference(
                 id=created_chart.id, type="chart"
             )
-            logger.info(
-                "Successfully ingested chart {}".format(created_chart.displayName)
-            )
-            self.status.records_written("{}".format(created_chart.displayName))
+            logger.info(f"Successfully ingested chart {created_chart.displayName}")
+            self.status.records_written(f"Chart: {created_chart.displayName}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest chart {}".format(chart.displayName))
+            logger.error(f"Failed to ingest chart {chart.displayName}")
             logger.error(err)
-            self.status.failure(chart.displayName)
+            self.status.failure(f"Chart: {chart.displayName}")
 
     def write_dashboards(self, dashboard: Dashboard):
         try:
@@ -230,15 +227,13 @@ class MetadataRestSink(Sink):
                 dashboard_request
             )
             logger.info(
-                "Successfully ingested dashboard {}".format(
-                    created_dashboard.displayName
-                )
+                f"Successfully ingested dashboard {created_dashboard.displayName}"
             )
-            self.status.records_written("{}".format(created_dashboard.displayName))
+            self.status.records_written(f"Dashboard: {created_dashboard.displayName}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest dashboard {}".format(dashboard.name))
+            logger.error(f"Failed to ingest dashboard {dashboard.name}")
             logger.error(err)
-            self.status.failure(dashboard.name)
+            self.status.failure(f"Dashboard {dashboard.name}")
 
     def _get_chart_references(self, dashboard: Dashboard) -> []:
         chart_references = []
@@ -258,14 +253,12 @@ class MetadataRestSink(Sink):
                 service=task.service,
             )
             created_task = self.client.create_or_update_task(task_request)
-            logger.info(
-                "Successfully ingested Task {}".format(created_task.displayName)
-            )
-            self.status.records_written("{}".format(created_task.displayName))
+            logger.info(f"Successfully ingested Task {created_task.displayName}")
+            self.status.records_written(f"Task: {created_task.displayName}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest task {}".format(task.name))
+            logger.error(f"Failed to ingest task {task.name}")
             logger.error(err)
-            self.status.failure(task.name)
+            self.status.failure(f"Task: {task.name}")
 
     def write_pipelines(self, pipeline: Pipeline):
         try:
@@ -279,24 +272,35 @@ class MetadataRestSink(Sink):
             )
             created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
             logger.info(
-                "Successfully ingested Task {}".format(created_pipeline.displayName)
+                f"Successfully ingested Pipeline {created_pipeline.displayName}"
             )
-            self.status.records_written("{}".format(created_pipeline.displayName))
+            self.status.records_written(f"Pipeline: {created_pipeline.displayName}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest task {}".format(pipeline.name))
+            logger.error(f"Failed to ingest pipeline {pipeline.name}")
             logger.error(err)
-            self.status.failure(pipeline.name)
+            self.status.failure(f"Pipeline: {pipeline.name}")
 
     def write_lineage(self, add_lineage: AddLineage):
         try:
             logger.info(add_lineage)
             created_lineage = self.client.create_or_update_lineage(add_lineage)
-            logger.info("Successfully added Lineage {}".format(created_lineage))
-            self.status.records_written("{}".format(created_lineage))
+            logger.info(f"Successfully added Lineage {created_lineage}")
+            self.status.records_written(f"Lineage: {created_lineage}")
         except (APIError, ValidationError) as err:
-            logger.error("Failed to ingest task {}".format(add_lineage))
+            logger.error(f"Failed to ingest lineage {add_lineage}")
             logger.error(err)
-            self.status.failure(add_lineage)
+            self.status.failure(f"Lineage: {add_lineage}")
+
+    def write_model(self, model: Model):
+        try:
+            logger.info(model)
+            created_model = self.client.create_or_update_model(model)
+            logger.info(f"Successfully added Model {created_model.displayName}")
+            self.status.records_written(f"Model: {created_model.displayName}")
+        except (APIError, ValidationError) as err:
+            logger.error(f"Failed to ingest Model {model.name}")
+            logger.error(err)
+            self.status.failure(f"Model: {model.name}")
 
     def get_status(self):
         return self.status

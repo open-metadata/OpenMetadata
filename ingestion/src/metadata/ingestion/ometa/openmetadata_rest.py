@@ -18,7 +18,7 @@ import json
 import logging
 import time
 import uuid
-from typing import List
+from typing import List, Optional
 
 import google.auth
 import google.auth.transport.requests
@@ -56,6 +56,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import (
     Table,
@@ -228,7 +229,7 @@ class OpenMetadataAPIClient(object):
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    def get_database_service(self, service_name: str) -> DatabaseService:
+    def get_database_service(self, service_name: str) -> Optional[DatabaseService]:
         """Get the Database service"""
         try:
             resp = self.client.get(
@@ -236,6 +237,9 @@ class OpenMetadataAPIClient(object):
             )
             return DatabaseService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to GET the database service {service_name}", err
+            )
             return None
 
     def get_database_service_by_id(self, service_id: str) -> DatabaseService:
@@ -389,7 +393,7 @@ class OpenMetadataAPIClient(object):
         )
         logger.debug("published compute percentile {}".format(resp))
 
-    def get_messaging_service(self, service_name: str) -> MessagingService:
+    def get_messaging_service(self, service_name: str) -> Optional[MessagingService]:
         """Get the Messaging service"""
         try:
             resp = self.client.get(
@@ -397,6 +401,9 @@ class OpenMetadataAPIClient(object):
             )
             return MessagingService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to GET the messaging service {service_name}", err
+            )
             return None
 
     def get_messaging_service_by_id(self, service_id: str) -> MessagingService:
@@ -442,7 +449,7 @@ class OpenMetadataAPIClient(object):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return TopicEntities(topics=topics, total=total, after=after)
 
-    def get_dashboard_service(self, service_name: str) -> DashboardService:
+    def get_dashboard_service(self, service_name: str) -> Optional[DashboardService]:
         """Get the Dashboard service"""
         try:
             resp = self.client.get(
@@ -450,6 +457,9 @@ class OpenMetadataAPIClient(object):
             )
             return DashboardService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to GET the dashboard service {service_name}", err
+            )
             return None
 
     def get_dashboard_service_by_id(self, service_id: str) -> DashboardService:
@@ -459,7 +469,7 @@ class OpenMetadataAPIClient(object):
 
     def create_dashboard_service(
         self, dashboard_service: CreateDashboardServiceEntityRequest
-    ) -> DashboardService:
+    ) -> Optional[DashboardService]:
         """Create a new Database Service"""
         try:
             resp = self.client.post(
@@ -467,6 +477,9 @@ class OpenMetadataAPIClient(object):
             )
             return DashboardService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to POST the dashboard service {dashboard_service}", err
+            )
             return None
 
     def create_or_update_chart(
@@ -526,7 +539,7 @@ class OpenMetadataAPIClient(object):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return DashboardEntities(dashboards=dashboards, total=total, after=after)
 
-    def get_pipeline_service(self, service_name: str) -> PipelineService:
+    def get_pipeline_service(self, service_name: str) -> Optional[PipelineService]:
         """Get the Pipeline service"""
         try:
             resp = self.client.get(
@@ -534,6 +547,9 @@ class OpenMetadataAPIClient(object):
             )
             return PipelineService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to GET the pipeline service {service_name}", err
+            )
             return None
 
     def get_pipeline_service_by_id(self, service_id: str) -> PipelineService:
@@ -543,7 +559,7 @@ class OpenMetadataAPIClient(object):
 
     def create_pipeline_service(
         self, pipeline_service: CreatePipelineServiceEntityRequest
-    ) -> PipelineService:
+    ) -> Optional[PipelineService]:
         """Create a new Pipeline Service"""
         try:
             resp = self.client.post(
@@ -551,6 +567,9 @@ class OpenMetadataAPIClient(object):
             )
             return PipelineService(**resp)
         except APIError as err:
+            logger.error(
+                f"Error trying to POST the pipeline service {pipeline_service}", err
+            )
             return None
 
     def create_or_update_task(
@@ -625,6 +644,10 @@ class OpenMetadataAPIClient(object):
     def create_or_update_lineage(self, lineage: AddLineage):
         resp = self.client.put("/lineage", data=lineage.json())
         return resp
+
+    def create_or_update_model(self, model: Model):
+        resp = self.client.put("/models", data=model.json())
+        return Model(**resp)
 
     def close(self):
         self.client.close()

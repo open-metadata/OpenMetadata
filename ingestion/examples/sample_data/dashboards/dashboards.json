@@ -99,6 +99,26 @@
       "dashboardUrl": "http://localhost:808/superset/dashboard/11/",
       "charts": [127, 183],
       "href": "http://localhost:8585/api/v1/dashboards/e6e21717-1164-403f-8807-d12be277aec6"
+    },
+    {
+      "id": "d2b0af00-f419-4905-bb43-036697ce53a5",
+      "name": "eta_predictions_performance",
+      "displayName": "ETA Predictions Performance",
+      "fullyQualifiedName": "local_superset.eta_predictions_performance",
+      "description": "",
+      "dashboardUrl": "http://localhost:808/superset/dashboard/eta_predictions_performance/",
+      "charts": [210],
+      "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
+    },
+    {
+      "id": "f5a1af99-f123-7845-cc12-0312347ce53a",
+      "name": "forecast_sales_performance",
+      "displayName": "ETA Predictions Performance",
+      "fullyQualifiedName": "local_superset.forecast_sales_performance",
+      "description": "",
+      "dashboardUrl": "http://localhost:808/superset/dashboard/forecast_sales_performance/",
+      "charts": [211],
+      "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
     }
   ]
 }
