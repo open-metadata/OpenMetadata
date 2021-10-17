@@ -138,7 +138,6 @@ public abstract class ChartRepository {
 
   @Transaction
   public Chart create(Chart chart, EntityReference service, EntityReference owner) throws IOException {
-    getService(service); // Validate service
     return createInternal(chart, service, owner);
   }
 
@@ -157,7 +156,6 @@ public abstract class ChartRepository {
   public PutResponse<Chart> createOrUpdate(Chart updated, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
-
     String fqn = getFQN(service, updated);
     Chart stored = JsonUtils.readValue(chartDAO().findByFQN(fqn), Chart.class);
     if (stored == null) {  // Chart does not exist. Create a new one
@@ -201,6 +199,26 @@ public abstract class ChartRepository {
     setOwner(chart, chart.getOwner());
     applyTags(chart);
   }
+
+  private void storeChart(Chart chart, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = chart.getOwner();
+    List<TagLabel> tags = chart.getTags();
+    EntityReference service = chart.getService();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    chart.withOwner(null).withService(null).withHref(null).withTags(null);
+
+    if (update) {
+      chartDAO().update(chart.getId().toString(), JsonUtils.pojoToJson(chart));
+    } else {
+      chartDAO().insert(JsonUtils.pojoToJson(chart));
+    }
+
+    // Restore the relationships
+    chart.withOwner(owner).withService(service).withTags(tags);
+  }
+
 
   private void applyTags(Chart chart) throws IOException {
     // Add chart level tags by adding tag to chart relationship
@@ -287,24 +305,6 @@ public abstract class ChartRepository {
   public void deleteFollower(String chartId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
     EntityUtil.removeFollower(relationshipDAO(), chartId, userId);
-  }
-
-  private void storeChart(Chart chart, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = chart.getOwner();
-    List<TagLabel> tags = chart.getTags();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    chart.withOwner(null).withHref(null).withTags(null);
-
-    if (update) {
-      chartDAO().update(chart.getId().toString(), JsonUtils.pojoToJson(chart));
-    } else {
-      chartDAO().insert(JsonUtils.pojoToJson(chart));
-    }
-
-    // Restore the relationships
-    chart.withOwner(owner).withTags(tags);
   }
 
   public interface ChartDAO {

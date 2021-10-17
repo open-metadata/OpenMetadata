@@ -229,6 +229,7 @@ public class TopicResource {
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
                     .withReplicationFactor(create.getReplicationFactor())
                     .withTags(create.getTags())
+                    .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
 
@@ -283,6 +284,7 @@ public class TopicResource {
                     .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
                     .withReplicationFactor(create.getReplicationFactor())
                     .withTags(create.getTags())
+                    .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
 
