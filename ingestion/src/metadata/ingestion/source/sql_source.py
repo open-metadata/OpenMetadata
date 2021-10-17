@@ -84,7 +84,7 @@ class SQLConnectionConfig(ConfigModel):
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
-    data_profiler_enabled: Optional[bool] = False
+    data_profiler_enabled: Optional[bool] = True
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
@@ -238,7 +238,7 @@ class SQLSource(Source):
 
                 if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
-                    table_entity.tableProfile = profile
+                    table_entity.tableProfile = [profile]
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity, database=self._get_database(schema)
