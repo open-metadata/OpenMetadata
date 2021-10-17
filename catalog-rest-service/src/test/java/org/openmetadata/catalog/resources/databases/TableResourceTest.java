@@ -1019,7 +1019,7 @@ public class TableResourceTest extends CatalogApplicationTest {
             .withColumns(List.of(COLUMNS.get(0).getName())));
     List<TagLabel> tableTags = singletonList(USER_ADDRESS_TAG_LABEL);
     table = patchTableAttributesAndCheck(table, "description", TEAM_OWNER1, TableType.Regular,
-            tableConstraints, tableTags, adminAuthHeaders());
+            tableConstraints, tableTags, adminAuthHeaders(), MINOR_UPDATE);
     table.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Replace description, tier, owner, tableType, tableConstraints
@@ -1027,12 +1027,12 @@ public class TableResourceTest extends CatalogApplicationTest {
             .withColumns(List.of(COLUMNS.get(1).getName())));
     tableTags = singletonList(USER_BANK_ACCOUNT_TAG_LABEL);
     table = patchTableAttributesAndCheck(table, "description1", USER_OWNER1, TableType.External,
-            tableConstraints, tableTags, adminAuthHeaders());
+            tableConstraints, tableTags, adminAuthHeaders(), MINOR_UPDATE);
     table.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Remove description, tier, owner, tableType, tableConstraints
     patchTableAttributesAndCheck(table, null, null, null, null, null,
-            adminAuthHeaders());
+            adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -1090,28 +1090,30 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
 
-  private Table patchTableAttributesAndCheck(Table table, String description, EntityReference owner,
+  private Table patchTableAttributesAndCheck(Table before, String description, EntityReference owner,
                                              TableType tableType, List<TableConstraint> tableConstraints,
-                                             List<TagLabel> tags, Map<String, String> authHeaders)
+                                             List<TagLabel> tags, Map<String, String> authHeaders,
+                                             UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String tableJson = JsonUtils.pojoToJson(table);
+    String tableJson = JsonUtils.pojoToJson(before);
 
     // Update the table attributes
-    table.setDescription(description);
-    table.setOwner(owner);
-    table.setTableType(tableType);
-    table.setTableConstraints(tableConstraints);
-    table.setTags(tags);
+    before.setDescription(description);
+    before.setOwner(owner);
+    before.setTableType(tableType);
+    before.setTableConstraints(tableConstraints);
+    before.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Table updatedTable = patchTable(tableJson, table, authHeaders);
-    validateTable(updatedTable, table.getDescription(), table.getColumns(), owner, null, tableType,
+    Table updatedTable = patchTable(tableJson, before, authHeaders);
+    validateTable(updatedTable, before.getDescription(), before.getColumns(), owner, null, tableType,
             tableConstraints, tags, updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updatedTable.getVersion(), updateType);
 
     // GET the table and Validate information returned
-    Table getTable = getTable(table.getId(), "owner,tableConstraints,columns, tags", authHeaders);
-    validateTable(getTable, table.getDescription(), table.getColumns(), owner, null, tableType,
+    Table getTable = getTable(before.getId(), "owner,tableConstraints,columns, tags", authHeaders);
+    validateTable(getTable, before.getDescription(), before.getColumns(), owner, null, tableType,
             tableConstraints, tags, updatedBy);
     return updatedTable;
   }
@@ -1353,8 +1355,7 @@ public class TableResourceTest extends CatalogApplicationTest {
             create.getTableType(), create.getTableConstraints(), create.getTags(), updatedBy);
 
     if (before == null) {
-      // First version created
-      assertEquals(0.1, updatedTable.getVersion());
+      assertEquals(0.1, updatedTable.getVersion()); // First version created
     } else {
       TestUtils.validateUpdate(before.getVersion(), updatedTable.getVersion(), updateType);
     }

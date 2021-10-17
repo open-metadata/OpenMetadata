@@ -85,6 +85,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -718,5 +719,24 @@ public final class EntityUtil {
     }
     afterCursor = dao.getFullyQualifiedName(entities.get(entities.size() - 1));
     return dao.getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  public static List<UUID> getIDList(List<EntityReference> refList) {
+    if (refList == null) {
+      return null;
+    }
+    return refList.stream().sorted(Comparator.comparing(EntityReference::getId)).map(EntityReference::getId)
+            .collect(Collectors.toList());
+  }
+
+  public static List<EntityReference> toEntityReference(List<Chart> charts) {
+    if (charts == null) {
+      return null;
+    }
+    List<EntityReference> refList = new ArrayList<>();
+    for (Chart chart: charts) {
+      refList.add(EntityUtil.getEntityReference(chart));
+    }
+    return refList;
   }
 }

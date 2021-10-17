@@ -47,6 +47,7 @@ public abstract class EntityUpdater {
 
   public void updateAll() throws IOException {
     updateDescription();
+    updateDisplayName();
     updateOwner();
     updateTags();
   }
@@ -59,6 +60,16 @@ public abstract class EntityUpdater {
       return;
     }
     update("description", originalEntity.getDescription(), updatedEntity.getDescription());
+  }
+
+  private void updateDisplayName() {
+    if (!patchOperation &&
+            originalEntity.getDisplayName() != null && !originalEntity.getDisplayName().isEmpty()) {
+      // Update description only when stored is empty to retain user authored descriptions
+      updatedEntity.setDisplayName(originalEntity.getDisplayName());
+      return;
+    }
+    update("displayName", originalEntity.getDescription(), updatedEntity.getDescription());
   }
 
   private void updateOwner() {

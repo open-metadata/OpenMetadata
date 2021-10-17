@@ -49,7 +49,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 import org.openmetadata.common.utils.CommonUtil;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
@@ -452,10 +451,11 @@ public abstract class TableRepository {
    * Update the backend database
    */
   private void patch(Table original, Table updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the change
+    // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withDatabase(original.getDatabase()).withId(original.getId());
 
+    // TODO checking database is unnecessary as it has not changed
     validateRelationships(updated, updated.getDatabase().getId(), updated.getOwner());
 
     TableUpdater tableUpdater = new TableUpdater(original, updated, true);
@@ -749,6 +749,11 @@ public abstract class TableRepository {
     }
 
     @Override
+    public String getDisplayName() {
+      return table.getDisplayName();
+    }
+
+    @Override
     public EntityReference getOwner() {
       return table.getOwner();
     }
@@ -766,6 +771,11 @@ public abstract class TableRepository {
     @Override
     public void setDescription(String description) {
       table.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      table.setDisplayName(displayName);
     }
 
     @Override

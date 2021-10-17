@@ -16,10 +16,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
@@ -28,6 +28,8 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -49,6 +51,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -151,37 +154,23 @@ public abstract class ChartRepository {
   }
 
   @Transaction
-  public PutResponse<Chart> createOrUpdate(Chart updatedChart, EntityReference service, EntityReference newOwner)
+  public PutResponse<Chart> createOrUpdate(Chart updated, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
 
-    String fqn = getFQN(service, updatedChart);
-    Chart storedDB = JsonUtils.readValue(chartDAO().findByFQN(fqn), Chart.class);
-    if (storedDB == null) {  // Chart does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updatedChart, service, newOwner));
+    String fqn = getFQN(service, updated);
+    Chart stored = JsonUtils.readValue(chartDAO().findByFQN(fqn), Chart.class);
+    if (stored == null) {  // Chart does not exist. Create a new one
+      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
     }
-    // Update the existing chart
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
-      storedDB.withDescription(updatedChart.getDescription());
-    }
+    setFields(stored, CHART_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, service, newOwner);
 
-    //update the display name from source
-    if (updatedChart.getDisplayName() != null && !updatedChart.getDisplayName().isEmpty()) {
-      storedDB.withDisplayName(updatedChart.getDisplayName());
-    }
-    chartDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
-
-    // Update owner relationship
-    setFields(storedDB, CHART_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedDB, storedDB.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new chart under the new service
-    storedDB.setService(service);
-    applyTags(updatedChart);
-
-    return new PutResponse<>(Status.OK, storedDB);
+    ChartUpdater chartUpdater = new ChartUpdater(stored, updated, false);
+    chartUpdater.updateAll();
+    chartUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
@@ -194,15 +183,23 @@ public abstract class ChartRepository {
   }
 
   public Chart createInternal(Chart chart, EntityReference service, EntityReference owner) throws IOException {
+    validateRelationships(chart, service, owner);
+    storeChart(chart, false);
+    addRelationships(chart);
+    return chart;
+  }
+
+  private void validateRelationships(Chart chart, EntityReference service, EntityReference owner) throws IOException {
     chart.setFullyQualifiedName(getFQN(service, chart));
     EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    getService(service);
+    chart.setTags(EntityUtil.addDerivedTags(tagDAO(), chart.getTags()));
+  }
 
-    // Query 1 - insert chart into chart_entity table
-    chartDAO().insert(JsonUtils.pojoToJson(chart));
-    setService(chart, service);
-    setOwner(chart, owner);
+  private void addRelationships(Chart chart) throws IOException {
+    setService(chart, chart.getService());
+    setOwner(chart, chart.getOwner());
     applyTags(chart);
-    return chart;
   }
 
   private void applyTags(Chart chart) throws IOException {
@@ -212,29 +209,13 @@ public abstract class ChartRepository {
   }
 
   private void patch(Chart original, Chart updated) throws IOException {
-    String chartId = original.getId().toString();
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "name"));
-    }
-    if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.CHART, "service"));
-    }
-    // Validate new owner
-    EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
-
-    EntityReference newService = updated.getService();
-    // Remove previous tags. Merge tags from the update and the existing tags
-    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updated.setHref(null);
-    updated.setOwner(null);
-    updated.setService(null);
-    chartDAO().update(chartId, JsonUtils.pojoToJson(updated));
-    updateOwner(updated, original.getOwner(), newOwner);
-    updated.setService(newService);
-    applyTags(updated);
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+    validateRelationships(updated, updated.getService(), updated.getOwner());
+    ChartUpdater chartUpdater = new ChartUpdater(original, updated, true);
+    chartUpdater.updateAll();
+    chartUpdater.store();
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
@@ -243,12 +224,8 @@ public abstract class ChartRepository {
 
   private void setOwner(Chart chart, EntityReference owner) {
     EntityUtil.setOwner(relationshipDAO(), chart.getId(), Entity.CHART, owner);
+    // TODO not required
     chart.setOwner(owner);
-  }
-
-  private void updateOwner(Chart chart, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, chart.getId(), Entity.CHART);
-    chart.setOwner(newOwner);
   }
 
   private Chart validateChart(String id) throws IOException {
@@ -291,6 +268,7 @@ public abstract class ChartRepository {
 
   public void setService(Chart chart, EntityReference service) throws IOException {
     if (service != null && chart != null) {
+      // TODO remove this
       getService(service); // Populate service details
       relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
               Entity.CHART, Relationship.CONTAINS.ordinal());
@@ -309,6 +287,24 @@ public abstract class ChartRepository {
   public void deleteFollower(String chartId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
     EntityUtil.removeFollower(relationshipDAO(), chartId, userId);
+  }
+
+  private void storeChart(Chart chart, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = chart.getOwner();
+    List<TagLabel> tags = chart.getTags();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    chart.withOwner(null).withHref(null).withTags(null);
+
+    if (update) {
+      chartDAO().update(chart.getId().toString(), JsonUtils.pojoToJson(chart));
+    } else {
+      chartDAO().insert(JsonUtils.pojoToJson(chart));
+    }
+
+    // Restore the relationships
+    chart.withOwner(owner).withTags(tags);
   }
 
   public interface ChartDAO {
@@ -353,5 +349,82 @@ public abstract class ChartRepository {
 
     @SqlUpdate("DELETE FROM chart_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  static class ChartEntityInterface implements EntityInterface {
+    private final Chart chart;
+
+    ChartEntityInterface(Chart Chart) {
+      this.chart = Chart;
+    }
+
+    @Override
+    public UUID getId() {
+      return chart.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return chart.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return chart.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return chart.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return chart.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return chart.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      chart.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      chart.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      chart.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class ChartUpdater extends EntityUpdater {
+    final Chart orig;
+    final Chart updated;
+
+    public ChartUpdater(Chart orig, Chart updated, boolean patchOperation) {
+      super(new ChartEntityInterface(orig), new ChartEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeChart(updated, true);
+    }
   }
 }
