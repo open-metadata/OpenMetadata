@@ -127,21 +127,46 @@ public final class JsonUtils {
     // {"op":"remove","path":"/tags/1"}
     // {"op":"remove","path":"/tags/2"}
     // Removes second array element in a 3 array field /tags/1
-    // Then it fails to remove 3rd array element /tags/2. But the previous operation removed the second element and
+    // Then it fails to remove 3rd array element /tags/2. Because the previous operation removed the second element and
     // now array of length 2 and there is no third element to remove. The patch operation fails with "array index not
     // found error".
     //
-    // Reverse sorting the operations by "path" fields before applying the patch as a workaround.
+    // The same applies to add operation as well. Example, the following operation:
+    // {"op":"add","path":"/tags/2"}
+    // {"op":"add","path":"/tags/1"}
+    // It will try to add element in index 2 before adding element in index 1 and the patch operation fails with
+    // "contains no element for index 1" error.
+    //
+    // Reverse sorting the remove operations and sorting all the other operations including "add" by "path" fields
+    // before applying the patch as a workaround.
     //
     JsonArray array = patch.toJsonArray();
-    List<JsonObject> operations = new ArrayList<>();
-    array.forEach(entry -> operations.add(entry.asJsonObject()));
-    operations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
-    Collections.reverse(operations);
+    List<JsonObject> removeOperations = new ArrayList<>();
+    List<JsonObject> otherOperations = new ArrayList<>();
+
+    array.forEach(entry -> {
+      JsonObject jsonObject = entry.asJsonObject();
+      if (jsonObject.getString("op").equals("remove")) {
+        removeOperations.add(jsonObject);
+      } else {
+        otherOperations.add(jsonObject);
+      }
+    });
+
+    // sort the operations by path
+    if (!otherOperations.isEmpty()) {
+      otherOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+    }
+    if (!removeOperations.isEmpty()) {
+      removeOperations.sort(Comparator.comparing(jsonObject -> jsonObject.getString("path")));
+      // reverse sort only the remove operations
+      Collections.reverse(removeOperations);
+    }
 
     // Build new sorted patch
     JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-    operations.forEach(arrayBuilder::add);
+    otherOperations.forEach(arrayBuilder::add);
+    removeOperations.forEach(arrayBuilder::add);
     JsonPatch sortedPatch = Json.createPatch(arrayBuilder.build());
 
     // Apply sortedPatch
