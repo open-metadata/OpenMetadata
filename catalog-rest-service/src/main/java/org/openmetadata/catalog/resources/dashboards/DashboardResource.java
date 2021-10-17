@@ -63,6 +63,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -134,7 +135,7 @@ public class DashboardResource {
                                content = @Content(mediaType = "application/json",
                                        schema = @Schema(implementation = DashboardList.class)))
           })
-  public DashboardList list(@Context UriInfo uriInfo,
+  public ResultList<Dashboard> list(@Context UriInfo uriInfo,
                                       @Context SecurityContext securityContext,
                                       @Parameter(description = "Fields requested in the returned resource",
                                               schema = @Schema(type = "string", example = FIELDS))
@@ -154,11 +155,11 @@ public class DashboardResource {
                                       @Parameter(description = "Returns list of dashboards after this cursor",
                                               schema = @Schema(type = "string"))
                                       @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    DashboardList dashboards;
+    ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
       dashboards = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page

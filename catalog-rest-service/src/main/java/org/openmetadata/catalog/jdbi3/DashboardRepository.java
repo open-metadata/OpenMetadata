@@ -35,7 +35,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.common.utils.CipherText;
+import org.openmetadata.catalog.util.ResultList;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -46,7 +46,9 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -86,47 +88,48 @@ public abstract class DashboardRepository {
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
 
+  EntityRepository<Dashboard> entityRepository = new EntityRepository<Dashboard>() {
+    @Override
+    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+      return dashboardDAO().listAfter(fqnPrefix, limitParam, after);
+    }
+
+    @Override
+    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+      return dashboardDAO().listBefore(fqnPrefix, limitParam, before);
+    }
+
+    @Override
+    public int listCount(String fqnPrefix) {
+      return dashboardDAO().listCount(fqnPrefix);
+    }
+
+    @Override
+    public String getFullyQualifiedName(Dashboard entity) {
+      return entity.getFullyQualifiedName();
+    }
+
+    @Override
+    public Dashboard setFields(Dashboard entity, Fields fields) throws IOException, ParseException {
+      return DashboardRepository.this.setFields(entity, fields);
+    }
+
+    @Override
+    public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+      return new DashboardList(entities, beforeCursor, afterCursor, total);
+    }
+  };
 
   @Transaction
-  public DashboardList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = dashboardDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Dashboard> dashboards = new ArrayList<>();
-    for (String json : jsons) {
-      dashboards.add(setFields(JsonUtils.readValue(json, Dashboard.class), fields));
-    }
-    int total = dashboardDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : dashboards.get(0).getFullyQualifiedName();
-    if (dashboards.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      dashboards.remove(limitParam);
-      afterCursor = dashboards.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new DashboardList(dashboards, beforeCursor, afterCursor, total);
+  public ResultList<Dashboard> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(entityRepository, Dashboard.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction
-  public DashboardList listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dashboardDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Dashboard> dashboards = new ArrayList<>();
-    for (String json : jsons) {
-      dashboards.add(setFields(JsonUtils.readValue(json, Dashboard.class), fields));
-    }
-    int total = dashboardDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (dashboards.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      dashboards.remove(0);
-      beforeCursor = dashboards.get(0).getFullyQualifiedName();
-    }
-    afterCursor = dashboards.get(dashboards.size() - 1).getFullyQualifiedName();
-    return new DashboardList(dashboards, beforeCursor, afterCursor, total);
+  public ResultList<Dashboard> listBefore(Fields fields, String serviceName, int limitParam, String before)
+          throws IOException, GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(entityRepository, Dashboard.class, fields, serviceName, limitParam, before);
   }
 
   @Transaction

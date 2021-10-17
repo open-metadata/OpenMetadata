@@ -658,7 +658,7 @@ public final class EntityUtil {
   public static <T> ResultList<T> listAfter(EntityRepository<T> dao, Class<T> clz, Fields fields, String prefixFqn,
                                             int limitParam, String after)
           throws IOException, ParseException, GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
+    // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(prefixFqn, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
