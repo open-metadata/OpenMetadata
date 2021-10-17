@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.util;
 
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +36,7 @@ public final class EventUtils {
                                                String entityName,
                                                String oldEvent,
                                                String newEvent) {
-    String diff = JsonSchemaUtil.diffTwoJson(oldEvent, newEvent);
+    String diff = JsonUtils.diffTwoJson(oldEvent, newEvent);
     String print = String.format("Entity Updated: [%s] Name: [%s] DiffString: [%s]", entity, entityName, diff);
     LOG.info(print);
   }

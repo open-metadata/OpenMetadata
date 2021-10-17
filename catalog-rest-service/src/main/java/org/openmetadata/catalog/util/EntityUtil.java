@@ -601,7 +601,7 @@ public final class EntityUtil {
                                                String entityName,
                                                String oldEvent,
                                                String newEvent) {
-    String diff = JsonSchemaUtil.diffTwoJson(oldEvent, newEvent);
+    String diff = JsonUtils.diffTwoJson(oldEvent, newEvent);
     String print = String.format("Entity Updated: [%s] Name: [%s] DiffString: [%s]", entity, entityName, diff);
     LOG.info(print);
   }
