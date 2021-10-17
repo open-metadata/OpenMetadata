@@ -84,7 +84,7 @@ class SQLConnectionConfig(ConfigModel):
     include_views: Optional[bool] = True
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
-    data_profiler_enabled: Optional[bool] = True
+    data_profiler_enabled: Optional[bool] = False
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
