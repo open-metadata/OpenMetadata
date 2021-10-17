@@ -23,6 +23,11 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.databind.util.StdDateFormat;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
+import com.networknt.schema.JsonMetaSchema;
+import com.networknt.schema.JsonSchema;
+import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.ValidationMessage;
+import com.networknt.schema.urn.URNFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,13 +38,22 @@ import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
+import javax.json.JsonWriter;
+import javax.json.JsonWriterFactory;
+import javax.json.stream.JsonGenerator;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public final class JsonUtils {
   public static final MediaType DEFAULT_MEDIA_TYPE = MediaType.APPLICATION_JSON_TYPE;
@@ -57,7 +71,50 @@ public final class JsonUtils {
   private JsonUtils() {
 
   }
-  
+
+  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload) throws IOException {
+    return validate(schemaStream, jsonPayload, null);
+  }
+
+  public static Set<ValidationMessage> validate(InputStream schemaStream, String jsonPayload, URNFactory urnFactory)
+          throws IOException {
+    JsonSchemaFactory.Builder builder = new JsonSchemaFactory.Builder();
+    JsonMetaSchema metaSchema = JsonMetaSchema.getV7();
+    builder.defaultMetaSchemaURI(metaSchema.getUri()).addMetaSchema(metaSchema);
+    if (urnFactory != null) {
+      builder.addUrnFactory(urnFactory);
+    }
+
+    JsonSchemaFactory factory = builder.build();
+    JsonSchema schema = factory.getSchema(schemaStream);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode node = mapper.readTree(jsonPayload);
+    return schema.validate(node);
+  }
+
+  public static String diffTwoJson(String v1, String v2) {
+    JsonValue source = Json.createReader(new StringReader(v1)).readValue();
+    JsonValue dest = Json.createReader(new StringReader(v2)).readValue();
+
+    JsonPatch diff = Json.createDiff(source.asJsonObject(), dest.asJsonObject());
+    return formatJson(diff.toJsonArray());
+  }
+
+  public static String formatJson(JsonValue jsonValue) {
+    StringWriter stringWriter = new StringWriter();
+    prettyPrintString(jsonValue, stringWriter);
+    return stringWriter.toString();
+  }
+
+  public static void prettyPrintString(JsonValue jsonValue, Writer writer) {
+    Map<String, Object> config = Collections.singletonMap(JsonGenerator.PRETTY_PRINTING, true);
+    JsonWriterFactory writerFactory = Json.createWriterFactory(config);
+    try (JsonWriter jsonWriter = writerFactory.createWriter(writer)) {
+      jsonWriter.write(jsonValue);
+    }
+  }
+
   public static <T> T getEntity(WebTarget target, Class<T> clazz) {
     return getEntity(target, DEFAULT_MEDIA_TYPE, clazz);
   }
