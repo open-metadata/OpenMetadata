@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +61,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -292,51 +294,48 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void put_databaseUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a database with POST
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    createAndCheckDatabase(request, adminAuthHeaders());
+    Database database = createAndCheckDatabase(request, adminAuthHeaders());
 
     // Update database two times successfully with PUT requests
-    updateAndCheckDatabase(request, OK, adminAuthHeaders());
-    updateAndCheckDatabase(request, OK, adminAuthHeaders());
+    database = updateAndCheckDatabase(database, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckDatabase(database, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_databaseCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new database with put
+    // Create a new database with PUT
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckDatabase(request.withName(test.getDisplayName()).withDescription(null), CREATED, adminAuthHeaders());
+    updateAndCheckDatabase(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
+            adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_databaseCreate_as_owner_200(TestInfo test) throws HttpResponseException {
     // Create a new database with put
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    // Add Owner as admin
-    createAndCheckDatabase(request, adminAuthHeaders());
-    //Update the table as Owner
-    updateAndCheckDatabase(request.withName(test.getDisplayName()).withDescription(null),
-            CREATED, authHeaders(USER1.getEmail()));
-
+    // Add database as admin
+    Database database = createAndCheckDatabase(request, adminAuthHeaders());
+    // Update the table as Owner
+    updateAndCheckDatabase(database, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
   }
 
   @Test
   public void put_databaseNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription(null);
-    createAndCheckDatabase(request, adminAuthHeaders());
+    Database database = createAndCheckDatabase(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Database db = updateAndCheckDatabase(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
+    updateAndCheckDatabase(database, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
   public void put_databaseEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    createAndCheckDatabase(request, adminAuthHeaders());
+    Database database = createAndCheckDatabase(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Database db = updateAndCheckDatabase(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
+    updateAndCheckDatabase(database, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -352,14 +351,14 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   @Test
   public void put_databaseUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    createAndCheckDatabase(request, adminAuthHeaders());
+    Database database = createAndCheckDatabase(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckDatabase(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    database = updateAndCheckDatabase(database, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Remove ownership
-    Database db = updateAndCheckDatabase(request.withOwner(null), OK, adminAuthHeaders());
-    assertNull(db.getOwner());
+    database = updateAndCheckDatabase(database, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
+    assertNull(database.getOwner());
   }
 
   @Test
@@ -398,71 +397,19 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    database = patchDatabaseAttributesAndCheck(database, "description", TEAM_OWNER1, adminAuthHeaders());
+    database = patchDatabaseAttributesAndCheck(database, "description", TEAM_OWNER1,
+            adminAuthHeaders(), MINOR_UPDATE);
     database.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     database.setService(MYSQL_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Replace description, tier, owner
-    database = patchDatabaseAttributesAndCheck(database, "description1", USER_OWNER1, adminAuthHeaders());
+    database = patchDatabaseAttributesAndCheck(database, "description1", USER_OWNER1,
+            adminAuthHeaders(), MINOR_UPDATE);
     database.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     database.setService(REDSHIFT_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchDatabaseAttributesAndCheck(database, null, null, adminAuthHeaders());
-  }
-
-  @Test
-  public void patch_databaseIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure database ID can't be changed using patch
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    UUID databaseId = database.getId();
-    String databaseJson = JsonUtils.pojoToJson(database);
-    database.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseId, databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
-
-    // ID can't be deleted
-    database.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseId, databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "id"));
-  }
-
-  @Test
-  public void patch_databaseNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure database name can't be changed using patch
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    String databaseJson = JsonUtils.pojoToJson(database);
-    database.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
-
-    // Name can't be removed
-    database.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "name"));
-  }
-
-  @Test
-  public void patch_databaseRemoveService_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure service corresponding to database can't be changed by patch operation
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    database.getService().setHref(null); // Remove href from returned response as it is read-only field
-
-    String databaseJson = JsonUtils.pojoToJson(database);
-    database.setService(MYSQL_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
-
-    // Service relationship can't be removed
-    database.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchDatabase(databaseJson, database, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.DATABASE, "service"));
+    patchDatabaseAttributesAndCheck(database, null, null, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   // TODO listing tables test:1
@@ -495,12 +442,17 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     return getAndValidate(database.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Database updateAndCheckDatabase(CreateDatabase create,
-                                                Status status,
-                                                Map<String, String> authHeaders) throws HttpResponseException {
+  public static Database updateAndCheckDatabase(Database before, CreateDatabase create, Status status,
+                                                Map<String, String> authHeaders, UpdateType updateType)
+          throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Database updatedDb = updateDatabase(create, status, authHeaders);
     validateDatabase(updatedDb, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
+    if (before == null) {
+      assertEquals(0.1, updatedDb.getVersion()); // First version created
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedDb.getVersion(), updateType);
+    }
 
     // GET the newly updated database and validate
     return getAndValidate(updatedDb.getId(), create, authHeaders, updatedBy);
@@ -588,23 +540,24 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     return database;
   }
 
-  private Database patchDatabaseAttributesAndCheck(Database database, String newDescription,
-                                                EntityReference newOwner, Map<String, String> authHeaders)
+  private Database patchDatabaseAttributesAndCheck(Database before, String newDescription, EntityReference newOwner,
+                                                   Map<String, String> authHeaders, UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String databaseJson = JsonUtils.pojoToJson(database);
+    String databaseJson = JsonUtils.pojoToJson(before);
 
     // Update the table attributes
-    database.setDescription(newDescription);
-    database.setOwner(newOwner);
+    before.setDescription(newDescription);
+    before.setOwner(newOwner);
 
     // Validate information returned in patch response has the updates
-    Database updatedDatabase = patchDatabase(databaseJson, database, authHeaders);
-    validateDatabase(updatedDatabase, database.getDescription(), newOwner, null, updatedBy);
+    Database updatedDatabase = patchDatabase(databaseJson, before, authHeaders);
+    validateDatabase(updatedDatabase, before.getDescription(), newOwner, null, updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updatedDatabase.getVersion(), updateType);
 
     // GET the table and Validate information returned
-    Database getDatabase = getDatabase(database.getId(), "service,owner", authHeaders);
-    validateDatabase(getDatabase, database.getDescription(), newOwner, null, updatedBy);
+    Database getDatabase = getDatabase(before.getId(), "service,owner", authHeaders);
+    validateDatabase(getDatabase, before.getDescription(), newOwner, null, updatedBy);
     return updatedDatabase;
   }
 
