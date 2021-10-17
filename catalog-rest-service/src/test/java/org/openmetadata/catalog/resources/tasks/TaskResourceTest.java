@@ -39,6 +39,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,9 +64,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -292,53 +294,49 @@ public class TaskResourceTest extends CatalogApplicationTest {
   public void put_taskUpdateWithNoChange_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create a task with POST
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    createAndCheckTask(request, adminAuthHeaders());
+    Task task = createAndCheckTask(request, adminAuthHeaders());
 
     // Update task two times successfully with PUT requests
-    updateAndCheckTask(request, OK, adminAuthHeaders());
-    updateAndCheckTask(request, OK, adminAuthHeaders());
+    task = updateAndCheckTask(task, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckTask(task, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_taskCreate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create a new task with put
+    // Create a new task with PUT
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckTask(request.withName(test.getDisplayName()).withDescription(null), CREATED, adminAuthHeaders());
+    updateAndCheckTask(null, request, CREATED, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_taskCreate_as_owner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create a new task with put
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    // Add Owner as admin
-    createAndCheckTask(request, adminAuthHeaders());
-    //Update the task Owner
-    updateAndCheckTask(request.withName(test.getDisplayName()).withDescription(null),
-            CREATED, authHeaders(USER1.getEmail()));
-
+    // Add task as admin
+    Task task = createAndCheckTask(request, adminAuthHeaders());
+    // Update the task Owner and see if it is allowed
+    updateAndCheckTask(task, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
   }
 
   @Test
   public void put_taskNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
-    createAndCheckTask(request, adminAuthHeaders());
+    Task task = createAndCheckTask(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Task task = updateAndCheckTask(request.withDescription("newDescription").withDisplayName("newTask"), OK,
-            adminAuthHeaders());
-    assertEquals("newDescription", task.getDescription());
-    assertEquals("newTask", task.getDisplayName());
+    task = updateAndCheckTask(task, request.withDescription("newDescription").withDisplayName("newTask"), OK,
+            adminAuthHeaders(), MINOR_UPDATE);
+    assertEquals("newTask", task.getDisplayName()); // TODO move this to validate
   }
 
   @Test
   public void put_taskEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create task with empty description
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    createAndCheckTask(request, adminAuthHeaders());
+    Task task = createAndCheckTask(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Task task = updateAndCheckTask(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", task.getDescription());
+    updateAndCheckTask(task, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -354,13 +352,13 @@ public class TaskResourceTest extends CatalogApplicationTest {
   @Test
   public void put_taskUpdateOwner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    createAndCheckTask(request, adminAuthHeaders());
+    Task task = createAndCheckTask(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckTask(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    task = updateAndCheckTask(task, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Remove ownership
-    Task task = updateAndCheckTask(request.withOwner(null), OK, adminAuthHeaders());
+    task = updateAndCheckTask(task, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
     assertNull(task.getOwner());
   }
 
@@ -402,75 +400,21 @@ public class TaskResourceTest extends CatalogApplicationTest {
     task.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    task = patchTaskAttributesAndCheck(task, "description", TEAM_OWNER1, taskTags, adminAuthHeaders());
+    task = patchTaskAttributesAndCheck(task, "description", TEAM_OWNER1, taskTags,
+            adminAuthHeaders(), MINOR_UPDATE);
     task.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     task.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
     taskTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
+
     // Replace description, tier, owner
     task = patchTaskAttributesAndCheck(task, "description1", USER_OWNER1, taskTags,
-            adminAuthHeaders());
+            adminAuthHeaders(), MINOR_UPDATE);
     task.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     task.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
     taskTags = List.of(TIER_1);
+
     // Remove description, tier, owner
-    patchTaskAttributesAndCheck(task, null, null, taskTags, adminAuthHeaders());
-  }
-
-  @Test
-  public void patch_taskIDChange_400(TestInfo test) throws HttpResponseException,
-          JsonProcessingException, URISyntaxException {
-    // Ensure task ID can't be changed using patch
-    Task task = createTask(create(test), adminAuthHeaders());
-    UUID taskId = task.getId();
-    String taskJson = JsonUtils.pojoToJson(task);
-    task.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskId, taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "id"));
-
-    // ID can't be deleted
-    task.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskId, taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "id"));
-  }
-
-  @Test
-  public void patch_taskNameChange_400(TestInfo test) throws HttpResponseException,
-          JsonProcessingException, URISyntaxException {
-    // Ensure task name can't be changed using patch
-    Task task = createTask(create(test), adminAuthHeaders());
-    String taskJson = JsonUtils.pojoToJson(task);
-    task.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "name"));
-
-    // Name can't be removed
-    task.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "name"));
-  }
-
-  @Test
-  public void patch_taskRemoveService_400(TestInfo test) throws HttpResponseException,
-          JsonProcessingException, URISyntaxException {
-    // Ensure service corresponding to task can't be changed by patch operation
-    Task task = createTask(create(test), adminAuthHeaders());
-    task.getService().setHref(null); // Remove href from returned response as it is read-only field
-
-    String taskJson = JsonUtils.pojoToJson(task);
-    task.setService(PREFECT_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "service"));
-
-    // Service relationship can't be removed
-    task.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTask(taskJson, task, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TASK, "service"));
+    patchTaskAttributesAndCheck(task, null, null, taskTags, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -496,13 +440,18 @@ public class TaskResourceTest extends CatalogApplicationTest {
     return getAndValidate(task.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Task updateAndCheckTask(CreateTask create,
-                                        Status status,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+  public static Task updateAndCheckTask(Task before, CreateTask create, Status status,
+                                        Map<String, String> authHeaders, UpdateType updateType)
+          throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Task updatedTask = updateTask(create, status, authHeaders);
     validateTask(updatedTask, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
             updatedBy);
+    if (before == null) {
+      assertEquals(0.1, updatedTask.getVersion()); // First version created
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedTask.getVersion(), updateType);
+    }
 
     // GET the newly updated task and validate
     return getAndValidate(updatedTask.getId(), create, authHeaders, updatedBy);
@@ -599,26 +548,25 @@ public class TaskResourceTest extends CatalogApplicationTest {
     return task;
   }
 
-  private Task patchTaskAttributesAndCheck(Task task, String newDescription,
-                                             EntityReference newOwner,
-                                             List<TagLabel> tags,
-                                             Map<String, String> authHeaders)
+  private Task patchTaskAttributesAndCheck(Task before, String newDescription, EntityReference newOwner,
+                                           List<TagLabel> tags, Map<String, String> authHeaders, UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String taskJson = JsonUtils.pojoToJson(task);
+    String taskJson = JsonUtils.pojoToJson(before);
 
     // Update the task attributes
-    task.setDescription(newDescription);
-    task.setOwner(newOwner);
-    task.setTags(tags);
+    before.setDescription(newDescription);
+    before.setOwner(newOwner);
+    before.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Task updateTask = patchTask(taskJson, task, authHeaders);
-    validateTask(updateTask, task.getDescription(), newOwner, null, tags, updatedBy);
+    Task updateTask = patchTask(taskJson, before, authHeaders);
+    validateTask(updateTask, before.getDescription(), newOwner, null, tags, updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updateTask.getVersion(), updateType);
 
     // GET the task and Validate information returned
-    Task getTask = getTask(task.getId(), "service,owner,tags", authHeaders);
-    validateTask(getTask, task.getDescription(), newOwner, null, tags, updatedBy);
+    Task getTask = getTask(before.getId(), "service,owner,tags", authHeaders);
+    validateTask(getTask, before.getDescription(), newOwner, null, tags, updatedBy);
     return updateTask;
   }
 
