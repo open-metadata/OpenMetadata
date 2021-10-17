@@ -16,10 +16,10 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
@@ -28,6 +28,8 @@ import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -46,8 +48,10 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -149,38 +153,29 @@ public abstract class TopicRepository {
   }
 
   @Transaction
-  public PutResponse<Topic> createOrUpdate(Topic updatedTopic, EntityReference service, EntityReference newOwner)
+  public PutResponse<Topic> createOrUpdate(Topic updated, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
-
-    String fqn = getFQN(service, updatedTopic);
-    Topic storedDB = JsonUtils.readValue(topicDAO().findByFQN(fqn), Topic.class);
-    if (storedDB == null) {  // Topic does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updatedTopic, service, newOwner));
+    String fqn = getFQN(service, updated);
+    Topic stored = JsonUtils.readValue(topicDAO().findByFQN(fqn), Topic.class);
+    if (stored == null) {  // Topic does not exist. Create a new one
+      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
     }
-    // Update the existing topic
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
-      storedDB.withDescription(updatedTopic.getDescription());
-    }
-    topicDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
+    setFields(stored, TOPIC_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, service, newOwner);
 
-    // Update owner relationship
-    setFields(storedDB, TOPIC_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedDB, storedDB.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new topic under the new service
-    storedDB.setService(service);
-    applyTags(updatedTopic);
-
-    return new PutResponse<>(Status.OK, storedDB);
+    TopicUpdater topicUpdater = new TopicUpdater(stored, updated, false);
+    topicUpdater.updateAll();
+    topicUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
-  public Topic patch(String id, JsonPatch patch) throws IOException {
+  public Topic patch(String id, String user, JsonPatch patch) throws IOException {
     Topic original = setFields(validateTopic(id), TOPIC_PATCH_FIELDS);
     Topic updated = JsonUtils.applyPatch(original, patch, Topic.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }
@@ -191,15 +186,42 @@ public abstract class TopicRepository {
   }
 
   public Topic createInternal(Topic topic, EntityReference service, EntityReference owner) throws IOException {
+    validateRelationships(topic, service, owner);
+    storeTopic(topic, false);
+    addRelationships(topic);
+    return topic;
+  }
+
+  private void validateRelationships(Topic topic, EntityReference service, EntityReference owner) throws IOException {
     topic.setFullyQualifiedName(getFQN(service, topic));
     EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    getService(service);
+    topic.setTags(EntityUtil.addDerivedTags(tagDAO(), topic.getTags()));
+  }
 
-    // Query 1 - insert topic into topic_entity table
-    topicDAO().insert(JsonUtils.pojoToJson(topic));
-    setService(topic, service);
-    setOwner(topic, owner);
+  private void addRelationships(Topic topic) throws IOException {
+    setService(topic, topic.getService());
+    setOwner(topic, topic.getOwner());
     applyTags(topic);
-    return topic;
+  }
+
+  private void storeTopic(Topic topic, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = topic.getOwner();
+    List<TagLabel> tags = topic.getTags();
+    EntityReference service = topic.getService();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    topic.withOwner(null).withService(null).withHref(null).withTags(null);
+
+    if (update) {
+      topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
+    } else {
+      topicDAO().insert(JsonUtils.pojoToJson(topic));
+    }
+
+    // Restore the relationships
+    topic.withOwner(owner).withService(service).withTags(tags);
   }
 
   private void applyTags(Topic topic) throws IOException {
@@ -209,31 +231,13 @@ public abstract class TopicRepository {
   }
 
   private void patch(Topic original, Topic updated) throws IOException {
-    String topicId = original.getId().toString();
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TOPIC, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TOPIC, "name"));
-    }
-    if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TOPIC, "service"));
-    }
-    // Validate new owner
-    EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
-
-    EntityReference newService = updated.getService();
-
-    updated.setHref(null);
-    updated.setOwner(null);
-    updated.setService(null);
-    // Remove previous tags.
-    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-
-    topicDAO().update(topicId, JsonUtils.pojoToJson(updated));
-    updateOwner(updated, original.getOwner(), newOwner);
-    updated.setService(newService);
-    applyTags(updated);
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+    validateRelationships(updated, updated.getService(), updated.getOwner());
+    TopicUpdater topicUpdater = new TopicUpdater(original, updated, true);
+    topicUpdater.updateAll();
+    topicUpdater.store();
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
@@ -243,11 +247,6 @@ public abstract class TopicRepository {
   private void setOwner(Topic topic, EntityReference owner) {
     EntityUtil.setOwner(relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
     topic.setOwner(owner);
-  }
-
-  private void updateOwner(Topic topic, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, topic.getId(), Entity.TOPIC);
-    topic.setOwner(newOwner);
   }
 
   private Topic validateTopic(String id) throws IOException {
@@ -352,5 +351,82 @@ public abstract class TopicRepository {
 
     @SqlUpdate("DELETE FROM topic_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  static class TopicEntityInterface implements EntityInterface {
+    private final Topic topic;
+
+    TopicEntityInterface(Topic Topic) {
+      this.topic = Topic;
+    }
+
+    @Override
+    public UUID getId() {
+      return topic.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return topic.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return topic.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return topic.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return topic.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return topic.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      topic.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      topic.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      topic.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class TopicUpdater extends EntityUpdater {
+    final Topic orig;
+    final Topic updated;
+
+    public TopicUpdater(Topic orig, Topic updated, boolean patchOperation) {
+      super(new TopicRepository.TopicEntityInterface(orig), new TopicRepository.TopicEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeTopic(updated, true);
+    }
   }
 }

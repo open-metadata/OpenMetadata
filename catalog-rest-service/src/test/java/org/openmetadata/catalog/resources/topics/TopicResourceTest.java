@@ -40,6 +40,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,9 +65,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -301,51 +303,48 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public void put_topicUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a topic with POST
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    createAndCheckTopic(request, adminAuthHeaders());
+    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
 
     // Update topic two times successfully with PUT requests
-    updateAndCheckTopic(request, OK, adminAuthHeaders());
-    updateAndCheckTopic(request, OK, adminAuthHeaders());
+    updateAndCheckTopic(topic, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckTopic(topic, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_topicCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new topic with put
+    // Create a new topic with PUT
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckTopic(request.withName(test.getDisplayName()).withDescription(null), CREATED, adminAuthHeaders());
+    updateAndCheckTopic(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
+            adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_topicCreate_as_owner_200(TestInfo test) throws HttpResponseException {
     // Create a new topic with put
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    // Add Owner as admin
-    createAndCheckTopic(request, adminAuthHeaders());
-    //Update the topic Owner
-    updateAndCheckTopic(request.withName(test.getDisplayName()).withDescription(null),
-            CREATED, authHeaders(USER1.getEmail()));
-
+    // Add as admin
+    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
+    // Update the topic as Owner
+    updateAndCheckTopic(topic, request.withDescription(null), OK, authHeaders(USER1.getEmail()), NO_CHANGE);
   }
 
   @Test
   public void put_topicNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription(null);
-    createAndCheckTopic(request, adminAuthHeaders());
+    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Topic topic = updateAndCheckTopic(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", topic.getDescription());
+    updateAndCheckTopic(topic, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
   public void put_topicEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create topic with empty description
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription("");
-    createAndCheckTopic(request, adminAuthHeaders());
+    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Topic topic = updateAndCheckTopic(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", topic.getDescription());
+    updateAndCheckTopic(topic, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -361,13 +360,13 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void put_topicUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription("");
-    createAndCheckTopic(request, adminAuthHeaders());
+    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckTopic(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    topic = updateAndCheckTopic(topic, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Remove ownership
-    Topic topic = updateAndCheckTopic(request.withOwner(null), OK, adminAuthHeaders());
+    topic = updateAndCheckTopic(topic, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
     assertNull(topic.getOwner());
   }
 
@@ -408,73 +407,21 @@ public class TopicResourceTest extends CatalogApplicationTest {
     topic.getService().setHref(null); // href is readonly and not patchable
 
     // Add description, owner when previously they were null
-    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags, adminAuthHeaders());
+    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags,
+            adminAuthHeaders(), MINOR_UPDATE);
     topic.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(KAFKA_REFERENCE); // Get rid of href and name returned in the response for service
     topic.setTags(topicTags);
     topicTags = List.of(TIER2_TAG_LABEL);
+
     // Replace description, tier, owner
     topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, topicTags,
-            adminAuthHeaders());
+            adminAuthHeaders(), MINOR_UPDATE);
     topic.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     topic.setService(PULSAR_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchTopicAttributesAndCheck(topic, null, null, topicTags, adminAuthHeaders());
-  }
-
-  @Test
-  public void patch_topicIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure topic ID can't be changed using patch
-    Topic topic = createTopic(create(test), adminAuthHeaders());
-    UUID topicId = topic.getId();
-    String topicJson = JsonUtils.pojoToJson(topic);
-    topic.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicId, topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "id"));
-
-    // ID can't be deleted
-    topic.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicId, topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "id"));
-  }
-
-  @Test
-  public void patch_topicNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure topic name can't be changed using patch
-    Topic topic = createTopic(create(test), adminAuthHeaders());
-    String topicJson = JsonUtils.pojoToJson(topic);
-    topic.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "name"));
-
-    // Name can't be removed
-    topic.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "name"));
-  }
-
-  @Test
-  public void patch_topicRemoveService_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure service corresponding to topic can't be changed by patch operation
-    Topic topic = createTopic(create(test), adminAuthHeaders());
-    topic.getService().setHref(null); // Remove href from returned response as it is read-only field
-
-    String topicJson = JsonUtils.pojoToJson(topic);
-    topic.setService(PULSAR_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "service"));
-
-    // Service relationship can't be removed
-    topic.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchTopic(topicJson, topic, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.TOPIC, "service"));
+    patchTopicAttributesAndCheck(topic, null, null, topicTags, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -533,33 +480,43 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   public static Topic createAndCheckTopic(CreateTopic create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Topic topic = createTopic(create, authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
-    return getAndValidate(topic.getId(), create, authHeaders);
+    assertEquals(0.1, topic.getVersion());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(), updatedBy);
+    return getAndValidate(topic.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Topic updateAndCheckTopic(CreateTopic create,
-                                          Status status,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
+  public static Topic updateAndCheckTopic(Topic before, CreateTopic create, Status status,
+                                          Map<String, String> authHeaders,
+                                          UpdateType updateType) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Topic updatedTopic = updateTopic(create, status, authHeaders);
-    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            updatedBy);
+    if (before == null) {
+      assertEquals(0.1, updatedTopic.getVersion()); // First version created
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedTopic.getVersion(), updateType);
+    }
 
     // GET the newly updated topic and validate
-    return getAndValidate(updatedTopic.getId(), create, authHeaders);
+    return getAndValidate(updatedTopic.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned topic has all the required information passed during creation
-  public static Topic getAndValidate(UUID topicId,
-                                     CreateTopic create,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+  public static Topic getAndValidate(UUID topicId, CreateTopic create, Map<String, String> authHeaders,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created topic by ID and validate
     Topic topic = getTopic(topicId, "service,owner", authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
 
     // GET the newly created topic by name and validate
     String fqn = topic.getFullyQualifiedName();
     topic = getTopicByName(fqn, "service,owner", authHeaders);
-    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags());
+    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
+            expectedUpdatedBy);
   }
 
   public static Topic updateTopic(CreateTopic create,
@@ -600,11 +557,13 @@ public class TopicResourceTest extends CatalogApplicationTest {
   }
 
   private static Topic validateTopic(Topic topic, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService, List<TagLabel> expectedTags)
+                                     EntityReference expectedService, List<TagLabel> expectedTags,
+                                     String expectedUpdatedBy)
           throws HttpResponseException {
     assertNotNull(topic.getId());
     assertNotNull(topic.getHref());
     assertEquals(expectedDescription, topic.getDescription());
+    assertEquals(expectedUpdatedBy, topic.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -620,29 +579,32 @@ public class TopicResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), topic.getService().getId());
       assertEquals(expectedService.getType(), topic.getService().getType());
     }
-    TestUtils.validateTags(expectedTags, topic.getTags());
+    TestUtils.validateTags(topic.getFullyQualifiedName(), expectedTags, topic.getTags());
     return topic;
   }
 
-  private Topic patchTopicAttributesAndCheck(Topic topic, String newDescription,
+  private Topic patchTopicAttributesAndCheck(Topic before, String newDescription,
                                              EntityReference newOwner,
                                              List<TagLabel> tags,
-                                             Map<String, String> authHeaders)
+                                             Map<String, String> authHeaders,
+                                             UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
-    String topicJson = JsonUtils.pojoToJson(topic);
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String topicJson = JsonUtils.pojoToJson(before);
 
     // Update the topic attributes
-    topic.setDescription(newDescription);
-    topic.setOwner(newOwner);
-    topic.setTags(tags);
+    before.setDescription(newDescription);
+    before.setOwner(newOwner);
+    before.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Topic updateTopic = patchTopic(topicJson, topic, authHeaders);
-    validateTopic(updateTopic, topic.getDescription(), newOwner, null, tags);
+    Topic updateTopic = patchTopic(topicJson, before, authHeaders);
+    validateTopic(updateTopic, before.getDescription(), newOwner, null, tags, updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updateTopic.getVersion(), updateType);
 
     // GET the topic and Validate information returned
-    Topic getTopic = getTopic(topic.getId(), "service,owner,tags", authHeaders);
-    validateTopic(getTopic, topic.getDescription(), newOwner, null, tags);
+    Topic getTopic = getTopic(before.getId(), "service,owner,tags", authHeaders);
+    validateTopic(getTopic, before.getDescription(), newOwner, null, tags, updatedBy);
     return updateTopic;
   }
 

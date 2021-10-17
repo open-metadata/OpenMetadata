@@ -23,8 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.api.data.CreatePipeline;
+import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Task;
@@ -32,9 +32,9 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.resources.tasks.TaskResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.resources.services.PipelineServiceResourceTest;
+import org.openmetadata.catalog.resources.tasks.TaskResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
@@ -42,6 +42,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,7 +69,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -162,7 +164,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void post_PipelineWithTASKs_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_PipelineWithTasks_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckPipeline(create(test), TASK_REFERENCES, adminAuthHeaders());
   }
 
@@ -307,53 +309,50 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   public void put_PipelineUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a Pipeline with POST
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    createAndCheckPipeline(request, adminAuthHeaders());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
 
     // Update Pipeline two times successfully with PUT requests
-    updateAndCheckPipeline(request, OK, adminAuthHeaders());
-    updateAndCheckPipeline(request, OK, adminAuthHeaders());
+    pipeline = updateAndCheckPipeline(pipeline, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckPipeline(pipeline, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_PipelineCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new Pipeline with put
+    // Create a new Pipeline with PUT
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckPipeline(request.withName(test.getDisplayName()).withDescription(null), CREATED, adminAuthHeaders());
+    updateAndCheckPipeline(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
+            adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_PipelineCreate_as_owner_200(TestInfo test) throws HttpResponseException {
     // Create a new Pipeline with put
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    // Add Owner as admin
-    createAndCheckPipeline(request, adminAuthHeaders());
-    //Update the table as Owner
-    updateAndCheckPipeline(request.withName(test.getDisplayName()).withDescription(null),
-            CREATED, authHeaders(USER1.getEmail()));
-
+    // Add pipeline as admin
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
+    // Update the table as user owner
+    updateAndCheckPipeline(pipeline, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
   }
 
   @Test
   public void put_PipelineNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
-    createAndCheckPipeline(request, adminAuthHeaders());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Pipeline db = updateAndCheckPipeline(request.withDisplayName("Pipeline1").
-            withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
-    assertEquals("Pipeline1", db.getDisplayName());
+    pipeline = updateAndCheckPipeline(pipeline, request.withDisplayName("Pipeline1").
+            withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
+    assertEquals("Pipeline1", pipeline.getDisplayName()); // TODO move this to common validate
   }
 
   @Test
   public void put_PipelineEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    createAndCheckPipeline(request, adminAuthHeaders());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Pipeline db = updateAndCheckPipeline(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
+    updateAndCheckPipeline(pipeline, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -369,44 +368,41 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   @Test
   public void put_PipelineUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    createAndCheckPipeline(request, adminAuthHeaders());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckPipeline(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    pipeline = updateAndCheckPipeline(pipeline, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Remove ownership
-    Pipeline db = updateAndCheckPipeline(request.withOwner(null), OK, adminAuthHeaders());
-    assertNull(db.getOwner());
+    pipeline = updateAndCheckPipeline(pipeline, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
+    assertNull(pipeline.getOwner());
   }
 
 
   @Test
-  public void put_PipelineTASKsUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_PipelineTasksUpdate_200(TestInfo test) throws HttpResponseException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
-    createAndCheckPipeline(request, adminAuthHeaders());
-
-    Pipeline pipeline = updateAndCheckPipeline(request
-                    .withDescription("newDescription").withTasks(TASK_REFERENCES),
-            OK, adminAuthHeaders());
-    validatePipelineTASKs(pipeline, TASK_REFERENCES);
-    assertEquals("newDescription", pipeline.getDescription());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
+    pipeline = updateAndCheckPipeline(pipeline, request.withDescription("newDescription").withTasks(TASK_REFERENCES),
+            OK, adminAuthHeaders(), MINOR_UPDATE);
+    validatePipelineTasks(pipeline, TASK_REFERENCES); // TODO clean this up
   }
 
   @Test
-  public void put_AddRemovePipelineTASKsUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_AddRemovePipelineTasksUpdate_200(TestInfo test) throws HttpResponseException {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
-    createAndCheckPipeline(request, adminAuthHeaders());
+    Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
 
-    Pipeline pipeline = updateAndCheckPipeline(request
-                    .withDescription("newDescription").withTasks(TASK_REFERENCES),
-            OK, adminAuthHeaders());
-    validatePipelineTASKs(pipeline, TASK_REFERENCES);
-    // remove a TASK
+    // Add tasks
+    pipeline = updateAndCheckPipeline(pipeline, request.withDescription("newDescription").withTasks(TASK_REFERENCES),
+            OK, adminAuthHeaders(), MINOR_UPDATE);
+    validatePipelineTasks(pipeline, TASK_REFERENCES);
+
+    // remove a task
     TASK_REFERENCES.remove(0);
-    pipeline = updateAndCheckPipeline(request
-                    .withDescription("newDescription").withTasks(TASK_REFERENCES),
-            OK, adminAuthHeaders());
-    validatePipelineTASKs(pipeline, TASK_REFERENCES);
+    pipeline = updateAndCheckPipeline(pipeline, request.withDescription("newDescription").withTasks(TASK_REFERENCES),
+            OK, adminAuthHeaders(), MINOR_UPDATE);
+    validatePipelineTasks(pipeline, TASK_REFERENCES);
   }
 
   @Test
@@ -447,72 +443,19 @@ public class PipelineResourceTest extends CatalogApplicationTest {
 
     // Add description, owner when previously they were null
     pipeline = patchPipelineAttributesAndCheck(pipeline, "description",
-            TEAM_OWNER1, pipelineTags, adminAuthHeaders());
+            TEAM_OWNER1, pipelineTags, adminAuthHeaders(), MINOR_UPDATE);
     pipeline.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     pipeline.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
     pipelineTags = singletonList(USER_ADDRESS_TAG_LABEL);
+
     // Replace description, tier, owner
     pipeline = patchPipelineAttributesAndCheck(pipeline, "description1",
-            USER_OWNER1, pipelineTags, adminAuthHeaders());
+            USER_OWNER1, pipelineTags, adminAuthHeaders(), MINOR_UPDATE);
     pipeline.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     pipeline.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchPipelineAttributesAndCheck(pipeline, null, null, pipelineTags, adminAuthHeaders());
-  }
-
-  @Test
-  public void patch_PipelineIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure Pipeline ID can't be changed using patch
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    UUID pipelineId = pipeline.getId();
-    String pipelineJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineId, pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "id"));
-
-    // ID can't be deleted
-    pipeline.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineId, pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "id"));
-  }
-
-  @Test
-  public void patch_PipelineNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure Pipeline name can't be changed using patch
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    String pipelineJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "name"));
-
-    // Name can't be removed
-    pipeline.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "name"));
-  }
-
-  @Test
-  public void patch_PipelineRemoveService_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure service corresponding to Pipeline can't be changed by patch operation
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    pipeline.getService().setHref(null); // Remove href from returned response as it is read-only field
-
-    String pipelineJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.setService(PREFECT_REFERENCE);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "service"));
-
-    // Service relationship can't be removed
-    pipeline.setService(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchPipeline(pipelineJson, pipeline, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.PIPELINE, "service"));
+    patchPipelineAttributesAndCheck(pipeline, null, null, pipelineTags, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   // TODO listing tables test:1
@@ -538,43 +481,54 @@ public class PipelineResourceTest extends CatalogApplicationTest {
 
   public static Pipeline createAndCheckPipeline(CreatePipeline create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Pipeline pipeline = createPipeline(create, authHeaders);
     validatePipeline(pipeline, create.getDisplayName(),
-            create.getDescription(), create.getOwner(), create.getService());
-    return getAndValidate(pipeline.getId(), create, authHeaders);
+            create.getDescription(), create.getOwner(), create.getService(), updatedBy);
+    return getAndValidate(pipeline.getId(), create, authHeaders, updatedBy);
   }
 
   public static Pipeline createAndCheckPipeline(CreatePipeline create, List<EntityReference> tasks,
                                                   Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withTasks(tasks);
     Pipeline pipeline = createPipeline(create, authHeaders);
+    assertEquals(0.1, pipeline.getVersion());
     validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            tasks);
-    return getAndValidate(pipeline.getId(), create, authHeaders);
+            tasks, updatedBy);
+    return getAndValidate(pipeline.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Pipeline updateAndCheckPipeline(CreatePipeline create,
-                                                Status status,
-                                                Map<String, String> authHeaders) throws HttpResponseException {
+  public static Pipeline updateAndCheckPipeline(Pipeline before, CreatePipeline create, Status status,
+                                                Map<String, String> authHeaders, UpdateType updateType)
+          throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Pipeline updatedPipeline = updatePipeline(create, status, authHeaders);
-    validatePipeline(updatedPipeline, create.getDescription(), create.getOwner(), create.getService());
+    validatePipeline(updatedPipeline, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
+    if (before == null) {
+      assertEquals(0.1, updatedPipeline.getVersion()); // First version created
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedPipeline.getVersion(), updateType);
+    }
 
     // GET the newly updated Pipeline and validate
-    return getAndValidate(updatedPipeline.getId(), create, authHeaders);
+    return getAndValidate(updatedPipeline.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned Pipeline has all the required information passed during creation
   public static Pipeline getAndValidate(UUID pipelineId,
                                         CreatePipeline create,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
+                                        Map<String, String> authHeaders,
+                                        String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created Pipeline by ID and validate
     Pipeline pipeline = getPipeline(pipelineId, "service,owner,tasks", authHeaders);
-    validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService());
+    validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService(), expectedUpdatedBy);
 
     // GET the newly created Pipeline by name and validate
     String fqn = pipeline.getFullyQualifiedName();
     pipeline = getPipelineByName(fqn, "service,owner,tasks", authHeaders);
-    return validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService());
+    return validatePipeline(pipeline, create.getDescription(), create.getOwner(), create.getService(),
+            expectedUpdatedBy);
   }
 
   public static Pipeline updatePipeline(CreatePipeline create,
@@ -618,18 +572,23 @@ public class PipelineResourceTest extends CatalogApplicationTest {
 
   }
 
-  private static Pipeline validatePipeline(Pipeline pipeline, String expectedDisplayName,
-                                             String expectedDescription,
-                                             EntityReference expectedOwner, EntityReference expectedService) {
-    Pipeline newPipeline = validatePipeline(pipeline, expectedDescription, expectedOwner, expectedService);
+  private static Pipeline validatePipeline(Pipeline pipeline, String expectedDisplayName, String expectedDescription,
+                                           EntityReference expectedOwner, EntityReference expectedService,
+                                           String expectedUpdatedBy) {
+    Pipeline newPipeline = validatePipeline(pipeline, expectedDescription, expectedOwner, expectedService,
+            expectedUpdatedBy);
     assertEquals(expectedDisplayName, newPipeline.getDisplayName());
+    assertEquals(expectedUpdatedBy, newPipeline.getUpdatedBy());
     return newPipeline;
   }
+
   private static Pipeline validatePipeline(Pipeline pipeline, String expectedDescription,
-                                            EntityReference expectedOwner, EntityReference expectedService) {
+                                           EntityReference expectedOwner, EntityReference expectedService,
+                                           String expectedUpdatedBy) {
     assertNotNull(pipeline.getId());
     assertNotNull(pipeline.getHref());
     assertEquals(expectedDescription, pipeline.getDescription());
+    assertEquals(expectedUpdatedBy, pipeline.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -649,12 +608,13 @@ public class PipelineResourceTest extends CatalogApplicationTest {
   }
 
   private static Pipeline validatePipeline(Pipeline pipeline, String expectedDescription,
-                                             EntityReference expectedOwner, EntityReference expectedService,
-                                              List<TagLabel> expectedTags,
-                                              List<EntityReference> tasks) throws HttpResponseException {
+                                           EntityReference expectedOwner, EntityReference expectedService,
+                                           List<TagLabel> expectedTags, List<EntityReference> tasks,
+                                           String expectedUpdatedBy) throws HttpResponseException {
     assertNotNull(pipeline.getId());
     assertNotNull(pipeline.getHref());
     assertEquals(expectedDescription, pipeline.getDescription());
+    assertEquals(expectedUpdatedBy, pipeline.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -670,46 +630,48 @@ public class PipelineResourceTest extends CatalogApplicationTest {
       assertEquals(expectedService.getId(), pipeline.getService().getId());
       assertEquals(expectedService.getType(), pipeline.getService().getType());
     }
-    validatePipelineTASKs(pipeline, tasks);
-    TestUtils.validateTags(expectedTags, pipeline.getTags());
+    validatePipelineTasks(pipeline, tasks);
+    TestUtils.validateTags(pipeline.getFullyQualifiedName(), expectedTags, pipeline.getTags());
     return pipeline;
   }
 
-  private static void validatePipelineTASKs(Pipeline pipeline, List<EntityReference> tasks) {
+  private static void validatePipelineTasks(Pipeline pipeline, List<EntityReference> tasks) {
     if (tasks != null) {
-      List<UUID> expectedTASKReferences = new ArrayList<>();
+      List<UUID> expectedTaskReferences = new ArrayList<>();
       for (EntityReference task: tasks) {
-        expectedTASKReferences.add(task.getId());
+        expectedTaskReferences.add(task.getId());
       }
       List<UUID> actualTaskReferences = new ArrayList<>();
       for (EntityReference task: pipeline.getTasks()) {
         TestUtils.validateEntityReference(task);
         actualTaskReferences.add(task.getId());
       }
-      assertTrue(actualTaskReferences.containsAll(expectedTASKReferences));
+      assertTrue(actualTaskReferences.containsAll(expectedTaskReferences));
     }
   }
 
-  private Pipeline patchPipelineAttributesAndCheck(Pipeline pipeline, String newDescription,
+  private Pipeline patchPipelineAttributesAndCheck(Pipeline before, String newDescription,
                                                      EntityReference newOwner, List<TagLabel> tags,
-                                                     Map<String, String> authHeaders)
+                                                     Map<String, String> authHeaders, UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
-    String pipelineJson = JsonUtils.pojoToJson(pipeline);
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String pipelineJson = JsonUtils.pojoToJson(before);
 
     // Update the table attributes
-    pipeline.setDescription(newDescription);
-    pipeline.setOwner(newOwner);
-    pipeline.setTags(tags);
+    before.setDescription(newDescription);
+    before.setOwner(newOwner);
+    before.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Pipeline updatedPipeline = patchPipeline(pipelineJson, pipeline, authHeaders);
-    validatePipeline(updatedPipeline, pipeline.getDescription(), newOwner, null, tags,
-            pipeline.getTasks());
+    Pipeline updatedPipeline = patchPipeline(pipelineJson, before, authHeaders);
+    validatePipeline(updatedPipeline, before.getDescription(), newOwner, null, tags,
+            before.getTasks(), updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updatedPipeline.getVersion(), updateType);
 
     // GET the table and Validate information returned
-    Pipeline getPipeline = getPipeline(pipeline.getId(), "service,owner", authHeaders);
+    Pipeline getPipeline = getPipeline(before.getId(), "service,owner", authHeaders);
     validatePipeline(updatedPipeline, getPipeline.getDescription(), newOwner, null, tags,
-            getPipeline.getTasks());
+            getPipeline.getTasks(), updatedBy);
     return updatedPipeline;
   }
 

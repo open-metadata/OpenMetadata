@@ -43,7 +43,7 @@ public final class RestUtil {
 
   static {
     // Quoted "Z" to indicate UTC, no timezone offset
-    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'");
+    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
 
     DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");

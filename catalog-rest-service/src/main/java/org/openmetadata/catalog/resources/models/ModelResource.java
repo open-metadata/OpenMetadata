@@ -59,12 +59,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -221,7 +221,9 @@ public class ModelResource {
             .withDashboard(create.getDashboard()) //ADDED
             .withAlgorithm(create.getAlgorithm()) //ADDED
             .withTags(create.getTags())
-            .withOwner(create.getOwner());
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     model = addHref(uriInfo, dao.create(model, model.getOwner()));
     return Response.created(model.getHref()).entity(model).build();
   }
@@ -247,7 +249,7 @@ public class ModelResource {
     Model model = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(model));
-    model = dao.patch(id, patch);
+    model = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, model);
   }
 
@@ -269,7 +271,9 @@ public class ModelResource {
             .withDashboard(create.getDashboard()) //ADDED
             .withAlgorithm(create.getAlgorithm()) //ADDED
             .withTags(create.getTags())
-            .withOwner(create.getOwner());
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
 
     PutResponse<Model> response = dao.createOrUpdate(model, model.getOwner());
     model = addHref(uriInfo, response.getEntity());

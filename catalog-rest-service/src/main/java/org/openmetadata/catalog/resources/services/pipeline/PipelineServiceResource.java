@@ -51,6 +51,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -153,7 +154,9 @@ public class PipelineServiceResource {
             .withName(create.getName()).withDescription(create.getDescription())
             .withServiceType(create.getServiceType())
             .withPipelineUrl(create.getPipelineUrl())
-            .withIngestionSchedule(create.getIngestionSchedule());
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     addHref(uriInfo, dao.create(service));
     return Response.created(service.getHref()).entity(service).build();
   }

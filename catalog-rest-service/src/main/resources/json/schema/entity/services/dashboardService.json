@@ -53,6 +53,18 @@
       "description": "Description of a dashboard service instance.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "dashboardUrl": {
       "description": "Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.",
       "type": "string",

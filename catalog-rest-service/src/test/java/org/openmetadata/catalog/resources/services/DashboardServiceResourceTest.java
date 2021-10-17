@@ -102,7 +102,7 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_validService_as_non_admin_401(TestInfo test)  {
-    // Create dashbaord service with different optional fields
+    // Create dashboard service with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -239,16 +239,18 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
 
   public static DashboardService createAndCheckService(CreateDashboardService create,
                                                       Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     DashboardService service = createService(create, authHeaders);
-    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
+    assertEquals(0.1, service.getVersion());
 
     // GET the newly created service and validate
     DashboardService getService = getService(service.getId(), authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
 
     // GET the newly created service by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
     return service;
   }
 
@@ -259,11 +261,12 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateService(DashboardService service, String expectedName, String expectedDescription,
-                                      Schedule expectedIngestion) {
+                                      Schedule expectedIngestion, String expectedUpdatedBy) {
     assertNotNull(service.getId());
     assertNotNull(service.getHref());
     assertEquals(expectedName, service.getName());
     assertEquals(expectedDescription, service.getDescription());
+    assertEquals(expectedUpdatedBy, service.getUpdatedBy());
 
     if (expectedIngestion != null) {
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
@@ -353,16 +356,17 @@ public class DashboardServiceResourceTest extends CatalogApplicationTest {
 
   public static void updateAndCheckService(String id, UpdateDashboardService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     DashboardService service = updateDashboardService(id, update, status, authHeaders);
-    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated dashboard and validate
     DashboardService getService = getService(service.getId(), authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated dashboard by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
   }
 
   public static DashboardService updateDashboardService(String id, UpdateDashboardService updated,

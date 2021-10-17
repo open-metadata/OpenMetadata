@@ -46,6 +46,7 @@ import javax.ws.rs.core.UriInfo;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -128,7 +129,8 @@ public class BotsResource {
                          @Context SecurityContext securityContext,
                          Bots bots) throws JsonProcessingException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
-    bots.setId(UUID.randomUUID());
+    bots.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     addHref(uriInfo, dao.insert(bots));
     return Response.created(bots.getHref()).entity(bots).build();
   }

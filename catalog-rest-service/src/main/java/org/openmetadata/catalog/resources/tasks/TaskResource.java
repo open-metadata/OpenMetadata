@@ -66,6 +66,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -228,7 +229,9 @@ public class TaskResource {
                     .withTaskSQL(create.getTaskSQL())
                     .withTaskUrl(create.getTaskUrl())
                     .withTags(create.getTags())
-                    .withOwner(create.getOwner());
+                    .withOwner(create.getOwner())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
     task = addHref(uriInfo, dao.create(task, create.getService(), create.getOwner()));
     return Response.created(task.getHref()).entity(task).build();
   }
@@ -254,7 +257,7 @@ public class TaskResource {
     Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(task));
-    task = dao.patch(id, patch);
+    task = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, task);
   }
 
@@ -281,7 +284,9 @@ public class TaskResource {
                     .withTaskType(create.getTaskType())
                     .withTaskSQL(create.getTaskSQL())
                     .withTags(create.getTags())
-                    .withOwner(create.getOwner());
+                    .withOwner(create.getOwner())
+                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
+                    .withUpdatedAt(new Date());
     PutResponse<Task> response = dao.createOrUpdate(task, create.getService(), create.getOwner());
     task = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(task).build();

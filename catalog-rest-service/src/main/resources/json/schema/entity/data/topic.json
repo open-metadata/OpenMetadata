@@ -67,6 +67,18 @@
       "description": "Description of the topic instance.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "service": {
       "description": "Link to the messaging cluster/service where this topic is hosted in.",
       "$ref": "../../type/entityReference.json"

@@ -30,6 +30,18 @@
       "description": "Description of this Task.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "taskUrl" : {
       "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
       "type": "string",

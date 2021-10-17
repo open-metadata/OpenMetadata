@@ -38,6 +38,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -70,6 +71,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -218,12 +220,14 @@ public class TableResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateTable create) throws IOException {
+                         @Valid CreateTable create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     table = addHref(uriInfo, dao.create(validateNewTable(table), create.getOwner(), create.getDatabase()));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -243,7 +247,9 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getOwner(), create.getDatabase());
     table = addHref(uriInfo, response.getEntity());
@@ -271,7 +277,7 @@ public class TableResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    table = dao.patch(id, patch);
+    table = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, table);
   }
 

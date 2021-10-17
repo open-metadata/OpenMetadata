@@ -17,13 +17,20 @@
 package org.openmetadata.catalog.resources.pipelines;
 
 import com.google.inject.Inject;
+import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -31,13 +38,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -59,13 +59,12 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -226,7 +225,10 @@ public class PipelineResource {
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
             .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner());
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
+
     pipeline = addHref(uriInfo, dao.create(pipeline, pipeline.getService(), pipeline.getOwner()));
     return Response.created(pipeline.getHref()).entity(pipeline).build();
   }
@@ -252,7 +254,7 @@ public class PipelineResource {
     Pipeline pipeline = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(pipeline));
-    pipeline = dao.patch(id, patch);
+    pipeline = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, pipeline);
   }
 
@@ -272,7 +274,9 @@ public class PipelineResource {
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
             .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner());
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
 
     PutResponse<Pipeline> response = dao.createOrUpdate(pipeline, pipeline.getService(), pipeline.getOwner());
     pipeline = addHref(uriInfo, response.getEntity());

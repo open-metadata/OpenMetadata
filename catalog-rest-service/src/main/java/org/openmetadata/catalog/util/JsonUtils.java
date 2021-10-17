@@ -64,7 +64,7 @@ public final class JsonUtils {
     OBJECT_MAPPER = new ObjectMapper();
     // Ensure the date-time fields are serialized in ISO-8601 format
     OBJECT_MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-    OBJECT_MAPPER.setDateFormat(new StdDateFormat().withColonInTimeZone(true));
+    OBJECT_MAPPER.setDateFormat(RestUtil.DATE_TIME_FORMAT);
     OBJECT_MAPPER.registerModule(new JSR353Module());
   }
 

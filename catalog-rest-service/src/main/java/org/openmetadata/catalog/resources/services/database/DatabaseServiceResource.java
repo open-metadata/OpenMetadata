@@ -18,22 +18,22 @@ package org.openmetadata.catalog.resources.services.database;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.UpdateDatabaseService;
-import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.UpdateDatabaseService;
+import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -51,6 +51,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -151,7 +152,9 @@ public class DatabaseServiceResource {
     DatabaseService databaseService = new DatabaseService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
             .withServiceType(create.getServiceType()).withJdbc(create.getJdbc())
-            .withIngestionSchedule(create.getIngestionSchedule());
+            .withIngestionSchedule(create.getIngestionSchedule())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
 
     addHref(uriInfo, dao.create(databaseService));
     return Response.created(databaseService.getHref()).entity(databaseService).build();

@@ -30,6 +30,18 @@
       "description": "Description of the dashboard, what it is, and how to use it.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "dashboardUrl" : {
       "description": "Dashboard URL.",
       "type": "string",

@@ -16,11 +16,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Task;
+import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartUpdater;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
@@ -28,6 +33,8 @@ import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -46,8 +53,10 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -151,58 +160,73 @@ public abstract class TaskRepository {
   }
 
   @Transaction
-  public PutResponse<Task> createOrUpdate(Task updatedTask, EntityReference service, EntityReference newOwner)
+  public PutResponse<Task> createOrUpdate(Task updated, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
 
-    String fqn = getFQN(service, updatedTask);
-    Task storedDB = JsonUtils.readValue(taskDAO().findByFQN(fqn), Task.class);
-    if (storedDB == null) {  // Task does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updatedTask, service, newOwner));
+    String fqn = getFQN(service, updated);
+    Task stored = JsonUtils.readValue(taskDAO().findByFQN(fqn), Task.class);
+    if (stored == null) {  // Task does not exist. Create a new one
+      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
     }
-    // Update the existing Task
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
-      storedDB.withDescription(updatedTask.getDescription());
-    }
+    setFields(stored, TASK_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, service, newOwner);
 
-    //update the display name from source
-    if (updatedTask.getDisplayName() != null && !updatedTask.getDisplayName().isEmpty()) {
-      storedDB.withDisplayName(updatedTask.getDisplayName());
-    }
-    taskDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
-
-    // Update owner relationship
-    setFields(storedDB, TASK_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedDB, storedDB.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new task under the new service
-    storedDB.setService(service);
-    applyTags(updatedTask);
-
-    return new PutResponse<>(Status.OK, storedDB);
+    TaskUpdater taskUpdater = new TaskUpdater(stored, updated, false);
+    taskUpdater.updateAll();
+    taskUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
-  public Task patch(String id, JsonPatch patch) throws IOException {
+  public Task patch(String id, String user, JsonPatch patch) throws IOException {
     Task original = setFields(validateTask(id), TASK_PATCH_FIELDS);
     Task updated = JsonUtils.applyPatch(original, patch, Task.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }
 
   public Task createInternal(Task task, EntityReference service, EntityReference owner) throws IOException {
-    task.setFullyQualifiedName(getFQN(service, task));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-
-    // Query 1 - insert task into task_entity table
-    taskDAO().insert(JsonUtils.pojoToJson(task));
-    setService(task, service);
-    setOwner(task, owner);
-    applyTags(task);
+    validateRelationships(task, service, owner);
+    storeTask(task, false);
+    addRelationships(task);
     return task;
   }
+
+  private void validateRelationships(Task task, EntityReference service, EntityReference owner) throws IOException {
+    task.setFullyQualifiedName(getFQN(service, task));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    getService(service);
+    task.setTags(EntityUtil.addDerivedTags(tagDAO(), task.getTags()));
+  }
+
+  private void addRelationships(Task task) throws IOException {
+    setService(task, task.getService());
+    setOwner(task, task.getOwner());
+    applyTags(task);
+  }
+
+  private void storeTask(Task task, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = task.getOwner();
+    List<TagLabel> tags = task.getTags();
+    EntityReference service = task.getService();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    task.withOwner(null).withService(null).withHref(null).withTags(null);
+
+    if (update) {
+      taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
+    } else {
+      taskDAO().insert(JsonUtils.pojoToJson(task));
+    }
+
+    // Restore the relationships
+    task.withOwner(owner).withService(service).withTags(tags);
+  }
+
 
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
@@ -211,29 +235,13 @@ public abstract class TaskRepository {
   }
 
   private void patch(Task original, Task updated) throws IOException {
-    String taskId = original.getId().toString();
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "name"));
-    }
-    if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.TASK, "service"));
-    }
-    // Validate new owner
-    EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
-
-    EntityReference newService = updated.getService();
-    // Remove previous tags. Merge tags from the update and the existing tags
-    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-    updated.setHref(null);
-    updated.setOwner(null);
-    updated.setService(null);
-    taskDAO().update(taskId, JsonUtils.pojoToJson(updated));
-    updateOwner(updated, original.getOwner(), newOwner);
-    updated.setService(newService);
-    applyTags(updated);
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+    validateRelationships(updated, updated.getService(), updated.getOwner());
+    TaskUpdater taskUpdater = new TaskUpdater(original, updated, true);
+    taskUpdater.updateAll();
+    taskUpdater.store();
   }
 
   public EntityReference getOwner(Task task) throws IOException {
@@ -335,5 +343,82 @@ public abstract class TaskRepository {
 
     @SqlUpdate("DELETE FROM task_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  static class TaskEntityInterface implements EntityInterface {
+    private final Task task;
+
+    TaskEntityInterface(Task Task) {
+      this.task = Task;
+    }
+
+    @Override
+    public UUID getId() {
+      return task.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return task.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return task.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return task.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return task.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return task.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      task.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      task.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      task.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class TaskUpdater extends EntityUpdater {
+    final Task orig;
+    final Task updated;
+
+    public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
+      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeTask(updated, true);
+    }
   }
 }
