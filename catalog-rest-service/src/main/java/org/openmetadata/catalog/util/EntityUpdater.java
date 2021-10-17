@@ -49,7 +49,9 @@ public abstract class EntityUpdater {
     updateDescription();
     updateDisplayName();
     updateOwner();
-    updateTags();
+    if (tagDAO != null) {
+      updateTags(); // If tagDAO != null, the Entity supports tags
+    }
   }
 
   private void updateDescription() {
@@ -65,11 +67,11 @@ public abstract class EntityUpdater {
   private void updateDisplayName() {
     if (!patchOperation &&
             originalEntity.getDisplayName() != null && !originalEntity.getDisplayName().isEmpty()) {
-      // Update description only when stored is empty to retain user authored descriptions
+      // Update displayName only when stored is empty to retain user authored descriptions
       updatedEntity.setDisplayName(originalEntity.getDisplayName());
       return;
     }
-    update("displayName", originalEntity.getDescription(), updatedEntity.getDescription());
+    update("displayName", originalEntity.getDisplayName(), updatedEntity.getDisplayName());
   }
 
   private void updateOwner() {
