@@ -139,6 +139,11 @@ public abstract class DashboardRepository {
   }
 
   @Transaction
+  public Dashboard get(String id, Fields fields) throws IOException {
+    return setFields(EntityUtil.validate(id, dashboardDAO().findById(id), Dashboard.class), fields);
+  }
+
+  @Transaction
   public Dashboard getByName(String fqn, Fields fields) throws IOException {
     Dashboard dashboard = EntityUtil.validate(fqn, dashboardDAO().findByFQN(fqn), Dashboard.class);
     return setFields(dashboard, fields);
@@ -205,10 +210,6 @@ public abstract class DashboardRepository {
   @Transaction
   public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
     return EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner());
-  }
-
-  public Dashboard get(String id, Fields fields) throws IOException {
-    return setFields(EntityUtil.validate(id, dashboardDAO().findById(id), Dashboard.class), fields);
   }
 
   private Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {

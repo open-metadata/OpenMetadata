@@ -54,6 +54,7 @@ public enum Relationship {
 
   // {Dashboard|Pipeline|Query} --- uses ---> Table
   // {User} --- uses ---> {Table|Dashboard|Query}
+  // {Model} --- uses ---> {Dashboard}
   USES("uses"),
 
   // {User|Team|Org} --- owns ---> {Table|Dashboard|Query}

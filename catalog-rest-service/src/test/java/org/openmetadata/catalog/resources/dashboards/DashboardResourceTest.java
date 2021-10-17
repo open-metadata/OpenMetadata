@@ -336,7 +336,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
     //Update the table as Owner
     updateAndCheckDashboard(dashboard, request.withDisplayName(test.getDisplayName()).withDescription(null),
-            OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+            OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
 
   }
 

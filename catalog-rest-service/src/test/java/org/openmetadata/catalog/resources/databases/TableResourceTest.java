@@ -524,7 +524,6 @@ public class TableResourceTest extends CatalogApplicationTest {
     updatedColumns.remove(1);
     table = updateAndCheckTable(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE);
     assertEquals(1, table.getColumns().size());
-    validateTags(columns.get(0), table.getColumns().get(0));
 
     // Ensure tag usage counts are updated to reflect removal of column c2
     assertEquals(tagCategoryUsageCount + 2, getTagCategoryUsageCount("user", userAuthHeaders()));
