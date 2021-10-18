@@ -233,7 +233,7 @@ public class TopicResource {
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
 
-    topic = addHref(uriInfo, dao.create(topic, create.getService(), create.getOwner()));
+    topic = addHref(uriInfo, dao.create(topic));
     return Response.created(topic.getHref()).entity(topic).build();
   }
 
@@ -288,7 +288,7 @@ public class TopicResource {
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
 
-    PutResponse<Topic> response = dao.createOrUpdate(topic, create.getService(), create.getOwner());
+    PutResponse<Topic> response = dao.createOrUpdate(topic);
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();
   }

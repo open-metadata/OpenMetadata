@@ -71,6 +71,7 @@ public abstract class MessagingServiceRepository {
     return messagingService;
   }
 
+  @Transaction
   public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {

@@ -64,8 +64,8 @@ public abstract class DatabaseRepository {
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
 
-  public static String getFQN(EntityReference service, Database database) {
-    return (service.getName() + "." + database.getName());
+  public static String getFQN(Database database) {
+    return (database.getService().getName() + "." + database.getName());
   }
 
   public static List<EntityReference> toEntityReference(List<Table> tables) {
@@ -151,8 +151,9 @@ public abstract class DatabaseRepository {
   }
 
   @Transaction
-  public Database create(Database database, EntityReference service, EntityReference owner) throws IOException {
-    return createInternal(database, service, owner);
+  public Database create(Database database) throws IOException {
+    validateRelationships(database);
+    return createInternal(database);
   }
 
   @Transaction
@@ -167,18 +168,14 @@ public abstract class DatabaseRepository {
   }
 
   @Transaction
-  public PutResponse<Database> createOrUpdate(Database updated, EntityReference service, EntityReference newOwner)
-          throws IOException {
-    getService(service); // Validate service
-
-    String fqn = getFQN(service, updated);
-    Database stored = JsonUtils.readValue(databaseDAO().findByFQN(fqn), Database.class);
+  public PutResponse<Database> createOrUpdate(Database updated) throws IOException {
+    validateRelationships(updated);
+    Database stored = JsonUtils.readValue(databaseDAO().findByFQN(updated.getFullyQualifiedName()), Database.class);
     if (stored == null) {  // Database does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, DATABASE_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, service, newOwner);
 
     DatabaseUpdater databaseUpdater = new DatabaseUpdater(stored, updated, false);
     databaseUpdater.updateAll();
@@ -198,17 +195,16 @@ public abstract class DatabaseRepository {
     return updated;
   }
 
-  public Database createInternal(Database database, EntityReference service, EntityReference owner) throws IOException {
-    validateRelationships(database, service, owner);
+  public Database createInternal(Database database) throws IOException {
     storeDatabase(database, false);
     addRelationships(database);
     return database;
   }
 
-  private void validateRelationships(Database database, EntityReference service, EntityReference owner) throws IOException {
-    database.setFullyQualifiedName(getFQN(service, database));
-    database.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), owner)); // Validate owner
-    database.setService(getService(service));
+  private void validateRelationships(Database database) throws IOException {
+    database.setFullyQualifiedName(getFQN(database));
+    database.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), database.getOwner())); // Validate owner
+    getService(database.getService());
   }
 
   private void addRelationships(Database database) throws IOException {
@@ -238,7 +234,7 @@ public abstract class DatabaseRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated, updated.getService(), updated.getOwner());
+    validateRelationships(updated);
     DatabaseUpdater databaseUpdater = new DatabaseUpdater(original, updated, true);
     databaseUpdater.updateAll();
     databaseUpdater.store();
