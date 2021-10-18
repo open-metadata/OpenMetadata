@@ -60,8 +60,8 @@ public abstract class ChartRepository {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
 
-  public static String getFQN(EntityReference service, Chart chart) {
-    return (service.getName() + "." + chart.getName());
+  public static String getFQN(Chart chart) {
+    return (chart.getService().getName() + "." + chart.getName());
   }
 
   @CreateSqlObject
@@ -137,8 +137,9 @@ public abstract class ChartRepository {
   }
 
   @Transaction
-  public Chart create(Chart chart, EntityReference service, EntityReference owner) throws IOException {
-    return createInternal(chart, service, owner);
+  public Chart create(Chart chart) throws IOException {
+    validateRelationships(chart);
+    return createInternal(chart);
   }
 
   @Transaction
@@ -153,18 +154,14 @@ public abstract class ChartRepository {
   }
 
   @Transaction
-  public PutResponse<Chart> createOrUpdate(Chart updated, EntityReference service, EntityReference newOwner)
-          throws IOException {
-    getService(service); // Validate service
-    String fqn = getFQN(service, updated);
-    Chart stored = JsonUtils.readValue(chartDAO().findByFQN(fqn), Chart.class);
+  public PutResponse<Chart> createOrUpdate(Chart updated) throws IOException {
+    validateRelationships(updated);
+    Chart stored = JsonUtils.readValue(chartDAO().findByFQN(updated.getFullyQualifiedName()), Chart.class);
     if (stored == null) {  // Chart does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, CHART_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, service, newOwner);
-
     ChartUpdater chartUpdater = new ChartUpdater(stored, updated, false);
     chartUpdater.updateAll();
     chartUpdater.store();
@@ -180,17 +177,16 @@ public abstract class ChartRepository {
     return updated;
   }
 
-  public Chart createInternal(Chart chart, EntityReference service, EntityReference owner) throws IOException {
-    validateRelationships(chart, service, owner);
+  public Chart createInternal(Chart chart) throws IOException {
     storeChart(chart, false);
     addRelationships(chart);
     return chart;
   }
 
-  private void validateRelationships(Chart chart, EntityReference service, EntityReference owner) throws IOException {
-    chart.setFullyQualifiedName(getFQN(service, chart));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-    getService(service);
+  private void validateRelationships(Chart chart) throws IOException {
+    chart.setFullyQualifiedName(getFQN(chart));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), chart.getOwner()); // Validate owner
+    getService(chart.getService());
     chart.setTags(EntityUtil.addDerivedTags(tagDAO(), chart.getTags()));
   }
 
@@ -230,7 +226,7 @@ public abstract class ChartRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated, updated.getService(), updated.getOwner());
+    validateRelationships(updated);
     ChartUpdater chartUpdater = new ChartUpdater(original, updated, true);
     chartUpdater.updateAll();
     chartUpdater.store();

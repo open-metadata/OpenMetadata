@@ -227,8 +227,9 @@ public class TableResource {
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
             .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withOwner(create.getOwner())
             .withUpdatedAt(new Date());
-    table = addHref(uriInfo, dao.create(validateNewTable(table), create.getOwner(), create.getDatabase()));
+    table = addHref(uriInfo, dao.create(validateNewTable(table), create.getDatabase()));
     return Response.created(table.getHref()).entity(table).build();
   }
 
@@ -249,9 +250,10 @@ public class TableResource {
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
             .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withOwner(create.getOwner())
             .withUpdatedAt(new Date());
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getOwner(), create.getDatabase());
+    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getDatabase());
     table = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(table).build();
   }

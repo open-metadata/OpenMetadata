@@ -229,7 +229,7 @@ public class DashboardResource {
             .withOwner(create.getOwner())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    dashboard = addHref(uriInfo, dao.create(dashboard, dashboard.getService(), dashboard.getOwner()));
+    dashboard = addHref(uriInfo, dao.create(dashboard));
     return Response.created(dashboard.getHref()).entity(dashboard).build();
   }
 
@@ -278,7 +278,7 @@ public class DashboardResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    PutResponse<Dashboard> response = dao.createOrUpdate(dashboard, dashboard.getService(), dashboard.getOwner());
+    PutResponse<Dashboard> response = dao.createOrUpdate(dashboard);
     dashboard = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(dashboard).build();
   }

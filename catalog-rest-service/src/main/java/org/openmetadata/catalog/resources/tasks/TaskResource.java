@@ -232,7 +232,7 @@ public class TaskResource {
                     .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
-    task = addHref(uriInfo, dao.create(task, create.getService(), create.getOwner()));
+    task = addHref(uriInfo, dao.create(task));
     return Response.created(task.getHref()).entity(task).build();
   }
 
@@ -287,7 +287,7 @@ public class TaskResource {
                     .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
-    PutResponse<Task> response = dao.createOrUpdate(task, create.getService(), create.getOwner());
+    PutResponse<Task> response = dao.createOrUpdate(task);
     task = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(task).build();
   }

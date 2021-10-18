@@ -227,10 +227,11 @@ public class DatabaseResource {
                          @Valid CreateDatabase create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
-            .withDescription(create.getDescription())
+            .withDescription(create.getDescription()).withService(create.getService())
+            .withOwner(create.getOwner())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    database = addHref(uriInfo, dao.create(database, create.getService(), create.getOwner()));
+    database = addHref(uriInfo, dao.create(database));
     return Response.created(database.getHref()).entity(database).build();
   }
 
@@ -271,9 +272,9 @@ public class DatabaseResource {
 
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
             .withDescription(create.getDescription()).withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withService(create.getService()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    PutResponse<Database> response = dao.createOrUpdate(database, create.getService(), create.getOwner());
+    PutResponse<Database> response = dao.createOrUpdate(database);
     Database db = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(db).build();
   }

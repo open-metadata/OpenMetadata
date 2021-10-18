@@ -229,7 +229,7 @@ public class PipelineResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    pipeline = addHref(uriInfo, dao.create(pipeline, pipeline.getService(), pipeline.getOwner()));
+    pipeline = addHref(uriInfo, dao.create(pipeline));
     return Response.created(pipeline.getHref()).entity(pipeline).build();
   }
 
@@ -278,7 +278,7 @@ public class PipelineResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    PutResponse<Pipeline> response = dao.createOrUpdate(pipeline, pipeline.getService(), pipeline.getOwner());
+    PutResponse<Pipeline> response = dao.createOrUpdate(pipeline);
     pipeline = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(pipeline).build();
   }

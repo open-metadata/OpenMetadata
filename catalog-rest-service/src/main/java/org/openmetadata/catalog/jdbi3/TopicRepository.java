@@ -60,8 +60,8 @@ public abstract class TopicRepository {
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
 
-  public static String getFQN(EntityReference service, Topic topic) {
-    return (service.getName() + "." + topic.getName());
+  public static String getFQN(Topic topic) {
+    return (topic.getService().getName() + "." + topic.getName());
   }
 
   @CreateSqlObject
@@ -136,9 +136,9 @@ public abstract class TopicRepository {
   }
 
   @Transaction
-  public Topic create(Topic topic, EntityReference service, EntityReference owner) throws IOException {
-    getService(service); // Validate service
-    return createInternal(topic, service, owner);
+  public Topic create(Topic topic) throws IOException {
+    validateRelationships(topic);
+    return createInternal(topic);
   }
 
   @Transaction
@@ -153,17 +153,14 @@ public abstract class TopicRepository {
   }
 
   @Transaction
-  public PutResponse<Topic> createOrUpdate(Topic updated, EntityReference service, EntityReference newOwner)
-          throws IOException {
-    getService(service); // Validate service
-    String fqn = getFQN(service, updated);
-    Topic stored = JsonUtils.readValue(topicDAO().findByFQN(fqn), Topic.class);
+  public PutResponse<Topic> createOrUpdate(Topic updated) throws IOException {
+    validateRelationships(updated);
+    Topic stored = JsonUtils.readValue(topicDAO().findByFQN(updated.getFullyQualifiedName()), Topic.class);
     if (stored == null) {  // Topic does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, TOPIC_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, service, newOwner);
 
     TopicUpdater topicUpdater = new TopicUpdater(stored, updated, false);
     topicUpdater.updateAll();
@@ -185,17 +182,16 @@ public abstract class TopicRepository {
     return EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner());
   }
 
-  public Topic createInternal(Topic topic, EntityReference service, EntityReference owner) throws IOException {
-    validateRelationships(topic, service, owner);
+  public Topic createInternal(Topic topic) throws IOException {
     storeTopic(topic, false);
     addRelationships(topic);
     return topic;
   }
 
-  private void validateRelationships(Topic topic, EntityReference service, EntityReference owner) throws IOException {
-    topic.setFullyQualifiedName(getFQN(service, topic));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-    getService(service);
+  private void validateRelationships(Topic topic) throws IOException {
+    topic.setFullyQualifiedName(getFQN(topic));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner()); // Validate owner
+    getService(topic.getService());
     topic.setTags(EntityUtil.addDerivedTags(tagDAO(), topic.getTags()));
   }
 
@@ -234,7 +230,7 @@ public abstract class TopicRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated, updated.getService(), updated.getOwner());
+    validateRelationships(updated);
     TopicUpdater topicUpdater = new TopicUpdater(original, updated, true);
     topicUpdater.updateAll();
     topicUpdater.store();
