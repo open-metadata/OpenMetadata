@@ -38,7 +38,7 @@ import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInf
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
-import DatasetLineage from '../../components/dataset-lineage/DatasetLineage';
+import Entitylineage from '../../components/dataset-lineage/EntityLineage';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import ProfilerTable from '../../components/my-data-details/ProfilerTable';
@@ -562,7 +562,7 @@ const MyDataDetailsPage = () => {
             )}
             {activeTab === 3 && (
               <div className="tw-w-full tw-h-96">
-                <DatasetLineage entityLineage={entityLineage} />
+                <Entitylineage entityLineage={entityLineage} />
               </div>
             )}
             {activeTab === 4 && (

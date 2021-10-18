@@ -10,6 +10,7 @@ import ReactFlow, {
   Controls,
   Edge,
   Elements,
+  FlowElement,
   Node,
   OnLoadParams,
   Position,
@@ -45,7 +46,11 @@ const onNodeContextMenu = (_event: ReactMouseEvent, _node: Node | Edge) => {
 const getDataLabel = (v = '', separator = '.') => {
   const length = v.split(separator).length;
 
-  return v.split(separator)[length - 1];
+  return (
+    <p className="tw-break-words description-text">
+      {v.split(separator)[length - 1]}
+    </p>
+  );
 };
 
 const positionX = 150;
@@ -71,11 +76,11 @@ const getLineageData = (entityLineage: EntityLineage) => {
   const getNodes = (
     id: string,
     pos: 'from' | 'to',
-    depth: number
+    depth: number,
+    NodesArr: Array<EntityReference & { lDepth: number }> = []
   ): Array<EntityReference & { lDepth: number }> => {
-    let upDepth = 0;
-    let downDepth = 0;
     if (pos === 'to') {
+      let upDepth = NodesArr.filter((nd) => nd.lDepth === depth).length;
       const UPNodes: Array<EntityReference> = [];
       const updatedUpStreamEdge = upstreamEdges.map((up) => {
         if (up.toEntity === id) {
@@ -118,6 +123,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
 
       return UPNodes?.map((upNd) => ({ lDepth: depth, ...upNd })) || [];
     } else {
+      let downDepth = NodesArr.filter((nd) => nd.lDepth === depth).length;
       const DOWNNodes: Array<EntityReference> = [];
       const updatedDownStreamEdge = downstreamEdges.map((down) => {
         if (down.fromEntity === id) {
@@ -169,7 +175,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
     depth = 1,
     upNodesArr: Array<EntityReference & { lDepth: number }> = []
   ) => {
-    const upNodes = getNodes(Entity.id, 'to', depth);
+    const upNodes = getNodes(Entity.id, 'to', depth, upNodesArr);
     upNodesArr.push(...upNodes);
     upNodes.forEach((up) => {
       if (
@@ -187,7 +193,7 @@ const getLineageData = (entityLineage: EntityLineage) => {
     depth = 1,
     downNodesArr: Array<EntityReference & { lDepth: number }> = []
   ) => {
-    const downNodes = getNodes(Entity.id, 'from', depth);
+    const downNodes = getNodes(Entity.id, 'from', depth, downNodesArr);
     downNodesArr.push(...downNodes);
     downNodes.forEach((down) => {
       if (
@@ -216,19 +222,27 @@ const getLineageData = (entityLineage: EntityLineage) => {
       data: { label: getDataLabel(mainNode.name as string) },
       position: { x: x, y: y },
     },
-    ...UPStreamNodes,
-    ...DOWNStreamNodes,
+    ...UPStreamNodes.map((up) => {
+      return lineageEdges.find(
+        (ed: FlowElement) => (ed as Edge).target === up.id
+      )
+        ? up
+        : { ...up, type: 'input' };
+    }),
+    ...DOWNStreamNodes.map((down) => {
+      return lineageEdges.find((ed: FlowElement) =>
+        (ed as Edge).source.includes(down.id)
+      )
+        ? down
+        : { ...down, type: 'output' };
+    }),
     ...lineageEdges,
   ];
 
   return lineageData;
 };
 
-const DatasetLineage = ({
-  entityLineage,
-}: {
-  entityLineage: EntityLineage;
-}) => {
+const Entitylineage = ({ entityLineage }: { entityLineage: EntityLineage }) => {
   const [elements, setElements] = useState<Elements>(
     getLineageData(entityLineage) as Elements
   );
@@ -269,4 +283,4 @@ const DatasetLineage = ({
   );
 };
 
-export default DatasetLineage;
+export default Entitylineage;
