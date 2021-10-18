@@ -137,20 +137,20 @@ public abstract class ModelRepository {
   }
 
   @Transaction
-  public Model create(Model model, EntityReference owner) throws IOException {
-    return createInternal(model, owner);
+  public Model create(Model model) throws IOException {
+    validateRelationships(model);
+    return createInternal(model);
   }
 
   @Transaction
-  public PutResponse<Model> createOrUpdate(Model updated, EntityReference newOwner) throws IOException {
-    String fqn = getFQN(updated);
-    Model stored = JsonUtils.readValue(modelDAO().findByFQN(fqn), Model.class);
+  public PutResponse<Model> createOrUpdate(Model updated) throws IOException {
+    validateRelationships(updated);
+    Model stored = JsonUtils.readValue(modelDAO().findByFQN(updated.getFullyQualifiedName()), Model.class);
     if (stored == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updated, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, MODEL_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, newOwner);
 
     ModelUpdater modelUpdater = new ModelUpdater(stored, updated, false);
     modelUpdater.updateAll();
@@ -216,17 +216,15 @@ public abstract class ModelRepository {
   }
 
 
-  private Model createInternal(Model model, EntityReference owner)
-          throws IOException {
-    validateRelationships(model, owner);
+  private Model createInternal(Model model) throws IOException {
     storeModel(model, false);
     addRelationships(model);
     return model;
   }
 
-  private void validateRelationships(Model model, EntityReference owner) throws IOException {
+  private void validateRelationships(Model model) throws IOException {
     model.setFullyQualifiedName(getFQN(model));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    EntityUtil.populateOwner(userDAO(), teamDAO(), model.getOwner()); // Validate owner
     if (model.getDashboard() != null) {
       String dashboardId = model.getDashboard().getId().toString();
       model.setDashboard(EntityUtil.getEntityReference(
@@ -264,7 +262,7 @@ public abstract class ModelRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withId(original.getId());
-    validateRelationships(updated, updated.getOwner());
+    validateRelationships(updated);
     ModelRepository.ModelUpdater modelUpdater = new ModelRepository.ModelUpdater(original, updated, true);
     modelUpdater.updateAll();
     modelUpdater.store();

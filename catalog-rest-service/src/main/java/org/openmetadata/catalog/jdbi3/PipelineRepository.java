@@ -59,8 +59,8 @@ public abstract class PipelineRepository {
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
 
-  public static String getFQN(EntityReference service, Pipeline pipeline) {
-    return (service.getName() + "." + pipeline.getName());
+  public static String getFQN(Pipeline pipeline) {
+    return (pipeline.getService().getName() + "." + pipeline.getName());
   }
 
   @CreateSqlObject
@@ -134,22 +134,20 @@ public abstract class PipelineRepository {
   }
 
   @Transaction
-  public Pipeline create(Pipeline pipeline, EntityReference service, EntityReference owner) throws IOException {
-    return createInternal(pipeline, service, owner);
+  public Pipeline create(Pipeline pipeline) throws IOException {
+    validateRelationships(pipeline);
+    return createInternal(pipeline);
   }
 
   @Transaction
-  public PutResponse<Pipeline> createOrUpdate(Pipeline updated, EntityReference service,
-                                               EntityReference newOwner) throws IOException {
-    getService(service); // Validate service
-    String fqn = getFQN(service, updated);
-    Pipeline stored = JsonUtils.readValue(pipelineDAO().findByFQN(fqn), Pipeline.class);
+  public PutResponse<Pipeline> createOrUpdate(Pipeline updated) throws IOException {
+    validateRelationships(updated);
+    Pipeline stored = JsonUtils.readValue(pipelineDAO().findByFQN(updated.getFullyQualifiedName()), Pipeline.class);
     if (stored == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, PIPELINE_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, service, newOwner);
 
     PipelineUpdater pipelineUpdater = new PipelineUpdater(stored, updated, false);
     pipelineUpdater.updateAll();
@@ -222,18 +220,16 @@ public abstract class PipelineRepository {
   }
 
 
-  private Pipeline createInternal(Pipeline pipeline, EntityReference service, EntityReference owner)
-          throws IOException {
-    validateRelationships(pipeline, service, owner);
+  private Pipeline createInternal(Pipeline pipeline) throws IOException {
     storePipeline(pipeline, false);
     addRelationships(pipeline);
     return pipeline;
   }
 
-  private void validateRelationships(Pipeline pipeline, EntityReference service, EntityReference owner) throws IOException {
-    pipeline.setFullyQualifiedName(getFQN(service, pipeline));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-    getService(service);
+  private void validateRelationships(Pipeline pipeline) throws IOException {
+    pipeline.setFullyQualifiedName(getFQN(pipeline));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), pipeline.getOwner()); // Validate owner
+    getService(pipeline.getService());
     pipeline.setTags(EntityUtil.addDerivedTags(tagDAO(), pipeline.getTags()));
   }
 
@@ -287,7 +283,7 @@ public abstract class PipelineRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated, updated.getService(), updated.getOwner());
+    validateRelationships(updated);
     PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated, true);
     pipelineUpdater.updateAll();
     pipelineUpdater.store();
@@ -301,11 +297,6 @@ public abstract class PipelineRepository {
   public void setOwner(Pipeline pipeline, EntityReference owner) {
     EntityUtil.setOwner(relationshipDAO(), pipeline.getId(), Entity.PIPELINE, owner);
     pipeline.setOwner(owner);
-  }
-
-  private void updateOwner(Pipeline pipeline, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, pipeline.getId(), Entity.PIPELINE);
-    pipeline.setOwner(newOwner);
   }
 
   private void applyTags(Pipeline pipeline) throws IOException {
