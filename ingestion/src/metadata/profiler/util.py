@@ -14,14 +14,14 @@
 #  limitations under the License.
 
 import collections
-from typing import TypeVar, Iterable, Callable, Tuple
+from typing import Callable, Iterable, Tuple, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")
 
 
 def group_by(
-        iterable: Iterable[T], key: Callable[[T], K]
+    iterable: Iterable[T], key: Callable[[T], K]
 ) -> Iterable[Tuple[K, Iterable[T]]]:
 
     values = collections.defaultdict(list)

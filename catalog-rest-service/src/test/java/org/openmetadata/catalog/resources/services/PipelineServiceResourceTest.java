@@ -253,16 +253,18 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
 
   public static PipelineService createAndCheckService(CreatePipelineService create,
                                                       Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     PipelineService service = createService(create, authHeaders);
-    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    assertEquals(0.1, service.getVersion());
+    validateService(service, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
 
     // GET the newly created service and validate
     PipelineService getService = getService(service.getId(), authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
 
     // GET the newly created service by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule());
+    validateService(getService, create.getName(), create.getDescription(), create.getIngestionSchedule(), updatedBy);
     return service;
   }
 
@@ -273,11 +275,12 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateService(PipelineService service, String expectedName, String expectedDescription,
-                                      Schedule expectedIngestion) {
+                                      Schedule expectedIngestion, String expectedUpdatedBy) {
     assertNotNull(service.getId());
     assertNotNull(service.getHref());
     assertEquals(expectedName, service.getName());
     assertEquals(expectedDescription, service.getDescription());
+    assertEquals(expectedUpdatedBy, service.getUpdatedBy());
 
     if (expectedIngestion != null) {
       assertEquals(expectedIngestion.getStartDate(), service.getIngestionSchedule().getStartDate());
@@ -367,16 +370,17 @@ public class PipelineServiceResourceTest extends CatalogApplicationTest {
 
   public static void updateAndCheckService(String id, UpdatePipelineService update, Status status,
                                            Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     PipelineService service = updatePipelineService(id, update, status, authHeaders);
-    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(service, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated pipeline and validate
     PipelineService getService = getService(service.getId(), authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
 
     // GET the newly updated pipeline by name and validate
     getService = getServiceByName(service.getName(), null, authHeaders);
-    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule());
+    validateService(getService, service.getName(), update.getDescription(), update.getIngestionSchedule(), updatedBy);
   }
 
   public static PipelineService updatePipelineService(String id, UpdatePipelineService updated,

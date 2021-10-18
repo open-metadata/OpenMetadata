@@ -16,8 +16,8 @@
 from typing import Optional
 from urllib.parse import quote_plus
 
-from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 
 class AthenaConfig(SQLConnectionConfig):
@@ -45,7 +45,6 @@ class AthenaConfig(SQLConnectionConfig):
 
         return url
 
-    
 
 class AthenaSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):

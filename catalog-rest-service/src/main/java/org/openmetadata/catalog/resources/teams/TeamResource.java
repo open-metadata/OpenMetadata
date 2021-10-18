@@ -62,6 +62,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -206,7 +207,9 @@ public class TeamResource {
                          @Valid CreateTeam ct) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
-            .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile());
+            .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     addHref(uriInfo, dao.create(team, ct.getUsers()));
     return Response.created(team.getHref()).entity(team).build();
   }
@@ -231,7 +234,7 @@ public class TeamResource {
                     JsonPatch patch) throws IOException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(id, patch));
+    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE

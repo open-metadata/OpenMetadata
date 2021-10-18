@@ -13,14 +13,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, Tuple
 import os
+from typing import Optional, Tuple
+
 from metadata.generated.schema.entity.data.table import TableData
 
-# This import verifies that the dependencies are available.
-
-from .sql_source import SQLConnectionConfig, SQLSource
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
+
+# This import verifies that the dependencies are available.
 
 
 class BigQueryConfig(SQLConnectionConfig, SQLSource):
@@ -43,11 +44,13 @@ class BigquerySource(SQLSource):
     def create(cls, config_dict, metadata_config_dict, ctx):
         config: SQLConnectionConfig = BigQueryConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options['credentials_path']
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+            "credentials_path"
+        ]
         return cls(config, metadata_config, ctx)
 
     def standardize_schema_table_names(
-            self, schema: str, table: str
+        self, schema: str, table: str
     ) -> Tuple[str, str]:
         segments = table.split(".")
         if len(segments) != 2:
@@ -55,6 +58,6 @@ class BigquerySource(SQLSource):
         if segments[0] != schema:
             raise ValueError(f"schema {schema} does not match table {table}")
         return segments[0], segments[1]
-    
+
     def parse_raw_data_type(self, raw_data_type):
-        return raw_data_type.replace(', ',',').replace(' ',':').lower()
+        return raw_data_type.replace(", ", ",").replace(" ", ":").lower()

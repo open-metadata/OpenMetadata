@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
@@ -23,11 +25,12 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
+import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -40,14 +43,13 @@ import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -133,57 +135,33 @@ public abstract class PipelineRepository {
 
   @Transaction
   public Pipeline create(Pipeline pipeline, EntityReference service, EntityReference owner) throws IOException {
-    getService(service); // Validate service
     return createInternal(pipeline, service, owner);
   }
 
   @Transaction
-  public PutResponse<Pipeline> createOrUpdate(Pipeline updatedPipeline, EntityReference service,
+  public PutResponse<Pipeline> createOrUpdate(Pipeline updated, EntityReference service,
                                                EntityReference newOwner) throws IOException {
     getService(service); // Validate service
-    String fqn = getFQN(service, updatedPipeline);
-    Pipeline storedPipeline = JsonUtils.readValue(pipelineDAO().findByFQN(fqn), Pipeline.class);
-    if (storedPipeline == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updatedPipeline, service, newOwner));
+    String fqn = getFQN(service, updated);
+    Pipeline stored = JsonUtils.readValue(pipelineDAO().findByFQN(fqn), Pipeline.class);
+    if (stored == null) {
+      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
     }
-    // Update existing pipeline
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedPipeline.getDescription() == null || storedPipeline.getDescription().isEmpty()) {
-      storedPipeline.withDescription(updatedPipeline.getDescription());
-    }
-    //update the display name from source
-    if (updatedPipeline.getDisplayName() != null && !updatedPipeline.getDisplayName().isEmpty()) {
-      storedPipeline.withDisplayName(updatedPipeline.getDisplayName());
-    }
+    setFields(stored, PIPELINE_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, service, newOwner);
 
-    pipelineDAO().update(storedPipeline.getId().toString(), JsonUtils.pojoToJson(storedPipeline));
-
-    // Update owner relationship
-    setFields(storedPipeline, PIPELINE_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedPipeline, storedPipeline.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new database under the new service
-    //Airflow lineage backend gets executed per task in a dag. This means we will not a get full picture of the pipeline
-    // in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipeline
-    // in the next task run we may have to update. To take care of this we will merge the tasks
-
-    List<EntityReference> storedTasks = storedPipeline.getTasks();
-    if (updatedPipeline.getTasks() != null) {
-      List<EntityReference> updatedTasks = Stream.concat(storedPipeline.getTasks().stream(),
-              updatedPipeline.getTasks().stream()).collect(Collectors.toList());
-      storedPipeline.setTasks(updatedTasks);
-    }
-
-    storedPipeline.setService(service);
-    updateTaskRelationships(storedPipeline);
-    return new PutResponse<>(Response.Status.OK, storedPipeline);
+    PipelineUpdater pipelineUpdater = new PipelineUpdater(stored, updated, false);
+    pipelineUpdater.updateAll();
+    pipelineUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
-  public Pipeline patch(String id, JsonPatch patch) throws IOException {
+  public Pipeline patch(String id, String user, JsonPatch patch) throws IOException {
     Pipeline original = setFields(validatePipeline(id), PIPELINE_PATCH_FIELDS);
     Pipeline updated = JsonUtils.applyPatch(original, patch, Pipeline.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
     return updated;
   }
@@ -246,15 +224,37 @@ public abstract class PipelineRepository {
 
   private Pipeline createInternal(Pipeline pipeline, EntityReference service, EntityReference owner)
           throws IOException {
-    String fqn = service.getName() + "." + pipeline.getName();
-    pipeline.setFullyQualifiedName(fqn);
-
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-
-    pipelineDAO().insert(JsonUtils.pojoToJson(pipeline));
-    setService(pipeline, service);
+    validateRelationships(pipeline, service, owner);
+    storePipeline(pipeline, false);
     addRelationships(pipeline);
     return pipeline;
+  }
+
+  private void validateRelationships(Pipeline pipeline, EntityReference service, EntityReference owner) throws IOException {
+    pipeline.setFullyQualifiedName(getFQN(service, pipeline));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    getService(service);
+    pipeline.setTags(EntityUtil.addDerivedTags(tagDAO(), pipeline.getTags()));
+  }
+
+  private void storePipeline(Pipeline pipeline, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = pipeline.getOwner();
+    List<TagLabel> tags = pipeline.getTags();
+    EntityReference service = pipeline.getService();
+    List<EntityReference> tasks = pipeline.getTasks();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    pipeline.withOwner(null).withService(null).withTasks(null).withHref(null).withTags(null);
+
+    if (update) {
+      pipelineDAO().update(pipeline.getId().toString(), JsonUtils.pojoToJson(pipeline));
+    } else {
+      pipelineDAO().insert(JsonUtils.pojoToJson(pipeline));
+    }
+
+    // Restore the relationships
+    pipeline.withOwner(owner).withService(service).withTasks(tasks).withTags(tags);
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
@@ -269,7 +269,7 @@ public abstract class PipelineRepository {
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
-      throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
+      throw new IllegalArgumentException(String.format("Invalid service type %s for the pipeline", service.getType()));
     }
     return service;
   }
@@ -284,31 +284,13 @@ public abstract class PipelineRepository {
   }
 
   private void patch(Pipeline original, Pipeline updated) throws IOException {
-    String pipelineId = original.getId().toString();
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.PIPELINE, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.PIPELINE, "name"));
-    }
-    if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.PIPELINE,
-              "service"));
-    }
-    // Validate new owner
-    EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
-
-    EntityReference newService = updated.getService();
-    // Remove previous tags. Merge tags from the update and the existing tags
-    EntityUtil.removeTags(tagDAO(), original.getFullyQualifiedName());
-
-    updated.setHref(null);
-    updated.setOwner(null);
-    updated.setService(null);
-    pipelineDAO().update(pipelineId, JsonUtils.pojoToJson(updated));
-    updateOwner(updated, original.getOwner(), newOwner);
-    updated.setService(newService);
-    applyTags(updated);
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+    validateRelationships(updated, updated.getService(), updated.getOwner());
+    PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated, true);
+    pipelineUpdater.updateAll();
+    pipelineUpdater.store();
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {
@@ -352,6 +334,8 @@ public abstract class PipelineRepository {
   }
 
   private void addRelationships(Pipeline pipeline) throws IOException {
+    setService(pipeline, pipeline.getService());
+
     // Add relationship from pipeline to task
     String pipelineId = pipeline.getId().toString();
     if (pipeline.getTasks() != null) {
@@ -430,5 +414,98 @@ public abstract class PipelineRepository {
 
     @SqlUpdate("DELETE FROM pipeline_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  static class PipelineEntityInterface implements EntityInterface {
+    private final Pipeline pipeline;
+
+    PipelineEntityInterface(Pipeline Pipeline) {
+      this.pipeline = Pipeline;
+    }
+
+    @Override
+    public UUID getId() {
+      return pipeline.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return pipeline.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return pipeline.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return pipeline.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return pipeline.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return pipeline.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      pipeline.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      pipeline.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      pipeline.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class PipelineUpdater extends EntityUpdater {
+    final Pipeline orig;
+    final Pipeline updated;
+
+    public PipelineUpdater(Pipeline orig, Pipeline updated, boolean patchOperation) {
+      super(new PipelineRepository.PipelineEntityInterface(orig), new PipelineRepository.PipelineEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+      updateTasks();
+    }
+
+    private void updateTasks() throws IOException {
+      // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
+      // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipeline
+      // in the next task run we may have to update. To take care of this we will merge the tasks
+      if (updated.getTasks() == null) {
+        updated.setTasks(orig.getTasks());
+      } else {
+        updated.getTasks().addAll(orig.getTasks()); // TODO remove duplicates
+      }
+
+      // Add relationship from pipeline to task
+      updateTaskRelationships(updated);
+      update("tasks", EntityUtil.getIDList(updated.getTasks()), EntityUtil.getIDList(orig.getTasks()));
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storePipeline(updated, true);
+    }
   }
 }

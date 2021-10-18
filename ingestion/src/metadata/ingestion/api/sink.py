@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, List
 
 from .closeable import Closeable
-from .common import WorkflowContext, Record
+from .common import Record, WorkflowContext
 from .status import Status
 
 
@@ -28,7 +28,7 @@ class SinkStatus(Status):
     warnings: List[Any] = field(default_factory=list)
     failures: List[Any] = field(default_factory=list)
 
-    def records_written(self, record: Record):
+    def records_written(self, record: str) -> None:
         self.records.append(record)
 
     def warning(self, info: Any) -> None:
@@ -36,7 +36,6 @@ class SinkStatus(Status):
 
     def failure(self, info: Any) -> None:
         self.failures.append(info)
-
 
 
 @dataclass  # type: ignore[misc]
@@ -47,7 +46,9 @@ class Sink(Closeable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Sink":
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ) -> "Sink":
         pass
 
     @abstractmethod

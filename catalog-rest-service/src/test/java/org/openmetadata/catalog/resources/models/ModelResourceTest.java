@@ -26,15 +26,15 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
-import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -43,6 +43,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
+import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -279,52 +282,50 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public void put_ModelUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a Model with POST
     CreateModel request = create(test).withOwner(USER_OWNER1);
-    createAndCheckModel(request, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update Model two times successfully with PUT requests
-    updateAndCheckModel(request, OK, adminAuthHeaders());
-    updateAndCheckModel(request, OK, adminAuthHeaders());
+    model = updateAndCheckModel(model, request, OK, adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckModel(model, request, OK, adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_ModelCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new Model with put
+    // Create a new Model with PUT
     CreateModel request = create(test).withOwner(USER_OWNER1);
-    updateAndCheckModel(request.withName(test.getDisplayName()).withDescription(null), CREATED, adminAuthHeaders());
+    updateAndCheckModel(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
+            adminAuthHeaders(), NO_CHANGE);
   }
 
   @Test
   public void put_ModelCreate_as_owner_200(TestInfo test) throws HttpResponseException {
     // Create a new Model with put
     CreateModel request = create(test).withOwner(USER_OWNER1);
-    // Add Owner as admin
-    createAndCheckModel(request, adminAuthHeaders());
-    //Update the table as Owner
-    updateAndCheckModel(request.withName(test.getDisplayName()).withDescription(null),
-            CREATED, authHeaders(USER1.getEmail()));
+    // Add model as admin
+    Model model = createAndCheckModel(request, adminAuthHeaders());
+    // Update the table as Owner
+    updateAndCheckModel(model, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
   }
 
   @Test
   public void put_ModelNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateModel request = create(test).withDescription(null);
-    createAndCheckModel(request, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Model db = updateAndCheckModel(request.withDisplayName("model1").
-            withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
-    assertEquals("model1", db.getDisplayName());
+    Model db = updateAndCheckModel(model, request.withDisplayName("model1").
+            withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
+    assertEquals("model1", db.getDisplayName()); // Move this check to validate method
   }
 
   @Test
   public void put_ModelEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
     CreateModel request = create(test).withDescription("");
-    createAndCheckModel(request, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    Model db = updateAndCheckModel(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("newDescription", db.getDescription());
+    updateAndCheckModel(model, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -340,30 +341,28 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void put_ModelUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreateModel request = create(test).withDescription("");
-    createAndCheckModel(request, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    updateAndCheckModel(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders());
+    model = updateAndCheckModel(model, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
 
     // Remove ownership
-    Model db = updateAndCheckModel(request.withOwner(null), OK, adminAuthHeaders());
-    assertNull(db.getOwner());
+    model = updateAndCheckModel(model, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
+    assertNull(model.getOwner());
   }
 
   @Test
   public void put_ModelUpdateAlgorithm_200(TestInfo test) throws HttpResponseException {
     CreateModel request = create(test).withDescription("");
-    createAndCheckModel(request, adminAuthHeaders());
-
-    updateAndCheckModel(request.withAlgorithm("SVM"), OK, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
+    updateAndCheckModel(model, request.withAlgorithm("SVM"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
   public void put_ModelUpdateDashboard_200(TestInfo test) throws HttpResponseException {
     CreateModel request = create(test).withDescription("");
-    createAndCheckModel(request, adminAuthHeaders());
-
-    updateAndCheckModel(request.withDashboard(DASHBOARD_REFERENCE), OK, adminAuthHeaders());
+    Model model = createAndCheckModel(request, adminAuthHeaders());
+    updateAndCheckModel(model, request.withDashboard(DASHBOARD_REFERENCE), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -401,52 +400,18 @@ public class ModelResourceTest extends CatalogApplicationTest {
     List<TagLabel> modelTags = singletonList(TIER_1);
 
     // Add description, owner when previously they were null
-    model = patchModelAttributesAndCheck(model, "description",
-            TEAM_OWNER1, modelTags, adminAuthHeaders());
+    model = patchModelAttributesAndCheck(model, "description", TEAM_OWNER1, modelTags,
+            adminAuthHeaders(), MINOR_UPDATE);
     model.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     modelTags = singletonList(USER_ADDRESS_TAG_LABEL);
+
     // Replace description, tier, owner
-    model = patchModelAttributesAndCheck(model, "description1",
-            USER_OWNER1, modelTags, adminAuthHeaders());
+    model = patchModelAttributesAndCheck(model, "description1", USER_OWNER1, modelTags,
+            adminAuthHeaders(), MINOR_UPDATE);
     model.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Remove description, tier, owner
-    patchModelAttributesAndCheck(model, null, null, modelTags, adminAuthHeaders());
-  }
-
-  @Test
-  public void patch_ModelIDChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure Model ID can't be changed using patch
-    Model model = createModel(create(test), adminAuthHeaders());
-    UUID modelId = model.getId();
-    String modelJson = JsonUtils.pojoToJson(model);
-    model.setId(UUID.randomUUID());
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchModel(modelId, modelJson, model, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.MODEL, "id"));
-
-    // ID can't be deleted
-    model.setId(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchModel(modelId, modelJson, model, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.MODEL, "id"));
-  }
-
-  @Test
-  public void patch_ModelNameChange_400(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Ensure Model name can't be changed using patch
-    Model model = createModel(create(test), adminAuthHeaders());
-    String modelJson = JsonUtils.pojoToJson(model);
-    model.setName("newName");
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchModel(modelJson, model, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.MODEL, "name"));
-
-    // Name can't be removed
-    model.setName(null);
-    exception = assertThrows(HttpResponseException.class, () ->
-            patchModel(modelJson, model, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, readOnlyAttribute(Entity.MODEL, "name"));
+    patchModelAttributesAndCheck(model, null, null, modelTags, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
@@ -469,41 +434,50 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   public static Model createAndCheckModel(CreateModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Model model = createModel(create, authHeaders);
-    validateModel(model, create.getDisplayName(),
-            create.getDescription(), create.getOwner());
-    return getAndValidate(model.getId(), create, authHeaders);
+    validateModel(model, create.getDisplayName(), create.getDescription(), create.getOwner(), updatedBy);
+    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
   public static Model createAndCheckModel(CreateModel create, EntityReference dashboard,
                                           Map<String, String> authHeaders) throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withDashboard(dashboard);
     Model model = createModel(create, authHeaders);
-    validateModel(model, create.getDescription(), create.getOwner(), create.getTags());
-    return getAndValidate(model.getId(), create, authHeaders);
+    assertEquals(0.1, model.getVersion());
+    validateModel(model, create.getDescription(), create.getOwner(), create.getTags(), updatedBy);
+    return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Model updateAndCheckModel(CreateModel create,
-                                          Status status,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
+  public static Model updateAndCheckModel(Model before, CreateModel create, Status status,
+                                          Map<String, String> authHeaders, UpdateType updateType)
+          throws HttpResponseException {
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
     Model updatedModel = updateModel(create, status, authHeaders);
-    validateModel(updatedModel, create.getDescription(), create.getOwner());
+    validateModel(updatedModel, create.getDescription(), create.getOwner(), updatedBy);
+    if (before == null) {
+      assertEquals(0.1, updatedModel.getVersion()); // First version created
+    } else {
+      TestUtils.validateUpdate(before.getVersion(), updatedModel.getVersion(), updateType);
+    }
 
-    return getAndValidate(updatedModel.getId(), create, authHeaders);
+    return getAndValidate(updatedModel.getId(), create, authHeaders, updatedBy);
   }
 
   // Make sure in GET operations the returned Model has all the required information passed during creation
   public static Model getAndValidate(UUID modelId,
                                      CreateModel create,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
+                                     Map<String, String> authHeaders,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created Model by ID and validate
     Model model = getModel(modelId, "owner", authHeaders);
-    validateModel(model, create.getDescription(), create.getOwner());
+    validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
 
     // GET the newly created Model by name and validate
     String fqn = model.getFullyQualifiedName();
     model = getModelByName(fqn, "owner", authHeaders);
-    return validateModel(model, create.getDescription(), create.getOwner());
+    return validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
   }
 
   public static Model updateModel(CreateModel create,
@@ -525,8 +499,8 @@ public class ModelResourceTest extends CatalogApplicationTest {
     model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getModel(model.getId(), fields, adminAuthHeaders());
     assertNotNull(model.getOwner());
-    assertNotNull(model.getAlgorithm());
-    assertNotNull(model.getDashboard());
+    assertNotNull(model.getAlgorithm()); // Provided as default field
+    assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm
     fields = "owner,algorithm";
@@ -534,7 +508,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
             getModel(model.getId(), fields, adminAuthHeaders());
     assertNotNull(model.getOwner());
     assertNotNull(model.getAlgorithm());
-    assertNotNull(model.getDashboard());
+    assertNull(model.getDashboard());
 
     // .../models?fields=owner,algorithm, dashboard
     fields = "owner,algorithm,dashboard";
@@ -544,22 +518,23 @@ public class ModelResourceTest extends CatalogApplicationTest {
     assertNotNull(model.getAlgorithm());
     assertNotNull(model.getDashboard());
     TestUtils.validateEntityReference(model.getDashboard());
-
   }
 
   private static Model validateModel(Model model, String expectedDisplayName,
                                      String expectedDescription,
-                                     EntityReference expectedOwner) {
-    Model newModel = validateModel(model, expectedDescription, expectedOwner);
+                                     EntityReference expectedOwner,
+                                     String expectedUpdatedBy) {
+    Model newModel = validateModel(model, expectedDescription, expectedOwner, expectedUpdatedBy);
     assertEquals(expectedDisplayName, newModel.getDisplayName());
     return newModel;
   }
   private static Model validateModel(Model model, String expectedDescription,
-                                     EntityReference expectedOwner) {
+                                     EntityReference expectedOwner, String expectedUpdatedBy) {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
     assertNotNull(model.getAlgorithm());
     assertEquals(expectedDescription, model.getDescription());
+    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -574,10 +549,12 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   private static Model validateModel(Model model, String expectedDescription,
                                      EntityReference expectedOwner,
-                                     List<TagLabel> expectedTags) throws HttpResponseException {
+                                     List<TagLabel> expectedTags,
+                                     String expectedUpdatedBy) throws HttpResponseException {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
     assertEquals(expectedDescription, model.getDescription());
+    assertEquals(expectedUpdatedBy, model.getUpdatedBy());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -587,47 +564,30 @@ public class ModelResourceTest extends CatalogApplicationTest {
       assertNotNull(model.getOwner().getHref());
     }
 
-    validateTags(expectedTags, model.getTags());
+    TestUtils.validateTags(model.getFullyQualifiedName(), expectedTags, model.getTags());
     return model;
   }
 
-  private static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
-          throws HttpResponseException {
-    if (expectedList == null) {
-      return;
-    }
-    // When tags from the expected list is added to an entity, the derived tags for those tags are automatically added
-    // So add to the expectedList, the derived tags before validating the tags
-    List<TagLabel> updatedExpectedList = new ArrayList<>(expectedList);
-    for (TagLabel expected : expectedList) {
-      List<TagLabel> derived = EntityUtil.getDerivedTags(expected, TagResourceTest.getTag(expected.getTagFQN(),
-              adminAuthHeaders()));
-      updatedExpectedList.addAll(derived);
-    }
-    updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-
-    assertTrue(actualList.containsAll(updatedExpectedList));
-    assertTrue(updatedExpectedList.containsAll(actualList));
-  }
-
-  private Model patchModelAttributesAndCheck(Model model, String newDescription,
-                                                 EntityReference newOwner, List<TagLabel> tags,
-                                                 Map<String, String> authHeaders)
+  private Model patchModelAttributesAndCheck(Model before, String newDescription, EntityReference newOwner,
+                                             List<TagLabel> tags, Map<String, String> authHeaders,
+                                             UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
-    String modelJson = JsonUtils.pojoToJson(model);
+    String updatedBy = TestUtils.getPrincipal(authHeaders);
+    String modelJson = JsonUtils.pojoToJson(before);
 
     // Update the table attributes
-    model.setDescription(newDescription);
-    model.setOwner(newOwner);
-    model.setTags(tags);
+    before.setDescription(newDescription);
+    before.setOwner(newOwner);
+    before.setTags(tags);
 
     // Validate information returned in patch response has the updates
-    Model updatedModel = patchModel(modelJson, model, authHeaders);
-    validateModel(updatedModel, model.getDescription(), newOwner, tags);
+    Model updatedModel = patchModel(modelJson, before, authHeaders);
+    validateModel(updatedModel, before.getDescription(), newOwner, tags, updatedBy);
+    TestUtils.validateUpdate(before.getVersion(), updatedModel.getVersion(), updateType);
 
     // GET the table and Validate information returned
-    Model getModel = getModel(model.getId(), "owner", authHeaders);
-    validateModel(updatedModel, model.getDescription(), newOwner, tags);
+    Model getModel = getModel(before.getId(), "owner,tags", authHeaders);
+    validateModel(getModel, before.getDescription(), newOwner, tags, updatedBy);
     return updatedModel;
   }
 
@@ -662,11 +622,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
     WebTarget target = getResource("models/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, Model.class, authHeaders);
-  }
-
-  public static ModelList listModels(String fields, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listModels(fields, null, null, null, authHeaders);
   }
 
   public static ModelList listModels(String fields, Integer limitParam,

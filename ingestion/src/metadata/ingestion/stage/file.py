@@ -34,7 +34,12 @@ class FileStage(Stage):
     config: FileStageConfig
     status: StageStatus
 
-    def __init__(self, ctx: WorkflowContext, config: FileStageConfig, metadata_config: MetadataServerConfig):
+    def __init__(
+        self,
+        ctx: WorkflowContext,
+        config: FileStageConfig,
+        metadata_config: MetadataServerConfig,
+    ):
         super().__init__(ctx)
         self.config = config
         self.status = StageStatus()
@@ -44,15 +49,14 @@ class FileStage(Stage):
         self.wrote_something = False
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = FileStageConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(ctx, config, metadata_config)
 
-    def stage_record(
-        self,
-        record: Table
-    ) -> None:
+    def stage_record(self, record: Table) -> None:
         json_record = json.loads(record.json())
         self.file.write(json.dumps(json_record))
         self.file.write("\n")

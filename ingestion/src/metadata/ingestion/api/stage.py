@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, TypeVar
 
 from .closeable import Closeable
-from .common import WorkflowContext, Record
+from .common import Record, WorkflowContext
 from .status import Status
 
 
@@ -52,7 +52,9 @@ class Stage(Closeable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Stage":
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ) -> "Stage":
         pass
 
     @abstractmethod

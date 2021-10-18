@@ -15,20 +15,28 @@
 import logging
 import os
 import uuid
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
+
 import looker_sdk
-from looker_sdk.sdk.api31.models import DashboardElement, Dashboard as LookerDashboard
 from looker_sdk.error import SDKError
+from looker_sdk.sdk.api31.models import Dashboard as LookerDashboard
+from looker_sdk.sdk.api31.models import DashboardElement
+
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardServiceType,
+)
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import ConfigModel, Record, WorkflowContext
-from metadata.generated.schema.entity.services.dashboardService import DashboardServiceType
-from metadata.ingestion.api.common import IncludeFilterPattern
+from metadata.ingestion.api.common import (
+    ConfigModel,
+    IncludeFilterPattern,
+    Record,
+    WorkflowContext,
+)
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_dashboard_service_or_create
 
@@ -74,9 +82,11 @@ class LookerSource(Source):
     status: LookerDashboardSourceStatus
 
     def __init__(
-            self, config: LookerSourceConfig, metadata_config: MetadataServerConfig,
-            ctx: WorkflowContext
-            ):
+        self,
+        config: LookerSourceConfig,
+        metadata_config: MetadataServerConfig,
+        ctx: WorkflowContext,
+    ):
         super().__init__(ctx)
         self.config = config
         self.metadata_config = metadata_config
@@ -87,8 +97,8 @@ class LookerSource(Source):
             config.username,
             config.password,
             config.url,
-            metadata_config
-            )
+            metadata_config,
+        )
 
     def looker_client(self):
         os.environ["LOOKERSDK_CLIENT_ID"] = self.config.username
@@ -99,7 +109,9 @@ class LookerSource(Source):
         return client
 
     @classmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext):
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ):
         config = LookerSourceConfig.parse_obj(config_dict)
         metadata_config = MetadataServerConfig.parse_obj(metadata_config_dict)
         return cls(config, metadata_config, ctx)
@@ -123,10 +135,16 @@ class LookerSource(Source):
 
     def _get_looker_charts(self) -> Optional[Chart]:
         for child_dashboard in self.client.all_dashboards(fields="id"):
-            fields = ["id", "title", "dashboard_elements", "dashboard_filters", "view_count"]
+            fields = [
+                "id",
+                "title",
+                "dashboard_elements",
+                "dashboard_filters",
+                "view_count",
+            ]
             charts = self.client.dashboard_dashboard_elements(
                 dashboard_id=child_dashboard.id, fields=",".join(fields)
-                )
+            )
             for chart in charts:
                 self._yield_charts(chart)
 
@@ -149,8 +167,10 @@ class LookerSource(Source):
                     description=dashboard.description,
                     charts=charts,
                     usageSummary=dashboard.view_count,
-                    service=EntityReference(id=self.service.id, type="dashboardService"),
-                    href=dashboard.slug
+                    service=EntityReference(
+                        id=self.service.id, type="dashboardService"
+                    ),
+                    href=dashboard.slug,
                 )
         else:
             logger.warning(f"No charts under Dashboard: {dashboard.title}")
@@ -163,14 +183,21 @@ class LookerSource(Source):
                 continue
             self.status.dashboards_scanned_status(child_dashboard.id)
             try:
-                fields = ["id", "title", "dashboard_elements", "dashboard_filters", "view_count"]
+                fields = [
+                    "id",
+                    "title",
+                    "dashboard_elements",
+                    "dashboard_filters",
+                    "view_count",
+                ]
                 dashboard = self.client.dashboard(
                     dashboard_id=child_dashboard, fields=",".join(fields)
                 )
             except SDKError:
                 self.status.warning(
                     child_dashboard,
-                    f"Error occurred while loading dashboard {child_dashboard}.", )
+                    f"Error occurred while loading dashboard {child_dashboard}.",
+                )
             return self.looker_dashboard(dashboard)
 
     def get_status(self) -> SourceStatus:

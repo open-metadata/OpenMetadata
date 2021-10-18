@@ -94,7 +94,8 @@
       * [Vertica](install/metadata-ingestion/connectors/database-services/vertica.md)
     * [Messaging Services](install/metadata-ingestion/connectors/messaging-services/README.md)
       * [Kafka](install/metadata-ingestion/connectors/messaging-services/kafka.md)
-  * [Scheduler](install/metadata-ingestion/scheduler.md)
+    * [Processors](install/metadata-ingestion/connectors/processors/README.md)
+      * [PII](install/metadata-ingestion/connectors/processors/pii.md)
   * [Airflow](install/metadata-ingestion/airflow.md)
 
 ## Open Source Community
@@ -112,4 +113,3 @@
     * [BulkSink](open-source-community/developer/build-a-connector/bulksink.md)
   * [Run Integration Tests](open-source-community/developer/run-integration-tests.md)
   * [UX Style Guide](open-source-community/developer/ux-style-guide.md)
-

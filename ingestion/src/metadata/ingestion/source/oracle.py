@@ -16,15 +16,13 @@
 # This import verifies that the dependencies are available.
 import cx_Oracle  # noqa: F401
 
-from .sql_source import SQLSource, SQLConnectionConfig
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 
 class OracleConfig(SQLConnectionConfig):
     # defaults
     scheme = "oracle+cx_oracle"
-
-    
 
     def get_connection_url(self):
         return super().get_connection_url()

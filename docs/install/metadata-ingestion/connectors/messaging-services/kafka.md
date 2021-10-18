@@ -50,8 +50,8 @@ metadata ingest -c ./pipelines/confluent_kafka.json
 ```
 {% endcode %}
 
-1. **service\_name** - Service Name for this Kafka cluster. If you added Kafka cluster through OpenMetadata UI, make sure the service name matches the same.
-2. **filter\_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
+1. **service_name** - Service Name for this Kafka cluster. If you added Kafka cluster through OpenMetadata UI, make sure the service name matches the same.
+2. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
 
 ## Publish to OpenMetadata
 
@@ -84,15 +84,7 @@ Add optionally `pii` processor and `metadata-rest-tables` sink along with `metad
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": "*/5",
-    "hour": null,
-    "day": null,
-    "month": null,
-    "day_of_week": null
   }
 }
 ```
 {% endcode %}
-

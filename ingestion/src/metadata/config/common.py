@@ -12,13 +12,14 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import io
+import json
 import pathlib
 from abc import ABC, abstractmethod
 from typing import IO, Any, Optional
-from pydantic import BaseModel
+
 from expandvars import expandvars
-import io
-import json
+from pydantic import BaseModel
 
 
 class ConfigModel(BaseModel):
@@ -64,4 +65,3 @@ def load_config_file(config_file: pathlib.Path) -> dict:
     config = json.load(config_fp)
 
     return config
-

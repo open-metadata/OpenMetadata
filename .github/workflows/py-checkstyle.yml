@@ -1,5 +1,3 @@
-"""Settings to override default settings."""
-
 #  Licensed to the Apache Software Foundation (ASF) under one or more
 #  contributor license agreements. See the NOTICE file distributed with
 #  this work for additional information regarding copyright ownership.
@@ -15,19 +13,35 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import logging
+name: py-checkstyle
 
-#
-# Override settings
-#
-DEBUG = True
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-HTTP_PORT = 8888
-HTTP_ADDRESS = '0.0.0.0'
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-#
-# Set logging level
-#
-logging.getLogger().setLevel(logging.DEBUG)
-
-JOB_CLASS_PACKAGES = ['ingestion_scheduler.jobs']
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install Ubuntu related dependencies
+        run: |
+          sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
+      - name: Install Python & Openmetadata related dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install install_test
+          
+      - name: Code style check
+        run: |
+          source env/bin/activate
+          make black_check
+          make lint

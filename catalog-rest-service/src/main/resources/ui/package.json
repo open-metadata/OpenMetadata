@@ -57,6 +57,7 @@
     "react-codemirror2": "^7.2.1",
     "react-dom": "^16.14.0",
     "react-draft-wysiwyg": "^1.14.7",
+    "react-flow-renderer": "^9.6.8",
     "react-js-pagination": "^3.0.3",
     "react-markdown": "^6.0.3",
     "react-oidc": "^1.0.3",

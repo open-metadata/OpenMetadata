@@ -16,7 +16,7 @@ A workflow consists of [Source](source.md), [Processor](processor.md) and [Sink]
 
 Workflow execution happens in serial fashion.
 
-1. **Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
+1. The** Workflow** runs the **source** component first.  The **source** retrieves a record from external sources and emits the record downstream.
 2. If the **processor** component is configured, the **workflow** sends the record to the **processor** next.
 3. There can be multiple **processor** components attached to the **workflow**.  The **workflow** passes a record to each **processor** in the order they are configured.
 4. Once a **processor** is finished, it sends the modified record to **sink**.
@@ -24,13 +24,22 @@ Workflow execution happens in serial fashion.
 
 In the cases where we need aggregation over the records, we can use **stage** to write to a file or other store. Use the file written to in **stage** and pass it to **bulksink** to publish to external services such as **openmetadata** or **elasticsearch**.
 
-{% page-ref page="source.md" %}
+{% content-ref url="source.md" %}
+[source.md](source.md)
+{% endcontent-ref %}
 
-{% page-ref page="processor.md" %}
+{% content-ref url="processor.md" %}
+[processor.md](processor.md)
+{% endcontent-ref %}
 
-{% page-ref page="sink.md" %}
+{% content-ref url="sink.md" %}
+[sink.md](sink.md)
+{% endcontent-ref %}
 
-{% page-ref page="stage.md" %}
+{% content-ref url="stage.md" %}
+[stage.md](stage.md)
+{% endcontent-ref %}
 
-{% page-ref page="bulksink.md" %}
-
+{% content-ref url="bulksink.md" %}
+[bulksink.md](bulksink.md)
+{% endcontent-ref %}

@@ -16,12 +16,5 @@
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": null,
-    "hour": null,
-    "day": "*/7",
-    "month": "*",
-    "day_of_week": "*"
   }
 }

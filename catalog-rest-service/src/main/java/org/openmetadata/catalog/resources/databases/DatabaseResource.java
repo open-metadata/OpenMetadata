@@ -66,6 +66,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -225,8 +226,10 @@ public class DatabaseResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateDatabase create) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Database database = new Database().withId(UUID.randomUUID()).withName(create.getName()).
-            withDescription(create.getDescription());
+    Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
+            .withDescription(create.getDescription())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     database = addHref(uriInfo, dao.create(database, create.getService(), create.getOwner()));
     return Response.created(database.getHref()).entity(database).build();
   }
@@ -248,7 +251,7 @@ public class DatabaseResource {
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
                                             JsonPatch patch) throws IOException {
-      Database database = dao.patch(id, patch);
+      Database database = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
       SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(database));
       return addHref(uriInfo, database);
@@ -267,7 +270,9 @@ public class DatabaseResource {
                                  @Valid CreateDatabase create) throws IOException {
 
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
-            .withDescription(create.getDescription()).withOwner(create.getOwner());
+            .withDescription(create.getDescription()).withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     PutResponse<Database> response = dao.createOrUpdate(database, create.getService(), create.getOwner());
     Database db = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(db).build();

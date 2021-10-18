@@ -15,8 +15,8 @@
 from typing import Optional
 from urllib.parse import quote_plus
 
-from .sql_source import SQLSource, SQLConnectionConfig
 from ..ometa.openmetadata_rest import MetadataServerConfig
+from .sql_source import SQLConnectionConfig, SQLSource
 
 
 class TrinoConfig(SQLConnectionConfig):
@@ -38,8 +38,6 @@ class TrinoConfig(SQLConnectionConfig):
             if self.schema_name:
                 url += f"/{quote_plus(self.schema_name)}"
         return url
-
-    
 
 
 class TrinoSource(SQLSource):

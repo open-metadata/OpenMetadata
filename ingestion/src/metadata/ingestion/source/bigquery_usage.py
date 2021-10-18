@@ -13,24 +13,27 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import collections
+
 # This import verifies that the dependencies are available.
 import logging as log
-from metadata.ingestion.models.table_queries import TableQuery
-from google.cloud import logging
-import collections
 from datetime import datetime
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from typing import Any, Dict, Iterable
+
+from google.cloud import logging
+
 from metadata.ingestion.api.source import Source, SourceStatus
-from typing import Dict, Any, Iterable
+from metadata.ingestion.models.table_queries import TableQuery
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.bigquery import BigQueryConfig
 from metadata.ingestion.source.sql_alchemy_helper import SQLSourceStatus
 from metadata.utils.helpers import get_start_and_end
-from metadata.ingestion.source.bigquery import BigQueryConfig
 
 logger = log.getLogger(__name__)
 
 
 class BigqueryUsageSource(Source):
-    SERVICE_TYPE = 'Bigquery'
+    SERVICE_TYPE = "Bigquery"
     scheme = "bigquery"
 
     def __init__(self, config, metadata_config, ctx):
@@ -65,19 +68,45 @@ class BigqueryUsageSource(Source):
             timestamp = entry.timestamp.isoformat()
             timestamp = datetime.strptime(timestamp[0:10], "%Y-%m-%d")
             if timestamp >= start and timestamp <= end:
-                if("query" in str(entry.payload)) and type(entry.payload) == collections.OrderedDict:
+                if ("query" in str(entry.payload)) and type(
+                    entry.payload
+                ) == collections.OrderedDict:
                     payload = list(entry.payload.items())[-1][1]
                     if "jobChange" in payload:
                         print(f"\nEntries: {payload}")
-                        queryConfig = payload['jobChange']['job']['jobConfig']['queryConfig']
-                        jobStats = payload['jobChange']['job']['jobStats']
-                        statementType = queryConfig['statementType'] if hasattr(queryConfig, 'statementType') else ''
-                        database = queryConfig['destinationTable'] if hasattr(queryConfig, 'destinationTable') is not None else ''
-                        analysis_date = str(datetime.strptime(jobStats['startTime'][0:19], "%Y-%m-%dT%H:%M:%S").strftime('%Y-%m-%d %H:%M:%S'))
-                        tq = TableQuery(statementType,
-                                        queryConfig['priority'], 0, 0, 0, str(jobStats['startTime']),
-                                        str(jobStats['endTime']), analysis_date, self.config.duration, str(
-                                            database), 0, queryConfig['query'])
+                        queryConfig = payload["jobChange"]["job"]["jobConfig"][
+                            "queryConfig"
+                        ]
+                        jobStats = payload["jobChange"]["job"]["jobStats"]
+                        statementType = (
+                            queryConfig["statementType"]
+                            if hasattr(queryConfig, "statementType")
+                            else ""
+                        )
+                        database = (
+                            queryConfig["destinationTable"]
+                            if hasattr(queryConfig, "destinationTable") is not None
+                            else ""
+                        )
+                        analysis_date = str(
+                            datetime.strptime(
+                                jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
+                            ).strftime("%Y-%m-%d %H:%M:%S")
+                        )
+                        tq = TableQuery(
+                            statementType,
+                            queryConfig["priority"],
+                            0,
+                            0,
+                            0,
+                            str(jobStats["startTime"]),
+                            str(jobStats["endTime"]),
+                            analysis_date,
+                            self.config.duration,
+                            str(database),
+                            0,
+                            queryConfig["query"],
+                        )
                         yield tq
 
     def close(self):

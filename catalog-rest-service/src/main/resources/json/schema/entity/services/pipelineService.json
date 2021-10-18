@@ -45,6 +45,18 @@
       "description": "Display Name that identifies this pipeline service. It could be title or label from the source services.",
       "type": "string"
     },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
     "pipelineUrl": {
       "description": "Pipeline Service Management/UI URL.",
       "type": "string",

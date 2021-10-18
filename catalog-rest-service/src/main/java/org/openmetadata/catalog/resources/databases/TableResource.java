@@ -38,6 +38,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -70,6 +71,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -130,31 +132,31 @@ public class TableResource {
                   content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = TableList.class)))
           })
-  public TableList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Table> list(@Context UriInfo uriInfo,
+                                @Context SecurityContext securityContext,
+                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter tables by database fully qualified name",
+                                @Parameter(description = "Filter tables by database fully qualified name",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @QueryParam("database") String databaseParam,
-                        @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
+                                @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
                                 schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                         @DefaultValue("10")
                         @Min(1)
                         @Max(1000000)
                         @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of tables before this cursor",
+                                @Parameter(description = "Returns list of tables before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of tables after this cursor",
+                                @Parameter(description = "Returns list of tables after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after)
           throws IOException, ParseException, GeneralSecurityException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    TableList tables;
+    ResultList<Table> tables;
     if (before != null) { // Reverse paging
       tables = dao.listBefore(fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
@@ -218,12 +220,14 @@ public class TableResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateTable create) throws IOException {
+                         @Valid CreateTable create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     table = addHref(uriInfo, dao.create(validateNewTable(table), create.getOwner(), create.getDatabase()));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -243,7 +247,9 @@ public class TableResource {
     Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
             .withColumns(create.getColumns()).withDescription(create.getDescription())
             .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition());
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getOwner(), create.getDatabase());
     table = addHref(uriInfo, response.getEntity());
@@ -271,7 +277,7 @@ public class TableResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    table = dao.patch(id, patch);
+    table = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, table);
   }
 

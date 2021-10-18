@@ -16,11 +16,11 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
@@ -30,6 +30,9 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -44,13 +47,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -148,7 +152,6 @@ public abstract class DatabaseRepository {
 
   @Transaction
   public Database create(Database database, EntityReference service, EntityReference owner) throws IOException {
-    getService(service); // Validate service
     return createInternal(database, service, owner);
   }
 
@@ -164,38 +167,31 @@ public abstract class DatabaseRepository {
   }
 
   @Transaction
-  public PutResponse<Database> createOrUpdate(Database updatedDB, EntityReference service, EntityReference newOwner)
+  public PutResponse<Database> createOrUpdate(Database updated, EntityReference service, EntityReference newOwner)
           throws IOException {
     getService(service); // Validate service
 
-    String fqn = getFQN(service, updatedDB);
-    Database storedDB = JsonUtils.readValue(databaseDAO().findByFQN(fqn), Database.class);
-    if (storedDB == null) {  // Database does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updatedDB, service, newOwner));
+    String fqn = getFQN(service, updated);
+    Database stored = JsonUtils.readValue(databaseDAO().findByFQN(fqn), Database.class);
+    if (stored == null) {  // Database does not exist. Create a new one
+      return new PutResponse<>(Status.CREATED, createInternal(updated, service, newOwner));
     }
-    // Update the existing database
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedDB.getDescription() == null || storedDB.getDescription().isEmpty()) {
-      storedDB.withDescription(updatedDB.getDescription());
-    }
-    databaseDAO().update(storedDB.getId().toString(), JsonUtils.pojoToJson(storedDB));
+    setFields(stored, DATABASE_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    validateRelationships(updated, service, newOwner);
 
-    // Update owner relationship
-    setFields(storedDB, DATABASE_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedDB, storedDB.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new database under the new service
-    storedDB.setService(service);
-
-    return new PutResponse<>(Response.Status.OK, storedDB);
+    DatabaseUpdater databaseUpdater = new DatabaseUpdater(stored, updated, false);
+    databaseUpdater.updateAll();
+    databaseUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
-  public Database patch(String id, JsonPatch patch) throws IOException {
+  public Database patch(String id, String user, JsonPatch patch) throws IOException {
     Database original = setFields(validateDatabase(id), DATABASE_PATCH_FIELDS);
     LOG.info("Database summary in original {}", original.getUsageSummary());
     Database updated = JsonUtils.applyPatch(original, patch, Database.class);
+    updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
 
     // TODO disallow updating tables
@@ -203,44 +199,49 @@ public abstract class DatabaseRepository {
   }
 
   public Database createInternal(Database database, EntityReference service, EntityReference owner) throws IOException {
-    database.setFullyQualifiedName(getFQN(service, database));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-
-    // Query 1 - insert database into database_entity table
-    databaseDAO().insert(JsonUtils.pojoToJson(database));
-    setService(database, service);
-    setOwner(database, owner);
+    validateRelationships(database, service, owner);
+    storeDatabase(database, false);
+    addRelationships(database);
     return database;
   }
 
+  private void validateRelationships(Database database, EntityReference service, EntityReference owner) throws IOException {
+    database.setFullyQualifiedName(getFQN(service, database));
+    database.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), owner)); // Validate owner
+    database.setService(getService(service));
+  }
+
+  private void addRelationships(Database database) throws IOException {
+    setService(database, database.getService());
+    setOwner(database, database.getOwner());
+  }
+
+  private void storeDatabase(Database database, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = database.getOwner();
+    EntityReference service = database.getService();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    database.withOwner(null).withService(null).withHref(null);
+
+    if (update) {
+      databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
+    } else {
+      databaseDAO().insert(JsonUtils.pojoToJson(database));
+    }
+
+    // Restore the relationships
+    database.withOwner(owner).withService(service);
+  }
+
   private void patch(Database original, Database updated) throws IOException {
-    String databaseId = original.getId().toString();
-    if (!original.getId().equals(updated.getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.DATABASE, "id"));
-    }
-    if (!original.getName().equals(updated.getName())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.DATABASE, "name"));
-    }
-    if (updated.getService() == null || !original.getService().getId().equals(updated.getService().getId())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.DATABASE, "service"));
-    }
-    LOG.info("updated summary {}", updated.getUsageSummary());
-    if (updated.getUsageSummary() == null || !original.getUsageSummary().equals(updated.getUsageSummary())) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute(Entity.DATABASE,
-              "usageSummary"));
-    }
-    // Validate new owner
-    EntityReference newOwner = EntityUtil.populateOwner(userDAO(), teamDAO(), updated.getOwner());
-
-    EntityReference newService = updated.getService();
-
-    // TODO tables can't be changed
-    updated.setHref(null);
-    updated.setOwner(null);
-    updated.setService(null);
-    databaseDAO().update(databaseId, JsonUtils.pojoToJson(updated));
-    updateOwner(updated, original.getOwner(), newOwner);
-    updated.setService(newService);
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+    validateRelationships(updated, updated.getService(), updated.getOwner());
+    DatabaseUpdater databaseUpdater = new DatabaseUpdater(original, updated, true);
+    databaseUpdater.updateAll();
+    databaseUpdater.store();
   }
 
   public EntityReference getOwner(Database database) throws IOException {
@@ -251,11 +252,6 @@ public abstract class DatabaseRepository {
   private void setOwner(Database database, EntityReference owner) {
     EntityUtil.setOwner(relationshipDAO(), database.getId(), Entity.DATABASE, owner);
     database.setOwner(owner);
-  }
-
-  private void updateOwner(Database database, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, database.getId(), Entity.DATABASE);
-    database.setOwner(newOwner);
   }
 
   private List<Table> getTables(Database database) throws IOException {
@@ -353,5 +349,80 @@ public abstract class DatabaseRepository {
 
     @SqlUpdate("DELETE FROM database_entity WHERE id = :id")
     int delete(@Bind("id") String id);
+  }
+
+  static class DatabaseEntityInterface implements EntityInterface {
+    private final Database database;
+
+    DatabaseEntityInterface(Database Database) {
+      this.database = Database;
+    }
+
+    @Override
+    public UUID getId() {
+      return database.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return database.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return database.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return database.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return database.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public void setDescription(String description) {
+      database.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      database.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class DatabaseUpdater extends EntityUpdater {
+    final Database orig;
+    final Database updated;
+
+    public DatabaseUpdater(Database orig, Database updated, boolean patchOperation) {
+      super(new DatabaseEntityInterface(orig),
+              new DatabaseEntityInterface(updated), patchOperation, relationshipDAO(), null);
+
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+//      updateService();
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeDatabase(updated, true);
+    }
   }
 }

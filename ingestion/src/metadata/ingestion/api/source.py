@@ -16,8 +16,9 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List
+
 from .closeable import Closeable
-from .common import WorkflowContext, Record
+from .common import Record, WorkflowContext
 from .status import Status
 
 
@@ -44,7 +45,9 @@ class Source(Closeable, metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext) -> "Source":
+    def create(
+        cls, config_dict: dict, metadata_config_dict: dict, ctx: WorkflowContext
+    ) -> "Source":
         pass
 
     @abstractmethod
