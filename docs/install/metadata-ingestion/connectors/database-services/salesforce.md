@@ -85,13 +85,6 @@ Add optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": "*/5",
-    "hour": null,
-    "day": null,
-    "month": null,
-    "day_of_week": null
   }
 }
 ```
