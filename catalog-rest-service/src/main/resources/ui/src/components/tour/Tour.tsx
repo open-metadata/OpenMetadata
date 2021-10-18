@@ -1,11 +1,11 @@
 import { AxiosResponse } from 'axios';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
-import ReactTutorial from 'react-tutorial';
+// import ReactTutorial from 'react-tutorial';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import { PAGE_SIZE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
-import { useTour } from '../../hooks/useTour';
+// import { useTour } from '../../hooks/useTour';
 
 type Steps = {
   content: string;
@@ -73,8 +73,8 @@ const getSteps = (value: string) => {
 };
 
 const Tour = () => {
-  const { isTourOpen, handleIsTourOpen } = useTour();
-  const [steps, setSteps] = useState<Steps[]>([]);
+  // const { isTourOpen, handleIsTourOpen } = useTour();
+  const [, setSteps] = useState<Steps[]>([]);
 
   useEffect(() => {
     searchData('', 1, PAGE_SIZE, '', '', '', SearchIndex.TABLE).then(
@@ -87,7 +87,7 @@ const Tour = () => {
 
   return (
     <div>
-      {isTourOpen ? (
+      {/* {isTourOpen ? (
         <ReactTutorial
           disableKeyboardNavigation
           showNumber
@@ -98,7 +98,7 @@ const Tour = () => {
           steps={steps}
           onRequestClose={() => handleIsTourOpen(false)}
         />
-      ) : null}
+      ) : null} */}
     </div>
   );
 };

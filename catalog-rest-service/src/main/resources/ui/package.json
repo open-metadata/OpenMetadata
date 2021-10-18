@@ -81,8 +81,7 @@
     "stream-http": "^3.2.0",
     "styled-components": "^5.2.3",
     "tailwindcss": "^2.1.4",
-    "to-arraybuffer": "^1.0.1",
-    "react-tutorial": "https://github.com/deuex-solutions/react-tutorial/tarball/master"
+    "to-arraybuffer": "^1.0.1"
   },
   "scripts": {
     "start": "NODE_ENV=development BABEL_ENV=development webpack serve --config ./webpack.config.dev.js --env development",
