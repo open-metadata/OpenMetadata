@@ -6,6 +6,10 @@ OpenMetadata supports connectors to some popular dashboard services. We will con
 [looker.md](looker.md)
 {% endcontent-ref %}
 
+{% content-ref url="redash.md" %}
+[redash.md](redash.md)
+{% endcontent-ref %}
+
 {% content-ref url="superset.md" %}
 [superset.md](superset.md)
 {% endcontent-ref %}
