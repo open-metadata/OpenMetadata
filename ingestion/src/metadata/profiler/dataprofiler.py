@@ -111,7 +111,10 @@ class DataProfiler:
         return result.expectation_config.kwargs.get("column")
 
     def _parse_test_results_to_table_profile(
-        self, profile_test_results: ExpectationSuiteValidationResult, dataset_name: str, profile_date: str
+        self,
+        profile_test_results: ExpectationSuiteValidationResult,
+        dataset_name: str,
+        profile_date: str
     ) -> TableProfile:
         profile = None
         column_profiles = []
