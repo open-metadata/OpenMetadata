@@ -23,7 +23,10 @@ import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
 import { getTopicByFqn } from '../../axiosAPIs/topicsAPI';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
-import { getRecentlyViewedData } from '../../utils/CommonUtils';
+import {
+  getRecentlyViewedData,
+  setRecentlyViewedData,
+} from '../../utils/CommonUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import TableDataCard from '../common/table-data-card/TableDataCard';
@@ -38,126 +41,139 @@ const RecentlyViewed: FunctionComponent = () => {
   const fetchRecentlyViewedEntity = async () => {
     setIsloading(true);
     const arrData: Array<FormatedTableData> = [];
+    let filteredRecentData = [...recentlyViewedData];
 
     for (const oData of recentlyViewedData) {
       // for (let i = 0; i < recentlyViewedData.length; i++) {
       // const oData = recentlyViewedData[i];
-      switch (oData.entityType) {
-        case EntityType.DATASET: {
-          const res = await getTableDetailsByFQN(
-            oData.fqn,
-            'database, usageSummary, tags, owner,columns'
-          );
+      try {
+        switch (oData.entityType) {
+          case EntityType.DATASET: {
+            const res = await getTableDetailsByFQN(
+              oData.fqn,
+              'database, usageSummary, tags, owner,columns'
+            );
 
-          const {
-            description,
-            id,
-            name,
-            columns,
-            owner,
-            usageSummary,
-            fullyQualifiedName,
-            tags,
-          } = res.data;
-          const tableTags = getTableTags(columns || []);
-          arrData.push({
-            description,
-            fullyQualifiedName,
-            id,
-            index: SearchIndex.TABLE,
-            name,
-            owner: getOwnerFromId(owner?.id)?.name || '--',
-            serviceType: oData.serviceType,
-            tags: [
-              getTierFromTableTags(tags),
-              ...tableTags.map((tag) => tag.tagFQN),
-            ].filter((tag) => tag),
-            tier: getTierFromTableTags(tags),
-            weeklyPercentileRank: usageSummary?.weeklyStats.percentileRank || 0,
-          });
+            const {
+              description,
+              id,
+              name,
+              columns,
+              owner,
+              usageSummary,
+              fullyQualifiedName,
+              tags,
+            } = res.data;
+            const tableTags = getTableTags(columns || []);
+            arrData.push({
+              description,
+              fullyQualifiedName,
+              id,
+              index: SearchIndex.TABLE,
+              name,
+              owner: getOwnerFromId(owner?.id)?.name || '--',
+              serviceType: oData.serviceType,
+              tags: [
+                getTierFromTableTags(tags),
+                ...tableTags.map((tag) => tag.tagFQN),
+              ].filter((tag) => tag),
+              tier: getTierFromTableTags(tags),
+              weeklyPercentileRank:
+                usageSummary?.weeklyStats.percentileRank || 0,
+            });
 
-          break;
+            break;
+          }
+          case EntityType.TOPIC: {
+            const res = await getTopicByFqn(oData.fqn, 'owner, service, tags');
+
+            const { description, id, name, tags, owner, fullyQualifiedName } =
+              res.data;
+            arrData.push({
+              description,
+              fullyQualifiedName,
+              id,
+              index: SearchIndex.TOPIC,
+              name,
+              owner: getOwnerFromId(owner?.id)?.name || '--',
+              serviceType: oData.serviceType,
+              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+            });
+
+            break;
+          }
+          case EntityType.DASHBOARD: {
+            const res = await getDashboardByFqn(
+              oData.fqn,
+              'owner, service, tags, usageSummary'
+            );
+
+            const {
+              description,
+              id,
+              displayName,
+              tags,
+              owner,
+              fullyQualifiedName,
+            } = res.data;
+            arrData.push({
+              description,
+              fullyQualifiedName,
+              id,
+              index: SearchIndex.DASHBOARD,
+              name: displayName,
+              owner: getOwnerFromId(owner?.id)?.name || '--',
+              serviceType: oData.serviceType,
+              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+            });
+
+            break;
+          }
+
+          case EntityType.PIPELINE: {
+            const res = await getPipelineByFqn(
+              oData.fqn,
+              'owner, service, tags, usageSummary'
+            );
+
+            const {
+              description,
+              id,
+              displayName,
+              tags,
+              owner,
+              fullyQualifiedName,
+            } = res.data;
+            arrData.push({
+              description,
+              fullyQualifiedName,
+              id,
+              index: SearchIndex.PIPELINE,
+              name: displayName,
+              owner: getOwnerFromId(owner?.id)?.name || '--',
+              serviceType: oData.serviceType,
+              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+            });
+
+            break;
+          }
+
+          default:
+            break;
         }
-        case EntityType.TOPIC: {
-          const res = await getTopicByFqn(oData.fqn, 'owner, service, tags');
+      } catch {
+        filteredRecentData = filteredRecentData.filter(
+          (data) => data.fqn !== oData.fqn
+        );
 
-          const { description, id, name, tags, owner, fullyQualifiedName } =
-            res.data;
-          arrData.push({
-            description,
-            fullyQualifiedName,
-            id,
-            index: SearchIndex.TOPIC,
-            name,
-            owner: getOwnerFromId(owner?.id)?.name || '--',
-            serviceType: oData.serviceType,
-            tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-            tier: getTierFromTableTags(tags as Array<ColumnTags>),
-          });
-
-          break;
-        }
-        case EntityType.DASHBOARD: {
-          const res = await getDashboardByFqn(
-            oData.fqn,
-            'owner, service, tags, usageSummary'
-          );
-
-          const {
-            description,
-            id,
-            displayName,
-            tags,
-            owner,
-            fullyQualifiedName,
-          } = res.data;
-          arrData.push({
-            description,
-            fullyQualifiedName,
-            id,
-            index: SearchIndex.DASHBOARD,
-            name: displayName,
-            owner: getOwnerFromId(owner?.id)?.name || '--',
-            serviceType: oData.serviceType,
-            tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-            tier: getTierFromTableTags(tags as Array<ColumnTags>),
-          });
-
-          break;
-        }
-
-        case EntityType.PIPELINE: {
-          const res = await getPipelineByFqn(
-            oData.fqn,
-            'owner, service, tags, usageSummary'
-          );
-
-          const {
-            description,
-            id,
-            displayName,
-            tags,
-            owner,
-            fullyQualifiedName,
-          } = res.data;
-          arrData.push({
-            description,
-            fullyQualifiedName,
-            id,
-            index: SearchIndex.PIPELINE,
-            name: displayName,
-            owner: getOwnerFromId(owner?.id)?.name || '--',
-            serviceType: oData.serviceType,
-            tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-            tier: getTierFromTableTags(tags as Array<ColumnTags>),
-          });
-
-          break;
-        }
-
-        default:
-          break;
+        continue;
       }
+    }
+    if (filteredRecentData.length !== recentlyViewedData.length) {
+      setRecentlyViewedData(filteredRecentData);
     }
     setIsloading(false);
     setData(arrData);
