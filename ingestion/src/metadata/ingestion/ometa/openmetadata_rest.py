@@ -237,9 +237,9 @@ class OpenMetadataAPIClient(object):
                 "/services/databaseServices/name/{}".format(service_name)
             )
             return DatabaseService(**resp)
-        except (APIError, HTTPError) as err:
+        except APIError as err:
             logger.error(
-                f"Error trying to GET the database service {service_name}", err
+                f"Error trying to GET the database service {service_name}"
             )
             return None
 
@@ -403,7 +403,7 @@ class OpenMetadataAPIClient(object):
             return MessagingService(**resp)
         except APIError as err:
             logger.error(
-                f"Error trying to GET the messaging service {service_name}", err
+                f"Error trying to GET the messaging service {service_name}"
             )
             return None
 
@@ -459,7 +459,7 @@ class OpenMetadataAPIClient(object):
             return DashboardService(**resp)
         except APIError as err:
             logger.error(
-                f"Error trying to GET the dashboard service {service_name}", err
+                f"Error trying to GET the dashboard service {service_name}"
             )
             return None
 
@@ -479,7 +479,7 @@ class OpenMetadataAPIClient(object):
             return DashboardService(**resp)
         except APIError as err:
             logger.error(
-                f"Error trying to POST the dashboard service {dashboard_service}", err
+                f"Error trying to POST the dashboard service {dashboard_service}"
             )
             return None
 
@@ -549,7 +549,7 @@ class OpenMetadataAPIClient(object):
             return PipelineService(**resp)
         except APIError as err:
             logger.error(
-                f"Error trying to GET the pipeline service {service_name}", err
+                f"Error trying to GET the pipeline service {service_name}"
             )
             return None
 
@@ -569,7 +569,7 @@ class OpenMetadataAPIClient(object):
             return PipelineService(**resp)
         except APIError as err:
             logger.error(
-                f"Error trying to POST the pipeline service {pipeline_service}", err
+                f"Error trying to POST the pipeline service {pipeline_service}"
             )
             return None
 
