@@ -117,7 +117,7 @@ public abstract class TableRepository {
   @CreateSqlObject
   abstract TagDAO tagDAO();
 
-  EntityRepository<Table> entityRepository = new EntityRepository<Table>() {
+  EntityRepository<Table> entityRepository = new EntityRepository<>() {
     @Override
     public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
       return tableDAO().listAfter(fqnPrefix, limitParam, after);
@@ -150,6 +150,10 @@ public abstract class TableRepository {
     }
   };
 
+  public static String getFQN(Table table) {
+    return (table.getDatabase().getName() + "." + table.getName());
+  }
+
   @Transaction
   public ResultList<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after)
           throws IOException, ParseException, GeneralSecurityException {
@@ -174,8 +178,9 @@ public abstract class TableRepository {
   }
 
   @Transaction
-  public Table create(Table table, EntityReference owner, UUID databaseId) throws IOException {
-    return createInternal(databaseId, table, owner);
+  public Table create(Table table, UUID databaseId) throws IOException {
+    validateRelationships(table, databaseId);
+    return createInternal(table);
   }
 
   @Transaction
@@ -197,23 +202,19 @@ public abstract class TableRepository {
   }
 
   @Transaction
-  public PutResponse<Table> createOrUpdate(Table updated, EntityReference newOwner, UUID databaseId) throws
-          IOException, ParseException {
-    Database database = EntityUtil.validate(databaseId.toString(), databaseDAO().findById(databaseId.toString()),
-            Database.class);
-    String tableFQName = database.getFullyQualifiedName() + "." + updated.getName();
-    Table stored = JsonUtils.readValue(tableDAO().findByFQN(tableFQName), Table.class);
+  public PutResponse<Table> createOrUpdate(Table updated, UUID databaseId) throws IOException, ParseException {
+    validateRelationships(updated, databaseId);
+    Table stored = JsonUtils.readValue(tableDAO().findByFQN(updated.getFullyQualifiedName()), Table.class);
     if (stored == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(database.getId(), updated, newOwner));
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, TABLE_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, database, newOwner);
+    validateRelationships(updated);
 
     TableUpdater tableUpdater = new TableUpdater(stored, updated, false);
     tableUpdater.updateAll();
     tableUpdater.store();
-//    setFields(updated, TABLE_UPDATE_FIELDS); // TODO remove this
 
 //    if (updated) {
 //      // TODO clean this up
@@ -310,9 +311,7 @@ public abstract class TableRepository {
 
 
   // No @Transaction variation method to avoid nested transaction
-  private Table createInternal(UUID databaseId, Table table, EntityReference owner) throws IOException {
-    LOG.info("Creating table {} {}", table.getFullyQualifiedName(), table.getId());
-    validateRelationships(table, databaseId, owner);
+  private Table createInternal(Table table) throws IOException {
     storeTable(table, false);
     addRelationships(table);
 
@@ -321,12 +320,13 @@ public abstract class TableRepository {
     return table;
   }
 
-  private void validateRelationships(Table table, UUID databaseId, EntityReference owner) throws IOException {
+  private void validateRelationships(Table table, UUID databaseId) throws IOException {
     // Validate database
     Database db = EntityUtil.validate(databaseId.toString(), databaseDAO().findById(databaseId.toString()),
             Database.class);
+    table.setDatabase(EntityUtil.getEntityReference(db));
     // Validate and set other relationships
-    validateRelationships(table, db, owner);
+    validateRelationships(table);
   }
 
   private void setColumnFQN(String parentFQN, List<Column> columns) {
@@ -352,14 +352,13 @@ public abstract class TableRepository {
     }
   }
 
-  private void validateRelationships(Table table, Database database, EntityReference owner) throws IOException {
+  private void validateRelationships(Table table) throws IOException {
     // Set data in table entity based on database relationship
-    table.setDatabase(EntityUtil.getEntityReference(database));
-    table.setFullyQualifiedName(database.getFullyQualifiedName() + "." + table.getName());
+    table.setFullyQualifiedName(getFQN(table));
     setColumnFQN(table.getFullyQualifiedName(), table.getColumns());
 
     // Check if owner is valid and set the relationship
-    table.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), owner));
+    table.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), table.getOwner()));
 
     // Validate table tags and add derived tags to the list
     table.setTags(EntityUtil.addDerivedTags(tagDAO(), table.getTags()));
@@ -456,7 +455,7 @@ public abstract class TableRepository {
             .withDatabase(original.getDatabase()).withId(original.getId());
 
     // TODO checking database is unnecessary as it has not changed
-    validateRelationships(updated, updated.getDatabase().getId(), updated.getOwner());
+    validateRelationships(updated, updated.getDatabase().getId());
 
     TableUpdater tableUpdater = new TableUpdater(original, updated, true);
     tableUpdater.updateAll();
@@ -731,7 +730,7 @@ public abstract class TableRepository {
     int delete(@Bind("id") String id);
   }
 
-  class TableEntityInterface implements EntityInterface {
+  static class TableEntityInterface implements EntityInterface {
     private final Table table;
 
     TableEntityInterface(Table table) {

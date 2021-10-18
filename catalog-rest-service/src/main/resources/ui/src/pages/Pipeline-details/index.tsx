@@ -21,7 +21,7 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
-import DatasetLineage from '../../components/dataset-lineage/DatasetLineage';
+import Entitylineage from '../../components/dataset-lineage/EntityLineage';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import ManageTab from '../../components/my-data-details/ManageTab';
@@ -619,7 +619,7 @@ const MyPipelinePage = () => {
               )}
               {activeTab === 2 && (
                 <div className="tw-w-full tw-h-96">
-                  <DatasetLineage entityLineage={entityLineage} />
+                  <Entitylineage entityLineage={entityLineage} />
                 </div>
               )}
               {activeTab === 3 && (

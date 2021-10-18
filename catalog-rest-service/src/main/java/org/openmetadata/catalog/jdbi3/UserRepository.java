@@ -188,7 +188,8 @@ public abstract class UserRepository {
 
   @Transaction
   public User create(User user, List<UUID> teamIds) throws IOException {
-    return createInternal(user, teamIds);
+    validateRelationships(user, teamIds);
+    return createInternal(user);
   }
 
   @Transaction
@@ -205,7 +206,6 @@ public abstract class UserRepository {
 
   @Transaction
   public RestUtil.PutResponse<User> createOrUpdate(User updated) throws IOException {
-    // TODO method for this
     User stored = JsonUtils.readValue(userDAO().findByName(updated.getName()), User.class);
 
     // TODO why are we doing this?
@@ -213,12 +213,12 @@ public abstract class UserRepository {
     if (updated.getTeams() != null) {
       teamIds.addAll(EntityUtil.getIDList(updated.getTeams()));
     }
+    validateRelationships(updated, teamIds);
     if (stored == null) {
-      return new RestUtil.PutResponse<>(Response.Status.CREATED, createInternal(updated, teamIds));
+      return new RestUtil.PutResponse<>(Response.Status.CREATED, createInternal(updated));
     }
     setFields(stored, USER_UPDATE_FIELDS);
     updated.setId(stored.getId());
-    validateRelationships(updated, teamIds);
 
     UserUpdater userUpdater = new UserUpdater(stored, updated, false);
     userUpdater.updateAll();
@@ -289,8 +289,7 @@ public abstract class UserRepository {
     return EntityUtil.validate(userId, userDAO().findById(userId), User.class);
   }
 
-  private User createInternal(User user, List<UUID> teamIds) throws IOException {
-    validateRelationships(user, teamIds);
+  private User createInternal(User user) throws IOException {
     storeUser(user, false);
     addRelationships(user);
     return user;

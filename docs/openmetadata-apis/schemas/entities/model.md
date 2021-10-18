@@ -21,6 +21,15 @@ Type: `object`
  - **displayName**
    - Display Name that identifies this model.
    - Type: `string`
+ - **version**
+   - Metadata version of the entity.
+   - $ref: [../../type/basic.json#/definitions/entityVersion](../types/basic.md#entityversion)
+ - **updatedAt**
+   - Last update time corresponding to the new version of the entity.
+   - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+ - **updatedBy**
+   - User who made the update.
+   - Type: `string`
  - **description**
    - Description of the model, what it is, and how to use it.
    - Type: `string`
@@ -49,4 +58,4 @@ Type: `object`
    - $ref: [../../type/usageDetails.json](../types/usagedetails.md)
 
 
-_This document was updated on: Thursday, October 14, 2021_
+_This document was updated on: Monday, October 18, 2021_

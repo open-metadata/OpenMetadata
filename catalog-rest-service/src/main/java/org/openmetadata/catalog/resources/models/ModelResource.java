@@ -224,7 +224,7 @@ public class ModelResource {
             .withOwner(create.getOwner())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    model = addHref(uriInfo, dao.create(model, model.getOwner()));
+    model = addHref(uriInfo, dao.create(model));
     return Response.created(model.getHref()).entity(model).build();
   }
 
@@ -275,7 +275,7 @@ public class ModelResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    PutResponse<Model> response = dao.createOrUpdate(model, model.getOwner());
+    PutResponse<Model> response = dao.createOrUpdate(model);
     model = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(model).build();
   }

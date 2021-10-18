@@ -531,10 +531,6 @@ public class TableResourceTest extends CatalogApplicationTest {
     assertEquals(bankTagUsageCount + 1, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders()));
   }
 
-  private void validateTags(Column expected, Column actual) throws HttpResponseException {
-    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), actual.getTags());
-  }
-
   @Test
   public void put_tableJoins_200(TestInfo test) throws HttpResponseException, ParseException {
     Table table1 = createAndCheckTable(create(test, 1), adminAuthHeaders());

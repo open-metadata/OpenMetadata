@@ -229,7 +229,7 @@ public class ChartResource {
                     .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
-    chart = addHref(uriInfo, dao.create(chart, create.getService(), create.getOwner()));
+    chart = addHref(uriInfo, dao.create(chart));
     return Response.created(chart.getHref()).entity(chart).build();
   }
 
@@ -279,7 +279,7 @@ public class ChartResource {
                     .withOwner(create.getOwner())
                     .withUpdatedBy(securityContext.getUserPrincipal().getName())
                     .withUpdatedAt(new Date());
-    PutResponse<Chart> response = dao.createOrUpdate(chart, create.getService(), create.getOwner());
+    PutResponse<Chart> response = dao.createOrUpdate(chart);
     chart = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(chart).build();
   }
