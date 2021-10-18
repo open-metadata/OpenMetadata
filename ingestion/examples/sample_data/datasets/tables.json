@@ -2499,7 +2499,7 @@
               "nullProportion": 0.3713034
             },
             {
-              "name": "ran",
+              "name": "rank",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 8,
@@ -2709,7 +2709,7 @@
               "nullProportion": 0
             },
             {
-              "name": "ran",
+              "name": "rank",
               "uniqueCount": 33,
               "uniqueProportion": 0.2576120378,
               "nullCount": 0,
@@ -2919,7 +2919,7 @@
               "nullProportion": 0
             },
             {
-              "name": "ran",
+              "name": "rank",
               "uniqueCount": 4,
               "uniqueProportion": 0.3510410083,
               "nullCount": 0,
@@ -3129,7 +3129,7 @@
               "nullProportion": 0
             },
             {
-              "name": "ran",
+              "name": "rank",
               "uniqueCount": 10,
               "uniqueProportion": 0.24848206,
               "nullCount": 0,
@@ -3281,76 +3281,6 @@
               "uniqueProportion": 0.0639865,
               "nullCount": 0,
               "nullProportion": 0
-            },
-            {
-              "name": "first_name",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1327792,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "last_name",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.177126,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address1",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0396391,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address2",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0690369,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "company",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.1210963,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "city",
-              "uniqueCount": 6,
-              "uniqueProportion": 0.024072,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "region",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 3,
-              "nullProportion": 0.1478114
-            },
-            {
-              "name": "zip",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 11,
-              "nullProportion": 0.1383472
-            },
-            {
-              "name": "country",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1601013,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "phone",
-              "uniqueCount": 8,
-              "uniqueProportion": 0.1297079,
-              "nullCount": 0,
-              "nullProportion": 0
             }
           ]
         },
@@ -3409,7 +3339,7 @@
               "nullProportion": 0
             },
             {
-              "name": "ran",
+              "name": "rank",
               "uniqueCount": 1,
               "uniqueProportion": 0.271483578,
               "nullCount": 0,
@@ -4503,7 +4433,7 @@
               "nullProportion": 0.7356057
             },
             {
-              "name": "gift_card_issued",
+              "name": "gift_cards_issued",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 46,
@@ -4543,20 +4473,6 @@
               "uniqueProportion": 0,
               "nullCount": 20,
               "nullProportion": 0.4638419273
-            },
-            {
-              "name": "shipping_address",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 24,
-              "nullProportion": 0.887110909
-            },
-            {
-              "name": "orders",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 29,
-              "nullProportion": 0.0639865
             }
           ]
         },
@@ -4643,7 +4559,7 @@
               "nullProportion": 0
             },
             {
-              "name": "user_idser",
+              "name": "user_id",
               "uniqueCount": 28,
               "uniqueProportion": 0.34878114,
               "nullCount": 0,
@@ -4713,7 +4629,7 @@
               "nullProportion": 0
             },
             {
-              "name": "gift_card_issued",
+              "name": "gift_cards_issued",
               "uniqueCount": 48,
               "uniqueProportion": 0.3903644928,
               "nullCount": 0,
@@ -4839,7 +4755,7 @@
               "nullProportion": 0
             },
             {
-              "name": "user_idser",
+              "name": "user_id",
               "uniqueCount": 15,
               "uniqueProportion": 0.1368357218,
               "nullCount": 0,
@@ -4909,7 +4825,7 @@
               "nullProportion": 0
             },
             {
-              "name": "gift_card_issued",
+              "name": "gift_cards_issued",
               "uniqueCount": 43,
               "uniqueProportion": 0.298778278,
               "nullCount": 0,
@@ -5035,7 +4951,7 @@
               "nullProportion": 0
             },
             {
-              "name": "user_idser",
+              "name": "user_id",
               "uniqueCount": 16,
               "uniqueProportion": 0.5155847099,
               "nullCount": 0,
@@ -5105,7 +5021,7 @@
               "nullProportion": 0
             },
             {
-              "name": "gift_card_issued",
+              "name": "gift_cards_issued",
               "uniqueCount": 36,
               "uniqueProportion": 0.2337815644,
               "nullCount": 0,
@@ -5143,76 +5059,6 @@
               "name": "happened_at",
               "uniqueCount": 36,
               "uniqueProportion": 0.588168791,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "first_name",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1327792,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "last_name",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.177126,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address1",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0396391,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address2",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0690369,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "company",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.1210963,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "city",
-              "uniqueCount": 6,
-              "uniqueProportion": 0.024072,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "region",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 3,
-              "nullProportion": 0.1478114
-            },
-            {
-              "name": "zip",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 11,
-              "nullProportion": 0.1383472
-            },
-            {
-              "name": "country",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1601013,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "phone",
-              "uniqueCount": 8,
-              "uniqueProportion": 0.1297079,
               "nullCount": 0,
               "nullProportion": 0
             }
@@ -5301,7 +5147,7 @@
               "nullProportion": 0
             },
             {
-              "name": "user_idser",
+              "name": "user_id",
               "uniqueCount": 25,
               "uniqueProportion": 0.502421822,
               "nullCount": 0,
@@ -5371,7 +5217,7 @@
               "nullProportion": 0
             },
             {
-              "name": "gift_card_issued",
+              "name": "gift_cards_issued",
               "uniqueCount": 4,
               "uniqueProportion": 0.502737667,
               "nullCount": 0,
@@ -5684,193 +5530,200 @@
               "nullProportion": 0.4392737435
             },
             {
-              "name": "average_order_size",
+              "name": "session_duration",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 46,
               "nullProportion": 0.211333415
             },
             {
-              "name": "total_order_count",
+              "name": "count_of_pageviews",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 41,
               "nullProportion": 0.523845794
             },
             {
-              "name": "total_order_value",
+              "name": "session_started_at",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 9,
               "nullProportion": 0.5035239596
             },
             {
-              "name": "first_order_date",
+              "name": "session_token",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 42,
               "nullProportion": 0.2339934101
             },
             {
-              "name": "last_order_date",
+              "name": "user_token",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 7,
               "nullProportion": 0.3713034
             },
             {
-              "name": "ran",
+              "name": "landing_page_url",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 8,
               "nullProportion": 0.4928660268
             },
             {
-              "name": "new",
+              "name": "exit_page_path",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 8,
               "nullProportion": 0.1182713053
             },
             {
-              "name": "returning",
+              "name": "exit_page_url",
               "uniqueCount": 0,
               "uniqueProportion": 0,
               "nullCount": 35,
               "nullProportion": 0.3816858866
             },
             {
-              "name": "loyal",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 49,
-              "nullProportion": 0.1353642629
+              "name": "referrer_tld",
+              "uniqueCount": 32,
+              "uniqueProportion": 0.4110863218,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "at_risk",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 9,
-              "nullProportion": 0.6448024763
+              "name": "ua_browser",
+              "uniqueCount": 15,
+              "uniqueProportion": 0.1368357218,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "dormant",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 3,
-              "nullProportion": 0.205675956
+              "name": "ua_raw",
+              "uniqueCount": 34,
+              "uniqueProportion": 0.6528436015,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "promising",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 11,
-              "nullProportion": 0.3642826316
+              "name": "count_of_orders_completed",
+              "uniqueCount": 47,
+              "uniqueProportion": 0.2185756809,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "predicted_average_number_of_days_between_orders",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 7,
-              "nullProportion": 0.181878483
+              "name": "completed_first_order_at",
+              "uniqueCount": 10,
+              "uniqueProportion": 0.536535383,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "expected_purchase_value_in_next_30_days",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 33,
-              "nullProportion": 0.3608017907
+              "name": "hit_first_checkout_at",
+              "uniqueCount": 22,
+              "uniqueProportion": 0.5537655182,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "first_name",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 49,
-              "nullProportion": 0.5433543468
+              "name": "started_first_checkout_at",
+              "uniqueCount": 19,
+              "uniqueProportion": 0.519391001,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "last_name",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 45,
-              "nullProportion": 0.917230701
+              "name": "count_of_distinct_products_added_to_cart",
+              "uniqueCount": 35,
+              "uniqueProportion": 0.2591610934,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "city",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 46,
-              "nullProportion": 0.186672047
+              "name": "count_of_distinct_product_variants_added_to_cart",
+              "uniqueCount": 23,
+              "uniqueProportion": 0.5388931626,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "region",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 17,
-              "nullProportion": 0.3818051185
+              "name": "had_error",
+              "uniqueCount": 22,
+              "uniqueProportion": 0.67035295,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "country",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 2,
-              "nullProportion": 0.7356057
+              "name": "had_payment_error",
+              "uniqueCount": 36,
+              "uniqueProportion": 0.2429327282,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "email",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 46,
-              "nullProportion": 0.5562358023
+              "name": "had_out_of_stock_warning",
+              "uniqueCount": 43,
+              "uniqueProportion": 0.298778278,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "phone",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 35,
-              "nullProportion": 0.2363921367
+              "name": "had_credit_card_info_error",
+              "uniqueCount": 10,
+              "uniqueProportion": 0.313471376,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "verified_email",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 32,
-              "nullProportion": 0.1098246458
+              "name": "had_discount",
+              "uniqueCount": 14,
+              "uniqueProportion": 0.2123758734,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "created_at",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 15,
-              "nullProportion": 0.419264446
+              "name": "had_free_shipping",
+              "uniqueCount": 5,
+              "uniqueProportion": 0.1133450776,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "accepts_marketing",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 20,
-              "nullProportion": 0.1568123619
+              "name": "location_city",
+              "uniqueCount": 47,
+              "uniqueProportion": 0.559404346,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "customer",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 20,
-              "nullProportion": 0.4638419273
+              "name": "location_region",
+              "uniqueCount": 47,
+              "uniqueProportion": 0.3787454124,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "shipping_address",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 24,
-              "nullProportion": 0.887110909
+              "name": "location_region_code",
+              "uniqueCount": 36,
+              "uniqueProportion": 0.6354123098,
+              "nullCount": 0,
+              "nullProportion": 0
             },
             {
-              "name": "orders",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 29,
-              "nullProportion": 0.0639865
+              "name": "location_country",
+              "uniqueCount": 29,
+              "uniqueProportion": 0.0639865,
+              "nullCount": 0,
+              "nullProportion": 0
+            },
+            {
+              "name": "location_country_code",
+              "uniqueCount": 29,
+              "uniqueProportion": 0.0639865,
+              "nullCount": 0,
+              "nullProportion": 0
             }
           ]
         },
@@ -5923,14 +5776,14 @@
             },
             {
               "name": "user_token",
-              "uniqueCount": 27,
+              "uniqueCount": 7,
               "uniqueProportion": 0.65104552,
               "nullCount": 0,
               "nullProportion": 0
             },
             {
               "name": "landing_page_url",
-              "uniqueCount": 33,
+              "uniqueCount": 3,
               "uniqueProportion": 0.2576120378,
               "nullCount": 0,
               "nullProportion": 0
@@ -6140,7 +5993,7 @@
             },
             {
               "name": "user_token",
-              "uniqueCount": 12,
+              "uniqueCount": 2,
               "uniqueProportion": 0.2593465018,
               "nullCount": 0,
               "nullProportion": 0
@@ -6161,7 +6014,7 @@
             },
             {
               "name": "exit_page_url",
-              "uniqueCount": 17,
+              "uniqueCount": 7,
               "uniqueProportion": 0.2547630752,
               "nullCount": 0,
               "nullProportion": 0
@@ -6357,14 +6210,14 @@
             },
             {
               "name": "user_token",
-              "uniqueCount": 7,
+              "uniqueCount":7,
               "uniqueProportion": 0.5597331188,
               "nullCount": 0,
               "nullProportion": 0
             },
             {
               "name": "landing_page_url",
-              "uniqueCount": 10,
+              "uniqueCount": 0,
               "uniqueProportion": 0.24848206,
               "nullCount": 0,
               "nullProportion": 0
@@ -6378,7 +6231,7 @@
             },
             {
               "name": "exit_page_url",
-              "uniqueCount": 46,
+              "uniqueCount": 6,
               "uniqueProportion": 0.2610128633,
               "nullCount": 0,
               "nullProportion": 0
@@ -6522,76 +6375,6 @@
               "uniqueProportion": 0.0639865,
               "nullCount": 0,
               "nullProportion": 0
-            },
-            {
-              "name": "first_name",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1327792,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "last_name",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.177126,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address1",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0396391,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "address2",
-              "uniqueCount": 15,
-              "uniqueProportion": 0.0690369,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "company",
-              "uniqueCount": 23,
-              "uniqueProportion": 0.1210963,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "city",
-              "uniqueCount": 6,
-              "uniqueProportion": 0.024072,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "region",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 3,
-              "nullProportion": 0.1478114
-            },
-            {
-              "name": "zip",
-              "uniqueCount": 0,
-              "uniqueProportion": 0,
-              "nullCount": 11,
-              "nullProportion": 0.1383472
-            },
-            {
-              "name": "country",
-              "uniqueCount": 13,
-              "uniqueProportion": 0.1601013,
-              "nullCount": 0,
-              "nullProportion": 0
-            },
-            {
-              "name": "phone",
-              "uniqueCount": 8,
-              "uniqueProportion": 0.1297079,
-              "nullCount": 0,
-              "nullProportion": 0
             }
           ]
         },
@@ -6644,7 +6427,7 @@
             },
             {
               "name": "user_token",
-              "uniqueCount": 41,
+              "uniqueCount": 1,
               "uniqueProportion": 0.5763257885,
               "nullCount": 0,
               "nullProportion": 0
@@ -6665,7 +6448,7 @@
             },
             {
               "name": "exit_page_url",
-              "uniqueCount": 48,
+              "uniqueCount": 8,
               "uniqueProportion": 0.457357716,
               "nullCount": 0,
               "nullProportion": 0
