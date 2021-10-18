@@ -82,7 +82,9 @@ class DataProfiler:
                 }
             )
             profile = self._parse_test_results_to_table_profile(
-                profile_test_results, dataset_name=dataset_name, profile_date=profile_date
+                profile_test_results,
+                dataset_name=dataset_name,
+                profile_date=profile_date,
             )
             return profile
         except Exception as err:
@@ -114,7 +116,7 @@ class DataProfiler:
         self,
         profile_test_results: ExpectationSuiteValidationResult,
         dataset_name: str,
-        profile_date: str
+        profile_date: str,
     ) -> TableProfile:
         profile = None
         column_profiles = []
@@ -123,7 +125,9 @@ class DataProfiler:
         ):
             if col is None:
                 profile = self._parse_table_test_results(
-                    col_test_result, dataset_name=dataset_name, profile_date=profile_date
+                    col_test_result,
+                    dataset_name=dataset_name,
+                    profile_date=profile_date,
                 )
             else:
                 column_profile = self._parse_column_test_results(
@@ -139,7 +143,7 @@ class DataProfiler:
         self,
         table_test_results: Iterable[ExpectationValidationResult],
         dataset_name: str,
-        profile_date: str
+        profile_date: str,
     ) -> TableProfile:
         profile = TableProfile(profileDate=profile_date)
         for table_result in table_test_results:

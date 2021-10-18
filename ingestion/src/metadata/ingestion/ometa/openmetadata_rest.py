@@ -238,9 +238,7 @@ class OpenMetadataAPIClient(object):
             )
             return DatabaseService(**resp)
         except APIError as err:
-            logger.error(
-                f"Error trying to GET the database service {service_name}"
-            )
+            logger.error(f"Error trying to GET the database service {service_name}")
             return None
 
     def get_database_service_by_id(self, service_id: str) -> DatabaseService:
@@ -402,9 +400,7 @@ class OpenMetadataAPIClient(object):
             )
             return MessagingService(**resp)
         except APIError as err:
-            logger.error(
-                f"Error trying to GET the messaging service {service_name}"
-            )
+            logger.error(f"Error trying to GET the messaging service {service_name}")
             return None
 
     def get_messaging_service_by_id(self, service_id: str) -> MessagingService:
@@ -458,9 +454,7 @@ class OpenMetadataAPIClient(object):
             )
             return DashboardService(**resp)
         except APIError as err:
-            logger.error(
-                f"Error trying to GET the dashboard service {service_name}"
-            )
+            logger.error(f"Error trying to GET the dashboard service {service_name}")
             return None
 
     def get_dashboard_service_by_id(self, service_id: str) -> DashboardService:
@@ -548,9 +542,7 @@ class OpenMetadataAPIClient(object):
             )
             return PipelineService(**resp)
         except APIError as err:
-            logger.error(
-                f"Error trying to GET the pipeline service {service_name}"
-            )
+            logger.error(f"Error trying to GET the pipeline service {service_name}")
             return None
 
     def get_pipeline_service_by_id(self, service_id: str) -> PipelineService:
