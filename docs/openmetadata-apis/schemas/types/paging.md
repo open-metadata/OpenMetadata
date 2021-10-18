@@ -2,7 +2,7 @@
 
 Type used for cursor based pagination information in GET list responses.
 
-**$id: **[https://open-metadata.org/schema/type/paging.json](https://open-metadata.org/schema/type/paging.json)
+**$id: [https://open-metadata.org/schema/type/paging.json](https://open-metadata.org/schema/type/paging.json)**
 
 Type: `object`
 
@@ -17,14 +17,4 @@ Type: `object`
    - Total number of entries available to page through.
    - Type: `integer`
 
-* **before**
-  * Before cursor is used for getting the previous page (see API pagination for details).
-  * Type: `string`
-* **after**
-  * After the cursor is used for getting the next page (see API pagination for details).
-  * Type: `string`
-* **total** `required`
-  * The Total number of entries available to page through.
-  * Type: `integer`
-
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Monday, October 18, 2021_

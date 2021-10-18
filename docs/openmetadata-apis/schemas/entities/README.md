@@ -40,16 +40,20 @@ OpenMetadata has the following high-level core entities and relationships:
 [messagingservice.md](messagingservice.md)
 {% endcontent-ref %}
 
-{% content-ref url="thread.md" %}
-[thread.md](thread.md)
-{% endcontent-ref %}
-
 {% content-ref url="metrics.md" %}
 [metrics.md](metrics.md)
 {% endcontent-ref %}
 
+{% content-ref url="model.md" %}
+[model.md](model.md)
+{% endcontent-ref %}
+
 {% content-ref url="pipeline.md" %}
 [pipeline.md](pipeline.md)
+{% endcontent-ref %}
+
+{% content-ref url="pipelineservice.md" %}
+[pipelineservice.md](pipelineservice.md)
 {% endcontent-ref %}
 
 {% content-ref url="report.md" %}
@@ -60,8 +64,20 @@ OpenMetadata has the following high-level core entities and relationships:
 [table.md](table.md)
 {% endcontent-ref %}
 
+{% content-ref url="tagcategory.md" %}
+[tagcategory.md](tagcategory.md)
+{% endcontent-ref %}
+
+{% content-ref url="task.md" %}
+[task.md](task.md)
+{% endcontent-ref %}
+
 {% content-ref url="team.md" %}
 [team.md](team.md)
+{% endcontent-ref %}
+
+{% content-ref url="thread.md" %}
+[thread.md](thread.md)
 {% endcontent-ref %}
 
 {% content-ref url="topic.md" %}
@@ -70,8 +86,4 @@ OpenMetadata has the following high-level core entities and relationships:
 
 {% content-ref url="user.md" %}
 [user.md](user.md)
-{% endcontent-ref %}
-
-{% content-ref url="tagcategory.md" %}
-[tagcategory.md](tagcategory.md)
 {% endcontent-ref %}
