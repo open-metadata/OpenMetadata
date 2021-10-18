@@ -2,7 +2,7 @@
 
 This schema defines basic common types that are used by other schemas.
 
-**$id: **[https://open-metadata.org/schema/type/basic.json](https://open-metadata.org/schema/type/basic.json)
+**$id: [https://open-metadata.org/schema/type/basic.json](https://open-metadata.org/schema/type/basic.json)**
 
 
 ## Type definitions in this schema
@@ -20,13 +20,6 @@ This schema defines basic common types that are used by other schemas.
  - String format must be a "email"
  - The value must match this pattern: `^\S+@\S+\.\S+$`
  - Length: between 6 and 127
-
-
-### entityLink
-
- - Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
- - Type: `string`
- - The value must match this pattern: `^<#E/\S+/\S+>$`
 
 
 ### timestamp
@@ -76,10 +69,26 @@ This schema defines basic common types that are used by other schemas.
  - String format must be a "date-time"
 
 
+### entityVersion
+
+ - Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.
+ - Type: `number`
+ - Default: `0.1`
+ - Range:  &ge; 0.1
+ - The value must be a multiple of `0.1`
+
+
+### entityLink
+
+ - Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
+ - Type: `string`
+ - The value must match this pattern: `^<#E/\S+/\S+>$`
+
+
 ### sqlQuery
 
  - SQL query statement. Example - 'select * from orders'.
  - Type: `string`
 
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Monday, October 18, 2021_

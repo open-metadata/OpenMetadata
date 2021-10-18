@@ -24,6 +24,15 @@ Type: `object`
  - **description**
    - Description of this Task.
    - Type: `string`
+ - **version**
+   - Metadata version of the entity.
+   - $ref: [../../type/basic.json#/definitions/entityVersion](../types/basic.md#entityversion)
+ - **updatedAt**
+   - Last update time corresponding to the new version of the entity.
+   - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+ - **updatedBy**
+   - User who made the update.
+   - Type: `string`
  - **taskUrl**
    - Task URL to visit/manage. This URL points to respective pipeline service UI.
    - Type: `string`
@@ -62,4 +71,4 @@ Type: `object`
    - $ref: [../../type/entityReference.json](../types/entityreference.md)
 
 
-_This document was updated on: Thursday, October 14, 2021_
+_This document was updated on: Monday, October 18, 2021_
