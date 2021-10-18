@@ -207,7 +207,7 @@ public abstract class TagRepository {
   private Tag createTagInternal(String parentFQN, Tag tag) throws JsonProcessingException {
     // First add the tag
     List<Tag> tags = tag.getChildren();
-    tag.setChildren(null); // Children of tag group is not stored as json but constructed on the fly
+    tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
     tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
     tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
