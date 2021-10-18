@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { getByTestId, render } from '@testing-library/react';
+import { getByTestId, getByText, render } from '@testing-library/react';
 import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -60,6 +60,10 @@ jest.mock('./SampleDataTable', () => {
   return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
 });
 
+jest.mock('./EntityTable', () => {
+  return jest.fn().mockReturnValue(<p>EntityTable</p>);
+});
+
 jest.mock('./SchemaTable', () => {
   return jest
     .fn()
@@ -86,7 +90,7 @@ describe('Test SchemaTab Component', () => {
 
     expect(searchBar).toBeInTheDocument();
 
-    const schemaTable = getByTestId(container, 'schema-table');
+    const schemaTable = getByText(container, /EntityTable/i);
 
     expect(schemaTable).toBeInTheDocument();
     expect(queryByTestId('sample-data-table')).toBeNull();

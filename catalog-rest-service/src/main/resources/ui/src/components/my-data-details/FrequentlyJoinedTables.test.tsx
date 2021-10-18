@@ -22,23 +22,23 @@ import FrequentlyJoinedTables from './FrequentlyJoinedTables';
 
 const mockTableList = [
   {
-    name: 'dim_customer',
-    fqn: 'string.1',
+    fullyQualifiedName: 'bigquery.shopify.fact_order',
+    joinCount: 150,
+    name: 'shopify/fact_order',
+  },
+  {
+    fullyQualifiedName: 'bigquery.shopify.fact_sale',
+    joinCount: 55,
+    name: 'shopify/fact_sale',
+  },
+  {
+    name: 'shopify/dim_product',
+    fullyQualifiedName: 'string.3',
     joinCount: 1,
   },
   {
-    name: 'fact_sale',
-    fqn: 'string.2',
-    joinCount: 1,
-  },
-  {
-    name: 'dim_product',
-    fqn: 'string.3',
-    joinCount: 1,
-  },
-  {
-    name: 'dim_address',
-    fqn: 'string.4',
+    name: 'shopify/dim_address',
+    fullyQualifiedName: 'string.4',
     joinCount: 1,
   },
 ];
@@ -69,9 +69,9 @@ describe('Test QueryDetails Component', () => {
 
     expect(tableData.length).toBe(4);
     expect(tableData.map((tableName) => tableName.textContent)).toStrictEqual([
-      'dim_address1',
-      'dim_product1',
-      'fact_sale1',
+      'shopify/fact_order150',
+      'shopify/fact_sale55',
+      'shopify/dim_address1',
       '+ 1 more',
     ]);
   });

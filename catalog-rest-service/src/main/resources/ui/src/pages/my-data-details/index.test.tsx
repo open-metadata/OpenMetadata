@@ -43,6 +43,14 @@ jest.mock('../../components/my-data-details/ManageTab', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
 });
 
+jest.mock('../../components/dataset-lineage/EntityLineage', () => {
+  return jest.fn().mockReturnValue(<p>Lineage</p>);
+});
+
+jest.mock('../../components/my-data-details/ProfilerTable', () => {
+  return jest.fn().mockReturnValue(<p>ProfilerTable</p>);
+});
+
 jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
@@ -60,7 +68,6 @@ jest.mock('../../utils/CommonUtils', () => ({
 }));
 
 describe('Test MyDataDetailsPage page', () => {
-  // Rewrite this test as component has actual data from api and api is not mocked here
   it('Checks if the page has all the proper components rendered', () => {
     const { container } = render(<MyDataDetailsPage />, {
       wrapper: MemoryRouter,
@@ -71,7 +78,7 @@ describe('Test MyDataDetailsPage page', () => {
 
     expect(followButton).toBeInTheDocument();
     expect(relatedTables).toBeInTheDocument();
-    // we only have 2 for now => schema and manage
-    expect(tabs.length).toBe(3);
+    // we have 4 for now => schema, Profiler, Lineage & manage
+    expect(tabs.length).toBe(4);
   });
 });

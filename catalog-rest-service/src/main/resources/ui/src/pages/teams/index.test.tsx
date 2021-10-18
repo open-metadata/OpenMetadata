@@ -123,6 +123,14 @@ jest.mock(
       )
 );
 
+jest.mock('react-router-dom', () => ({
+  Link: jest.fn(({ children }: { children: ReactNode }) => (
+    <span>{children}</span>
+  )),
+  useHistory: jest.fn(),
+  useParams: jest.fn().mockReturnValue({ team: 'team' }),
+}));
+
 jest.mock('./AddUsersModal', () => {
   return jest
     .fn()
@@ -143,6 +151,10 @@ jest.mock(
     ModalWithMarkdownEditor: jest.fn(),
   })
 );
+
+jest.mock('./UserCard', () => {
+  return jest.fn().mockReturnValue(<div>UserCard</div>);
+});
 
 describe('Test Teams page', () => {
   it('Component should render', async () => {
