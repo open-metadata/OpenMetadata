@@ -61,7 +61,7 @@ Type: `object`
 
  - Multiple bootstrap addresses for Kafka. Single proxy address for Pulsar.
  - Type: `array`
-	 - **Items**
-	 - Type: `string`
+   - **Items**
+   - Type: `string`
 
 _This document was updated on: Monday, October 18, 2021_
