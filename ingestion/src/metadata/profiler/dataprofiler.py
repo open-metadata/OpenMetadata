@@ -64,6 +64,7 @@ class DataProfiler:
     def run_profiler(
         self,
         dataset_name: str,
+        profile_date: str,
         schema: str = None,
         table: str = None,
         limit: int = None,
@@ -81,7 +82,9 @@ class DataProfiler:
                 }
             )
             profile = self._parse_test_results_to_table_profile(
-                profile_test_results, dataset_name=dataset_name
+                profile_test_results,
+                dataset_name=dataset_name,
+                profile_date=profile_date,
             )
             return profile
         except Exception as err:
@@ -110,7 +113,10 @@ class DataProfiler:
         return result.expectation_config.kwargs.get("column")
 
     def _parse_test_results_to_table_profile(
-        self, profile_test_results: ExpectationSuiteValidationResult, dataset_name: str
+        self,
+        profile_test_results: ExpectationSuiteValidationResult,
+        dataset_name: str,
+        profile_date: str,
     ) -> TableProfile:
         profile = None
         column_profiles = []
@@ -119,7 +125,9 @@ class DataProfiler:
         ):
             if col is None:
                 profile = self._parse_table_test_results(
-                    col_test_result, dataset_name=dataset_name
+                    col_test_result,
+                    dataset_name=dataset_name,
+                    profile_date=profile_date,
                 )
             else:
                 column_profile = self._parse_column_test_results(
@@ -135,8 +143,9 @@ class DataProfiler:
         self,
         table_test_results: Iterable[ExpectationValidationResult],
         dataset_name: str,
+        profile_date: str,
     ) -> TableProfile:
-        profile = TableProfile(profileDate=datetime.now().strftime("%Y-%m-%d"))
+        profile = TableProfile(profileDate=profile_date)
         for table_result in table_test_results:
             expectation: str = table_result.expectation_config.expectation_type
             result: dict = table_result.result

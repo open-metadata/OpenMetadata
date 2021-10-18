@@ -18,6 +18,7 @@ import traceback
 import uuid
 from abc import abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Type
 from urllib.parse import quote_plus
 
@@ -85,6 +86,7 @@ class SQLConnectionConfig(ConfigModel):
     include_tables: Optional[bool] = True
     generate_sample_data: Optional[bool] = True
     data_profiler_enabled: Optional[bool] = False
+    data_profiler_date: Optional[str] = datetime.now().strftime("%Y-%m-%d")
     data_profiler_offset: Optional[int] = 0
     data_profiler_limit: Optional[int] = 50000
     filter_pattern: IncludeFilterPattern = IncludeFilterPattern.allow_all()
@@ -383,9 +385,9 @@ class SQLSource(Source):
                         self.status, dataset_name, column["type"]
                     )
                     if col_type == "ARRAY":
-                        if re.match(r"(?:\w*)(?:\()(\w*)(?:.*))", str(column["type"])):
+                        if re.match(r"(?:\w*)(?:\()(\w*)(?:.*)", str(column["type"])):
                             arr_data_type = re.match(
-                                r"(?:\w*)(?:[(]*)(\w*)(?:.*))", str(column["type"])
+                                r"(?:\w*)(?:[(]*)(\w*)(?:.*)", str(column["type"])
                             ).groups()
                             data_type_display = column["type"]
                 col_constraint = None
@@ -437,6 +439,7 @@ class SQLSource(Source):
             table = dataset_name
         profile = self.data_profiler.run_profiler(
             dataset_name=dataset_name,
+            profile_date=self.sql_config.data_profiler_date,
             schema=schema,
             table=table,
             limit=self.sql_config.data_profiler_limit,
