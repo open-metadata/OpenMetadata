@@ -86,6 +86,7 @@
       * [Salesforce](install/metadata-ingestion/connectors/database-services/salesforce.md)
       * [Snowflake](install/metadata-ingestion/connectors/database-services/snowflake.md)
       * [Snowflake Usage](install/metadata-ingestion/connectors/database-services/snowflake-usage.md)
+      * [Trino](install/metadata-ingestion/connectors/database-services/trino.md)
       * [Vertica](install/metadata-ingestion/connectors/database-services/vertica.md)
     * [Messaging Services](install/metadata-ingestion/connectors/messaging-services/README.md)
       * [Kafka](install/metadata-ingestion/connectors/messaging-services/kafka.md)
