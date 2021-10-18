@@ -336,10 +336,11 @@ class OpenMetadataAPIClient(object):
         return TableData(**resp["sampleData"])
 
     def ingest_table_profile_data(self, table_id, table_profile):
-        resp = self.client.put(
-            "/tables/{}/tableProfile".format(table_id.__root__),
-            data=table_profile.json(),
-        )
+        for profile in table_profile:
+            resp = self.client.put(
+                "/tables/{}/tableProfile".format(table_id.__root__),
+                data=profile.json(),
+            )
         return [TableProfile(**t) for t in resp["tableProfile"]]
 
     def get_table_by_id(self, table_id: str, fields: [] = ["columns"]) -> Table:

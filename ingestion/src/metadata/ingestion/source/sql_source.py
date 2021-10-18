@@ -238,7 +238,7 @@ class SQLSource(Source):
 
                 if self._instantiate_profiler():
                     profile = self.run_data_profiler(table_name, schema)
-                    table_entity.tableProfile = profile
+                    table_entity.tableProfile = [profile]
 
                 table_and_db = OMetaDatabaseAndTable(
                     table=table_entity, database=self._get_database(schema)
