@@ -226,7 +226,7 @@ const Appbar: React.FC = (): JSX.Element => {
               <div className="tw-ml-9">
                 <NavLink
                   className="tw-nav focus:tw-no-underline"
-                  data-testid="explore"
+                  data-testid="appbar-item"
                   id="explore"
                   style={navStyle(location.pathname.startsWith('/explore'))}
                   to={{

@@ -120,7 +120,8 @@ const MyDataPage: React.FC = (): React.ReactElement => {
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4">
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
-            data-testid="recentlyViewedTab"
+            data-testid="tab"
+            id="recentlyViewedTab"
             onClick={() => {
               setIsEntityLoading(true);
               setCurrentTab(1);
@@ -131,7 +132,8 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
-            data-testid="myDataTab"
+            data-testid="tab"
+            id="myDataTab"
             onClick={() => {
               setIsEntityLoading(true);
               setCurrentTab(2);
@@ -142,7 +144,8 @@ const MyDataPage: React.FC = (): React.ReactElement => {
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
-            data-testid="followingTab"
+            data-testid="tab"
+            id="followingTab"
             onClick={() => {
               setIsEntityLoading(true);
               setCurrentTab(3);

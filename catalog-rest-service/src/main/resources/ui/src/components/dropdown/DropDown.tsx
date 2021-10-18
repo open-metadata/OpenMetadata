@@ -72,8 +72,8 @@ const DropDown: React.FC<DropDownProp> = ({
                 ? `tw-rounded tw-text-body tw-text-gray-400 tw-border tw-border-main focus:tw-border-gray-500 tw-w-full`
                 : `tw-justify-center tw-nav`
             } ${className}`}
-            data-testid={`menu-button-${label}`}
-            id="menu-button"
+            data-testid="menu-button"
+            id={`menu-button-${label}`}
             type="button"
             onClick={() => setIsOpen((isOpen) => !isOpen)}>
             {type === DropDownType.CHECKBOX ? (
