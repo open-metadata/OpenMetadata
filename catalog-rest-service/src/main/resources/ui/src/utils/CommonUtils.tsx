@@ -160,6 +160,14 @@ export const getRecentlyViewedData = (): Array<RecentlyViewedData> => {
   return [];
 };
 
+export const setRecentlyViewedData = (
+  recentData: Array<RecentlyViewedData>
+): void => {
+  reactLocalStorage.setObject(LOCALSTORAGE_RECENTLY_VIEWED, {
+    data: recentData,
+  });
+};
+
 export const getHtmlForNonAdminAction = (isClaimOwner: boolean) => {
   return (
     <>
