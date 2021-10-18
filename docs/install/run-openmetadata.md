@@ -52,9 +52,11 @@ This Docker will enable users to access the Local OpenMetadata Server and Ingest
 * Minimum allocated memory to Docker >= 4GB (Preferences -> Advanced -> Resources)
 {% endhint %}
 
+Run the below script to create the latest Maven build of the local and run the Docker with the respective Maven build and Ingestion.
+
 ```
-cd OpenMetadata/docker/local-metadata
-docker-compose up
+#Run Script to initialize Maven Build and start building Docker
+./docker/run_local_docker.sh
 ```
 
 ## Run Manually
@@ -80,10 +82,10 @@ Download the latest binary release from [OpenMetadata](https://github.com/open-m
 
 ```bash
 # untar it
-tar -zxvf openmetadata-0.5.0.tar.gz
+tar -zxvf openmetadata-0.4.0.tar.gz
 
 # navigate to directory containing the launcher scripts
-cd openmetadata-0.5.0
+cd openmetadata-0.4.0
 ```
 {% endtab %}
 {% endtabs %}
@@ -116,13 +118,13 @@ cd openmetadata-0.5.0
 2.  Run bootstrap scripts to initialize the database and tables
 
     ```
-       cd openmetadata-0.5.0
+       cd openmetadata-0.4.0
        ./bootstrap/bootstrap_storage.sh migrate
     ```
 3.  Start the OpenMetadata Server
 
     ```
-       cd openmetadata-0.5.0 
+       cd openmetadata-0.4.0 
        ./bin/openmetadata.sh start
     ```
 
