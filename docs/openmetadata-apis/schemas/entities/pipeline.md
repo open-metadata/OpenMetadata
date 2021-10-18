@@ -24,6 +24,15 @@ Type: `object`
  - **description**
    - Description of this Pipeline.
    - Type: `string`
+ - **version**
+   - Metadata version of the entity.
+   - $ref: [../../type/basic.json#/definitions/entityVersion](../types/basic.md#entityversion)
+ - **updatedAt**
+   - Last update time corresponding to the new version of the entity.
+   - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+ - **updatedBy**
+   - User who made the update.
+   - Type: `string`
  - **pipelineUrl**
    - Pipeline  URL to visit/manage. This URL points to respective pipeline service UI.
    - Type: `string`
@@ -60,28 +69,5 @@ Type: `object`
    - Link to service where this pipeline is hosted in.
    - $ref: [../../type/entityReference.json](../types/entityreference.md)
 
-* **id** `required`
-  * Unique identifier that identifies a pipeline instance.
-  * $ref: [../../type/basic.json#/definitions/uuid](../types/basic.md#uuid)
-* **name** `required`
-  * Name that identifies this pipeline instance uniquely.
-  * Type: `string`
-  * Length: between 1 and 64
-* **fullyQualifiedName**
-  * A unique name that identifies a pipeline in the format 'ServiceName.PipelineName'.
-  * Type: `string`
-  * Length: between 1 and 64
-* **description**
-  * Description of this pipeline.
-  * Type: `string`
-* **href**
-  * Link to the resource corresponding to this entity.
-  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
-* **owner**
-  * Owner of this pipeline.
-  * $ref: [../../type/entityReference.json](../types/entityreference.md)
-* **service** `required`
-  * Link to service where this pipeline is hosted in.
-  * $ref: [../../type/entityReference.json](../types/entityreference.md)
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Monday, October 18, 2021_

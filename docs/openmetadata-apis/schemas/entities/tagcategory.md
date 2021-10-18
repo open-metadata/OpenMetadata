@@ -17,6 +17,15 @@ This schema <u>does not</u> accept additional properties.
  - **description** `required`
    - Description of the tag category.
    - Type: `string`
+ - **version**
+   - Metadata version of the entity.
+   - $ref: [../../type/basic.json#/definitions/entityVersion](../types/basic.md#entityversion)
+ - **updatedAt**
+   - Last update time corresponding to the new version of the entity.
+   - $ref: [../../type/basic.json#/definitions/dateTime](../types/basic.md#datetime)
+ - **updatedBy**
+   - User who made the update.
+   - Type: `string`
  - **categoryType** `required`
    - $ref: [#/definitions/tagCategoryType](#tagcategorytype)
  - **href**
@@ -31,24 +40,6 @@ This schema <u>does not</u> accept additional properties.
      - **Items**
      - $ref: [#/definitions/tag](#tag)
 
-* **name** `required`
-  * $ref: [#/definitions/tagName](tagcategory.md#tagname)
-* **description** `required`
-  * Description of the tag category.
-  * Type: `string`
-* **categoryType** `required`
-  * $ref: [#/definitions/tagCategoryType](tagcategory.md#tagcategorytype)
-* **href**
-  * Link to the resource corresponding to the tag category.
-  * $ref: [../../type/basic.json#/definitions/href](../types/basic.md#href)
-* **usageCount**
-  * Count how many times the tags from this tag category are used.
-  * Type: `integer`
-* **children**
-  * Tags under this category.
-  * Type: `array`
-    * **Items**
-    * $ref: [#/definitions/tag](tagcategory.md#tag)
 
 ## Type definitions in this schema
 ### tagName
@@ -69,4 +60,4 @@ This schema <u>does not</u> accept additional properties.
 
 ### tag
 
-_This document was updated on: Thursday, September 16, 2021_
+_This document was updated on: Monday, October 18, 2021_
