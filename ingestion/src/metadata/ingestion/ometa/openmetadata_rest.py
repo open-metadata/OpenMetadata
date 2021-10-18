@@ -19,6 +19,7 @@ import logging
 import time
 import uuid
 from typing import List, Optional
+from urllib.error import HTTPError
 
 import google.auth
 import google.auth.transport.requests
@@ -236,7 +237,7 @@ class OpenMetadataAPIClient(object):
                 "/services/databaseServices/name/{}".format(service_name)
             )
             return DatabaseService(**resp)
-        except APIError as err:
+        except (APIError, HTTPError) as err:
             logger.error(
                 f"Error trying to GET the database service {service_name}", err
             )
