@@ -2,7 +2,7 @@
 
 This schema defines the Thread entity. A Thread is a collection of posts made by the users. The first post that starts a thread is **about** a data asset **from** a user. Other users can respond to this post by creating new posts in the thread. Note that bot users can also interact with a thread. A post can contains links that mention Users or other Data Assets.
 
-**$id: **[https://open-metadata.org/schema/entity/feed/thread.json](https://open-metadata.org/schema/entity/feed/thread.json)
+**$id: [https://open-metadata.org/schema/entity/feed/thread.json](https://open-metadata.org/schema/entity/feed/thread.json)**
 
 Type: `object`
 

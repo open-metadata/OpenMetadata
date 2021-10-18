@@ -2,7 +2,7 @@
 
 This schema defines the type for a profile of a user, team, or organization.
 
-**$id: **[https://open-metadata.org/schema/type/profile.json](https://open-metadata.org/schema/type/profile.json)
+**$id: [https://open-metadata.org/schema/type/profile.json](https://open-metadata.org/schema/type/profile.json)**
 
 Type: `object`
 

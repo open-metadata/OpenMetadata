@@ -2,7 +2,7 @@
 
 This schema defines the Metrics entity. Metrics are measurements computed from data such as `Monthly Active Users`. Some of the metrics that measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.
 
-**$id: **[https://open-metadata.org/schema/entity/data/metrics.json](https://open-metadata.org/schema/entity/data/metrics.json)
+**$id: [https://open-metadata.org/schema/entity/data/metrics.json](https://open-metadata.org/schema/entity/data/metrics.json)**
 
 Type: `object`
 

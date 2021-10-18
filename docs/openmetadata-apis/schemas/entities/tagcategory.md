@@ -2,7 +2,7 @@
 
 This schema defines the Tag Category entity. A Tag Category contains tags called Primary Tags. Primary Tags can further have children Tags called Secondary Tags. Only two levels of tags are supported currently.
 
-**$id: **[https://open-metadata.org/schema/entity/tags/tagCategory.json](https://open-metadata.org/schema/entity/tags/tagCategory.json)
+**$id: [https://open-metadata.org/schema/entity/tags/tagCategory.json](https://open-metadata.org/schema/entity/tags/tagCategory.json)**
 
 Type: `object`
 

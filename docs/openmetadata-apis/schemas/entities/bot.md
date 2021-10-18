@@ -2,7 +2,7 @@
 
 This schema defines Bot entity. A bot automates tasks, such as adding description, identifying the importance of data. It runs as a special user in the system.
 
-**$id: **[https://open-metadata.org/schema/entity/bots.json](https://open-metadata.org/schema/entity/bots.json)
+**$id:[https://open-metadata.org/schema/entity/bots.json](https://open-metadata.org/schema/entity/bots.json)**
 
 Type: `object`
 

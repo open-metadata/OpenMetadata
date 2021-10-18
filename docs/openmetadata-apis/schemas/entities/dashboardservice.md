@@ -2,7 +2,7 @@
 
 This schema defines the Dashboard Service entity, such as Looker and Superset.
 
-**$id: **[https://open-metadata.org/schema/entity/services/dashboardService.json](https://open-metadata.org/schema/entity/services/dashboardService.json)
+**$id: [https://open-metadata.org/schema/entity/services/dashboardService.json](https://open-metadata.org/schema/entity/services/dashboardService.json)**
 
 Type: `object`
 

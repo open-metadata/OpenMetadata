@@ -2,7 +2,7 @@
 
 This schema defines the type for labeling an entity with a Tag.
 
-**$id: **[https://open-metadata.org/schema/type/tagLabel.json](https://open-metadata.org/schema/type/tagLabel.json)
+**$id: [https://open-metadata.org/schema/type/tagLabel.json](https://open-metadata.org/schema/type/tagLabel.json)**
 
 Type: `object`
 

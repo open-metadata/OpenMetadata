@@ -2,7 +2,7 @@
 
 This schema defines the Topic entity. A topic is a feed into which message are published to by publishers and read from by consumers in a messaging service.
 
-**$id: **[https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)
+**$id: [https://open-metadata.org/schema/entity/data/topic.json](https://open-metadata.org/schema/entity/data/topic.json)**
 
 Type: `object`
 

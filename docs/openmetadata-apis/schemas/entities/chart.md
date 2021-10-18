@@ -2,7 +2,7 @@
 
 This schema defines the Chart entity. Charts are built using tables or sql queries by analyzing the data. Charts can be part of Dashboard.
 
-**$id: **[https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)
+**$id: [https://open-metadata.org/schema/entity/data/chart.json](https://open-metadata.org/schema/entity/data/chart.json)**
 
 Type: `object`
 

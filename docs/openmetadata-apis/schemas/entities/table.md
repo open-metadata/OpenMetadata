@@ -2,7 +2,7 @@
 
 This schema defines the Table entity. A Table organizes data in rows and columns and is defined by a Schema. OpenMetadata does not have a separate abstraction for Schema. Both Table and Schema are captured in this entity.
 
-**$id: **[https://open-metadata.org/schema/entity/data/table.json](https://open-metadata.org/schema/entity/data/table.json)
+**$id: [https://open-metadata.org/schema/entity/data/table.json](https://open-metadata.org/schema/entity/data/table.json)**
 
 Type: `object`
 

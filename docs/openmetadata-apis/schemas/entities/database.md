@@ -2,7 +2,7 @@
 
 This schema defines the Database entity. A database also referred to as Database Catalog is a collection of tables.
 
-**$id: **[https://open-metadata.org/schema/entity/data/database.json](https://open-metadata.org/schema/entity/data/database.json)
+**$id: [https://open-metadata.org/schema/entity/data/database.json](https://open-metadata.org/schema/entity/data/database.json)**
 
 Type: `object`
 

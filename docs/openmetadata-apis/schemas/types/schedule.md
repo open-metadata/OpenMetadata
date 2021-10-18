@@ -2,7 +2,7 @@
 
 This schema defines the type used for the schedule. The schedule has a start time and repeat frequency.
 
-**$id: **[https://open-metadata.org/schema/type/schedule.json](https://open-metadata.org/schema/type/schedule.json)
+**$id: [https://open-metadata.org/schema/type/schedule.json](https://open-metadata.org/schema/type/schedule.json)**
 
 Type: `object`
 

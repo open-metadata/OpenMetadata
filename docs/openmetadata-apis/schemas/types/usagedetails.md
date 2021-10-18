@@ -2,7 +2,7 @@
 
 This schema defines the type for usage details. Daily, weekly, and monthly aggregation of usage is computed along with the percentile rank based on the usage for a given day.
 
-**$id: **[https://open-metadata.org/schema/type/usageDetails.json](https://open-metadata.org/schema/type/usageDetails.json)
+**$id: [https://open-metadata.org/schema/type/usageDetails.json](https://open-metadata.org/schema/type/usageDetails.json)**
 
 Type: `object`
 

@@ -2,7 +2,7 @@
 
 This schema defines the type for reporting the daily count of some measurement. For example, you might use this schema for the number of times a table is queried each day.
 
-**$id: **[https://open-metadata.org/schema/type/dailyCount.json](https://open-metadata.org/schema/type/dailyCount.json)
+**$id: [https://open-metadata.org/schema/type/dailyCount.json](https://open-metadata.org/schema/type/dailyCount.json)**
 
 Type: `object`
 

@@ -2,7 +2,7 @@
 
 This schema defines the Team entity. A Team is a group of zero or more users. Teams can own zero or more data assets.
 
-**$id: **[https://open-metadata.org/schema/entity/teams/team.json](https://open-metadata.org/schema/entity/teams/team.json)
+**$id: [https://open-metadata.org/schema/entity/teams/team.json](https://open-metadata.org/schema/entity/teams/team.json)**
 
 Type: `object`
 

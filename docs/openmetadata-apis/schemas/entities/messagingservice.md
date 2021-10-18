@@ -2,7 +2,7 @@
 
 This schema defines the Messaging Service entity, such as Kafka and Pulsar.
 
-**$id: **[https://open-metadata.org/schema/entity/services/messagingService.json](https://open-metadata.org/schema/entity/services/messagingService.json)
+**$id: [https://open-metadata.org/schema/entity/services/messagingService.json](https://open-metadata.org/schema/entity/services/messagingService.json)**
 
 Type: `object`
 
