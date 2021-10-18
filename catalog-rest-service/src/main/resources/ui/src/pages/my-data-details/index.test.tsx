@@ -43,7 +43,7 @@ jest.mock('../../components/my-data-details/ManageTab', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
 });
 
-jest.mock('../../components/dataset-lineage/DatasetLineage', () => {
+jest.mock('../../components/dataset-lineage/EntityLineage', () => {
   return jest.fn().mockReturnValue(<p>Lineage</p>);
 });
 
