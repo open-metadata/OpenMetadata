@@ -56,6 +56,8 @@ Run the below script to create the latest Maven build of the local and run the D
 
 ```
 #Run Script to initialize Maven Build and start building Docker
+git clone https://github.com/open-metadata/OpenMetadata
+cd OpenMetadata
 ./docker/run_local_docker.sh
 ```
 
