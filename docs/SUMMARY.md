@@ -75,6 +75,7 @@
     * [Database Services](install/metadata-ingestion/connectors/database-services/README.md)
       * [Athena](install/metadata-ingestion/connectors/database-services/athena.md)
       * [BigQuery](install/metadata-ingestion/connectors/database-services/bigquery.md)
+      * [BigQuery Usage](install/metadata-ingestion/connectors/database-services/bigquery-usage.md)
       * [ElasticSearch](install/metadata-ingestion/connectors/database-services/elastic-search.md)
       * [MsSQL](install/metadata-ingestion/connectors/database-services/mssql.md)
       * [MySQL](install/metadata-ingestion/connectors/database-services/mysql.md)

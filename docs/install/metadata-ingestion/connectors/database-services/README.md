@@ -10,6 +10,10 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 [bigquery.md](bigquery.md)
 {% endcontent-ref %}
 
+{% content-ref url="bigquery-usage.md" %}
+[bigquery-usage.md](bigquery-usage.md)
+{% endcontent-ref %}
+
 {% content-ref url="elastic-search.md" %}
 [elastic-search.md](elastic-search.md)
 {% endcontent-ref %}
