@@ -216,6 +216,7 @@ jest.mock('../../utils/ServiceUtils', () => ({
   getEntityCountByService: jest
     .fn()
     .mockReturnValue({ tableCount: 4, topicCount: 5, dashboardCount: 6 }),
+  getTotalEntityCountByService: jest.fn().mockReturnValue(2),
 }));
 
 describe('Test MyData page', () => {

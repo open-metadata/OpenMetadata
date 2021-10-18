@@ -48,6 +48,13 @@ const mockServiceDetails = {
         name: 'dashboardServices',
       },
     },
+    {
+      collection: {
+        name: 'pipelineServices',
+        documentation: 'Pipeline service collection',
+        href: 'http://pipelineServices',
+      },
+    },
   ],
 };
 
@@ -113,6 +120,22 @@ const mockDashboardService = {
   },
 };
 
+const mockPipelineService = {
+  data: {
+    data: [
+      {
+        id: '7576944e-2921-4c15-9edc-b9bada93338a',
+        name: 'sample_airflow',
+        serviceType: 'Airflow',
+        description: 'Airflow service',
+        version: 0.1,
+        pipelineUrl: 'http://localhost:8080',
+        href: 'http://localhost:8585/api/v1/services/pipelineServices/7576944e-2921-4c15-9edc-b9bada93338a',
+      },
+    ],
+  },
+};
+
 jest.mock('../../axiosAPIs/serviceAPI', () => ({
   deleteService: jest.fn(),
   getServiceDetails: jest
@@ -125,6 +148,9 @@ jest.mock('../../axiosAPIs/serviceAPI', () => ({
 
       case 'messagingServices':
         return Promise.resolve(mockMessagingService);
+
+      case 'pipelineServices':
+        return Promise.resolve(mockPipelineService);
 
       default:
         return Promise.resolve(mockDashboardService);
@@ -168,9 +194,8 @@ describe('Test Service page', () => {
     expect(tabs.length).toBe(mockServiceDetails.data.length);
     expect(dataContainer).toBeInTheDocument();
 
-    // mockService.data.data.length + 1 because it has add service card as well
     expect(dataContainer.childElementCount).toBe(
-      mockDatabaseService.data.data.length + 1
+      mockDatabaseService.data.data.length
     );
   });
 
@@ -209,7 +234,7 @@ describe('Test Service page', () => {
     const { container } = render(<ServicesPage />, {
       wrapper: MemoryRouter,
     });
-    const addService = await findByTestId(container, 'add-services');
+    const addService = await findByTestId(container, 'add-new-user-button');
     fireEvent.click(addService);
 
     expect(
