@@ -49,7 +49,7 @@ metadata ingest -c ./examples/workflows/vertica.json
 ```
 {% endcode %}
 
-1. **username **- pass the Vertica username.
+1. \*\*username \*\*- pass the Vertica username.
 2. **password** - password for the username.
 3. **service_name** - Service Name for this Vertica cluster. If you added Vertica cluster through OpenMetadata UI, make sure the service name matches the same.
 4. **filter_pattern** - It contains includes, excludes options to choose which pattern of datasets you want to ingest into OpenMetadata
@@ -85,15 +85,7 @@ Add optionally `pii` processor and `metadata-rest` sink along with `metadata-ser
       "api_endpoint": "http://localhost:8585/api",
       "auth_provider_type": "no-auth"
     }
-  },
-  "cron": {
-    "minute": "*/5",
-    "hour": null,
-    "day": null,
-    "month": null,
-    "day_of_week": null
   }
 }
-
 ```
 {% endcode %}
