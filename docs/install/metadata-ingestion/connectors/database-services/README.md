@@ -54,7 +54,10 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 [snowflake-usage.md](snowflake-usage.md)
 {% endcontent-ref %}
 
+{% content-ref url="trino.md" %}
+[trino.md](trino.md)
+{% endcontent-ref %}
+
 {% content-ref url="vertica.md" %}
 [vertica.md](vertica.md)
 {% endcontent-ref %}
-
