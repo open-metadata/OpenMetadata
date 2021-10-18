@@ -16,16 +16,21 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
@@ -33,14 +38,18 @@ import org.skife.jdbi.v2.sqlobject.SqlQuery;
 import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public abstract class MetricsRepository {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
+
+  public static String getFQN(Metrics metrics) {
+    return (metrics.getService().getName() + "." + metrics.getName());
+  }
 
   @CreateSqlObject
   abstract MetricsDAO metricsDAO();
@@ -55,37 +64,29 @@ public abstract class MetricsRepository {
   abstract TeamDAO teamDAO();
 
   @CreateSqlObject
+  abstract TagDAO tagDAO();
+
+  @CreateSqlObject
   abstract UsageDAO usageDAO();
 
-  public Metrics create(Metrics metrics, EntityReference service, EntityReference owner) throws IOException {
-    getService(service); // Validate service
-    return createInternal(metrics, service, owner);
+  public Metrics create(Metrics metrics) throws IOException {
+    validateRelationships(metrics);
+    return createInternal(metrics);
   }
 
   @Transaction
-  public PutResponse<Metrics> createOrUpdate(Metrics updatedMetrics, EntityReference service,
-                                             EntityReference newOwner) throws IOException {
-    String fqn = service.getName() + "." + updatedMetrics.getName();
-    Metrics storedMetrics = JsonUtils.readValue(metricsDAO().findByFQN(fqn), Metrics.class);
-    if (storedMetrics == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updatedMetrics, service, newOwner));
+  public PutResponse<Metrics> createOrUpdate(Metrics updated) throws IOException {
+    validateRelationships(updated);
+    Metrics stored = JsonUtils.readValue(metricsDAO().findByFQN(updated.getFullyQualifiedName()), Metrics.class);
+    if (stored == null) {  // Metrics does not exist. Create a new one
+      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
-    // Update existing metrics
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedMetrics.getDescription() == null || storedMetrics.getDescription().isEmpty()) {
-      storedMetrics.withDescription(updatedMetrics.getDescription());
-    }
-    metricsDAO().update(storedMetrics.getId().toString(), JsonUtils.pojoToJson(storedMetrics));
-
-    // Update owner relationship
-    setFields(storedMetrics, METRICS_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedMetrics, storedMetrics.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new database under the new service
-    storedMetrics.setService(service);
-
-    return new PutResponse<>(Response.Status.OK, storedMetrics);
+    setFields(stored, METRICS_UPDATE_FIELDS);
+    updated.setId(stored.getId());
+    MetricsUpdater metricsUpdater = new MetricsUpdater(stored, updated, false);
+    metricsUpdater.updateAll();
+    metricsUpdater.store();
+    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
@@ -111,16 +112,42 @@ public abstract class MetricsRepository {
     return metrics;
   }
 
-  private Metrics createInternal(Metrics metrics, EntityReference service, EntityReference owner) throws IOException {
-    String fqn = service.getName() + "." + metrics.getName();
-    metrics.setFullyQualifiedName(fqn);
-
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
-
-    metricsDAO().insert(JsonUtils.pojoToJson(metrics));
-    setService(metrics, service);
-    setOwner(metrics, owner);
+  private Metrics createInternal(Metrics metrics) throws IOException {
+    storeMetrics(metrics, false);
+    addRelationships(metrics);
     return metrics;
+  }
+
+  private void validateRelationships(Metrics metrics) throws IOException {
+    metrics.setFullyQualifiedName(getFQN(metrics));
+    EntityUtil.populateOwner(userDAO(), teamDAO(), metrics.getOwner()); // Validate owner
+    getService(metrics.getService());
+    metrics.setTags(EntityUtil.addDerivedTags(tagDAO(), metrics.getTags()));
+  }
+
+  private void addRelationships(Metrics metrics) throws IOException {
+    setService(metrics, metrics.getService());
+    setOwner(metrics, metrics.getOwner());
+    applyTags(metrics);
+  }
+
+  private void storeMetrics(Metrics metrics, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = metrics.getOwner();
+    List<TagLabel> tags = metrics.getTags();
+    EntityReference service = metrics.getService();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    metrics.withOwner(null).withService(null).withHref(null).withTags(null);
+
+    if (update) {
+      metricsDAO().update(metrics.getId().toString(), JsonUtils.pojoToJson(metrics));
+    } else {
+      metricsDAO().insert(JsonUtils.pojoToJson(metrics));
+    }
+
+    // Restore the relationships
+    metrics.withOwner(owner).withService(service).withTags(tags);
   }
 
   private EntityReference getService(Metrics metrics) {
@@ -150,9 +177,14 @@ public abstract class MetricsRepository {
     metrics.setOwner(owner);
   }
 
-  private void updateOwner(Metrics metrics, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, metrics.getId(), Entity.METRICS);
-    metrics.setOwner(newOwner);
+  private void applyTags(Metrics metrics) throws IOException {
+    // Add chart level tags by adding tag to chart relationship
+    EntityUtil.applyTags(tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
+    metrics.setTags(getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags
+  }
+
+  private List<TagLabel> getTags(String fqn) {
+    return tagDAO().getTags(fqn);
   }
 
   public interface MetricsDAO {
@@ -173,5 +205,82 @@ public abstract class MetricsRepository {
 
     @SqlQuery("SELECT EXISTS (SELECT * FROM metric_entity where id = :id)")
     boolean exists(@Bind("id") String id);
+  }
+
+  static class MetricsEntityInterface implements EntityInterface {
+    private final Metrics metrics;
+
+    MetricsEntityInterface(Metrics Metrics) {
+      this.metrics = Metrics;
+    }
+
+    @Override
+    public UUID getId() {
+      return metrics.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return metrics.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return metrics.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return metrics.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return metrics.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() {
+      return metrics.getTags();
+    }
+
+    @Override
+    public void setDescription(String description) {
+      metrics.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      metrics.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) {
+      metrics.setTags(tags);
+    }
+  }
+
+  /**
+   * Handles entity updated from PUT and POST operation.
+   */
+  public class MetricsUpdater extends EntityUpdater {
+    final Metrics orig;
+    final Metrics updated;
+
+    public MetricsUpdater(Metrics orig, Metrics updated, boolean patchOperation) {
+      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation, relationshipDAO(),
+              tagDAO());
+      this.orig = orig;
+      this.updated = updated;
+    }
+
+    public void updateAll() throws IOException {
+      super.updateAll();
+    }
+
+    public void store() throws IOException {
+      updated.setVersion(getNewVersion(orig.getVersion()));
+      storeMetrics(updated, true);
+    }
   }
 }

@@ -50,6 +50,14 @@
       "description": "Owner of this metrics.",
       "$ref": "../../type/entityReference.json"
     },
+    "tags": {
+      "description": "Tags for this chart.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
     "service" : {
       "description": "Link to service where this metrics is hosted in.",
       "$ref" : "../../type/entityReference.json"
