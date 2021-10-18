@@ -38,6 +38,10 @@ OpenMetadata supports connectors to some popular data sources. We will continue 
 [postgres.md](postgres.md)
 {% endcontent-ref %}
 
+{% content-ref url="presto.md" %}
+[presto.md](presto.md)
+{% endcontent-ref %}
+
 {% content-ref url="redshift.md" %}
 [redshift.md](redshift.md)
 {% endcontent-ref %}
