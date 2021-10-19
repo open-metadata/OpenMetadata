@@ -98,7 +98,9 @@
       * [Kafka](install/metadata-ingestion/connectors/messaging-services/kafka.md)
     * [Processors](install/metadata-ingestion/connectors/processors/README.md)
       * [PII](install/metadata-ingestion/connectors/processors/pii.md)
-  * [Airflow](install/metadata-ingestion/airflow.md)
+  * [Airflow](install/metadata-ingestion/airflow/README.md)
+    * [Run Metadata Ingestion](install/metadata-ingestion/airflow/run-metadata-ingestion.md)
+    * [Configure Airflow Lineage](install/metadata-ingestion/airflow/configure-airflow-lineage.md)
 
 ## Open Source Community
 
