@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.tasks;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
+import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -49,6 +50,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -350,6 +352,27 @@ public class TaskResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void put_taskUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    URI taskURI = new URI("http://localhost:8080/task_id=1");
+    String taskSQL = "select * from test;";
+    Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+    Date endDate = new DateTime("2021-12-13T20:20:39+00:00").toDate();
+    CreateTask request = create(test).withService(AIRFLOW_REFERENCE)
+            .withDescription("description").withTaskUrl(taskURI);
+    createAndCheckTask(request, adminAuthHeaders());
+
+    // Updating description is ignored when backend already has description
+    Task task = updateTask(request.withTaskUrl(taskURI).withTaskSQL(taskSQL)
+                    .withTaskType("test").withStartDate(startDate).withEndDate(endDate),
+            OK, adminAuthHeaders());
+    assertEquals(taskURI, task.getTaskUrl());
+    assertEquals(taskSQL, task.getTaskSQL());
+    assertEquals("test", task.getTaskType());
+    assertEquals(startDate, task.getStartDate());
+    assertEquals(endDate, task.getEndDate());
+  }
+
+  @Test
   public void put_taskUpdateOwner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
     Task task = createAndCheckTask(request, adminAuthHeaders());
@@ -436,7 +459,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
     Task task = createTask(create, authHeaders);
     assertEquals(0.1, task.getVersion());
     validateTask(task, task.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
-            create.getTags(), updatedBy);
+            create.getTags(), create.getTaskUrl(), updatedBy);
     return getAndValidate(task.getId(), create, authHeaders, updatedBy);
   }
 
@@ -446,7 +469,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Task updatedTask = updateTask(create, status, authHeaders);
     validateTask(updatedTask, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            updatedBy);
+            create.getTaskUrl(), updatedBy);
     if (before == null) {
       assertEquals(0.1, updatedTask.getVersion()); // First version created
     } else {
@@ -465,13 +488,13 @@ public class TaskResourceTest extends CatalogApplicationTest {
     // GET the newly created task by ID and validate
     Task task = getTask(taskId, "service,owner", authHeaders);
     validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            expectedUpdatedBy);
+            create.getTaskUrl(), expectedUpdatedBy);
 
     // GET the newly created task by name and validate
     String fqn = task.getFullyQualifiedName();
     task = getTaskByName(fqn, "service,owner", authHeaders);
     return validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            expectedUpdatedBy);
+           create.getTaskUrl(), expectedUpdatedBy);
   }
 
   public static Task updateTask(CreateTask create,
@@ -513,22 +536,23 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
   private static Task validateTask(Task  task, String expectedDisplayName, String expectedDescription,
                                      EntityReference expectedOwner, EntityReference expectedService,
-                                     List<TagLabel> expectedTags, String expectedUpdatedBy)
+                                     List<TagLabel> expectedTags, URI expectedTaskUrl, String expectedUpdatedBy)
           throws HttpResponseException {
     Task newTask = validateTask(task, expectedDescription, expectedOwner, expectedService, expectedTags,
-            expectedUpdatedBy);
+            expectedTaskUrl, expectedUpdatedBy);
     assertEquals(expectedDisplayName, newTask.getDisplayName());
     return task;
   }
 
   private static Task validateTask(Task task, String expectedDescription, EntityReference expectedOwner,
                                     EntityReference expectedService, List<TagLabel> expectedTags,
-                                   String expectedUpdatedBy)
+                                   URI expectedTaskUrl, String expectedUpdatedBy)
           throws HttpResponseException {
     assertNotNull(task.getId());
     assertNotNull(task.getHref());
     assertEquals(expectedDescription, task.getDescription());
     assertEquals(expectedUpdatedBy, task.getUpdatedBy());
+    assertEquals(expectedTaskUrl, task.getTaskUrl());
 
     // Validate owner
     if (expectedOwner != null) {
@@ -561,12 +585,13 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
     // Validate information returned in patch response has the updates
     Task updateTask = patchTask(taskJson, before, authHeaders);
-    validateTask(updateTask, before.getDescription(), newOwner, null, tags, updatedBy);
+    validateTask(updateTask, before.getDescription(), newOwner, null, tags, before.getTaskUrl(),
+            updatedBy);
     TestUtils.validateUpdate(before.getVersion(), updateTask.getVersion(), updateType);
 
     // GET the task and Validate information returned
     Task getTask = getTask(before.getId(), "service,owner,tags", authHeaders);
-    validateTask(getTask, before.getDescription(), newOwner, null, tags, updatedBy);
+    validateTask(getTask, before.getDescription(), newOwner, null, tags, before.getTaskUrl(), updatedBy);
     return updateTask;
   }
 

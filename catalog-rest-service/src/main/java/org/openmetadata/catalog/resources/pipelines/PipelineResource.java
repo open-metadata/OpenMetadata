@@ -274,6 +274,7 @@ public class PipelineResource {
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
             .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
+            .withConcurrency(create.getConcurrency()).withStartDate(create.getStartDate())
             .withOwner(create.getOwner())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());

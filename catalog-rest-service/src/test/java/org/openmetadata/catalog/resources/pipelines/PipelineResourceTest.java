@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.pipelines;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
+import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -50,8 +51,10 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -363,6 +366,23 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     // Updating description is ignored when backend already has description
     Pipeline db = updatePipeline(request.withDescription("newDescription"), OK, adminAuthHeaders());
     assertEquals("description", db.getDescription());
+  }
+
+  @Test
+  public void put_PipelineUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("description");
+    createAndCheckPipeline(request, adminAuthHeaders());
+    URI pipelineURI = new URI("https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage");
+    Integer pipelineConcurrency = 110;
+    Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+
+    // Updating description is ignored when backend already has description
+    Pipeline pipeline = updatePipeline(request.withPipelineUrl(pipelineURI)
+            .withConcurrency(pipelineConcurrency)
+            .withStartDate(startDate), OK, adminAuthHeaders());
+    assertEquals(pipelineURI, pipeline.getPipelineUrl());
+    assertEquals(startDate, pipeline.getStartDate());
+    assertEquals(pipelineConcurrency, pipeline.getConcurrency());
   }
 
   @Test

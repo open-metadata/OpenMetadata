@@ -21,7 +21,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
@@ -207,6 +206,9 @@ public abstract class PipelineRepository {
 
   private Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
+    pipeline.setPipelineUrl(pipeline.getPipelineUrl());
+    pipeline.setStartDate(pipeline.getStartDate());
+    pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setOwner(fields.contains("owner") ? getOwner(pipeline) : null);
     pipeline.setService(fields.contains("service") ? getService(pipeline) : null);
     pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
