@@ -41,8 +41,8 @@ import PageContainer from '../../components/containers/PageContainer';
 import Entitylineage from '../../components/dataset-lineage/EntityLineage';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
 import ManageTab from '../../components/my-data-details/ManageTab';
-import ProfilerTable from '../../components/my-data-details/ProfilerTable';
 import SchemaTab from '../../components/my-data-details/SchemaTab';
+import TableProfiler from '../../components/my-data-details/TableProfiler';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
@@ -90,7 +90,7 @@ const getProfilerRowDiff = (tableProfile: Table['tableProfile']) => {
     if (tableProfile.length > 1) {
       rowDiff = rowDiff - (tableProfile[1].rowCount || 0);
     }
-    retDiff = `${(rowDiff >= 0 ? '+' : '-') + rowDiff} rows ${dayDiff}`;
+    retDiff = `${(rowDiff >= 0 ? '+' : '') + rowDiff} rows ${dayDiff}`;
   }
 
   return retDiff;
@@ -555,7 +555,7 @@ const MyDataDetailsPage = () => {
               </div>
             )}
             {activeTab === 2 && (
-              <ProfilerTable
+              <TableProfiler
                 columns={columns.map((col) => col.name)}
                 tableProfiles={tableProfile}
               />

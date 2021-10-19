@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
 import { Table, TableProfile } from '../../generated/entity/data/table';
-import ProfilerGraph from './ProfilerGraph';
+import TableProfilerGraph from './TableProfilerGraph';
 
 type Props = {
   tableProfiles: Table['tableProfile'];
@@ -13,7 +13,7 @@ type ProfilerGraphData = Array<{
   value: number;
 }>;
 
-const ProfilerTable = ({ tableProfiles, columns }: Props) => {
+const TableProfiler = ({ tableProfiles, columns }: Props) => {
   const [expandedColumn, setExpandedColumn] = useState<{
     name: string;
     isExpanded: boolean;
@@ -92,7 +92,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                       {col.name}
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <ProfilerGraph
+                      <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
@@ -104,7 +104,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <ProfilerGraph
+                      <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
@@ -116,7 +116,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                       />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <ProfilerGraph
+                      <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
@@ -131,7 +131,7 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
                     <td className="tw-relative tableBody-cell">{col.max}</td>
                     <td className="tw-relative tableBody-cell">{col.median}</td>
                     <td className="tw-relative tableBody-cell profiler-graph">
-                      <ProfilerGraph
+                      <TableProfilerGraph
                         data={
                           col.data
                             ?.map((d) => ({
@@ -198,4 +198,4 @@ const ProfilerTable = ({ tableProfiles, columns }: Props) => {
   );
 };
 
-export default ProfilerTable;
+export default TableProfiler;
