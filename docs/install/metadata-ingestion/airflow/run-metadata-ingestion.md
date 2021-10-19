@@ -4,16 +4,6 @@ description: Below is the sample code example you can refer to integrate with Ai
 
 # Run Metadata Ingestion
 
-### Install from PyPI
-
-{% tabs %}
-{% tab title="Install Using PyPI" %}
-```bash
-pip install 'openmetadata-ingestion[airflow]'
-```
-{% endtab %}
-{% endtabs %}
-
 ## Airflow Example for Sample Data
 
 ```python
