@@ -13,6 +13,7 @@
     * [Basic Types](openmetadata-apis/schemas/types/basic.md)
     * [Audit Log](openmetadata-apis/schemas/types/auditlog.md)
     * [Daily Count](openmetadata-apis/schemas/types/dailycount.md)
+    * [Entity Lineage](openmetadata-apis/schemas/types/entitylineage.md)
     * [Entity Reference](openmetadata-apis/schemas/types/entityreference.md)
     * [Entity Usage](openmetadata-apis/schemas/types/entityusage.md)
     * [Jdbc Connection](openmetadata-apis/schemas/types/jdbcconnection.md)

@@ -14,8 +14,8 @@ OpenMetadata supports many common types reused across different schemas. Definin
 [dailycount.md](dailycount.md)
 {% endcontent-ref %}
 
-{% page-ref page="dailycount.md" %}
-[dailycount.md](dailycount.md)
+{% page-ref page="entitylineage.md" %}
+[entitylineage.md](entitylineage.md)
 {% endcontent-ref %}
 
 {% page-ref page="entityreference.md" %}
