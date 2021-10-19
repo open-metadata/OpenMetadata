@@ -4,7 +4,7 @@ import { Area, AreaChart, Tooltip } from 'recharts';
 type Props = {
   data: Array<{ date: Date | undefined; value: number | undefined }>;
 };
-const ProfilerGraph = ({ data }: Props) => {
+const TableProfilerGraph = ({ data }: Props) => {
   const CustomTooltip = ({
     active,
     payload,
@@ -40,7 +40,7 @@ const ProfilerGraph = ({ data }: Props) => {
         content={CustomTooltip}
         cursor={{ stroke: '#FF4C3B', strokeWidth: 2 }}
         offset={20}
-        position={{ x: 20, y: 20 }}
+        position={{ x: 20, y: -40 }}
       />
       <Area
         dataKey="value"
@@ -53,4 +53,4 @@ const ProfilerGraph = ({ data }: Props) => {
   );
 };
 
-export default ProfilerGraph;
+export default TableProfilerGraph;
