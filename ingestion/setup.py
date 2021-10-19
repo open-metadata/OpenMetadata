@@ -45,7 +45,7 @@ base_requirements = {
     "typing_extensions>=3.7.4"
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic==1.8.2",
+    "pydantic==1.7.4",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
     "google-auth>=1.33.0",
@@ -118,13 +118,13 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2", "openmetadata-airflow==1.0.dev0"},
+    "airflow": {"apache-airflow >= 1.10.2"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.3.2",
+    version="0.4.0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
@@ -141,7 +141,12 @@ setup(
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
     packages=find_namespace_packages(where="./src", exclude=["tests*"]),
-    entry_points={"console_scripts": ["metadata = metadata.cmd:metadata"]},
+    entry_points={
+        "console_scripts": ["metadata = metadata.cmd:metadata"],
+        "apache_airflow_provider": [
+            "provider_info = airflow_provider_openmetadata:get_provider_config"
+        ],
+    },
     install_requires=list(base_requirements),
     extras_require={
         "base": list(base_requirements),
