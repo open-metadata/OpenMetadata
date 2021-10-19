@@ -1,4 +1,5 @@
 import React, {
+  FunctionComponent,
   MouseEvent as ReactMouseEvent,
   useEffect,
   useState,
@@ -25,6 +26,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
+  reactFlowInstance.zoomTo(1);
 };
 /* eslint-disable-next-line */
 const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node | Edge) => {
@@ -242,7 +244,11 @@ const getLineageData = (entityLineage: EntityLineage) => {
   return lineageData;
 };
 
-const Entitylineage = ({ entityLineage }: { entityLineage: EntityLineage }) => {
+const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
+  entityLineage,
+}: {
+  entityLineage: EntityLineage;
+}) => {
   const [elements, setElements] = useState<Elements>(
     getLineageData(entityLineage) as Elements
   );
