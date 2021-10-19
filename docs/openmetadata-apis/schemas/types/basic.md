@@ -69,19 +69,17 @@ This schema defines basic common types that are used by other schemas.
 
 ### entityVersion
 
- - Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.
- - Type: `number`
- - Default: `0.1`
- - Range:  &ge; 0.1
- - The value must be a multiple of `0.1`
-
+* Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.
+* Type: `number`
+* Default: `0.1`
+* Range: ≥ 0.1
+* The value must be a multiple of `0.1`
 
 ### entityLink
 
- - Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
- - Type: `string`
- - The value must match this pattern: `^<#E/\S+/\S+>$`
-
+* Link to an entity or field within an entity using this format `<#E/{enties}/{entityName}/{field}/{fieldValue}`.
+* Type: `string`
+* The value must match this pattern: `^<#E/\S+/\S+>$`
 
 ### sqlQuery
 
