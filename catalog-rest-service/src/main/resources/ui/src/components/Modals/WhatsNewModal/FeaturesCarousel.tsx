@@ -20,6 +20,7 @@
 import { uniqueId } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import Slider from 'react-slick';
+import RichTextEditorPreviewer from '../../common/rich-text-editor/RichTextEditorPreviewer';
 
 type CarousalData = {
   title: string;
@@ -68,7 +69,9 @@ const FeaturesCarousel = ({ data }: Props) => {
       {data.map((d) => (
         <div className="tw-px-1" key={uniqueId()}>
           <p className="tw-text-sm tw-font-medium tw-mb-2">{d.title}</p>
-          <p className="tw-text-sm tw-mb-3">{d.description}</p>
+          <div className="tw-text-sm tw-mb-3">
+            <RichTextEditorPreviewer markdown={d.description} />
+          </div>
           <div>
             {d.path ? (
               d.isImage ? (
@@ -78,7 +81,7 @@ const FeaturesCarousel = ({ data }: Props) => {
                   allowFullScreen
                   className="tw-w-full"
                   frameBorder={0}
-                  height={476}
+                  height={457}
                   src={d.path}
                 />
               )

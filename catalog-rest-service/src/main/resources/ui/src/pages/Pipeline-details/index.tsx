@@ -618,9 +618,7 @@ const MyPipelinePage = () => {
                 </>
               )}
               {activeTab === 2 && (
-                <div className="tw-w-full tw-h-96">
-                  <Entitylineage entityLineage={entityLineage} />
-                </div>
+                <Entitylineage entityLineage={entityLineage} />
               )}
               {activeTab === 3 && (
                 <ManageTab

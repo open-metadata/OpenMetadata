@@ -1,4 +1,5 @@
 import React, {
+  FunctionComponent,
   MouseEvent as ReactMouseEvent,
   useEffect,
   useState,
@@ -25,6 +26,7 @@ import { EntityReference } from '../../generated/type/entityReference';
 
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
+  reactFlowInstance.zoomTo(1);
 };
 /* eslint-disable-next-line */
 const onNodeMouseEnter = (_event: ReactMouseEvent, _node: Node | Edge) => {
@@ -217,7 +219,15 @@ const getLineageData = (entityLineage: EntityLineage) => {
       id: `node-${mainNode.id}-1`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: 'default',
+      type: lineageEdges.find((ed: FlowElement) =>
+        (ed as Edge).target.includes(mainNode.id)
+      )
+        ? lineageEdges.find((ed: FlowElement) =>
+            (ed as Edge).source.includes(mainNode.id)
+          )
+          ? 'default'
+          : 'output'
+        : 'input',
       className: 'leaf-node core',
       data: { label: getDataLabel(mainNode.name as string) },
       position: { x: x, y: y },
@@ -242,7 +252,11 @@ const getLineageData = (entityLineage: EntityLineage) => {
   return lineageData;
 };
 
-const Entitylineage = ({ entityLineage }: { entityLineage: EntityLineage }) => {
+const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
+  entityLineage,
+}: {
+  entityLineage: EntityLineage;
+}) => {
   const [elements, setElements] = useState<Elements>(
     getLineageData(entityLineage) as Elements
   );
@@ -256,7 +270,7 @@ const Entitylineage = ({ entityLineage }: { entityLineage: EntityLineage }) => {
   }, [entityLineage]);
 
   return (
-    <>
+    <div className="tw-w-full" style={{ height: 500 }}>
       {(entityLineage?.downstreamEdges ?? []).length > 0 ||
       (entityLineage.upstreamEdges ?? []).length ? (
         <ReactFlowProvider>
@@ -279,7 +293,7 @@ const Entitylineage = ({ entityLineage }: { entityLineage: EntityLineage }) => {
           No Lineage data available
         </div>
       )}
-    </>
+    </div>
   );
 };
 

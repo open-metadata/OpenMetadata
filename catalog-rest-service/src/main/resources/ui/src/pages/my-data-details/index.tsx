@@ -560,11 +560,7 @@ const MyDataDetailsPage = () => {
                 tableProfiles={tableProfile}
               />
             )}
-            {activeTab === 3 && (
-              <div className="tw-w-full tw-h-96">
-                <Entitylineage entityLineage={entityLineage} />
-              </div>
-            )}
+            {activeTab === 3 && <Entitylineage entityLineage={entityLineage} />}
             {activeTab === 4 && (
               <ManageTab
                 currentTier={tier}
