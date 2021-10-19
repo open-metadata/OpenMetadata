@@ -118,7 +118,7 @@ public class TaskResource {
     }
   }
 
-  static final String FIELDS = "taskConfig,owner,service,tags";
+  static final String FIELDS = "taskURL,startDate,endDate,downstreamTasks,taskConfig,owner,service,tags";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -250,11 +250,7 @@ public class TaskResource {
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
                                          JsonPatch patch) throws IOException {
-    Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Task task = dao.get(id, fields);
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(task));
-    task = dao.patch(id, patch);
+    Task task = dao.patch(id, patch);
     return addHref(uriInfo, task);
   }
 
