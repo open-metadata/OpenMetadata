@@ -58,7 +58,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 public abstract class TaskRepository {
   private static final Logger LOG = LoggerFactory.getLogger(TaskRepository.class);
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
-          "taskConfig,tags");
+          "taskConfig,tags,taskURL,startDate,endDate,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
 
   public static String getFQN(Task task) {
@@ -251,6 +251,11 @@ public abstract class TaskRepository {
     task.setOwner(fields.contains("owner") ? getOwner(task) : null);
     task.setService(fields.contains("service") ? getService(task) : null);
     task.setTags(fields.contains("tags") ? getTags(task.getFullyQualifiedName()) : null);
+    task.setTaskUrl(fields.contains("taskURL")? task.getTaskUrl() : null);
+    task.setTaskSQL(fields.contains("taskSQL") ? task.getTaskSQL() : null);
+    task.setStartDate(fields.contains("startDate") ? task.getStartDate() : null);
+    task.setEndDate(fields.contains("endDate") ? task.getEndDate() : null);
+    task.setDownstreamTasks(fields.contains("downstreamTasks") ? task.getDownstreamTasks() : null);
     return task;
   }
 
