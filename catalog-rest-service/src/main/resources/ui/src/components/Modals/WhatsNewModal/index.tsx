@@ -139,9 +139,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                     </p>
                   </div>
                   <div>
-                    <div
-                      className="tw-w-60 tw-inline-flex tw-border tw-border-primary
-            tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
+                    <div className="tw-w-60 tw-inline-flex tw-border tw-border-primary tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
                       <button
                         className={getToggleButtonClasses('features')}
                         onClick={() => handleToggleChange('features')}>
@@ -162,7 +160,13 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                     <FeaturesCarousel data={activeData.features} />
                   )}
                   {checkedValue === 'change-log' && (
-                    <ChangeLogs data={activeData.changeLogs} />
+                    <ChangeLogs
+                      data={
+                        activeData.changeLogs as unknown as {
+                          [name: string]: string;
+                        }
+                      }
+                    />
                   )}
                 </div>
               </div>

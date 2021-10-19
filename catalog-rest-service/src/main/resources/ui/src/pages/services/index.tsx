@@ -151,8 +151,8 @@ const ServicesPage = () => {
     const curServ = services[serviceName];
     const updatedResult = (curServ as unknown as Array<ServiceDataObj>).filter(
       (serv) =>
-        serv.description?.includes(lowerCase(searchValue)) ||
-        serv.name?.includes(lowerCase(searchValue))
+        lowerCase(serv.description)?.includes(lowerCase(searchValue)) ||
+        lowerCase(serv.name)?.includes(lowerCase(searchValue))
     );
     setServiceList(updatedResult);
     setServicesCount({ ...servicesCount, [serviceName]: updatedResult.length });
@@ -475,7 +475,7 @@ const ServicesPage = () => {
                         </button>
                       </Link>
                       <div
-                        className="tw-text-grey-body tw-pb-1 description-text"
+                        className="tw-text-grey-body tw-pb-1 tw-break-all description-text"
                         data-testid="service-description">
                         {service.description ? (
                           <RichTextEditorPreviewer
