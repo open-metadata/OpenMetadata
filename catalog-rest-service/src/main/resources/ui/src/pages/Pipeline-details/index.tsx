@@ -172,7 +172,7 @@ const MyPipelinePage = () => {
     let promiseArr: Array<AxiosPromise> = [];
     if (tasks?.length) {
       promiseArr = tasks.map((task) =>
-        getTaskById(task.id, ['service', 'tags'])
+        getTaskById(task.id, ['service', 'tags', 'taskURL'])
       );
       await Promise.allSettled(promiseArr).then(
         (res: PromiseSettledResult<AxiosResponse>[]) => {
