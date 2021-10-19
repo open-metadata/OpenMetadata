@@ -2,42 +2,50 @@
 
 OpenMetadata supports many common types reused across different schemas. Defining common types and reusing them is foundational to building a consistent schema vocabulary. The types are organized as follows:
 
-{% content-ref url="basic.md" %}
-[basic.md](basic.md)
-{% endcontent-ref %}
-
-{% content-ref url="auditlog.md" %}
+{% page-ref page="auditlog.md" %}
 [auditlog.md](auditlog.md)
 {% endcontent-ref %}
 
-{% content-ref url="dailycount.md" %}
+{% page-ref page="basic.md" %}
+[basic.md](basic.md)
+{% endcontent-ref %}
+
+{% page-ref page="dailycount.md" %}
 [dailycount.md](dailycount.md)
 {% endcontent-ref %}
 
-{% content-ref url="entityreference.md" %}
+{% page-ref page="dailycount.md" %}
+[dailycount.md](dailycount.md)
+{% endcontent-ref %}
+
+{% page-ref page="entityreference.md" %}
 [entityreference.md](entityreference.md)
 {% endcontent-ref %}
 
-{% content-ref url="entityusage.md" %}
+{% page-ref page="entityusage.md" %}
 [entityusage.md](entityusage.md)
 {% endcontent-ref %}
 
-{% content-ref url="jdbcconnection.md" %}
+{% page-ref page="jdbcconnection.md" %}
 [jdbcconnection.md](jdbcconnection.md)
 {% endcontent-ref %}
 
-{% content-ref url="paging.md" %}
+{% page-ref page="paging.md" %}
 [paging.md](paging.md)
 {% endcontent-ref %}
 
-{% content-ref url="profile.md" %}
+{% page-ref page="profile.md" %}
 [profile.md](profile.md)
 {% endcontent-ref %}
 
-{% content-ref url="schedule.md" %}
+{% page-ref page="schedule.md" %}
 [schedule.md](schedule.md)
 {% endcontent-ref %}
 
-{% content-ref url="usagedetails.md" %}
+{% page-ref page="taglabel.md" %}
+[taglabel.md](taglabel.md)
+{% endcontent-ref %}
+
+{% page-ref page="usagedetails.md" %}
 [usagedetails.md](usagedetails.md)
 {% endcontent-ref %}

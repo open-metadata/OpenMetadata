@@ -2,7 +2,7 @@
 
 OpenMetadata has the following high-level core entities and relationships:
 
-![](../../../.gitbook/assets/openmetadata-entities-relationship.png)
+![](../../../../.gitbook/assets/openmetadata-entities-relationship.png)
 
 1. **Data Assets** - These entities represent data, such as databases, tables, and topics, and assets created using data, such as Dashboards, Reports, Metrics, and ML Features. It also includes entities such as Pipelines that are used for creating data assets.  
 2. **Services** - Services represent platforms and services used for storing and processing data. It includes Online Data Stores, Data Warehouses, ETL tools, Dashboard services, etc.  
@@ -40,16 +40,20 @@ OpenMetadata has the following high-level core entities and relationships:
 [messagingservice.md](messagingservice.md)
 {% endcontent-ref %}
 
-{% content-ref url="thread.md" %}
-[thread.md](thread.md)
-{% endcontent-ref %}
-
 {% content-ref url="metrics.md" %}
 [metrics.md](metrics.md)
 {% endcontent-ref %}
 
+{% content-ref url="model.md" %}
+[model.md](model.md)
+{% endcontent-ref %}
+
 {% content-ref url="pipeline.md" %}
 [pipeline.md](pipeline.md)
+{% endcontent-ref %}
+
+{% content-ref url="pipelineservice.md" %}
+[pipelineservice.md](pipelineservice.md)
 {% endcontent-ref %}
 
 {% content-ref url="report.md" %}
@@ -60,8 +64,20 @@ OpenMetadata has the following high-level core entities and relationships:
 [table.md](table.md)
 {% endcontent-ref %}
 
+{% content-ref url="tagcategory.md" %}
+[tagcategory.md](tagcategory.md)
+{% endcontent-ref %}
+
+{% content-ref url="task.md" %}
+[task.md](task.md)
+{% endcontent-ref %}
+
 {% content-ref url="team.md" %}
 [team.md](team.md)
+{% endcontent-ref %}
+
+{% content-ref url="thread.md" %}
+[thread.md](thread.md)
 {% endcontent-ref %}
 
 {% content-ref url="topic.md" %}
@@ -70,8 +86,4 @@ OpenMetadata has the following high-level core entities and relationships:
 
 {% content-ref url="user.md" %}
 [user.md](user.md)
-{% endcontent-ref %}
-
-{% content-ref url="tagcategory.md" %}
-[tagcategory.md](tagcategory.md)
 {% endcontent-ref %}
