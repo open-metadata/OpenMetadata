@@ -18,6 +18,7 @@ package org.openmetadata.catalog.resources.tasks;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
+import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -49,6 +50,7 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -351,13 +353,23 @@ public class TaskResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_taskUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    URI taskURI = new URI("http://localhost:8080/task_id=1");
+    String taskSQL = "select * from test;";
+    Date startDate = new DateTime("2021-11-13T20:20:39+00:00").toDate();
+    Date endDate = new DateTime("2021-12-13T20:20:39+00:00").toDate();
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE)
-            .withDescription("description").withTaskUrl(new URI("http://localhost:8080/task_id=1"));
+            .withDescription("description").withTaskUrl(taskURI);
     createAndCheckTask(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
-    Task task = updateTask(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", task.getDescription());
+    Task task = updateTask(request.withTaskUrl(taskURI).withTaskSQL(taskSQL)
+                    .withTaskType("test").withStartDate(startDate).withEndDate(endDate),
+            OK, adminAuthHeaders());
+    assertEquals(taskURI, task.getTaskUrl());
+    assertEquals(taskSQL, task.getTaskSQL());
+    assertEquals("test", task.getTaskType());
+    assertEquals(startDate, task.getStartDate());
+    assertEquals(endDate, task.getEndDate());
   }
 
   @Test
@@ -474,13 +486,13 @@ public class TaskResourceTest extends CatalogApplicationTest {
                                     Map<String, String> authHeaders,
                                     String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created task by ID and validate
-    Task task = getTask(taskId, "service,owner,taskURL", authHeaders);
+    Task task = getTask(taskId, "service,owner", authHeaders);
     validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
             create.getTaskUrl(), expectedUpdatedBy);
 
     // GET the newly created task by name and validate
     String fqn = task.getFullyQualifiedName();
-    task = getTaskByName(fqn, "service,owner,taskURL", authHeaders);
+    task = getTaskByName(fqn, "service,owner", authHeaders);
     return validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
            create.getTaskUrl(), expectedUpdatedBy);
   }
