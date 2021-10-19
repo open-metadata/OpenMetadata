@@ -219,7 +219,15 @@ const getLineageData = (entityLineage: EntityLineage) => {
       id: `node-${mainNode.id}-1`,
       sourcePosition: 'right',
       targetPosition: 'left',
-      type: 'default',
+      type: lineageEdges.find((ed: FlowElement) =>
+        (ed as Edge).target.includes(mainNode.id)
+      )
+        ? lineageEdges.find((ed: FlowElement) =>
+            (ed as Edge).source.includes(mainNode.id)
+          )
+          ? 'default'
+          : 'output'
+        : 'input',
       className: 'leaf-node core',
       data: { label: getDataLabel(mainNode.name as string) },
       position: { x: x, y: y },
@@ -262,7 +270,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
   }, [entityLineage]);
 
   return (
-    <>
+    <div className="tw-w-full" style={{ height: 500 }}>
       {(entityLineage?.downstreamEdges ?? []).length > 0 ||
       (entityLineage.upstreamEdges ?? []).length ? (
         <ReactFlowProvider>
@@ -285,7 +293,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
           No Lineage data available
         </div>
       )}
-    </>
+    </div>
   );
 };
 

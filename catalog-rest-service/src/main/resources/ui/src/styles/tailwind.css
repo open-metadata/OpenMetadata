@@ -303,17 +303,13 @@
   .leaf-node {
     @apply tw-border-main tw-py-1;
   }
-  .leaf-node .react-flow__handle {
-    @apply tw-bg-grey-muted;
-  }
   .leaf-node.core {
     @apply tw-border-primary tw-text-primary;
   }
-  .leaf-node.core .react-flow__handle {
-    @apply tw-bg-primary;
-  }
-  .react-flow__edge.selected .react-flow__edge-path {
-    stroke: #7147e8;
+  .leaf-node.selected,
+  .leaf-node.selected:hover {
+    @apply tw-border-primary-active;
+    box-shadow: 0 0 0 0.5px #7147e8;
   }
 
   /* react-slick */

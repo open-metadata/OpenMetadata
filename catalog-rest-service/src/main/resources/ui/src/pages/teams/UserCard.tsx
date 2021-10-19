@@ -95,7 +95,7 @@ const UserCard = ({
 
     return (
       <Link data-testid="dataset-link" to={link}>
-        <button className="tw-font-normal tw-text-grey-body">
+        <button className="tw-font-normal tw-text-grey-body tw-break-all">
           {getPartialNameFromFQN(fqn, getArrForPartialName(type))}
         </button>
       </Link>

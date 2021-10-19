@@ -708,3 +708,15 @@ a:focus {
 body .profiler-graph .recharts-active-dot circle {
   fill: #ff4c3b;
 }
+
+/* React flow */
+
+.leaf-node .react-flow__handle {
+  background-color: #6b7280;
+}
+.leaf-node.core .react-flow__handle {
+  background-color: #7147e8;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #7147e8;
+}
