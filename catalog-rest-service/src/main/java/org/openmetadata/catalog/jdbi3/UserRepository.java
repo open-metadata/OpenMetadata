@@ -42,7 +42,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.common.utils.CipherText;
+import org.openmetadata.catalog.util.ResultList;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
@@ -55,7 +55,9 @@ import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -122,45 +124,48 @@ public abstract class UserRepository {
   @CreateSqlObject
   abstract ModelDAO modelDAO();
 
+  EntityRepository<User> entityRepository = new EntityRepository<User>() {
+    @Override
+    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+      return UserRepository.this.userDAO().listAfter(limitParam, after);
+    }
+
+    @Override
+    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+      return UserRepository.this.userDAO().listBefore(limitParam, before);
+    }
+
+    @Override
+    public int listCount(String fqnPrefix) {
+      return UserRepository.this.userDAO().listCount();
+    }
+
+    @Override
+    public String getFullyQualifiedName(User entity) {
+      // User does not have a FullyQualifiedName but needs a valid field to paginate
+      return entity.getName();
+    }
+
+    @Override
+    public User setFields(User entity, Fields fields) throws IOException, ParseException {
+      return UserRepository.this.setFields(entity, fields);
+    }
+
+    @Override
+    public ResultList<User> getResultList(List<User> entities, String beforeCursor, String afterCursor,
+                                          int total) throws GeneralSecurityException, UnsupportedEncodingException {
+      return new UserList(entities, beforeCursor, afterCursor, total);
+    }
+  };
+
   @Transaction
-  public UserList listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = userDAO().listAfter(limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<User> users = new ArrayList<>();
-    for (String json : jsons) {
-      users.add(setFields(JsonUtils.readValue(json, User.class), fields));
-    }
-    int total = userDAO().listCount();
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : users.get(0).getName();
-    if (users.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      users.remove(limitParam);
-      afterCursor = users.get(limitParam - 1).getName();
-    }
-    return new UserList(users, beforeCursor, afterCursor, total);
+  public ResultList<User> listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(entityRepository, User.class, fields, null, limitParam, after);
   }
 
   @Transaction
-  public UserList listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = userDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
-
-    List<User> users = new ArrayList<>();
-    for (String json : jsons) {
-      users.add(setFields(JsonUtils.readValue(json, User.class), fields));
-    }
-    int total = userDAO().listCount();
-
-    String beforeCursor = null, afterCursor;
-    if (users.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      users.remove(0);
-      beforeCursor = users.get(0).getName();
-    }
-    afterCursor = users.get(users.size() - 1).getName();
-    return new UserList(users, beforeCursor, afterCursor, total);
+  public ResultList<User> listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(entityRepository, User.class, fields, null, limitParam, before);
   }
 
   @Transaction
