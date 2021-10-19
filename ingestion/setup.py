@@ -118,7 +118,7 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2"},
+    "airflow": {"apache-airflow >= 1.10.2", "openmetadata-airflow==1.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
