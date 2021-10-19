@@ -53,8 +53,6 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.Instant;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -381,8 +379,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     // Updating description is ignored when backend already has description
     Pipeline pipeline = updatePipeline(request.withPipelineUrl(pipelineURI)
             .withConcurrency(pipelineConcurrency)
-            .withStartDate(startDate)
-            , OK, adminAuthHeaders());
+            .withStartDate(startDate), OK, adminAuthHeaders());
     assertEquals(pipelineURI, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
