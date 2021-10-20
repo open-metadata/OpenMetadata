@@ -355,6 +355,7 @@ const TagsPage = () => {
                                 <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
                                   <SVGIcons
                                     alt="edit"
+                                    data-testid="editTagDescription"
                                     icon="icon-edit"
                                     title="Edit"
                                     width="10px"

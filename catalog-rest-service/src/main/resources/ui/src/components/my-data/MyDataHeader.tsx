@@ -43,6 +43,7 @@ type Summary = {
 const LANDING_STATES = [
   {
     title: 'Explore Assets',
+    id: 'explore-assets',
     description:
       'OpenMetadata has {countAssets} Assets. Click Explore on top menu to search, claim or follow your Data Assets',
     route: ROUTES.EXPLORE,
@@ -176,6 +177,7 @@ const MyDataHeader: FunctionComponent<Props> = ({
             Check our{' '}
             <a
               className="link-text"
+              data-testid="knowledgebaseDocs"
               href="https://docs.open-metadata.org/"
               rel="noopener noreferrer"
               target="_blank">
@@ -184,6 +186,7 @@ const MyDataHeader: FunctionComponent<Props> = ({
             for documentation and try out the{' '}
             <span
               className="link-text"
+              data-testid="knowledgebaseAPIs"
               onClick={() => handleRouting(ROUTES.SWAGGER)}>
               APIs
             </span>{' '}

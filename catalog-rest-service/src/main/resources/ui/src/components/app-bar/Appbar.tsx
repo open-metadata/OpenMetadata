@@ -255,6 +255,7 @@ const Appbar: React.FC = (): JSX.Element => {
             </button>
             {/* <NavLink
               className="tw-nav focus:tw-no-underline hover:tw-underline"
+              data-testid="tour"
               style={navStyle(location.pathname.startsWith('/explore'))}
               to={{
                 pathname: '/tour',

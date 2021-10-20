@@ -111,7 +111,9 @@ const RichTextEditor = forwardRef<editorRef, EditorProp>(
 
     return (
       <>
-        <div className="tw-min-h-32 tw-border tw-border-main tw-rounded tw-overflow-y-auto">
+        <div
+          className="tw-min-h-32 tw-border tw-border-main tw-rounded tw-overflow-y-auto"
+          data-testid="enterDescription">
           <Editor
             editorClassName="tw-px-1 tw-min-h-32"
             editorState={editorState}

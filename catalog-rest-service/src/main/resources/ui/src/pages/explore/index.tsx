@@ -461,6 +461,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
           <span className="tw-relative">
             <Button
               className="tw-underline"
+              data-testid="sortBy"
               size="custom"
               theme="primary"
               variant="link"

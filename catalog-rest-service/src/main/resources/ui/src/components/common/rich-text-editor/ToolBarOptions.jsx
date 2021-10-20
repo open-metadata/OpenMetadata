@@ -82,7 +82,10 @@ export class Bold extends Component {
 
   render() {
     return (
-      <div className="rdw-option-wrapper tw-font-bold" onClick={this.makeBold}>
+      <div
+        className="rdw-option-wrapper tw-font-bold"
+        data-testid="boldButton"
+        onClick={this.makeBold}>
         <PopOver
           arrow={false}
           position="bottom"
@@ -127,7 +130,10 @@ export class Link extends Component {
 
   render() {
     return (
-      <div className="rdw-option-wrapper " onClick={this.makeLink}>
+      <div
+        className="rdw-option-wrapper "
+        data-testid="linkButton"
+        onClick={this.makeLink}>
         <PopOver
           arrow={false}
           position="bottom"
@@ -172,7 +178,10 @@ export class Italic extends Component {
 
   render() {
     return (
-      <div className="rdw-option-wrapper " onClick={this.makeItalic}>
+      <div
+        className="rdw-option-wrapper "
+        data-testid="italicButton"
+        onClick={this.makeItalic}>
         <PopOver
           arrow={false}
           position="bottom"

@@ -136,6 +136,7 @@ const UserCard = ({
           {isCheckBoxes ? (
             <input
               className="tw-px-2 custom-checkbox"
+              data-testid="checkboxAddUser"
               type="checkbox"
               onChange={() => {
                 onSelect?.(item.id as string);

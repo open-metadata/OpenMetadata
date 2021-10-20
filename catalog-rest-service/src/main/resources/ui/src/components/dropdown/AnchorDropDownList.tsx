@@ -46,6 +46,7 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                 className={classNames('tw-block tw-py-2 ', {
                   'link-text': !item.icon,
                 })}
+                data-testid={`menu-item-${item.name}`}
                 id={`menu-item-${index}`}
                 role="menuitem"
                 target={item.isOpenNewTab ? '_blank' : '_self'}

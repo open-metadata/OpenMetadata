@@ -75,6 +75,7 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
           <div className="tw-flex">
             <svg
               className="tw-w-6 tw-h-6 tw-ml-1 tw-cursor-pointer"
+              data-testid="closeWhatsNew"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -142,11 +143,13 @@ export const WhatsNewModal: FunctionComponent<Props> = ({
                     <div className="tw-w-60 tw-inline-flex tw-border tw-border-primary tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
                       <button
                         className={getToggleButtonClasses('features')}
+                        data-testid="WhatsNewModalFeatures"
                         onClick={() => handleToggleChange('features')}>
                         Features
                       </button>
                       <button
                         className={getToggleButtonClasses('change-log')}
+                        data-testid="WhatsNewModalChangeLogs"
                         onClick={() => {
                           handleToggleChange('change-log');
                         }}>
