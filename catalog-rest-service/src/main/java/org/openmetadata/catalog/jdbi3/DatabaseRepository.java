@@ -202,9 +202,10 @@ public abstract class DatabaseRepository {
   }
 
   private void validateRelationships(Database database) throws IOException {
+    EntityReference dbService = getService(database.getService());
+    database.setService(dbService);
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), database.getOwner())); // Validate owner
-    getService(database.getService());
   }
 
   private void addRelationships(Database database) throws IOException {

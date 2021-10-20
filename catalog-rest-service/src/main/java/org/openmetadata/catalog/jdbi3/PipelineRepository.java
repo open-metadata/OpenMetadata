@@ -229,9 +229,10 @@ public abstract class PipelineRepository {
   }
 
   private void validateRelationships(Pipeline pipeline) throws IOException {
+    EntityReference pipelineService = getService(pipeline.getService());
+    pipeline.setService(pipelineService);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(userDAO(), teamDAO(), pipeline.getOwner()); // Validate owner
-    getService(pipeline.getService());
     pipeline.setTags(EntityUtil.addDerivedTags(tagDAO(), pipeline.getTags()));
   }
 

@@ -232,7 +232,12 @@ public class TableResourceTest extends CatalogApplicationTest {
 
     // Optional fields tableType
     create.withName(getTableName(test, 1)).withTableType(TableType.View);
-    createAndCheckTable(create, adminAuthHeaders());
+    Table table = createAndCheckTable(create, adminAuthHeaders());
+
+    // check the FQN
+    Database db = DatabaseResourceTest.getDatabase(table.getDatabase().getId(), null, adminAuthHeaders());
+    String expectedFQN = db.getFullyQualifiedName()+"."+table.getName();
+    assertEquals(expectedFQN, expectedFQN);
   }
 
   private static Column getColumn(String name, ColumnDataType columnDataType, TagLabel tag) {

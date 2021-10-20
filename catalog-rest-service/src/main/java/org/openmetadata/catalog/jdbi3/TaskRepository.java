@@ -186,9 +186,10 @@ public abstract class TaskRepository {
   }
 
   private void validateRelationships(Task task) throws IOException {
+    EntityReference pipelineService = getService(task.getService());
+    task.setService(pipelineService);
     task.setFullyQualifiedName(getFQN(task));
     EntityUtil.populateOwner(userDAO(), teamDAO(), task.getOwner()); // Validate owner
-    getService(task.getService());
     task.setTags(EntityUtil.addDerivedTags(tagDAO(), task.getTags()));
   }
 

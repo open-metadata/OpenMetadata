@@ -352,6 +352,7 @@ class OpenMetadataAPIClient(object):
         self, create_table_request: CreateTableEntityRequest
     ) -> Table:
         """Create or Update a Table"""
+        print("WTF")
         resp = self.client.put("/tables", data=create_table_request.json())
         resp.pop("database", None)
         return Table(**resp)

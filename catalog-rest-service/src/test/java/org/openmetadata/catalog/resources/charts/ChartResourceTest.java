@@ -130,11 +130,14 @@ public class ChartResourceTest extends CatalogApplicationTest {
   @Test
   public void post_validCharts_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
-    CreateChart create = create(test);
+    CreateChart create = create(test).withService(new EntityReference().
+            withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
     createAndCheckChart(create, adminAuthHeaders());
 
     create.withName(getChartName(test, 1)).withDescription("description");
-    createAndCheckChart(create, adminAuthHeaders());
+    Chart chart = createAndCheckChart(create, adminAuthHeaders());
+    String expectedFQN = SUPERSET_REFERENCE.getName() + "." + chart.getName();
+    assertEquals(expectedFQN, chart.getFullyQualifiedName());
   }
 
   @Test

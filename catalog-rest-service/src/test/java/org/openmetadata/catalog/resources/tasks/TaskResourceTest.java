@@ -306,8 +306,11 @@ public class TaskResourceTest extends CatalogApplicationTest {
   @Test
   public void put_taskCreate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create a new task with PUT
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckTask(null, request, CREATED, adminAuthHeaders(), NO_CHANGE);
+    CreateTask request = create(test).withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId())
+            .withType(AIRFLOW_REFERENCE.getType())).withOwner(USER_OWNER1);
+    Task task = updateAndCheckTask(null, request, CREATED, adminAuthHeaders(), NO_CHANGE);
+    String expectedFQN = AIRFLOW_REFERENCE.getName() + "." + task.getName();
+    assertEquals(expectedFQN, task.getFullyQualifiedName());
   }
 
   @Test
