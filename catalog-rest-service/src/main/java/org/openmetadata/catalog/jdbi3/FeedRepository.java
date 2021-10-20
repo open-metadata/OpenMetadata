@@ -23,7 +23,6 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
-import org.openmetadata.catalog.jdbi3.TableRepository.TableDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;

@@ -18,6 +18,10 @@ package org.openmetadata.catalog.resources;
 
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.TableRepository3;
+import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
@@ -156,6 +160,20 @@ public final class CollectionRegistry {
         LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
       }
     }
+  }
+
+  /**
+   * Register resources from CollectionRegistry
+   */
+  public void registerResources3(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
+    LOG.info("Initializing jdbi3");
+    Class<?> repositoryClz = TableRepository3.class;
+      final TableRepository3 daoObject = (TableRepository3) jdbi.onDemand(repositoryClz);
+      TableRepositoryHelper helper = new TableRepositoryHelper(daoObject);
+      TableResource resource = new TableResource(helper, authorizer);
+    environment.jersey().register(resource);
+    LOG.info("Registering {}", resource);
+    LOG.info("Initialized jdbi3");
   }
 
   /** Get collection details based on annotations in Resource classes */

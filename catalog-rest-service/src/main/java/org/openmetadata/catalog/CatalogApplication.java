@@ -20,7 +20,9 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.dropwizard.health.core.HealthCheckBundle;
+import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
@@ -78,6 +80,9 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     final DBIFactory factory = new DBIFactory();
     final DBI jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql");
 
+    final JdbiFactory factory3 = new JdbiFactory();
+    final Jdbi jdbi3 = factory3.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
+
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
@@ -101,6 +106,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(JsonMappingExceptionMapper.class);
     environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
     registerResources(catalogConfig, environment, jdbi);
+    registerResources(catalogConfig, environment, jdbi3);
 
     // Register Event Handler
     registerEventFilter(catalogConfig, environment, jdbi);
@@ -166,6 +172,28 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     jdbi.registerContainerFactory(new OptionalContainerFactory());
 
     CollectionRegistry.getInstance().registerResources(jdbi, environment, authorizer);
+
+    environment.lifecycle().manage(new Managed() {
+      @Override
+      public void start() {
+      }
+
+      @Override
+      public void stop() {
+        long startTime = System.currentTimeMillis();
+        LOG.info("Took " + (System.currentTimeMillis() - startTime) + " ms to close all the services");
+      }
+    });
+    environment.jersey().register(new SearchResource(config.getElasticSearchConfiguration()));
+    environment.jersey().register(new JsonPatchProvider());
+    ErrorPageErrorHandler eph = new ErrorPageErrorHandler();
+    eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");
+    environment.getApplicationContext().setErrorHandler(eph);
+  }
+
+  private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) {
+    CollectionRegistry.getInstance().registerResources3(jdbi, environment, authorizer);
+
     environment.lifecycle().manage(new Managed() {
       @Override
       public void start() {

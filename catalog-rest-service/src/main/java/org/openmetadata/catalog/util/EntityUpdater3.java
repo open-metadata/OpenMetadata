@@ -1,9 +1,9 @@
 package org.openmetadata.catalog.util;
 
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO3;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
-import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
+import org.openmetadata.catalog.jdbi3.TagDAO;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,11 +24,11 @@ import java.util.List;
  * Concrete  implementations need to implement update for other fields. See
  * {@link TableRepository3.TableUpdater} for an example implementation.
  */
-public abstract class EntityUpdater {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater.class);
+public abstract class EntityUpdater3 {
+  private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater3.class);
   private final EntityInterface originalEntity;
   private final EntityInterface updatedEntity;
-  private final EntityRelationshipDAO relationshipDAO;
+  private final EntityRelationshipDAO3 relationshipDAO;
   private final TagDAO tagDAO;
 
   protected final boolean patchOperation;
@@ -37,8 +37,8 @@ public abstract class EntityUpdater {
   protected List<String> fieldsDeleted = new ArrayList<>();
   protected boolean majorVersionChange = false;
 
-  public EntityUpdater(EntityInterface originalEntity, EntityInterface updatedEntity, boolean patchOperation,
-                       EntityRelationshipDAO relationshipDAO, TagDAO tagDAO) {
+  public EntityUpdater3(EntityInterface originalEntity, EntityInterface updatedEntity, boolean patchOperation,
+                        EntityRelationshipDAO3 relationshipDAO, TagDAO tagDAO) {
     this.originalEntity = originalEntity;
     this.updatedEntity = updatedEntity;
     this.patchOperation = patchOperation;
