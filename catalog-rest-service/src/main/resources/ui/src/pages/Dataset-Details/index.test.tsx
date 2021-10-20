@@ -18,7 +18,7 @@
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import MyDataDetailsPage from './index';
+import DatasetDetailsPage from './DatasetDetailsPage';
 
 const mockUserTeam = [
   {
@@ -69,7 +69,7 @@ jest.mock('../../utils/CommonUtils', () => ({
 
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', () => {
-    const { container } = render(<MyDataDetailsPage />, {
+    const { container } = render(<DatasetDetailsPage />, {
       wrapper: MemoryRouter,
     });
     const followButton = getByTestId(container, 'follow-button');
