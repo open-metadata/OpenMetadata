@@ -20,7 +20,7 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 Please refer to the [Run OpenMetadata ](../run-openmetadata.md#install-on-your-local-machine)section to run the server manually or using [Docker](../run-openmetadata.md#run-docker).
 
-### Install from PyPI 
+### Install from PyPI
 
 {% tabs %}
 {% tab title="Install Using PyPI" %}
@@ -36,7 +36,7 @@ Sample Data, Tables, Usage, Users, Topics, and Dashboards.
 
 ```bash
 #Make sure the OpenMetadata Server is up and running
-cd openmetadata-0.4.0/ingestion
+cd openmetadata-0.5.0/ingestion
 metadata ingest -c ./pipelines/sample_data.json
 metadata ingest -c ./pipelines/sample_usage.json
 metadata ingest -c ./pipelines/sample_users.json
@@ -47,7 +47,7 @@ metadata ingest -c ./pipelines/sample_users.json
 Start Elastic Search Docker:
 
 {% hint style="warning" %}
-The below command starts Elasticsearch docker that stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata_to_es workflow again to index the data upon starting the container.
+The below command starts Elasticsearch docker that stores the indexed data in memory. If you stop the container it will lose any data on restart. Please re-run the metadata\_to\_es workflow again to index the data upon starting the container.
 {% endhint %}
 
 ```bash
@@ -58,6 +58,6 @@ Index sample data in ElasticSearch:
 
 ```bash
 #Make sure the OpenMetadata Server is up and running
-cd openmetadata-0.4.0/ingestion
+cd openmetadata-0.5.0/ingestion
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
