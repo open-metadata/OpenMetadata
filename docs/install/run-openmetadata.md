@@ -80,14 +80,14 @@ OpenMetadata is built using Java, DropWizard, Jetty, and MySQL.
 
 {% tabs %}
 {% tab title="Download the release" %}
-Download the latest binary release from [OpenMetadata](https://github.com/open-metadata/OpenMetadata/releases/download/0.4.0/openmetadata-0.4.0.tar.gz), Once you have the tar file,
+Download the latest binary release from [OpenMetadata](https://github.com/open-metadata/OpenMetadata/releases/download/0.5.0/openmetadata-0.5.0.tar.gz), Once you have the tar file,
 
 ```bash
 # untar it
-tar -zxvf openmetadata-0.4.0.tar.gz
+tar -zxvf openmetadata-0.5.0.tar.gz
 
 # navigate to directory containing the launcher scripts
-cd openmetadata-0.4.0
+cd openmetadata-0.5.0
 ```
 {% endtab %}
 {% endtabs %}
@@ -120,13 +120,13 @@ cd openmetadata-0.4.0
 2.  Run bootstrap scripts to initialize the database and tables
 
     ```
-       cd openmetadata-0.4.0
+       cd openmetadata-0.5.0
        ./bootstrap/bootstrap_storage.sh migrate
     ```
 3.  Start the OpenMetadata Server
 
     ```
-       cd openmetadata-0.4.0 
+       cd openmetadata-0.5.0 
        ./bin/openmetadata.sh start
     ```
 
