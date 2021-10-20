@@ -70,6 +70,15 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     );
   };
 
+  const setCurrentTabOnMount = () => {
+    const owner = dropDownList.find((l) => l.value === value);
+    if (owner) {
+      const index = listGroups.indexOf(owner.group as string);
+
+      setActiveTab(index >= 0 ? index + 1 : 1);
+    }
+  };
+
   useEffect(() => {
     setSearchText(searchString);
   }, [searchString]);
@@ -100,6 +109,7 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
 
   useEffect(() => {
     isMounted.current = true;
+    setCurrentTabOnMount();
   }, []);
 
   return (
