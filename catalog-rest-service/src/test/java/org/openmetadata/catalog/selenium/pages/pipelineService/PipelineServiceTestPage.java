@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.selenium.pages.pipelineService;
 
 import com.github.javafaker.Faker;
@@ -39,8 +55,10 @@ public class PipelineServiceTestPage {
     @Test(priority = 1)
     public void openPipelineServicePage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
+        wait.until(ExpectedConditions.presenceOfElementLocated
+                (By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
+        webDriver.findElement
+                (By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[4]")).click();
@@ -54,21 +72,27 @@ public class PipelineServiceTestPage {
         webDriver.findElement(By.cssSelector("[data-testid='add-new-user-button']")).click();
         webDriver.findElement(By.cssSelector("[value='Prefect']")).click();
         webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);
-        webDriver.findElement(By.cssSelector("[data-testid='pipeline-url']")).sendKeys("http://localhost:8080");
+        webDriver.findElement
+                (By.cssSelector("[data-testid='pipeline-url']")).sendKeys("http://localhost:8080");
 
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='boldButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='boldButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='italicButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='italicButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='linkButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='linkButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save-button']")));
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
@@ -78,8 +102,10 @@ public class PipelineServiceTestPage {
         openPipelineServicePage();
         webDriver.findElement(By.xpath("(//button[@data-testid='edit-service'])[2]")).click();
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
     }
@@ -91,8 +117,10 @@ public class PipelineServiceTestPage {
         Thread.sleep(waitTime);
         webDriver.findElement(By.cssSelector("[data-testid='description-edit']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable
+                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
