@@ -33,29 +33,6 @@ logger = logging.getLogger(__name__)
 class RedshiftUsageSource(Source):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
-        WITH query_sql AS (
-                 SELECT
-                    query,
-                    LISTAGG(text) WITHIN GROUP (ORDER BY sequence) AS sql
-                FROM stl_querytext 
-                GROUP BY 1
-        )
-
-        SELECT
-            q.query,  q.label, userid,  xid,  pid,  starttime,  endtime,
-            DATEDIFF(milliseconds, starttime, endtime) AS duration,
-            TRIM(database) AS database,
-            '{start_date}' as analysis_date,
-            (CASE aborted WHEN 1 THEN TRUE ELSE FALSE END) AS aborted,
-        sql
-        FROM
-            stl_query q JOIN query_sql qs ON (q.query = qs.query)
-        WHERE
-        endtime between '{start_date}' and '{end_date}'
-        {where_clause}
-        ORDER BY starttime;
-        """
-    SQL_STATEMENT_NEW = """
         SELECT DISTINCT ss.userid,
             ss.query,
             sui.usename,
@@ -88,7 +65,7 @@ class RedshiftUsageSource(Source):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         start, end = get_start_and_end(config.duration)
-        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT_NEW.format(
+        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
             start_time=start, end_time=end
         )
         self.analysis_date = start
