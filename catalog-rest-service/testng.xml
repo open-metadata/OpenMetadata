@@ -1,0 +1,23 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd" >
+<suite name="Integration-Tests">
+    <test name="startServerAndIngestDataTest">
+        <classes>
+            <class name="org.openmetadata.catalog.selenium.initAndIngest.StartServerAndIngestSampleDataTest"/>
+        </classes>
+    </test>
+    <test name="pagesTests">
+        <classes>
+            <class name="org.openmetadata.catalog.selenium.pages.myData.MyDataPageTest"/>
+            <class name="org.openmetadata.catalog.selenium.pages.teams.TeamsPageTest"/>
+            <class name="org.openmetadata.catalog.selenium.pages.tags.TagsPageTest"/>
+        </classes>
+    </test>
+    <test name="servicePageTests">
+        <classes>
+            <class name="org.openmetadata.catalog.selenium.pages.databaseService.DatabaseServicePageTest"/>
+            <class name="org.openmetadata.catalog.selenium.pages.messagingService.MessagingServicePageTest"/>
+            <class name="org.openmetadata.catalog.selenium.pages.dashboardService.DashboardServiceTestPage"/>
+            <class name="org.openmetadata.catalog.selenium.pages.pipelineService.PipelineServiceTestPage"/>
+        </classes>
+    </test>
+</suite>
