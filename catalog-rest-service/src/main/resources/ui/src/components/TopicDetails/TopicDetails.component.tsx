@@ -34,11 +34,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   description,
   tier,
   followers,
-  slashedtopicName,
+  slashedTopicName,
   setActiveTabHandler,
   settingsUpdateHandler,
-  followtopicHandler,
-  unfollowtopicHandler,
+  followTopicHandler,
+  unfollowTopicHandler,
   descriptionUpdateHandler,
   tagUpdateHandler,
 }: TopicDetailsProps) => {
@@ -181,11 +181,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
       setIsFollowing(false);
-      unfollowtopicHandler();
+      unfollowTopicHandler();
     } else {
       setFollowersCount((preValu) => preValu + 1);
       setIsFollowing(true);
-      followtopicHandler();
+      followTopicHandler();
     }
   };
 
@@ -257,7 +257,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
           tags={topicTags}
           tagsHandler={onTagUpdate}
           tier={tier ?? ''}
-          titleLinks={slashedtopicName}
+          titleLinks={slashedTopicName}
         />
         <div className="tw-block tw-mt-1">
           <TabsPane

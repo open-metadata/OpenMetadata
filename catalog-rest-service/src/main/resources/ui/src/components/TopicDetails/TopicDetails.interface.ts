@@ -21,10 +21,10 @@ export interface TopicDetailsProps {
   tier: string;
   followers: Array<User>;
   topicTags: Array<EntityTags>;
-  slashedtopicName: TitleBreadcrumbProps['titleLinks'];
+  slashedTopicName: TitleBreadcrumbProps['titleLinks'];
   setActiveTabHandler: (value: number) => void;
-  followtopicHandler: () => void;
-  unfollowtopicHandler: () => void;
+  followTopicHandler: () => void;
+  unfollowTopicHandler: () => void;
   settingsUpdateHandler: (updatedTopic: Topic) => Promise<void>;
   descriptionUpdateHandler: (updatedTopic: Topic) => void;
   tagUpdateHandler: (updatedTopic: Topic) => void;

@@ -1,6 +1,7 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail } from 'Models';
+import { observer } from 'mobx-react';
+import { EntityTags, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -40,7 +41,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [schemaType, setSchemaType] = useState<string>('');
-  const [tags, setTags] = useState<Array<ColumnTags>>([]);
+  const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [partitions, setPartitions] = useState<number>(0);
   const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
@@ -75,8 +76,8 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   const fetchTopicDetail = (topicFQN: string) => {
     setLoading(true);
-    getTopicByFqn(topicFQN, ['owner', 'service', 'followers', 'tags']).then(
-      (res: AxiosResponse) => {
+    getTopicByFqn(topicFQN, ['owner', 'service', 'followers', 'tags'])
+      .then((res: AxiosResponse) => {
         const {
           id,
           description,
@@ -109,8 +110,8 @@ const TopicDetailsPage: FunctionComponent = () => {
         setMaximumMessageSize(maximumMessageSize);
         setReplicationFactor(replicationFactor);
         setRetentionSize(retentionSize);
-        getServiceById('messagingServices', service?.id).then(
-          (serviceRes: AxiosResponse) => {
+        getServiceById('messagingServices', service?.id)
+          .then((serviceRes: AxiosResponse) => {
             setSlashedTopicName([
               {
                 name: serviceRes.data.name,
@@ -137,11 +138,15 @@ const TopicDetailsPage: FunctionComponent = () => {
               serviceType: serviceRes.data.serviceType,
               timestamp: 0,
             });
-          }
-        );
+          })
+          .catch(() => {
+            setLoading(false);
+          });
         setLoading(false);
-      }
-    );
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   };
 
   const followTopic = () => {
@@ -206,7 +211,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           descriptionUpdateHandler={descriptionUpdateHandler}
           entityName={name}
           followers={followers}
-          followtopicHandler={followTopic}
+          followTopicHandler={followTopic}
           maximumMessageSize={maximumMessageSize}
           owner={owner}
           partitions={partitions}
@@ -216,13 +221,13 @@ const TopicDetailsPage: FunctionComponent = () => {
           schemaType={schemaType}
           setActiveTabHandler={activeTabHandler}
           settingsUpdateHandler={settingsUpdateHandler}
-          slashedtopicName={slashedTopicName}
+          slashedTopicName={slashedTopicName}
           tagList={tagList}
           tagUpdateHandler={onTagUpdate}
           tier={tier as string}
           topicDetails={topicDetails}
           topicTags={tags}
-          unfollowtopicHandler={unfollowTopic}
+          unfollowTopicHandler={unfollowTopic}
           users={AppState.users}
         />
       )}
@@ -230,4 +235,4 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 };
 
-export default TopicDetailsPage;
+export default observer(TopicDetailsPage);

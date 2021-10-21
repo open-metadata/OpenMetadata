@@ -40,16 +40,18 @@ export const getTagCategories = async (fields?: Array<string> | string) => {
   }
 };
 
-export const getTaglist = (categories: Array<TagCategory>): Array<string> => {
+export const getTaglist = (
+  categories: Array<TagCategory> = []
+): Array<string> => {
   const children = categories.map((category: TagCategory) => {
     return category.children || [];
   });
   const allChildren = flatten(children);
-  const tagList = (allChildren as unknown as TagClass[])?.map((tag) => {
+  const tagList = (allChildren as unknown as TagClass[]).map((tag) => {
     return tag?.fullyQualifiedName || '';
   });
 
-  return tagList ?? [];
+  return tagList;
 };
 
 export const getTableTags = (
