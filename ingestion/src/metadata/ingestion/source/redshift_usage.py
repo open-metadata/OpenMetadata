@@ -55,7 +55,27 @@ class RedshiftUsageSource(Source):
         {where_clause}
         ORDER BY starttime;
         """
-
+    SQL_STATEMENT_NEW = """
+        SELECT DISTINCT ss.userid,
+            ss.query,
+            sui.usename,
+            ss.tbl,
+            sq.querytxt,
+            sti.database,
+            sti.schema,
+            sti.table,
+            sq.starttime,
+            sq.endtime,
+            sq.aborted
+        FROM stl_scan ss
+            JOIN svv_table_info sti ON ss.tbl = sti.table_id
+            JOIN stl_query sq ON ss.query = sq.query
+            JOIN svl_user_info sui ON sq.userid = sui.usesysid
+        WHERE ss.starttime >= '{start_time}'
+            AND ss.starttime < '{end_time}'
+            AND sq.aborted = 0
+        ORDER BY ss.endtime DESC;
+    """
     # CONFIG KEYS
     WHERE_CLAUSE_SUFFIX_KEY = "where_clause"
     CLUSTER_SOURCE = "cluster_source"
@@ -68,9 +88,10 @@ class RedshiftUsageSource(Source):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         start, end = get_start_and_end(config.duration)
-        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT.format(
-            where_clause=config.where_clause, start_date=start, end_date=end
+        self.sql_stmt = RedshiftUsageSource.SQL_STATEMENT_NEW.format(
+            start_time=start, end_time=end
         )
+        self.analysis_date = start
         self.alchemy_helper = SQLAlchemyHelper(
             config, metadata_config, ctx, "Redshift", self.sql_stmt
         )
@@ -104,17 +125,17 @@ class RedshiftUsageSource(Source):
         for row in self._get_raw_extract_iter():
             tq = TableQuery(
                 row["query"],
-                row["label"],
-                row["userid"],
-                row["xid"],
-                row["pid"],
+                "",
+                1,
+                1,
+                1,
                 str(row["starttime"]),
                 str(row["endtime"]),
-                str(row["analysis_date"]),
-                row["duration"],
+                str(self.analysis_date),
+                10,
                 row["database"],
                 row["aborted"],
-                row["sql"],
+                row["querytxt"],
             )
             yield tq
 
