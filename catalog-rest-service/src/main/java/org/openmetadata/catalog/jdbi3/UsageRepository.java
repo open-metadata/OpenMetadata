@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;

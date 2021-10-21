@@ -21,7 +21,6 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;

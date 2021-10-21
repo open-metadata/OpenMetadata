@@ -33,10 +33,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -300,50 +297,6 @@ public abstract class ChartRepository {
   public void deleteFollower(String chartId, String userId) {
     EntityUtil.validateUser(userDAO(), userId);
     EntityUtil.removeFollower(relationshipDAO(), chartId, userId);
-  }
-
-  public interface ChartDAO {
-    @SqlUpdate("INSERT INTO chart_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE chart_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT count(*) FROM chart_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM chart_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by chart fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by chart fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM chart_entity WHERE id = :id)")
-    boolean exists(@Bind("id") String id);
-
-    @SqlUpdate("DELETE FROM chart_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
   }
 
   static class ChartEntityInterface implements EntityInterface {
