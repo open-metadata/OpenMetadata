@@ -1,5 +1,6 @@
 import { EntityTags } from 'Models';
 import {
+  EntityReference,
   Table,
   TableData,
   TableJoins,
@@ -7,7 +8,6 @@ import {
 } from '../../generated/entity/data/table';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
-import { EntityReference } from '../../generated/type/entityReference';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
 export interface DatasetOwner extends EntityReference {
