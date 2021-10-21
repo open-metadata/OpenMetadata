@@ -82,14 +82,12 @@ class BigqueryUsageSource(Source):
                             "queryConfig"
                         ]
                         jobStats = payload["jobChange"]["job"]["jobStats"]
+                        statementType = ""
                         if hasattr(queryConfig, "statementType"):
                             statementType = queryConfig["statementType"]
-                        else:
-                            statementType = ""
+                        database = ""
                         if hasattr(queryConfig, "destinationTable"):
                             database = queryConfig["destinationTable"]
-                        else:
-                            database = ""
                         analysis_date = str(
                             datetime.strptime(
                                 jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
