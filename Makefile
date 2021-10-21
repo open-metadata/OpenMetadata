@@ -13,6 +13,9 @@ install:
 install_test:
 	pip install -r ingestion/requirements-test.txt
 
+install_dev:
+	pip install -r ingestion/requirements-dev.txt
+
 precommit_install:
 	@echo "Installing pre-commit hooks"
 	@echo "Make sure to first run `make install_test`"
