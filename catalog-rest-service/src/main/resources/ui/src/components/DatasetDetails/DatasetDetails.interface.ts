@@ -10,7 +10,7 @@ import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrumb.interface';
 
-interface DatasetOwner extends EntityReference {
+export interface DatasetOwner extends EntityReference {
   displayName?: string;
 }
 
