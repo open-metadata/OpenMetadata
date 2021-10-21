@@ -260,12 +260,23 @@ class OMeta(Generic[T, C]):
         Entity or CreateEntity, and we are always going to return Entity
         """
 
-        if "create" in entity.__name__.lower():
+        is_create = "create" in entity.__name__.lower()
+        is_service = "service" in entity.__name__.lower()
+
+        # Prepare the return Entity Type
+        if is_create:
             entity_class = self.get_entity_from_create(entity)
         else:
             entity_class = entity
 
-        resp = self.client.put(self.get_suffix(entity), data=data.json())
+        # Prepare the request method
+        if is_service and is_create:
+            # Services can only be created via POST
+            method = self.client.post
+        else:
+            method = self.client.put
+
+        resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
     def get_by_name(self, entity: Type[T], name: str) -> Type[T]:
