@@ -38,7 +38,7 @@ import StorePage from '../pages/store';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
-import MyTopicDetailPage from '../pages/topic-details';
+import MyTopicDetailPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPage from '../pages/tour-page';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';

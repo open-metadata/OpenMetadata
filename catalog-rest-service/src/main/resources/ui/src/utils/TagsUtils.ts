@@ -49,7 +49,7 @@ export const getTaglist = (categories: Array<TagCategory>): Array<string> => {
     return tag?.fullyQualifiedName || '';
   });
 
-  return tagList;
+  return tagList ?? [];
 };
 
 export const getTableTags = (
