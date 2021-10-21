@@ -1,8 +1,24 @@
 import logging
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
+from typing import Generic, List, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.metrics import Metrics
+from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.report import Report
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.task import Task
+from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.ometa.openmetadata_rest import (
@@ -15,7 +31,17 @@ from metadata.ingestion.ometa.openmetadata_rest import (
 
 logger = logging.getLogger(__name__)
 
+
+# The naming convention is T for Entity Types and C for Create Types
 T = TypeVar("T", bound=BaseModel)
+C = TypeVar("C", bound=BaseModel)
+
+
+class MissingEntityTypeException(Exception):
+    """
+    We are receiving an Entity Type[T] not covered
+    in our suffix generation list
+    """
 
 
 class EntityList(Generic[T], BaseModel):
@@ -24,7 +50,7 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OMeta(Generic[T]):
+class OMeta(Generic[T, C]):
     """
     Generic interface to the OpenMetadata API
 
@@ -33,6 +59,13 @@ class OMeta(Generic[T]):
 
     client: REST
     _auth_provider: AuthenticationProvider
+
+    class_root = ".".join(["metadata", "generated", "schema"])
+    entity_path = "entity"
+    api_path = "api"
+    data_path = "data"
+    services_path = "services"
+    teams_path = "teams"
 
     def __init__(self, config: MetadataServerConfig, raw_data: bool = False):
         self.config = config
@@ -61,8 +94,7 @@ class OMeta(Generic[T]):
         self.client = REST(client_config)
         self._use_raw_data = raw_data
 
-    @staticmethod
-    def get_suffix(entity: Type[T]) -> str:
+    def get_suffix(self, entity: Type[T]) -> str:
         """
         Given an entity Type from the generated sources,
         return the endpoint to run requests.
@@ -71,18 +103,170 @@ class OMeta(Generic[T]):
         and type-checked approach
         """
 
-        name = entity.__name__.lower()
+        # Entity Schemas
+        if issubclass(
+            entity, get_args(Union[Model, self.get_create_entity_type(Model)])
+        ):
+            return "/models"
 
-        if "service" in name:
-            return f"/services/{name.replace('service', '')}Services"
+        if issubclass(
+            entity, get_args(Union[Chart, self.get_create_entity_type(Chart)])
+        ):
+            return "/charts"
 
-        suffix = name if name in {"lineage", "metrics"} else name + "s"
+        if issubclass(
+            entity, get_args(Union[Dashboard, self.get_create_entity_type(Dashboard)])
+        ):
+            return "/dashboards"
 
-        return f"/{suffix}"
+        if issubclass(
+            entity, get_args(Union[Database, self.get_create_entity_type(Database)])
+        ):
+            return "/databases"
 
-    def create_or_update(self, entity: Type[T], data: T) -> Type[T]:
+        if issubclass(
+            entity, get_args(Union[Pipeline, self.get_create_entity_type(Pipeline)])
+        ):
+            return "/pipelines"
+
+        if issubclass(
+            entity, get_args(Union[Table, self.get_create_entity_type(Table)])
+        ):
+            return "/tables"
+
+        if issubclass(entity, get_args(Union[Task, self.get_create_entity_type(Task)])):
+            return "/tasks"
+
+        if issubclass(
+            entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
+        ):
+            return "/topics"
+
+        if issubclass(entity, Metrics):
+            return "/metrics"
+
+        if issubclass(entity, AddLineage):
+            return "/lineage"
+
+        if issubclass(entity, Report):
+            return "/reports"
+
+        if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
+            return "/users"
+
+        # Services Schemas
+        if issubclass(
+            entity,
+            get_args(
+                Union[DatabaseService, self.get_create_entity_type(DatabaseService)]
+            ),
+        ):
+            return "/services/databaseServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[DashboardService, self.get_create_entity_type(DashboardService)]
+            ),
+        ):
+            return "/services/dashboardServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[MessagingService, self.get_create_entity_type(MessagingService)]
+            ),
+        ):
+            return "/services/messagingServices"
+
+        if issubclass(
+            entity,
+            get_args(
+                Union[PipelineService, self.get_create_entity_type(PipelineService)]
+            ),
+        ):
+            return "/services/pipelineServices"
+
+        raise MissingEntityTypeException(
+            f"Missing {entity} type when generating suffixes"
+        )
+
+    def get_module_path(self, entity: Type[T]) -> str:
+        """
+        Based on the entity, return the module path
+        it is found inside generated
+        """
+
+        if "service" in entity.__name__.lower():
+            return self.services_path
+
+        if "user" in entity.__name__.lower():
+            return self.teams_path
+
+        return self.data_path
+
+    def get_create_entity_type(self, entity: Type[T]) -> Type[C]:
+        """
+        imports and returns the Create Type from an Entity Type T.
+
+        We are following the expected path structure to import
+        on-the-fly the necessary class and pass it to the consumer
+        """
+        file_name = f"create{entity.__name__}"
+
+        class_path = ".".join(
+            [self.class_root, self.api_path, self.get_module_path(entity), file_name]
+        )
+
+        class_name = f"Create{entity.__name__}EntityRequest"
+
+        create_class = getattr(
+            __import__(class_path, globals(), locals(), [class_name]), class_name
+        )
+        return create_class
+
+    def get_entity_from_create(self, create: Type[C]) -> Type[T]:
+        """
+        Inversely, import the Entity type based on the create Entity class
+        """
+
+        class_name = create.__name__.replace("Create", "").replace("EntityRequest", "")
+        file_name = class_name.lower()
+
+        class_path = ".".join(
+            [
+                self.class_root,
+                self.entity_path,
+                self.get_module_path(create),
+                file_name.replace("service", "Service")
+                if "service" in create.__name__.lower()
+                else file_name,
+            ]
+        )
+
+        entity_class = getattr(
+            __import__(class_path, globals(), locals(), [class_name]), class_name
+        )
+        return entity_class
+
+    def create_or_update(self, entity: Type[T], data: T) -> Type[C]:
+        """
+        We allow both Entity and CreateEntity for PUT
+        If Entity, no need to find response class mapping.
+
+        We PUT to the endpoint and return the Entity generated result
+
+        Here the typing is a bit more weird. We will get a type T, be it
+        Entity or CreateEntity, and we are always going to return Entity
+        """
+
+        if "create" in entity.__name__.lower():
+            entity_class = self.get_entity_from_create(entity)
+        else:
+            entity_class = entity
+
         resp = self.client.put(self.get_suffix(entity), data=data.json())
-        return entity(**resp)
+        return entity_class(**resp)
 
     def get_by_name(self, entity: Type[T], name: str) -> Type[T]:
         resp = self.client.get(f"{self.get_suffix(entity)}/name/{name}")
