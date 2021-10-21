@@ -446,21 +446,26 @@ const EntityTable = ({
 
                       {cell.column.id === 'dataTypeDisplay' && (
                         <div>
-                          {cell.value.length > 20 ? (
+                          {cell.value.length > 25 ? (
                             <span>
-                              {cell.value.slice(0, 20).toLowerCase()}
                               <PopOver
                                 html={
                                   <div className="tw-break-words">
-                                    {cell.value.toLowerCase()}
+                                    <RichTextEditorPreviewer
+                                      markdown={cell.value.toLowerCase()}
+                                    />
                                   </div>
                                 }
                                 position="bottom"
                                 theme="light"
                                 trigger="click">
-                                <span className="tw-cursor-pointer show-more tw-underline">
-                                  ...
-                                </span>
+                                <p className="tw-cursor-pointer tw-underline tw-inline-block">
+                                  <RichTextEditorPreviewer
+                                    markdown={`${cell.value
+                                      .slice(0, 20)
+                                      .toLowerCase()}...`}
+                                  />
+                                </p>
                               </PopOver>
                             </span>
                           ) : (
