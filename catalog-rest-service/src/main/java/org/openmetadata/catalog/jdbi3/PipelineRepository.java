@@ -28,11 +28,8 @@ import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.*;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.common.utils.CipherText;
 import org.skife.jdbi.v2.sqlobject.Bind;
@@ -44,7 +41,9 @@ import org.skife.jdbi.v2.sqlobject.Transaction;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -83,47 +82,48 @@ public abstract class PipelineRepository {
   @CreateSqlObject
   abstract TagRepository.TagDAO tagDAO();
 
+  EntityRepository<Pipeline> entityRepository = new EntityRepository<>() {
+    @Override
+    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+      return pipelineDAO().listAfter(fqnPrefix, limitParam, after);
+    }
+
+    @Override
+    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+      return pipelineDAO().listBefore(fqnPrefix, limitParam, before);
+    }
+
+    @Override
+    public int listCount(String fqnPrefix) {
+      return pipelineDAO().listCount(fqnPrefix);
+    }
+
+    @Override
+    public String getFullyQualifiedName(Pipeline entity) {
+      return entity.getFullyQualifiedName();
+    }
+
+    @Override
+    public Pipeline setFields(Pipeline entity, Fields fields) throws IOException, ParseException {
+      return PipelineRepository.this.setFields(entity, fields);
+    }
+
+    @Override
+    public ResultList<Pipeline> getResultList(List<Pipeline> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+      return new PipelineList(entities, beforeCursor, afterCursor, total);
+    }
+  };
 
   @Transaction
-  public PipelineList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = pipelineDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Pipeline> pipelines = new ArrayList<>();
-    for (String json : jsons) {
-      pipelines.add(setFields(JsonUtils.readValue(json, Pipeline.class), fields));
-    }
-    int total = pipelineDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : pipelines.get(0).getFullyQualifiedName();
-    if (pipelines.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      pipelines.remove(limitParam);
-      afterCursor = pipelines.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new PipelineList(pipelines, beforeCursor, afterCursor, total);
+  public ResultList<Pipeline> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(entityRepository, Pipeline.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction
-  public PipelineList listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = pipelineDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Pipeline> pipelines = new ArrayList<>();
-    for (String json : jsons) {
-      pipelines.add(setFields(JsonUtils.readValue(json, Pipeline.class), fields));
-    }
-    int total = pipelineDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (pipelines.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      pipelines.remove(0);
-      beforeCursor = pipelines.get(0).getFullyQualifiedName();
-    }
-    afterCursor = pipelines.get(pipelines.size() - 1).getFullyQualifiedName();
-    return new PipelineList(pipelines, beforeCursor, afterCursor, total);
+  public ResultList<Pipeline> listBefore(Fields fields, String serviceName, int limitParam, String before)
+          throws IOException, GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(entityRepository, Pipeline.class, fields, serviceName, limitParam, before);
   }
 
   @Transaction
