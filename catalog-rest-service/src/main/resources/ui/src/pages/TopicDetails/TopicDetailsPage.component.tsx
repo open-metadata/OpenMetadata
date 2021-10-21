@@ -15,7 +15,7 @@ import {
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { ERROR500, getServiceDetailsPath } from '../../constants/constants';
+import { getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
@@ -142,17 +142,20 @@ const TopicDetailsPage: FunctionComponent = () => {
             });
           })
           .catch((err: AxiosError) => {
+            const errMsg =
+              err.message || `Error while fetching service for ${name}`;
             showToast({
               variant: 'error',
-              body: err.response?.data?.responseMessage ?? ERROR500,
+              body: errMsg,
             });
           });
         setLoading(false);
       })
       .catch((err: AxiosError) => {
+        const errMsg = err.message || 'Error while fetching topic details';
         showToast({
           variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
+          body: errMsg,
         });
       });
   };
