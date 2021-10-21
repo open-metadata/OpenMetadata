@@ -29,3 +29,6 @@ black:
 
 black_check:
 	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
+
+generate:
+	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated
