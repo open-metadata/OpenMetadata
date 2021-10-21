@@ -76,7 +76,7 @@ class OMeta(Generic[T]):
         if "service" in name:
             return f"/services/{name.replace('service', '')}Services"
 
-        suffix = name if name == "lineage" else name + "s"
+        suffix = name if name in {"lineage", "metrics"} else name + "s"
 
         return f"/{suffix}"
 
