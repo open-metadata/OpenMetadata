@@ -24,7 +24,6 @@ describe('Test MyDataHeader Component', () => {
   it('Component should render', () => {
     const { container } = render(
       <MyDataHeader
-        countAssets={3}
         countServices={193}
         entityCounts={{
           tableCount: 40,
@@ -46,7 +45,6 @@ describe('Test MyDataHeader Component', () => {
   it('Should have main title', () => {
     const { container } = render(
       <MyDataHeader
-        countAssets={3}
         countServices={193}
         entityCounts={{
           tableCount: 40,
@@ -65,35 +63,9 @@ describe('Test MyDataHeader Component', () => {
     expect(mainTitle).toBeInTheDocument();
   });
 
-  it('Should have 3 state box', () => {
-    const { container } = render(
-      <MyDataHeader
-        countAssets={3}
-        countServices={193}
-        entityCounts={{
-          tableCount: 40,
-          topicCount: 13,
-          dashboardCount: 10,
-          pipelineCount: 3,
-        }}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const stateBox = getByTestId(container, 'states-box-container');
-
-    expect(stateBox.childElementCount).toBe(3);
-    expect(getByText(container, /Explore Assets/i)).toBeInTheDocument();
-    expect(getByText(container, /Register Services/i)).toBeInTheDocument();
-    expect(getByText(container, /Knowledgebase/i)).toBeInTheDocument();
-  });
-
   it('Should have 7 data summary details', () => {
     const { container } = render(
       <MyDataHeader
-        countAssets={3}
         countServices={193}
         entityCounts={{
           tableCount: 40,
@@ -115,7 +87,6 @@ describe('Test MyDataHeader Component', () => {
   it('Should display same count as provided by props', () => {
     const { container } = render(
       <MyDataHeader
-        countAssets={193}
         countServices={4}
         entityCounts={{
           tableCount: 40,
@@ -134,13 +105,11 @@ describe('Test MyDataHeader Component', () => {
     expect(getByText(container, /10 dashboards/i)).toBeInTheDocument();
     expect(getByText(container, /3 pipelines/i)).toBeInTheDocument();
     expect(getByText(container, /4 services/i)).toBeInTheDocument();
-    expect(getByText(container, /193 assets/i)).toBeInTheDocument();
   });
 
   it('OnClick it should redirect to respective page', () => {
     const { container } = render(
       <MyDataHeader
-        countAssets={193}
         countServices={4}
         entityCounts={{
           tableCount: 40,
