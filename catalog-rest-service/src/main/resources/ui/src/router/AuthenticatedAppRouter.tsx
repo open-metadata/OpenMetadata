@@ -38,7 +38,7 @@ import StorePage from '../pages/store';
 import SwaggerPage from '../pages/swagger';
 import TagsPage from '../pages/tags';
 import TeamsPage from '../pages/teams';
-import MyTopicDetailPage from '../pages/topic-details';
+import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import TourPage from '../pages/tour-page';
 import UsersPage from '../pages/users';
 import WorkflowsPage from '../pages/workflows';
@@ -69,7 +69,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route component={DatasetDetailsPage} path={ROUTES.DATASET_DETAILS} />
-      <Route component={MyTopicDetailPage} path={ROUTES.TOPIC_DETAILS} />
+      <Route component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={MyDashBoardPage} path={ROUTES.DASHBOARD_DETAILS} />
       <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
