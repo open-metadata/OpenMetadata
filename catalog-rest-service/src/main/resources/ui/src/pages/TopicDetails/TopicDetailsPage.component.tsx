@@ -114,6 +114,7 @@ const TopicDetailsPage: FunctionComponent = () => {
         setRetentionSize(retentionSize);
         getServiceById('messagingServices', service?.id)
           .then((serviceRes: AxiosResponse) => {
+            setLoading(false);
             setSlashedTopicName([
               {
                 name: serviceRes.data.name,
@@ -149,7 +150,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               body: errMsg,
             });
           });
-        setLoading(false);
       })
       .catch((err: AxiosError) => {
         const errMsg = err.message || 'Error while fetching topic details';
