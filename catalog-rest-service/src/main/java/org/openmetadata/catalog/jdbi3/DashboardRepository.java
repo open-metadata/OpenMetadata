@@ -22,7 +22,6 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.EntityReference;

@@ -19,12 +19,15 @@ package org.openmetadata.catalog.resources;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.ChartRepository3;
+import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TopicRepository3;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
+import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -191,6 +194,12 @@ public final class CollectionRegistry {
     TopicResource topicResource = new TopicResource(topicRepositoryHelper, authorizer);
     environment.jersey().register(topicResource);
     LOG.info("Registering {}", topicResource);
+
+    final ChartRepository3 chartRepository3 = jdbi.onDemand(ChartRepository3.class);
+    ChartRepositoryHelper chartRepositoryHelper = new ChartRepositoryHelper(chartRepository3);
+    ChartResource chartResource = new ChartResource(chartRepositoryHelper, authorizer);
+    environment.jersey().register(chartResource);
+    LOG.info("Registering {}", chartResource);
     LOG.info("Initialized jdbi3");
   }
 

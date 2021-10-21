@@ -91,8 +91,6 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
-
-
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));

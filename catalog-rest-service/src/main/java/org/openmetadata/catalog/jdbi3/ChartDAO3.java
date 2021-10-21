@@ -1,51 +1,56 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.entity.data.Chart;
+import org.openmetadata.catalog.entity.data.Table;
 
 import java.util.List;
 
-public interface ChartDAO3 {
-  @SqlUpdate("INSERT INTO chart_entity (json) VALUES (:json)")
-  void insert(@Bind("json") String json);
+public interface ChartDAO3 extends EntityDAO<Chart>{
+  @Override
+  default String getTableName() { return "chart_entity"; }
 
-  @SqlUpdate("UPDATE chart_entity SET  json = :json where id = :id")
-  void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  default Class<Chart> getEntityClass() { return Chart.class; }
 
-  @SqlQuery("SELECT json FROM chart_entity WHERE fullyQualifiedName = :name")
-  String findByFQN(@Bind("name") String name);
+  @Override
+  @SqlQuery("SELECT json FROM <table> WHERE fullyQualifiedName = :name")
+  String findByName(@Define("table") String table, @Bind("name") String name);
 
-  @SqlQuery("SELECT json FROM chart_entity WHERE id = :id")
-  String findById(@Bind("id") String id);
-
-  @SqlQuery("SELECT count(*) FROM chart_entity WHERE " +
+  @Override
+  @SqlQuery("SELECT count(*) FROM <table> WHERE " +
           "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-  int listCount(@Bind("fqnPrefix") String fqnPrefix);
+  int listCount(@Define("table") String table, @Bind("fqnPrefix") String fqnPrefix);
 
   @SqlQuery(
           "SELECT json FROM (" +
-                  "SELECT fullyQualifiedName, json FROM chart_entity WHERE " +
+                  "SELECT fullyQualifiedName, json FROM <table> WHERE " +
                   "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
                   // service name
                   "fullyQualifiedName < :before " + // Pagination by chart fullyQualifiedName
                   "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by chart fullyQualifiedName
                   "LIMIT :limit" +
                   ") last_rows_subquery ORDER BY fullyQualifiedName")
-  List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
+  List<String> listBefore(@Define("table") String table, @Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
                           @Bind("before") String before);
 
-  @SqlQuery("SELECT json FROM chart_entity WHERE " +
+  @Override
+  @SqlQuery("SELECT json FROM <table> WHERE " +
           "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
           "fullyQualifiedName > :after " +
           "ORDER BY fullyQualifiedName " +
           "LIMIT :limit")
-  List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
+  List<String> listAfter(@Define("table") String table, @Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
                          @Bind("after") String after);
 
-  @SqlQuery("SELECT EXISTS (SELECT * FROM chart_entity WHERE id = :id)")
-  boolean exists(@Bind("id") String id);
+  @Override
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
+  boolean exists(@Define("table") String table, @Bind("id") String id);
 
-  @SqlUpdate("DELETE FROM chart_entity WHERE id = :id")
-  int delete(@Bind("id") String id);
+  @Override
+  @SqlUpdate("DELETE FROM <table> WHERE id = :id")
+  int delete(@Define("table") String table, @Bind("id") String id);
 }

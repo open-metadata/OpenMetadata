@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.jdbi3.ChartRepository;
+import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -64,6 +64,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -76,11 +77,11 @@ import java.util.UUID;
 @Api(value = "Chart data asset collection", tags = "Chart data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository")
+@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository3")
 public class ChartResource {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
-  private final ChartRepository dao;
+  private final ChartRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -102,8 +103,8 @@ public class ChartResource {
   }
 
   @Inject
-  public ChartResource(ChartRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "ChartRepository must not be null");
+  public ChartResource(ChartRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "ChartRepository3 must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }
@@ -125,7 +126,6 @@ public class ChartResource {
           .split(","));
 
   @GET
-  @Valid
   @Operation(summary = "List charts", tags = "charts",
           description = "Get a list of charts, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
@@ -135,30 +135,28 @@ public class ChartResource {
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = ChartList.class)))
           })
-  public ChartList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Chart> list(@Context UriInfo uriInfo,
+                                @Context SecurityContext securityContext,
+                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter charts by service name",
+                                @Parameter(description = "Filter charts by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
+                                @Parameter(description = "Limit the number charts returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
-                        @Min(1)
-                        @Max(1000000)
-                        @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of charts before this cursor",
+                                @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
+                                @Parameter(description = "Returns list of charts before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of charts after this cursor",
+                                @Parameter(description = "Returns list of charts after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ChartList charts;
+    ResultList<Chart> charts;
     if (before != null) { // Reverse paging
       charts = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
