@@ -16,9 +16,7 @@ public interface TableDAO3 extends EntityDAO<Table> {
   }
 
   @Override
-  default Class<Table> getEntityClass() {
-    return Table.class;
-  }
+  default Class<Table> getEntityClass() { return Table.class; }
 
   @Override
   @SqlQuery("SELECT json FROM <table> WHERE fullyQualifiedName = :tableFQN")
@@ -38,7 +36,7 @@ public interface TableDAO3 extends EntityDAO<Table> {
                   "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by table fullyQualifiedName
                   "LIMIT :limit" +
                   ") last_rows_subquery ORDER BY fullyQualifiedName")
-  List<String> listBefore(@Define("table") String table, @Bind("databaseFQN") String databaseFQN, @Bind("limit") int limit,
+  List<String> listBefore(@Define("table") String table, @Bind("databaseFQN") String parentFQN, @Bind("limit") int limit,
                           @Bind("before") String before);
 
   @Override
@@ -47,7 +45,7 @@ public interface TableDAO3 extends EntityDAO<Table> {
           "fullyQualifiedName > :after " + // Pagination by table fullyQualifiedName
           "ORDER BY fullyQualifiedName " + // Pagination ordering by table fullyQualifiedName
           "LIMIT :limit")
-  List<String> listAfter(@Define("table") String table, @Bind("databaseFQN") String databaseFQN, @Bind("limit") int limit,
+  List<String> listAfter(@Define("table") String table, @Bind("databaseFQN") String parentFQN, @Bind("limit") int limit,
                          @Bind("after") String after);
 
   @Override

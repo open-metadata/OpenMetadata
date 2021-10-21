@@ -17,11 +17,11 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.Utils;

@@ -68,7 +68,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -86,7 +85,7 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
   }
 
   // TODO initialize
-  private TableRepository3 tableRepo3;
+  private final TableRepository3 tableRepo3;
 
     @Override
     public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
@@ -301,8 +300,7 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
 
   private void validateRelationships(Table table, UUID databaseId) throws IOException {
     // Validate database
-    Database db = EntityUtil.validate(databaseId.toString(), tableRepo3.databaseDAO().findById(databaseId.toString()),
-            Database.class);
+    Database db = tableRepo3.databaseDAO().findEntityById(databaseId.toString());
     table.setDatabase(EntityUtil.getEntityReference(db));
     // Validate and set other relationships
     validateRelationships(table);
@@ -449,7 +447,7 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", id));
     }
     String databaseId = result.get(0);
-    return EntityUtil.validate(databaseId, tableRepo3.databaseDAO().findById(databaseId), Database.class);
+    return tableRepo3.databaseDAO().findEntityById(databaseId);
   }
 
   private EntityReference getOwner(Table table) throws IOException {

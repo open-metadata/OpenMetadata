@@ -19,8 +19,11 @@ package org.openmetadata.catalog.resources;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
+import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -167,12 +170,19 @@ public final class CollectionRegistry {
    */
   public void registerResources3(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
     LOG.info("Initializing jdbi3");
-    Class<?> repositoryClz = TableRepository3.class;
-      final TableRepository3 daoObject = (TableRepository3) jdbi.onDemand(repositoryClz);
-      TableRepositoryHelper helper = new TableRepositoryHelper(daoObject);
-      TableResource resource = new TableResource(helper, authorizer);
+
+    final TableRepository3 daoObject = jdbi.onDemand(TableRepository3.class);
+    TableRepositoryHelper helper = new TableRepositoryHelper(daoObject);
+    TableResource resource = new TableResource(helper, authorizer);
     environment.jersey().register(resource);
     LOG.info("Registering {}", resource);
+
+    final DatabaseRepository3 daoObject1 = jdbi.onDemand(DatabaseRepository3.class);
+    DatabaseRepositoryHelper helper1 = new DatabaseRepositoryHelper(daoObject1);
+    DatabaseResource resource1 = new DatabaseResource(helper1, authorizer);
+    environment.jersey().register(resource1);
+    LOG.info("Registering {}", resource1);
+
     LOG.info("Initialized jdbi3");
   }
 

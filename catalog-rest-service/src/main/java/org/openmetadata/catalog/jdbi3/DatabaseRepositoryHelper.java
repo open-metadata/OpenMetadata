@@ -22,25 +22,18 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
+import org.openmetadata.catalog.util.ResultList;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +41,9 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -57,11 +52,17 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class DatabaseRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseRepository.class);
+public class DatabaseRepositoryHelper implements EntityRepository<Database> {
+  private static final Logger LOG = LoggerFactory.getLogger(DatabaseRepositoryHelper.class);
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
+
+  public DatabaseRepositoryHelper(DatabaseRepository3 repo3) {
+    this.repo3 = repo3;
+  }
+
+  private final DatabaseRepository3 repo3;
 
   public static String getFQN(Database database) {
     return (database.getService().getName() + "." + database.getName());
@@ -75,77 +76,26 @@ public abstract class DatabaseRepository {
     return refList;
   }
 
-  @CreateSqlObject
-  abstract DatabaseDAO databaseDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract TableDAO tableDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract DatabaseServiceDAO dbServiceDAO();
-
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
-
   @Transaction
-  public DatabaseList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = databaseDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Database> databases = new ArrayList<>();
-    for (String json : jsons) {
-      databases.add(setFields(JsonUtils.readValue(json, Database.class), fields));
-    }
-    int total = databaseDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : databases.get(0).getFullyQualifiedName();
-    if (databases.size() > limitParam) {
-      databases.remove(limitParam);
-      afterCursor = databases.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new DatabaseList(databases, beforeCursor, afterCursor, total);
+  public ResultList<Database> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(this, Database.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction
-  public DatabaseList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = databaseDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Database> databases = new ArrayList<>();
-    for (String json : jsons) {
-      databases.add(setFields(JsonUtils.readValue(json, Database.class), fields));
-    }
-    int total = databaseDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (databases.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      databases.remove(0);
-      beforeCursor = databases.get(0).getFullyQualifiedName();
-    }
-    afterCursor = databases.get(databases.size() - 1).getFullyQualifiedName();
-    return new DatabaseList(databases, beforeCursor, afterCursor, total);
+  public ResultList<Database> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(this, Database.class, fields, serviceName, limitParam, before);
   }
 
   @Transaction
   public Database get(String id, Fields fields) throws IOException {
-    return setFields(validateDatabase(id), fields);
+    return setFields(repo3.databaseDAO().findEntityById(id), fields);
   }
 
   @Transaction
   public Database getByName(String fqn, Fields fields) throws IOException {
-    Database database = EntityUtil.validate(fqn, databaseDAO().findByFQN(fqn), Database.class);
+    Database database = repo3.databaseDAO().findEntityByName(fqn);
     return setFields(database, fields);
   }
 
@@ -157,19 +107,20 @@ public abstract class DatabaseRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
+    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
       throw new IllegalArgumentException("Database is not empty");
     }
-    if (databaseDAO().delete(id) <= 0) {
+    if (repo3.databaseDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Database> createOrUpdate(Database updated) throws IOException {
     validateRelationships(updated);
-    Database stored = JsonUtils.readValue(databaseDAO().findByFQN(updated.getFullyQualifiedName()), Database.class);
+    Database stored = JsonUtils.readValue(repo3.databaseDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+                    Database.class);
     if (stored == null) {  // Database does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -184,7 +135,7 @@ public abstract class DatabaseRepository {
 
   @Transaction
   public Database patch(String id, String user, JsonPatch patch) throws IOException {
-    Database original = setFields(validateDatabase(id), DATABASE_PATCH_FIELDS);
+    Database original = setFields(repo3.databaseDAO().findEntityById(id), DATABASE_PATCH_FIELDS);
     LOG.info("Database summary in original {}", original.getUsageSummary());
     Database updated = JsonUtils.applyPatch(original, patch, Database.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -204,7 +155,8 @@ public abstract class DatabaseRepository {
     EntityReference dbService = getService(database.getService());
     database.setService(dbService);
     database.setFullyQualifiedName(getFQN(database));
-    database.setOwner(EntityUtil.populateOwner(userDAO(), teamDAO(), database.getOwner())); // Validate owner
+    database.setOwner(EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), database.getOwner())); // Validate owner
+    getService(database.getService());
   }
 
   private void addRelationships(Database database) throws IOException {
@@ -221,9 +173,9 @@ public abstract class DatabaseRepository {
     database.withOwner(null).withService(null).withHref(null);
 
     if (update) {
-      databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
+      repo3.databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
     } else {
-      databaseDAO().insert(JsonUtils.pojoToJson(database));
+      repo3.databaseDAO().insert(JsonUtils.pojoToJson(database));
     }
 
     // Restore the relationships
@@ -241,12 +193,12 @@ public abstract class DatabaseRepository {
   }
 
   public EntityReference getOwner(Database database) throws IOException {
-    return database != null ? EntityUtil.populateOwner(database.getId(), relationshipDAO(), userDAO(), teamDAO())
+    return database != null ? EntityUtil.populateOwner(database.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO())
             : null;
   }
 
   private void setOwner(Database database, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), database.getId(), Entity.DATABASE, owner);
+    EntityUtil.setOwner(repo3.relationshipDAO(), database.getId(), Entity.DATABASE, owner);
     database.setOwner(owner);
   }
 
@@ -255,38 +207,60 @@ public abstract class DatabaseRepository {
       return null;
     }
     String databaseId = database.getId().toString();
-    List<String> tableIds = relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+    List<String> tableIds = repo3.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<Table> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      String json = tableDAO().findById(tableId);
+      String json = repo3.tableDAO().findById(tableId);
       Table table = JsonUtils.readValue(json, Table.class);
       tables.add(table);
     }
     return tables;
   }
 
-  private Database validateDatabase(String id) throws IOException {
-    return EntityUtil.validate(id, databaseDAO().findById(id), Database.class);
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return repo3.databaseDAO().listAfter(fqnPrefix, limitParam, after);
   }
 
-  private Database setFields(Database database, Fields fields) throws IOException {
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return repo3.databaseDAO().listBefore(fqnPrefix, limitParam, before);
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return repo3.databaseDAO().listCount(fqnPrefix);
+  }
+
+  @Override
+  public String getFullyQualifiedName(Database entity) {
+    return null;
+  }
+
+  public Database setFields(Database database, Fields fields) throws IOException {
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? toEntityReference(getTables(database)) : null);
     database.setService(fields.contains("service") ? getService(database) : null);
-    database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(),
+    database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(),
             database.getId()) : null);
     return database;
   }
 
+  @Override
+  public ResultList<Database> getResultList(List<Database> entities, String beforeCursor, String afterCursor,
+                                            int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DatabaseList(entities, beforeCursor, afterCursor, total);
+  }
+
   private EntityReference getService(Database database) throws IOException {
-    return database == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(relationshipDAO(),
+    return database == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
             database.getId())));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      DatabaseService serviceInstance = EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
+      DatabaseService serviceInstance = repo3.dbServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -298,53 +272,10 @@ public abstract class DatabaseRepository {
   public void setService(Database database, EntityReference service) throws IOException {
     if (service != null && database != null) {
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), database.getId().toString(), service.getType(),
+      repo3.relationshipDAO().insert(service.getId().toString(), database.getId().toString(), service.getType(),
               Entity.DATABASE, Relationship.CONTAINS.ordinal());
       database.setService(service);
     }
-  }
-
-  public interface DatabaseDAO {
-    @SqlUpdate("INSERT INTO database_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE database_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM database_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM database_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT count(*) FROM database_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-              "SELECT fullyQualifiedName, json FROM database_entity WHERE " +
-              "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by service name
-              "fullyQualifiedName < :before " + // Pagination by database fullyQualifiedName
-              "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by database fullyQualifiedName
-              "LIMIT :limit" +
-            ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM database_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("after") String after);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM database_entity WHERE id = :id)")
-    boolean exists(@Bind("id") String id);
-
-    @SqlUpdate("DELETE FROM database_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
   }
 
   static class DatabaseEntityInterface implements EntityInterface {
@@ -399,13 +330,13 @@ public abstract class DatabaseRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class DatabaseUpdater extends EntityUpdater {
+  public class DatabaseUpdater extends EntityUpdater3 {
     final Database orig;
     final Database updated;
 
     public DatabaseUpdater(Database orig, Database updated, boolean patchOperation) {
       super(new DatabaseEntityInterface(orig),
-              new DatabaseEntityInterface(updated), patchOperation, relationshipDAO(), null);
+              new DatabaseEntityInterface(updated), patchOperation, repo3.relationshipDAO(), null);
 
       this.orig = orig;
       this.updated = updated;

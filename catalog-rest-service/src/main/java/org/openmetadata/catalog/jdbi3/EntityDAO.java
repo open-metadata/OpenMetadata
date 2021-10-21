@@ -44,10 +44,9 @@ public interface EntityDAO<T> {
   String findById(@Define("table") String table, @Bind("id") String id);
 
   String findByName(String table, String name);
-
   int listCount(String table, String databaseFQN); // TODO check this
-  List<String> listBefore(String table, String fqn, int limit, String before);
-  List<String> listAfter(String table, String databaseFQN, int limit, String after);
+  List<String> listBefore(String table, String parentFQN, int limit, String before);
+  List<String> listAfter(String table, String parentFQN, int limit, String after);
   boolean exists(String table, String id);
   int delete(String table, String id);
 
@@ -97,8 +96,8 @@ public interface EntityDAO<T> {
     return listCount(getTableName(), databaseFQN);
   }
 
-  default List<String> listBefore(String databaseFQN, int limit, String before) {
-    return listBefore(getTableName(), databaseFQN, limit, before);
+  default List<String> listBefore(String parentFQN, int limit, String before) {
+    return listBefore(getTableName(), parentFQN, limit, before);
   }
 
   default List<String> listAfter(String databaseFQN, int limit, String after) {
