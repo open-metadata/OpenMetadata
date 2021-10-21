@@ -50,13 +50,9 @@ class SampleUsageSource(Source):
             tq = TableQuery(
                 row["query"],
                 "",
-                100,
-                0,
-                0,
                 "",
                 "",
                 datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
-                100,
                 "shopify",
                 False,
                 row["query"],
