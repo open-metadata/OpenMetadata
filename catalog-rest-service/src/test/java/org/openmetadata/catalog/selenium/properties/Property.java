@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.properties;
 
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -25,7 +26,7 @@ public class Property {
     private static String PATH;
     private static Integer waitTime;
     private static String URL;
-    private static final Object lock = new Object();
+    private static final Object LOCK = new Object();
     private static Property instance;
     String pathToOpenMetadata = "pathToOpenMetadata";
     String openMetadataUrl = "openMetadataUrl";
@@ -33,7 +34,7 @@ public class Property {
 
     public static Property getInstance() {
         if (instance == null) {
-            synchronized (lock) {
+            synchronized (LOCK) {
                 instance = new Property();
                 instance.loadData();
             }
@@ -45,7 +46,8 @@ public class Property {
         Properties properties = new Properties();
         try {
             properties.load(new FileInputStream("selenium.properties"));
-        } catch (IOException ignored) {
+        } catch (IOException e) {
+            return;
         }
         PATH = properties.getProperty(pathToOpenMetadata);
         URL = properties.getProperty(openMetadataUrl);

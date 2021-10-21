@@ -168,7 +168,7 @@ public class TagsPageTest {
                 webDriver.findElement(By.cssSelector("[data-testid='tags']")))).click();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']")))).click();
-        for (int i = 0; i <=1; i ++){
+        for (int i = 0; i <=1; i++){
             wait.until(ExpectedConditions.elementToBeClickable(
                     webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
                     .sendKeys("P");
