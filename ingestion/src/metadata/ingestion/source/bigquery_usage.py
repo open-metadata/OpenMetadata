@@ -17,6 +17,7 @@ import collections
 
 # This import verifies that the dependencies are available.
 import logging as log
+import os
 from datetime import datetime
 from typing import Any, Dict, Iterable
 
@@ -43,6 +44,9 @@ class BigqueryUsageSource(Source):
         self.project_id = self.config.project_id
         self.logger_name = "cloudaudit.googleapis.com%2Fdata_access"
         self.status = SQLSourceStatus()
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config.options[
+            "credentials_path"
+        ]
 
     def get_connection_url(self):
         if self.project_id:
@@ -78,34 +82,26 @@ class BigqueryUsageSource(Source):
                             "queryConfig"
                         ]
                         jobStats = payload["jobChange"]["job"]["jobStats"]
-                        statementType = (
-                            queryConfig["statementType"]
-                            if hasattr(queryConfig, "statementType")
-                            else ""
-                        )
-                        database = (
-                            queryConfig["destinationTable"]
-                            if hasattr(queryConfig, "destinationTable") is not None
-                            else ""
-                        )
+                        statementType = ""
+                        if hasattr(queryConfig, "statementType"):
+                            statementType = queryConfig["statementType"]
+                        database = ""
+                        if hasattr(queryConfig, "destinationTable"):
+                            database = queryConfig["destinationTable"]
                         analysis_date = str(
                             datetime.strptime(
                                 jobStats["startTime"][0:19], "%Y-%m-%dT%H:%M:%S"
                             ).strftime("%Y-%m-%d %H:%M:%S")
                         )
                         tq = TableQuery(
-                            statementType,
-                            queryConfig["priority"],
-                            0,
-                            0,
-                            0,
-                            str(jobStats["startTime"]),
-                            str(jobStats["endTime"]),
-                            analysis_date,
-                            self.config.duration,
-                            str(database),
-                            0,
-                            queryConfig["query"],
+                            query=statementType,
+                            user_name=entry.resource.labels["project_id"],
+                            starttime=str(jobStats["startTime"]),
+                            endtime=str(jobStats["endTime"]),
+                            analysis_date=analysis_date,
+                            aborted=0,
+                            database=str(database),
+                            sql=queryConfig["query"],
                         )
                         yield tq
 
