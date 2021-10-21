@@ -32,6 +32,7 @@ import {
   removeFollower,
 } from '../../axiosAPIs/tableAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.component';
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
@@ -54,7 +55,6 @@ import {
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
-import DatasetDetails from './DatasetDetails.component';
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);

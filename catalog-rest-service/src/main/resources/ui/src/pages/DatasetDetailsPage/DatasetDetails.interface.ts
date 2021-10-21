@@ -22,7 +22,6 @@ export interface DatasetDetailsProps {
   entityName: string;
   datasetFQN: string;
   activeTab: number;
-  setActiveTabHandler: (value: number) => void;
   owner: DatasetOwner;
   description: string;
   tableProfile: Table['tableProfile'];
@@ -33,6 +32,7 @@ export interface DatasetDetailsProps {
   followers: Array<User>;
   tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
+  setActiveTabHandler: (value: number) => void;
   followTableHandler: () => void;
   unfollowTableHandler: () => void;
   settingsUpdateHandler: (updatedTable: Table) => Promise<void>;

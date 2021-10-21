@@ -20,9 +20,9 @@ import RichTextEditorPreviewer from '../../components/common/rich-text-editor/Ri
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
+import ManageTab from '../../components/DatasetDetails/ManageTab';
 import Loader from '../../components/Loader/Loader';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import ManageTab from '../../components/my-data-details/ManageTab';
 import TagsContainer from '../../components/tags-container/tags-container';
 import Tags from '../../components/tags/tags';
 import {

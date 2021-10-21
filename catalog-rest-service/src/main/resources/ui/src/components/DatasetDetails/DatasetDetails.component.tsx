@@ -1,15 +1,6 @@
 import { isEqual, isNil } from 'lodash';
 import { ColumnJoins, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import Description from '../../components/common/description/Description';
-import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import PageContainer from '../../components/containers/PageContainer';
-import Entitylineage from '../../components/dataset-lineage/EntityLineage';
-import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
-import ManageTab from '../../components/my-data-details/ManageTab';
-import SchemaTab from '../../components/my-data-details/SchemaTab';
-import TableProfiler from '../../components/my-data-details/TableProfiler';
 import { getTeamDetailsPath } from '../../constants/constants';
 import {
   JoinedWith,
@@ -20,6 +11,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
+import { DatasetDetailsProps } from '../../pages/DatasetDetailsPage/DatasetDetails.interface';
 import {
   getCurrentUserId,
   getPartialNameFromFQN,
@@ -28,7 +20,15 @@ import {
 } from '../../utils/CommonUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
 import { getRelativeDay } from '../../utils/TimeUtils';
-import { DatasetDetailsProps } from './DatasetDetails.interface';
+import Description from '../common/description/Description';
+import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import TabsPane from '../common/TabsPane/TabsPane';
+import PageContainer from '../containers/PageContainer';
+import Entitylineage from '../dataset-lineage/EntityLineage';
+import FrequentlyJoinedTables from './FrequentlyJoinedTables';
+import ManageTab from './ManageTab';
+import SchemaTab from './SchemaTab';
+import TableProfiler from './TableProfiler';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   entityName,
