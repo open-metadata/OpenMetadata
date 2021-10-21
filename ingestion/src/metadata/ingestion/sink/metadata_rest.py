@@ -31,7 +31,7 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.model import Model
@@ -99,7 +99,7 @@ class MetadataRestSink(Sink):
     def write_record(self, record: Record) -> None:
         if isinstance(record, OMetaDatabaseAndTable):
             self.write_tables(record)
-        elif isinstance(record, CreateTopic):
+        elif isinstance(record, CreateTopicEntityRequest):
             self.write_topics(record)
         elif isinstance(record, Chart):
             self.write_charts(record)
@@ -173,7 +173,7 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Table: {table_and_db.table.name.__root__}")
 
-    def write_topics(self, topic: CreateTopic) -> None:
+    def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
             created_topic = self.client.create_or_update_topic(topic)
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
