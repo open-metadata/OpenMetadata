@@ -1,4 +1,4 @@
-import { AxiosResponse } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, TableDetail } from 'Models';
@@ -15,10 +15,11 @@ import {
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { getServiceDetailsPath } from '../../constants/constants';
+import { ERROR500, getServiceDetailsPath } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
+import useToastContext from '../../hooks/useToastContext';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
@@ -30,6 +31,7 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
+  const showToast = useToastContext();
 
   const [tagList, setTagList] = useState<Array<string>>([]);
   const { topicFQN } = useParams() as Record<string, string>;
@@ -139,13 +141,19 @@ const TopicDetailsPage: FunctionComponent = () => {
               timestamp: 0,
             });
           })
-          .catch(() => {
-            setLoading(false);
+          .catch((err: AxiosError) => {
+            showToast({
+              variant: 'error',
+              body: err.response?.data?.responseMessage ?? ERROR500,
+            });
           });
         setLoading(false);
       })
-      .catch(() => {
-        setLoading(false);
+      .catch((err: AxiosError) => {
+        showToast({
+          variant: 'error',
+          body: err.response?.data?.responseMessage ?? ERROR500,
+        });
       });
   };
 
