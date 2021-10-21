@@ -15,6 +15,7 @@
 
 import datetime
 import logging
+import traceback
 from typing import Optional
 
 from sql_metadata import Parser
