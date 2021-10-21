@@ -1,7 +1,6 @@
 """
 OpenMetadata high-level API Model test
 """
-import json
 import uuid
 from unittest import TestCase
 
@@ -28,7 +27,12 @@ class OMetaModelTest(TestCase):
     )
     owner = EntityReference(id=user.id, type="user")
 
-    entity = Model(id=uuid.uuid4(), name="test-model", algorithm="algo")
+    entity = Model(
+        id=uuid.uuid4(),
+        name="test-model",
+        algorithm="algo",
+        fullyQualifiedName="test-model",
+    )
     create = CreateModelEntityRequest(name="test-model", algorithm="algo")
 
     def test_create(self):
@@ -53,10 +57,6 @@ class OMetaModelTest(TestCase):
             entity=CreateModelEntityRequest, data=self.create
         )
 
-        self.assertEqual(res_create.name, self.create.name)
-        self.assertEqual(res_create.algorithm, self.create.algorithm)
-        self.assertEqual(res_create.owner, None)
-
         updated = self.entity.dict(exclude_unset=True)
         updated["owner"] = self.owner
         updated_entity = Model(**updated)
@@ -75,7 +75,9 @@ class OMetaModelTest(TestCase):
 
         self.metadata.create_or_update(entity=Model, data=self.entity)
 
-        res = self.metadata.get_by_name(entity=Model, name=self.entity.name)
+        res = self.metadata.get_by_name(
+            entity=Model, fqdn=self.entity.fullyQualifiedName
+        )
         self.assertEqual(res.name, self.entity.name)
 
     def test_get_id(self):
@@ -86,7 +88,9 @@ class OMetaModelTest(TestCase):
         self.metadata.create_or_update(entity=Model, data=self.entity)
 
         # First pick up by name
-        res_name = self.metadata.get_by_name(entity=Model, name=self.entity.name)
+        res_name = self.metadata.get_by_name(
+            entity=Model, fqdn=self.entity.fullyQualifiedName
+        )
         # Then fetch by ID
         res = self.metadata.get_by_id(entity=Model, entity_id=str(res_name.id.__root__))
 
@@ -115,7 +119,9 @@ class OMetaModelTest(TestCase):
         self.metadata.create_or_update(entity=Model, data=self.entity)
 
         # Find by name
-        res_name = self.metadata.get_by_name(entity=Model, name=self.entity.name)
+        res_name = self.metadata.get_by_name(
+            entity=Model, fqdn=self.entity.fullyQualifiedName
+        )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
             entity=Model, entity_id=str(res_name.id.__root__)
