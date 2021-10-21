@@ -31,7 +31,7 @@ from metadata.utils.helpers import get_start_and_end
 class SnowflakeUsageSource(Source):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
-        select query_id,query_text,user_name,database_name,
+        select query_type,query_text,user_name,database_name,
         schema_name,start_time,end_time
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
@@ -88,7 +88,7 @@ class SnowflakeUsageSource(Source):
         """
         for row in self._get_raw_extract_iter():
             tq = TableQuery(
-                query=row["query_id"],
+                query=row["query_type"],
                 user_name=row["user_name"],
                 starttime=str(row["start_time"]),
                 endtime=str(row["end_time"]),
