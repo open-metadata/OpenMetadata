@@ -22,7 +22,6 @@ import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -79,7 +78,7 @@ public abstract class ChartRepository {
   abstract DashboardServiceDAO dashboardServiceDAO();
 
   @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
+  abstract TagDAO tagDAO();
 
 
   @Transaction

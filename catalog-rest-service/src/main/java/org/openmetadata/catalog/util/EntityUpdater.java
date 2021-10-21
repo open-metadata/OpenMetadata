@@ -3,7 +3,7 @@ package org.openmetadata.catalog.util;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
-import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
+import org.openmetadata.catalog.jdbi3.TagDAO;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

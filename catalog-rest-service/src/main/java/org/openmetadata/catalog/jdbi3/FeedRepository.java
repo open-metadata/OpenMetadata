@@ -21,11 +21,7 @@ import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
-import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
-import org.openmetadata.catalog.jdbi3.ModelRepository.ModelDAO;
-import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineDAO;
 
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;

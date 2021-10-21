@@ -22,7 +22,6 @@ import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -31,10 +30,7 @@ import org.openmetadata.catalog.util.*;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.json.JsonPatch;
@@ -67,7 +63,7 @@ public abstract class PipelineRepository {
   abstract TaskRepository.TaskDAO taskDAO();
 
   @CreateSqlObject
-  abstract PipelineServiceRepository.PipelineServiceDAO pipelineServiceDAO();
+  abstract PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
   abstract EntityRelationshipDAO relationshipDAO();
@@ -79,7 +75,7 @@ public abstract class PipelineRepository {
   abstract TeamDAO teamDAO();
 
   @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
+  abstract TagDAO tagDAO();
 
   EntityRepository<Pipeline> entityRepository = new EntityRepository<>() {
     @Override
@@ -366,47 +362,6 @@ public abstract class PipelineRepository {
 
   private Pipeline validatePipeline(String id) throws IOException {
     return EntityUtil.validate(id, pipelineDAO().findById(id), Pipeline.class);
-  }
-
-  public interface PipelineDAO {
-    @SqlUpdate("INSERT INTO pipeline_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE pipeline_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM pipeline_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT json FROM pipeline_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT count(*) FROM pipeline_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM pipeline_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by pipeline fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by  fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM pipeline_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlUpdate("DELETE FROM pipeline_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
   }
 
   static class PipelineEntityInterface implements EntityInterface {

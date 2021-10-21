@@ -22,7 +22,6 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -34,10 +33,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +79,7 @@ public abstract class ModelRepository {
   abstract DashboardDAO dashboardDAO();
 
   @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
+  abstract TagDAO tagDAO();
 
 
   @Transaction
@@ -314,43 +310,6 @@ public abstract class ModelRepository {
 
   private Model validateModel(String id) throws IOException {
     return EntityUtil.validate(id, modelDAO().findById(id), Model.class);
-  }
-
-  public interface ModelDAO {
-    @SqlUpdate("INSERT INTO model_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE model_entity SET json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM model_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT json FROM model_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT count(*) FROM model_entity")
-    int listCount();
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM model_entity WHERE " +
-                    "fullyQualifiedName < :before " + // Pagination by model fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " +
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM model_entity WHERE " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlUpdate("DELETE FROM model_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
   }
 
   static class ModelEntityInterface implements EntityInterface {

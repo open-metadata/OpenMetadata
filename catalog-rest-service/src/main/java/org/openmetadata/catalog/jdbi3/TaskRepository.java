@@ -21,8 +21,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -80,7 +78,7 @@ public abstract class TaskRepository {
   abstract PipelineServiceDAO pipelineServiceDAO();
 
   @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
+  abstract TagDAO tagDAO();
 
 
   @Transaction

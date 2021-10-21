@@ -19,16 +19,12 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.ws.rs.core.Response;
@@ -153,23 +149,4 @@ public abstract class ReportRepository {
     report.setOwner(newOwner);
   }
 
-  public interface ReportDAO {
-    @SqlUpdate("INSERT INTO report_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE report_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM report_entity WHERE id = :id")
-    String findById(@Bind("name") String id);
-
-    @SqlQuery("SELECT json FROM report_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM report_entity")
-    List<String> list();
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM report_entity where id = :id)")
-    boolean exists(@Bind("id") String id);
-  }
 }
