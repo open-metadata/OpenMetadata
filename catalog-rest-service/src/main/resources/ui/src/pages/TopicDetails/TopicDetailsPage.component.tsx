@@ -114,7 +114,6 @@ const TopicDetailsPage: FunctionComponent = () => {
         setRetentionSize(retentionSize);
         getServiceById('messagingServices', service?.id)
           .then((serviceRes: AxiosResponse) => {
-            setLoading(false);
             setSlashedTopicName([
               {
                 name: serviceRes.data.name,
@@ -141,6 +140,7 @@ const TopicDetailsPage: FunctionComponent = () => {
               serviceType: serviceRes.data.serviceType,
               timestamp: 0,
             });
+            setLoading(false);
           })
           .catch((err: AxiosError) => {
             const errMsg =
