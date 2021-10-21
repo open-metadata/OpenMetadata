@@ -184,9 +184,10 @@ public abstract class ChartRepository {
   }
 
   private void validateRelationships(Chart chart) throws IOException {
+    EntityReference dashboardService = getService(chart.getService());
+    chart.setService(dashboardService);
     chart.setFullyQualifiedName(getFQN(chart));
     EntityUtil.populateOwner(userDAO(), teamDAO(), chart.getOwner()); // Validate owner
-    getService(chart.getService());
     chart.setTags(EntityUtil.addDerivedTags(tagDAO(), chart.getTags()));
   }
 

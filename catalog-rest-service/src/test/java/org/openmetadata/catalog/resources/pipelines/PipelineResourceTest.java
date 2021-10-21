@@ -370,7 +370,8 @@ public class PipelineResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_PipelineUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withDescription("description");
+    CreatePipeline request = create(test).withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId())
+            .withType("pipelineService")).withDescription("description");
     createAndCheckPipeline(request, adminAuthHeaders());
     URI pipelineURI = new URI("https://airflow.open-metadata.org/tree?dag_id=airflow_redshift_usage");
     Integer pipelineConcurrency = 110;
@@ -380,9 +381,11 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     Pipeline pipeline = updatePipeline(request.withPipelineUrl(pipelineURI)
             .withConcurrency(pipelineConcurrency)
             .withStartDate(startDate), OK, adminAuthHeaders());
+    String expectedFQN = AIRFLOW_REFERENCE.getName()+"."+pipeline.getName();
     assertEquals(pipelineURI, pipeline.getPipelineUrl());
     assertEquals(startDate, pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
+    assertEquals(expectedFQN, pipeline.getFullyQualifiedName());
   }
 
   @Test

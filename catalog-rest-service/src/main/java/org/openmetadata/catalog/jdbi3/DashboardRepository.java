@@ -270,9 +270,10 @@ public abstract class DashboardRepository {
 
   private void validateRelationships(Dashboard dashboard)
           throws IOException {
+    EntityReference dashboardService =  getService(dashboard.getService());
+    dashboard.setService(dashboardService);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner()); // Validate owner
-    getService(dashboard.getService());
     dashboard.setTags(EntityUtil.addDerivedTags(tagDAO(), dashboard.getTags()));
   }
 

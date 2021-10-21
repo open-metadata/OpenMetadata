@@ -217,12 +217,14 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
     // Create Dashboard for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckDashboard(create(test).withService(service), adminAuthHeaders());
-
+      createAndCheckDashboard(create(test).withService(new EntityReference().withId(service.getId())
+              .withType(service.getType())), adminAuthHeaders());
       // List Dashboards by filtering on service name and ensure right Dashboards are returned in the response
       DashboardList list = listDashboards("service", service.getName(), adminAuthHeaders());
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
+        String expectedFQN = service.getName() + "." + db.getName();
+        assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }
   }

@@ -143,6 +143,17 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   }
 
   @Test
+  public void post_databaseFQN_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+    // Create team with different optional fields
+    CreateDatabase create = create(test);
+    create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
+    Database db = createAndCheckDatabase(create, adminAuthHeaders());
+    String expectedFQN = SNOWFLAKE_REFERENCE.getName()+"."+create.getName();
+    assertEquals(expectedFQN, db.getFullyQualifiedName());
+
+  }
+
+  @Test
   public void post_databaseWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
     createAndCheckDatabase(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
