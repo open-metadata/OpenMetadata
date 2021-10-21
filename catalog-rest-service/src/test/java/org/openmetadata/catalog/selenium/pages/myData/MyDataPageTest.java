@@ -146,6 +146,7 @@ public class MyDataPageTest {
 
     @Test
     public void checkLogout() {
+        checkWhatsNew();
         webDriver.findElement(By.cssSelector("[data-testid='greeting-text']")).click();
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Logout']")).click();
     }
