@@ -17,7 +17,7 @@ import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import PageContainer from '../../components/containers/PageContainer';
 import Loader from '../../components/Loader/Loader';
-import ManageTab from '../../components/my-data-details/ManageTab';
+import ManageTab from '../../components/ManageTab/ManageTab.component';
 import SchemaEditor from '../../components/schema-editor/SchemaEditor';
 import {
   getServiceDetailsPath,

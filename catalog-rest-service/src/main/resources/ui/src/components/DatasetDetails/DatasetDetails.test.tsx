@@ -18,7 +18,15 @@
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import MyDataDetailsPage from './index';
+import {
+  ColumnJoins,
+  Table,
+  TableJoins,
+  TypeUsedToReturnUsageDetailsOfAnEntity,
+} from '../../generated/entity/data/table';
+import { EntityLineage } from '../../generated/type/entityLineage';
+import DatasetDetails from './DatasetDetails.component';
+import { DatasetOwner } from './DatasetDetails.interface';
 
 const mockUserTeam = [
   {
@@ -38,16 +46,42 @@ const mockUserTeam = [
     type: 'type',
   },
 ];
-
-jest.mock('../../components/my-data-details/ManageTab', () => {
+const DatasetDetailsProps = {
+  activeTab: 1,
+  columns: [],
+  columnsUpdateHandler: jest.fn(),
+  datasetFQN: '',
+  description: '',
+  descriptionUpdateHandler: jest.fn(),
+  entityLineage: {} as EntityLineage,
+  entityName: '',
+  followers: [],
+  followTableHandler: jest.fn(),
+  joins: {
+    columnJoins: [] as ColumnJoins[],
+  } as TableJoins,
+  owner: {} as DatasetOwner,
+  sampleData: {},
+  setActiveTabHandler: jest.fn(),
+  settingsUpdateHandler: jest.fn(),
+  slashedTableName: [],
+  tableDetails: {} as Table,
+  tableProfile: [],
+  tableTags: [],
+  tier: '',
+  unfollowTableHandler: jest.fn(),
+  usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
+  users: [],
+};
+jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);
 });
 
-jest.mock('../../components/dataset-lineage/EntityLineage', () => {
+jest.mock('../EntityLineage/EntityLineage.component', () => {
   return jest.fn().mockReturnValue(<p>Lineage</p>);
 });
 
-jest.mock('../../components/my-data-details/ProfilerTable', () => {
+jest.mock('../TableProfiler/TableProfiler.component', () => {
   return jest.fn().mockReturnValue(<p>ProfilerTable</p>);
 });
 
@@ -55,7 +89,7 @@ jest.mock('../../components/common/description/Description', () => {
   return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
-jest.mock('../../components/my-data-details/SchemaTab', () => {
+jest.mock('../SchemaTab/SchemaTab.component', () => {
   return jest.fn().mockReturnValue(<p>SchemaTab</p>);
 });
 
@@ -69,7 +103,7 @@ jest.mock('../../utils/CommonUtils', () => ({
 
 describe('Test MyDataDetailsPage page', () => {
   it('Checks if the page has all the proper components rendered', () => {
-    const { container } = render(<MyDataDetailsPage />, {
+    const { container } = render(<DatasetDetails {...DatasetDetailsProps} />, {
       wrapper: MemoryRouter,
     });
     const followButton = getByTestId(container, 'follow-button');

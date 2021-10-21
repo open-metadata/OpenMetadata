@@ -23,9 +23,9 @@ import Onboarding from '../components/onboarding/Onboarding'; // Remove this rou
 import { ROUTES } from '../constants/constants';
 import MyDashBoardPage from '../pages/dashboard-details';
 import DatabaseDetails from '../pages/database-details/index';
+import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import ExplorePage from '../pages/explore';
 import MyDataPage from '../pages/my-data';
-import MyDataDetailsPage from '../pages/my-data-details';
 import MyPipelinePage from '../pages/Pipeline-details';
 import ReportsPage from '../pages/reports';
 import Scorecard from '../pages/scorecard';
@@ -68,7 +68,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <Route component={MyDataDetailsPage} path={ROUTES.DATASET_DETAILS} />
+      <Route component={DatasetDetailsPage} path={ROUTES.DATASET_DETAILS} />
       <Route component={MyTopicDetailPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={MyDashBoardPage} path={ROUTES.DASHBOARD_DETAILS} />
       <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
