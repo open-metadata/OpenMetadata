@@ -59,7 +59,6 @@ class QueryParserProcessor(Processor):
 
     def process(self, record: TableQuery) -> QueryParserData:
         try:
-            print(record.analysis_date)
             start_date = datetime.datetime.strptime(
                 record.analysis_date, "%Y-%m-%d %H:%M:%S"
             ).date()
@@ -74,8 +73,6 @@ class QueryParserProcessor(Processor):
                 date=start_date.strftime("%Y-%m-%d"),
             )
         except Exception as err:
-            print(record.analysis_date)
-            traceback.print_exc()
             logger.debug(record.sql)
             logger.error(err)
             query_parser_data = None

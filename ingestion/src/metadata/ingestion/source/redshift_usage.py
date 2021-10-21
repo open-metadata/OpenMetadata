@@ -124,18 +124,14 @@ class RedshiftUsageSource(Source):
         """
         for row in self._get_raw_extract_iter():
             tq = TableQuery(
-                row["query"],
-                "",
-                1,
-                1,
-                1,
-                str(row["starttime"]),
-                str(row["endtime"]),
-                str(self.analysis_date),
-                10,
-                row["database"],
-                row["aborted"],
-                row["querytxt"],
+                query=row["query"],
+                user_name=row["usename"],
+                starttime=str(row["starttime"]),
+                endtime=str(row["endtime"]),
+                analysis_date=str(self.analysis_date),
+                database=row["database"],
+                aborted=row["aborted"],
+                sql=row["querytxt"],
             )
             yield tq
 
