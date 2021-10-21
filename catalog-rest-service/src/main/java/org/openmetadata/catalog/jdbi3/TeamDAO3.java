@@ -7,7 +7,7 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 
 import java.util.List;
 
-public interface TeamDAO {
+public interface TeamDAO3 {
   @SqlUpdate("INSERT INTO team_entity (json) VALUES (:json)")
   void insert(@Bind("json") String json);
 

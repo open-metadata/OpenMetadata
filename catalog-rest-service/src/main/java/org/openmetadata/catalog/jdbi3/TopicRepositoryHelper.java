@@ -18,26 +18,24 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +43,9 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -54,8 +54,8 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class TopicRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
+public class TopicRepositoryHelper implements EntityRepository<Topic> {
+  private static final Logger LOG = LoggerFactory.getLogger(TopicRepositoryHelper.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
 
@@ -63,64 +63,22 @@ public abstract class TopicRepository {
     return (topic.getService().getName() + "." + topic.getName());
   }
 
-  @CreateSqlObject
-  abstract TopicDAO topicDAO();
+  public TopicRepositoryHelper(TopicRepository3 topicRepository3) {
+    this.repo3 = topicRepository3;
+  }
 
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract MessagingServiceDAO messageServiceDAO();
-
-  @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
+  private final TopicRepository3 repo3;
 
   @Transaction
-  public TopicList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = topicDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Topic> topics = new ArrayList<>();
-    for (String json : jsons) {
-      topics.add(setFields(JsonUtils.readValue(json, Topic.class), fields));
-    }
-    int total = topicDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : topics.get(0).getFullyQualifiedName();
-    if (topics.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      topics.remove(limitParam);
-      afterCursor = topics.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new TopicList(topics, beforeCursor, afterCursor, total);
+  public ResultList<Topic> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(this, Topic.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction
-  public TopicList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = topicDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Topic> topics = new ArrayList<>();
-    for (String json : jsons) {
-      topics.add(setFields(JsonUtils.readValue(json, Topic.class), fields));
-    }
-    int total = topicDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (topics.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      topics.remove(0);
-      beforeCursor = topics.get(0).getFullyQualifiedName();
-    }
-    afterCursor = topics.get(topics.size() - 1).getFullyQualifiedName();
-    return new TopicList(topics, beforeCursor, afterCursor, total);
+  public ResultList<Topic> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(this, Topic.class, fields, serviceName, limitParam, before);
   }
 
   @Transaction
@@ -130,7 +88,7 @@ public abstract class TopicRepository {
 
   @Transaction
   public Topic getByName(String fqn, Fields fields) throws IOException {
-    Topic topic = EntityUtil.validate(fqn, topicDAO().findByFQN(fqn), Topic.class);
+    Topic topic = repo3.topicDAO().findEntityByName(fqn);
     return setFields(topic, fields);
   }
 
@@ -142,19 +100,19 @@ public abstract class TopicRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
+    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
-    if (topicDAO().delete(id) <= 0) {
+    if (repo3.topicDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Topic> createOrUpdate(Topic updated) throws IOException {
     validateRelationships(updated);
-    Topic stored = JsonUtils.readValue(topicDAO().findByFQN(updated.getFullyQualifiedName()), Topic.class);
+    Topic stored = JsonUtils.readValue(repo3.topicDAO().findJsonByFqn(updated.getFullyQualifiedName()), Topic.class);
     if (stored == null) {  // Topic does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -178,7 +136,7 @@ public abstract class TopicRepository {
 
   @Transaction
   public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner());
+    return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), topic.getOwner());
   }
 
   public Topic createInternal(Topic topic) throws IOException {
@@ -189,9 +147,9 @@ public abstract class TopicRepository {
 
   private void validateRelationships(Topic topic) throws IOException {
     topic.setFullyQualifiedName(getFQN(topic));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), topic.getOwner()); // Validate owner
+    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), topic.getOwner()); // Validate owner
     getService(topic.getService());
-    topic.setTags(EntityUtil.addDerivedTags(tagDAO(), topic.getTags()));
+    topic.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), topic.getTags()));
   }
 
   private void addRelationships(Topic topic) throws IOException {
@@ -210,9 +168,9 @@ public abstract class TopicRepository {
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
+      repo3.topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
     } else {
-      topicDAO().insert(JsonUtils.pojoToJson(topic));
+      repo3.topicDAO().insert(JsonUtils.pojoToJson(topic));
     }
 
     // Restore the relationships
@@ -221,7 +179,7 @@ public abstract class TopicRepository {
 
   private void applyTags(Topic topic) throws IOException {
     // Add topic level tags by adding tag to topic relationship
-    EntityUtil.applyTags(tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
+    EntityUtil.applyTags(repo3.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
     topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
@@ -236,19 +194,40 @@ public abstract class TopicRepository {
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null ? EntityUtil.populateOwner(topic.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
+    return topic != null ? EntityUtil.populateOwner(topic.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO()) : null;
   }
 
   private void setOwner(Topic topic, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
+    EntityUtil.setOwner(repo3.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
     topic.setOwner(owner);
   }
 
   private Topic validateTopic(String id) throws IOException {
-    return EntityUtil.validate(id, topicDAO().findById(id), Topic.class);
+    return repo3.topicDAO().findEntityById(id);
   }
 
-  private Topic setFields(Topic topic, Fields fields) throws IOException {
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(Topic entity) {
+    return null;
+  }
+
+  @Override
+  public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
     topic.setService(fields.contains("service") ? getService(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
@@ -256,23 +235,28 @@ public abstract class TopicRepository {
     return topic;
   }
 
+  @Override
+  public ResultList<Topic> getResultList(List<Topic> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new TopicList(entities, beforeCursor, afterCursor, total);
+  }
+
   private List<EntityReference> getFollowers(Topic topic) throws IOException {
-    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), relationshipDAO(), userDAO());
+    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), repo3.relationshipDAO(), repo3.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return tagDAO().getTags(fqn);
+    return repo3.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Topic topic) throws IOException {
-    return topic == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(relationshipDAO(),
+    return topic == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
             topic.getId())));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = EntityUtil.validate(id, messageServiceDAO().findById(id),
+      MessagingService serviceInstance = EntityUtil.validate(id, repo3.messageServiceDAO().findById(id),
               MessagingService.class);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
@@ -285,7 +269,7 @@ public abstract class TopicRepository {
   public void setService(Topic topic, EntityReference service) throws IOException {
     if (service != null && topic != null) {
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
+      repo3.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
               Entity.TOPIC, Relationship.CONTAINS.ordinal());
       topic.setService(service);
     }
@@ -293,59 +277,15 @@ public abstract class TopicRepository {
 
   @Transaction
   public Status addFollower(String topicId, String userId) throws IOException {
-    EntityUtil.validate(topicId, topicDAO().findById(topicId), Topic.class);
-    return EntityUtil.addFollower(relationshipDAO(), userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
+    repo3.topicDAO().findEntityById(topicId);
+    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String topicId, String userId) {
-    EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), topicId, userId);
-  }
-
-  public interface TopicDAO {
-    @SqlUpdate("INSERT INTO topic_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE topic_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM topic_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM topic_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT count(*) FROM topic_entity WHERE " +
-              "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)") // Filter by service name
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM topic_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by topic fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by topic fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM topic_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM topic_entity WHERE id = :id)")
-    boolean exists(@Bind("id") String id);
-
-    @SqlUpdate("DELETE FROM topic_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+    EntityUtil.validateUser(repo3.userDAO(), userId);
+    EntityUtil.removeFollower(repo3.relationshipDAO(), topicId, userId);
   }
 
   static class TopicEntityInterface implements EntityInterface {
@@ -404,13 +344,13 @@ public abstract class TopicRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class TopicUpdater extends EntityUpdater {
+  public class TopicUpdater extends EntityUpdater3 {
     final Topic orig;
     final Topic updated;
 
     public TopicUpdater(Topic orig, Topic updated, boolean patchOperation) {
-      super(new TopicRepository.TopicEntityInterface(orig), new TopicRepository.TopicEntityInterface(updated), patchOperation, relationshipDAO(),
-              tagDAO());
+      super(new TopicEntityInterface(orig), new TopicEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+              repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

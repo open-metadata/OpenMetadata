@@ -18,31 +18,22 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 
-public interface TableRepository3 {
+public interface TopicRepository3 {
   @CreateSqlObject
-  DatabaseDAO3 databaseDAO();
+  abstract TopicDAO3 topicDAO();
 
   @CreateSqlObject
-  EntityRelationshipDAO3 relationshipDAO();
+  abstract EntityRelationshipDAO3 relationshipDAO();
 
   @CreateSqlObject
-  FieldRelationshipDAO3 fieldRelationshipDAO();
+  abstract UserDAO3 userDAO();
 
   @CreateSqlObject
-  EntityExtensionDAO3 entityExtensionDAO();
+  abstract TeamDAO3 teamDAO();
 
   @CreateSqlObject
-  UserDAO3 userDAO();
+  abstract MessagingServiceDAO3 messageServiceDAO();
 
   @CreateSqlObject
-  TeamDAO3 teamDAO();
-
-  @CreateSqlObject
-  TagDAO3 tagDAO();
-
-  @CreateSqlObject
-  TableDAO3 tableDAO();
-
-  @CreateSqlObject
-  UsageDAO3 usageDAO();
+  abstract TagDAO3 tagDAO();
 }

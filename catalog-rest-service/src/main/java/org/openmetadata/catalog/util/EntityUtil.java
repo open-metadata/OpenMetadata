@@ -49,11 +49,14 @@ import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportDAO;
 import org.openmetadata.catalog.jdbi3.TableDAO;
 import org.openmetadata.catalog.jdbi3.TableDAO3;
+import org.openmetadata.catalog.jdbi3.TagDAO3;
 import org.openmetadata.catalog.jdbi3.TagRepository.TagDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
+import org.openmetadata.catalog.jdbi3.TeamDAO3;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.TopicRepository.TopicDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
+import org.openmetadata.catalog.jdbi3.TopicDAO;
+import org.openmetadata.catalog.jdbi3.UsageDAO;
+import org.openmetadata.catalog.jdbi3.UsageDAO3;
 import org.openmetadata.catalog.jdbi3.UserDAO;
 import org.openmetadata.catalog.jdbi3.UserDAO3;
 import org.openmetadata.catalog.resources.charts.ChartResource;
@@ -214,7 +217,7 @@ public final class EntityUtil {
 
   // Get owner for a given entity
   public static EntityReference populateOwner(UUID id, EntityRelationshipDAO3 entityRelationshipDAO, UserDAO3 userDAO3,
-                                              org.openmetadata.catalog.jdbi3.TeamDAO teamDAO) throws IOException {
+                                              TeamDAO3 teamDAO) throws IOException {
     List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
@@ -248,7 +251,7 @@ public final class EntityUtil {
     return owner;
   }
 
-  public static EntityReference populateOwner(UserDAO3 userDAO3, org.openmetadata.catalog.jdbi3.TeamDAO teamDAO,
+  public static EntityReference populateOwner(UserDAO3 userDAO3, TeamDAO3 teamDAO,
                                               EntityReference owner)
           throws IOException {
     if (owner == null) {
@@ -694,7 +697,7 @@ public final class EntityUtil {
     return details;
   }
 
-  public static UsageDetails getLatestUsage(org.openmetadata.catalog.jdbi3.UsageDAO usageDAO, UUID entityId) {
+  public static UsageDetails getLatestUsage(UsageDAO3 usageDAO, UUID entityId) {
     LOG.debug("Getting latest usage for {}", entityId);
     UsageDetails details = usageDAO.getLatestUsage(entityId.toString());
     if (details == null) {
@@ -803,7 +806,7 @@ public final class EntityUtil {
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
    */
-  public static void applyTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
+  public static void applyTags(TagDAO3 tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
@@ -855,7 +858,7 @@ public final class EntityUtil {
   /**
    * Validate given list of tags and add derived tags to it
    */
-  public static List<TagLabel> addDerivedTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
+  public static List<TagLabel> addDerivedTags(TagDAO3 tagDAO, List<TagLabel> tagLabels) throws IOException {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
@@ -881,7 +884,7 @@ public final class EntityUtil {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
-  public static void removeTagsByPrefix(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, String fullyQualifiedName) {
+  public static void removeTagsByPrefix(TagDAO3 tagDAO, String fullyQualifiedName) {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 

@@ -210,7 +210,7 @@ public class DatabaseRepositoryHelper implements EntityRepository<Database> {
     List<String> tableIds = repo3.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<Table> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      String json = repo3.tableDAO().findById(tableId);
+      String json = repo3.tableDAO().findJsonById(tableId);
       Table table = JsonUtils.readValue(json, Table.class);
       tables.add(table);
     }

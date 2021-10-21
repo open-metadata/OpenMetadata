@@ -23,8 +23,11 @@ import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TopicRepository3;
+import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
@@ -183,6 +186,11 @@ public final class CollectionRegistry {
     environment.jersey().register(resource1);
     LOG.info("Registering {}", resource1);
 
+    final TopicRepository3 topicRepository3 = jdbi.onDemand(TopicRepository3.class);
+    TopicRepositoryHelper topicRepositoryHelper = new TopicRepositoryHelper(topicRepository3);
+    TopicResource topicResource = new TopicResource(topicRepositoryHelper, authorizer);
+    environment.jersey().register(topicResource);
+    LOG.info("Registering {}", topicResource);
     LOG.info("Initialized jdbi3");
   }
 

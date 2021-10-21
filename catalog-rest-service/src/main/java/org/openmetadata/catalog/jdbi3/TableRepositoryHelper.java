@@ -84,7 +84,6 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
     this.tableRepo3 = tableRepo3;
   }
 
-  // TODO initialize
   private final TableRepository3 tableRepo3;
 
     @Override

@@ -5,7 +5,7 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.catalog.jdbi3.TagDAO.TagLabelMapper;
+import org.openmetadata.catalog.jdbi3.TagDAO3.TagLabelMapper;
 import org.openmetadata.catalog.type.TagLabel;
 
 import java.sql.ResultSet;
@@ -13,7 +13,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 @RegisterRowMapper(TagLabelMapper.class)
-public interface TagDAO {
+public interface TagDAO3 {
   @SqlUpdate("INSERT INTO tag_category (json) VALUES (:json)")
   void insertCategory(@Bind("json") String json);
 
