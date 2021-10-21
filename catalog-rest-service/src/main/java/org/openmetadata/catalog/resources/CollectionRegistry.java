@@ -25,6 +25,8 @@ import org.openmetadata.catalog.jdbi3.ChartRepository3;
 import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DashboardRepository3;
 import org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository3;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
@@ -36,6 +38,7 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -219,6 +222,12 @@ public final class CollectionRegistry {
     environment.jersey().register(dashboardResource);
     LOG.info("Registering {}", dashboardResource);
 
+    final DashboardServiceRepository3 dashboardServiceRepository3 = jdbi.onDemand(DashboardServiceRepository3.class);
+    DashboardServiceRepositoryHelper dashboardServiceRepositoryHelper = new DashboardServiceRepositoryHelper(dashboardServiceRepository3);
+    DashboardServiceResource dashboardServiceResource = new DashboardServiceResource(dashboardServiceRepositoryHelper,
+            authorizer);
+    environment.jersey().register(dashboardServiceResource);
+    LOG.info("Registering {}", dashboardServiceResource);
     LOG.info("Initialized jdbi3");
   }
 

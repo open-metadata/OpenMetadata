@@ -21,50 +21,47 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class DashboardServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DashboardServiceRepository.class);
+public class DashboardServiceRepositoryHelper implements EntityRepository<DashboardService> {
+  public DashboardServiceRepositoryHelper(DashboardServiceRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract DashboardServiceDAO dashboardServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
+  private final DashboardServiceRepository3 repo3;
 
   @Transaction
   public List<DashboardService> list(String name) throws IOException {
-    return JsonUtils.readObjects(dashboardServiceDAO().list(name), DashboardService.class);
+    return JsonUtils.readObjects(repo3.dashboardServiceDAO().list(name), DashboardService.class);
   }
 
   @Transaction
   public DashboardService get(String id) throws IOException {
-    return EntityUtil.validate(id, dashboardServiceDAO().findById(id), DashboardService.class);
+    return repo3.dashboardServiceDAO().findEntityById(id);
   }
 
   @Transaction
   public DashboardService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, dashboardServiceDAO().findByName(name), DashboardService.class);
+    return repo3.dashboardServiceDAO().findEntityByName(name);
   }
 
   @Transaction
   public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
-    dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
+    repo3.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
@@ -72,21 +69,50 @@ public abstract class DashboardServiceRepository {
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
-            DashboardService.class);
+    DashboardService dashboardService = repo3.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
             .withPassword(password).withIngestionSchedule(ingestionSchedule);
-    dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    repo3.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (dashboardServiceDAO().delete(id) <= 0) {
+    if (repo3.dashboardServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return repo3.dashboardServiceDAO().listAfter(fqnPrefix, limitParam, after);
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return repo3.dashboardServiceDAO().listBefore(fqnPrefix, limitParam, before);
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return repo3.dashboardServiceDAO().listCount(fqnPrefix);
+  }
+
+  @Override
+  public String getFullyQualifiedName(DashboardService entity) {
+    // TODO clean this up
+    return null;
+  }
+
+  @Override
+  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+    return null;
+  }
+
+  @Override
+  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
 }
