@@ -19,15 +19,21 @@ package org.openmetadata.catalog.resources;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.BotsRepository3;
+import org.openmetadata.catalog.jdbi3.BotsRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.ChartRepository3;
 import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DashboardRepository3;
+import org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TopicRepository3;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
+import org.openmetadata.catalog.resources.bots.BotsResource;
 import org.openmetadata.catalog.resources.charts.ChartResource;
+import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -200,6 +206,19 @@ public final class CollectionRegistry {
     ChartResource chartResource = new ChartResource(chartRepositoryHelper, authorizer);
     environment.jersey().register(chartResource);
     LOG.info("Registering {}", chartResource);
+
+    final BotsRepository3 botsRepository3 = jdbi.onDemand(BotsRepository3.class);
+    BotsRepositoryHelper botsRepositoryHelper = new BotsRepositoryHelper(botsRepository3);
+    BotsResource botsResource = new BotsResource(botsRepositoryHelper, authorizer);
+    environment.jersey().register(botsResource);
+    LOG.info("Registering {}", botsResource);
+
+    final DashboardRepository3 dashboardRepository3 = jdbi.onDemand(DashboardRepository3.class);
+    DashboardRepositoryHelper dashboardRepositoryHelper = new DashboardRepositoryHelper(dashboardRepository3);
+    DashboardResource dashboardResource = new DashboardResource(dashboardRepositoryHelper, authorizer);
+    environment.jersey().register(dashboardResource);
+    LOG.info("Registering {}", dashboardResource);
+
     LOG.info("Initialized jdbi3");
   }
 
