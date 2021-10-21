@@ -5,18 +5,24 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.entity.data.Table;
 
 import java.util.List;
 
-public interface TableDAO3 extends EntityDAO {
+public interface TableDAO3 extends EntityDAO<Table> {
   @Override
   default String getTableName() {
     return "table_entity";
   }
 
   @Override
+  default Class<Table> getEntityClass() {
+    return Table.class;
+  }
+
+  @Override
   @SqlQuery("SELECT json FROM <table> WHERE fullyQualifiedName = :tableFQN")
-  String findByFqn(@Define("table") String table, @Bind("tableFQN") String tableFQN);
+  String findByName(@Define("table") String table, @Bind("tableFQN") String tableFQN);
 
   @Override
   @SqlQuery("SELECT count(*) FROM <table> WHERE " +

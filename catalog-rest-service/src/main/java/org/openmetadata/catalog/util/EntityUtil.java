@@ -399,7 +399,7 @@ public final class EntityUtil {
     String entity = ref.getType();
     String id = ref.getId().toString();
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      Table instance = EntityUtil.validate(id, tableDAO3.findById(id), Table.class);
+      Table instance = tableDAO3.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
       Database instance = EntityUtil.validate(id, databaseDAO.findById(id), Database.class);
@@ -499,7 +499,7 @@ public final class EntityUtil {
                                                          PipelineDAO pipelineDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      Table instance = EntityUtil.validate(fqn, tableDAO3.findByFqn(fqn), Table.class);
+      Table instance = tableDAO3.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
       Database instance = EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class);
@@ -618,7 +618,7 @@ public final class EntityUtil {
     } else if (entityType.equalsIgnoreCase(Entity.TEAM)) {
       return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
     } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      return getEntityReference(EntityUtil.validate(fqn, tableDAO3.findByFqn(fqn), Table.class));
+      return getEntityReference(tableDAO3.findEntityByName(fqn));
     } else if (entityType.equalsIgnoreCase(Entity.DATABASE)) {
       return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
     } else if (entityType.equalsIgnoreCase(Entity.METRICS)) {

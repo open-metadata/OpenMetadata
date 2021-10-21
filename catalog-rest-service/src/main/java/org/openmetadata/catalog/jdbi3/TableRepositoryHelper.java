@@ -72,7 +72,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
-public class TableRepositoryHelper {
+public class TableRepositoryHelper implements EntityRepository<Table> {
   static final Logger LOG = LoggerFactory.getLogger(TableRepositoryHelper.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
@@ -88,7 +88,6 @@ public class TableRepositoryHelper {
   // TODO initialize
   private TableRepository3 tableRepo3;
 
-  EntityRepository<Table> entityRepository = new EntityRepository<>() {
     @Override
     public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
       return tableRepo3.tableDAO().listAfter(fqnPrefix, limitParam, after);
@@ -110,8 +109,21 @@ public class TableRepositoryHelper {
     }
 
     @Override
-    public Table setFields(Table entity, Fields fields) throws IOException, ParseException {
-      return TableRepositoryHelper.this.setFields(entity, fields);
+    public Table setFields(Table table, Fields fields) throws IOException, ParseException {
+      table.setColumns(fields.contains("columns") ? table.getColumns() : null);
+      table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+      table.setOwner(fields.contains("owner") ? getOwner(table) : null);
+      table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
+      table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(tableRepo3.usageDAO(), table.getId()) :
+              null);
+      table.setDatabase(fields.contains("database") ? EntityUtil.getEntityReference(getDatabase(table)) : null);
+      table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
+      getColumnTags(fields.contains("tags"), table.getColumns());
+      table.setJoins(fields.contains("joins") ? getJoins(table) : null);
+      table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
+      table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+      table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
+      return table;
     }
 
     @Override
@@ -119,7 +131,6 @@ public class TableRepositoryHelper {
             throws GeneralSecurityException, UnsupportedEncodingException {
       return new TableList(entities, beforeCursor, afterCursor, total);
     }
-  };
 
   public static String getFQN(Table table) {
     return (table.getDatabase().getName() + "." + table.getName());
@@ -128,24 +139,23 @@ public class TableRepositoryHelper {
   @Transaction
   public ResultList<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after)
           throws IOException, ParseException, GeneralSecurityException {
-      return EntityUtil.listAfter(entityRepository, Table.class, fields, databaseFQN, limitParam, after);
+      return EntityUtil.listAfter(this, Table.class, fields, databaseFQN, limitParam, after);
   }
 
   @Transaction
   public ResultList<Table> listBefore(Fields fields, String databaseFQN, int limitParam, String before)
           throws IOException, ParseException, GeneralSecurityException {
-    return EntityUtil.listBefore(entityRepository, Table.class, fields, databaseFQN, limitParam, before);
+    return EntityUtil.listBefore(this, Table.class, fields, databaseFQN, limitParam, before);
   }
 
   @Transaction
   public Table get(String id, Fields fields) throws IOException, ParseException {
-    return setFields(validateTable(id), fields);
+    return setFields(tableRepo3.tableDAO().findEntityById(id), fields);
   }
 
   @Transaction
   public Table getByName(String fqn, Fields fields) throws IOException, ParseException {
-    Table table =  EntityUtil.validate(fqn, tableRepo3.tableDAO().findByFqn(fqn), Table.class);
-    return setFields(table, fields);
+    return setFields(tableRepo3.tableDAO().findEntityByName(fqn), fields);
   }
 
   @Transaction
@@ -156,7 +166,7 @@ public class TableRepositoryHelper {
 
   @Transaction
   public Table patch(String id, String user, JsonPatch patch) throws IOException, ParseException {
-    Table original = setFields(validateTable(id), TABLE_PATCH_FIELDS);
+    Table original = setFields(tableRepo3.tableDAO().findEntityById(id), TABLE_PATCH_FIELDS);
     Table updated = JsonUtils.applyPatch(original, patch, Table.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
@@ -165,17 +175,15 @@ public class TableRepositoryHelper {
 
   @Transaction
   public void delete(String id) {
-    if (tableRepo3.tableDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.TABLE, id));
-    }
-    // Remove all relationships
-    tableRepo3.relationshipDAO().deleteAll(id);
+    tableRepo3.tableDAO().delete(id);
+    tableRepo3.relationshipDAO().deleteAll(id); // Remove all relationships
   }
 
   @Transaction
   public PutResponse<Table> createOrUpdate(Table updated, UUID databaseId) throws IOException, ParseException {
     validateRelationships(updated, databaseId);
-    Table stored = JsonUtils.readValue(tableRepo3.tableDAO().findByFqn(updated.getFullyQualifiedName()), Table.class);
+    Table stored = JsonUtils.readValue(tableRepo3.tableDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+            Table.class);
     if (stored == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -199,7 +207,7 @@ public class TableRepositoryHelper {
 
   @Transaction
   public Status addFollower(String tableId, String userId) throws IOException {
-    EntityUtil.validate(tableId, tableRepo3.tableDAO().findById(tableId), Table.class);
+    tableRepo3.tableDAO().findEntityById(tableId);
     return EntityUtil.addFollower(tableRepo3.relationshipDAO(), tableRepo3.userDAO(), tableId, Entity.TABLE, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
@@ -207,7 +215,7 @@ public class TableRepositoryHelper {
   @Transaction
   public void addJoins(String tableId, TableJoins joins) throws IOException, ParseException {
     // Validate the request content
-    Table table = EntityUtil.validate(tableId, tableRepo3.tableDAO().findById(tableId), Table.class);
+    Table table = tableRepo3.tableDAO().findEntityById(tableId);
     if (!CommonUtil.dateInRange(RestUtil.DATE_FORMAT, joins.getStartDate(), 0, 30)) {
       throw new IllegalArgumentException("Date range can only include past 30 days starting today");
     }
@@ -228,7 +236,7 @@ public class TableRepositoryHelper {
   @Transaction
   public void addSampleData(String tableId, TableData tableData) throws IOException {
     // Validate the request content
-    Table table = EntityUtil.validate(tableId, tableRepo3.tableDAO().findById(tableId), Table.class);
+    Table table = tableRepo3.tableDAO().findEntityById(tableId);
 
     // Validate all the columns
     for (String columnName : tableData.getColumns()) {
@@ -249,7 +257,7 @@ public class TableRepositoryHelper {
   @Transaction
   public void addTableProfileData(String tableId, TableProfile tableProfile) throws IOException {
     // Validate the request content
-    Table table = EntityUtil.validate(tableId, tableRepo3.tableDAO().findById(tableId), Table.class);
+    Table table = tableRepo3.tableDAO().findEntityById(tableId);
 
     List<TableProfile> storedTableProfiles = getTableProfile(table);
     Map<String, TableProfile> storedMapTableProfiles = new HashMap<>();
@@ -444,27 +452,6 @@ public class TableRepositoryHelper {
     return EntityUtil.validate(databaseId, tableRepo3.databaseDAO().findById(databaseId), Database.class);
   }
 
-  private Table validateTable(String tableId) throws IOException {
-    return EntityUtil.validate(tableId, tableRepo3.tableDAO().findById(tableId), Table.class);
-  }
-
-  private Table setFields(Table table, Fields fields) throws IOException, ParseException {
-    table.setColumns(fields.contains("columns") ? table.getColumns() : null);
-    table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-    table.setOwner(fields.contains("owner") ? getOwner(table) : null);
-    table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
-    table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(tableRepo3.usageDAO(), table.getId()) :
-            null);
-    table.setDatabase(fields.contains("database") ? EntityUtil.getEntityReference(getDatabase(table)) : null);
-    table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
-    getColumnTags(fields.contains("tags"), table.getColumns());
-    table.setJoins(fields.contains("joins") ? getJoins(table) : null);
-    table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
-    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
-    return table;
-  }
-
   private EntityReference getOwner(Table table) throws IOException {
     return table == null ? null : EntityUtil.populateOwner(table.getId(), tableRepo3.relationshipDAO(), tableRepo3.userDAO(), tableRepo3.teamDAO());
   }
@@ -516,7 +503,7 @@ public class TableRepositoryHelper {
     for (JoinedWith joinedWith : joinedWithList) {
       // Validate table
       String tableFQN = getTableFQN(joinedWith.getFullyQualifiedName());
-      Table joinedWithTable = EntityUtil.validate(tableFQN, tableRepo3.tableDAO().findByFqn(tableFQN), Table.class);
+      Table joinedWithTable = tableRepo3.tableDAO().findEntityByName(tableFQN);
 
       // Validate column
       validateColumnFQN(joinedWithTable, joinedWith.getFullyQualifiedName());
