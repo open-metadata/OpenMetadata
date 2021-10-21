@@ -3,9 +3,9 @@ from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
-from ingestion.src.metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from ingestion.src.metadata.ingestion.ometa.client import REST, ClientConfig
-from ingestion.src.metadata.ingestion.ometa.openmetadata_rest import (
+from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
+from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
     MetadataServerConfig,
@@ -65,7 +65,10 @@ class OMeta(Generic[T]):
     def get_suffix(entity: Type[T]) -> str:
         """
         Given an entity Type from the generated sources,
-        return the endpoint to run requests
+        return the endpoint to run requests.
+
+        Might be interesting to follow a more strict
+        and type-checked approach
         """
 
         name = entity.__name__.lower()
@@ -128,4 +131,4 @@ class OMeta(Generic[T]):
             return [entity(**p) for p in resp["data"]]
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
-        self.client.delete(f"/{self.get_suffix(entity)}/{entity_id}")
+        self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
