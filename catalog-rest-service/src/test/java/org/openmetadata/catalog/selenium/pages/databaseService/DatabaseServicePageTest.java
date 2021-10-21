@@ -56,10 +56,10 @@ public class DatabaseServicePageTest {
     @Test(priority = 1)
     public void openDatabaseServicePage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
-        wait.until(ExpectedConditions.presenceOfElementLocated
-                (By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(By.cssSelector
-                ("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
+        wait.until(ExpectedConditions.presenceOfElementLocated(
+                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
+        webDriver.findElement(By.cssSelector(
+                "[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
         Thread.sleep(waitTime);
@@ -78,23 +78,23 @@ public class DatabaseServicePageTest {
 
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='boldButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='boldButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).click();
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='italicButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='italicButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='linkButton']")));
         webDriver.findElement(By.cssSelector("[data-testid='linkButton']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save-button']")));
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
@@ -105,10 +105,10 @@ public class DatabaseServicePageTest {
         openDatabaseServicePage();
         webDriver.findElement(By.xpath("(//button[@data-testid='edit-service'])[2]")).click();
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
     }
@@ -120,10 +120,10 @@ public class DatabaseServicePageTest {
         Thread.sleep(waitTime);
         webDriver.findElement(By.cssSelector("[data-testid='description-edit']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable
-                (webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
