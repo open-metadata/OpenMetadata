@@ -6,7 +6,6 @@ import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInf
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import PageContainer from '../../components/containers/PageContainer';
 import Entitylineage from '../../components/dataset-lineage/EntityLineage';
-import Loader from '../../components/Loader/Loader';
 import FrequentlyJoinedTables from '../../components/my-data-details/FrequentlyJoinedTables';
 import ManageTab from '../../components/my-data-details/ManageTab';
 import SchemaTab from '../../components/my-data-details/SchemaTab';
@@ -32,11 +31,10 @@ import { getRelativeDay } from '../../utils/TimeUtils';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
-  isLoading,
   entityName,
   datasetFQN,
   activeTab,
-  setActiveTab,
+  setActiveTabHandler,
   owner,
   description,
   tableProfile,
@@ -319,91 +317,83 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   }, [joins]);
 
   return (
-    <>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <PageContainer>
-          <div className="tw-px-4 w-full">
-            <EntityPageInfo
-              entityName={entityName}
-              extraInfo={extraInfo}
-              followers={followersCount}
-              followersList={followers}
-              followHandler={followTable}
-              isFollowing={isFollowing}
-              tags={tableTags}
-              tier={tier || ''}
-              titleLinks={slashedTableName}
-            />
+    <PageContainer>
+      <div className="tw-px-4 w-full">
+        <EntityPageInfo
+          entityName={entityName}
+          extraInfo={extraInfo}
+          followers={followersCount}
+          followersList={followers}
+          followHandler={followTable}
+          isFollowing={isFollowing}
+          tags={tableTags}
+          tier={tier || ''}
+          titleLinks={slashedTableName}
+        />
 
-            <div className="tw-block tw-mt-1">
-              <TabsPane
-                activeTab={activeTab}
-                setActiveTab={setActiveTab}
-                tabs={tabs}
-              />
+        <div className="tw-block tw-mt-1">
+          <TabsPane
+            activeTab={activeTab}
+            setActiveTab={setActiveTabHandler}
+            tabs={tabs}
+          />
 
-              <div className="tw-bg-white tw--mx-4 tw-p-4">
-                {activeTab === 1 && (
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
-                    <div className="tw-col-span-3">
-                      <Description
-                        description={description}
-                        hasEditAccess={hasEditAccess()}
-                        isEdit={isEdit}
-                        owner={owner}
-                        onCancel={onCancel}
-                        onDescriptionEdit={onDescriptionEdit}
-                        onDescriptionUpdate={onDescriptionUpdate}
-                      />
-                    </div>
-                    <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
-                      <FrequentlyJoinedTables
-                        header="Frequently Joined Tables"
-                        tableList={getFrequentlyJoinedWithTables()}
-                      />
-                    </div>
-                    <div className="tw-col-span-full">
-                      <SchemaTab
-                        columnName={getPartialNameFromFQN(
-                          datasetFQN,
-                          ['column'],
-                          '.'
-                        )}
-                        columns={columns}
-                        hasEditAccess={hasEditAccess()}
-                        joins={tableJoinData.columnJoins as ColumnJoins[]}
-                        owner={owner}
-                        sampleData={sampleData}
-                        onUpdate={onColumnsUpdate}
-                      />
-                    </div>
-                  </div>
-                )}
-                {activeTab === 2 && (
-                  <TableProfiler
-                    columns={columns.map((col) => col.name)}
-                    tableProfiles={tableProfile}
-                  />
-                )}
-                {activeTab === 3 && (
-                  <Entitylineage entityLineage={entityLineage} />
-                )}
-                {activeTab === 4 && (
-                  <ManageTab
-                    currentTier={tier}
-                    currentUser={owner?.id}
+          <div className="tw-bg-white tw--mx-4 tw-p-4">
+            {activeTab === 1 && (
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+                <div className="tw-col-span-3">
+                  <Description
+                    description={description}
                     hasEditAccess={hasEditAccess()}
-                    onSave={onSettingsUpdate}
+                    isEdit={isEdit}
+                    owner={owner}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
                   />
-                )}
+                </div>
+                <div className="tw-col-span-1 tw-border tw-border-main tw-rounded-md">
+                  <FrequentlyJoinedTables
+                    header="Frequently Joined Tables"
+                    tableList={getFrequentlyJoinedWithTables()}
+                  />
+                </div>
+                <div className="tw-col-span-full">
+                  <SchemaTab
+                    columnName={getPartialNameFromFQN(
+                      datasetFQN,
+                      ['column'],
+                      '.'
+                    )}
+                    columns={columns}
+                    hasEditAccess={hasEditAccess()}
+                    joins={tableJoinData.columnJoins as ColumnJoins[]}
+                    owner={owner}
+                    sampleData={sampleData}
+                    onUpdate={onColumnsUpdate}
+                  />
+                </div>
               </div>
-            </div>
+            )}
+            {activeTab === 2 && (
+              <TableProfiler
+                columns={columns.map((col) => col.name)}
+                tableProfiles={tableProfile}
+              />
+            )}
+            {activeTab === 3 && <Entitylineage entityLineage={entityLineage} />}
+            {activeTab === 4 && (
+              <ManageTab
+                currentTier={tier}
+                currentUser={owner?.id}
+                hasEditAccess={hasEditAccess()}
+                onSave={onSettingsUpdate}
+              />
+            )}
           </div>
-        </PageContainer>
-      )}
-    </>
+        </div>
+      </div>
+    </PageContainer>
   );
 };
 

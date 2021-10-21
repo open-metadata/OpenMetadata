@@ -1,5 +1,4 @@
-import { ColumnTags } from 'Models';
-import { Dispatch, SetStateAction } from 'react';
+import { EntityTags } from 'Models';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import {
   Table,
@@ -11,20 +10,19 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 
-export interface DatasetOwner extends EntityReference {
+interface DatasetOwner extends EntityReference {
   displayName?: string;
 }
 
 export interface DatasetDetailsProps {
   joins: TableJoins;
-  isLoading: boolean;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
   users: Array<User>;
   tableDetails: Table;
   entityName: string;
   datasetFQN: string;
   activeTab: number;
-  setActiveTab: Dispatch<SetStateAction<number>>;
+  setActiveTabHandler: (value: number) => void;
   owner: DatasetOwner;
   description: string;
   tableProfile: Table['tableProfile'];
@@ -33,7 +31,7 @@ export interface DatasetDetailsProps {
   sampleData: TableData;
   entityLineage: EntityLineage;
   followers: Array<User>;
-  tableTags: Array<ColumnTags>;
+  tableTags: Array<EntityTags>;
   slashedTableName: TitleBreadcrumbProps['titleLinks'];
   followTableHandler: () => void;
   unfollowTableHandler: () => void;

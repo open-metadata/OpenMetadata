@@ -18,8 +18,8 @@
 import { AxiosResponse } from 'axios';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
-import { ColumnTags } from 'Models';
-import React, { useEffect, useState } from 'react';
+import { EntityTags } from 'Models';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
@@ -32,6 +32,7 @@ import {
   removeFollower,
 } from '../../axiosAPIs/tableAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
+import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
@@ -55,7 +56,7 @@ import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import DatasetDetails from './DatasetDetails.component';
 
-const DatasetDetailsPage = () => {
+const DatasetDetailsPage: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -71,7 +72,7 @@ const DatasetDetailsPage = () => {
     columns: [],
     rows: [],
   });
-  const [tableTags, setTableTags] = useState<Array<ColumnTags>>([]);
+  const [tableTags, setTableTags] = useState<Array<EntityTags>>([]);
   const [owner, setOwner] = useState<
     Table['owner'] & { displayName?: string }
   >();
@@ -91,6 +92,10 @@ const DatasetDetailsPage = () => {
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
+
+  const activeTabHandler = (tabValue: number) => {
+    setActiveTab(tabValue);
+  };
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
@@ -146,12 +151,12 @@ const DatasetDetailsPage = () => {
   };
 
   useEffect(() => {
-    try {
-      setIsLoading(true);
-      getTableDetailsByFQN(
-        getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
-        'columns, database, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
-      ).then((res: AxiosResponse) => {
+    setIsLoading(true);
+    getTableDetailsByFQN(
+      getPartialNameFromFQN(tableFQN, ['service', 'database', 'table'], '.'),
+      'columns, database, usageSummary, followers, joins, tags, owner, sampleData, tableProfile'
+    )
+      .then((res: AxiosResponse) => {
         const {
           description,
           id,
@@ -217,11 +222,12 @@ const DatasetDetailsPage = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setIsLoading(false);
       });
-      setIsLoading(false);
-    } catch {
-      setIsLoading(false);
-    }
+
     setActiveTab(1);
     getLineageByFQN(tableFQN, EntityType.TABLE).then((res: AxiosResponse) =>
       setEntityLineage(res.data)
@@ -229,32 +235,37 @@ const DatasetDetailsPage = () => {
   }, [tableFQN]);
 
   return (
-    <DatasetDetails
-      activeTab={activeTab}
-      columns={columns}
-      columnsUpdateHandler={columnsUpdateHandler}
-      datasetFQN={tableFQN}
-      description={description}
-      descriptionUpdateHandler={descriptionUpdateHandler}
-      entityLineage={entityLineage}
-      entityName={name}
-      followers={followers}
-      followTableHandler={followTable}
-      isLoading={isLoading}
-      joins={joins}
-      owner={owner as Table['owner'] & { displayName: string }}
-      sampleData={sampleData}
-      setActiveTab={setActiveTab}
-      settingsUpdateHandler={settingsUpdateHandler}
-      slashedTableName={slashedTableName}
-      tableDetails={tableDetails}
-      tableProfile={tableProfile}
-      tableTags={tableTags}
-      tier={tier as string}
-      unfollowTableHandler={unfollowTable}
-      usageSummary={usageSummary}
-      users={AppState.users}
-    />
+    <>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <DatasetDetails
+          activeTab={activeTab}
+          columns={columns}
+          columnsUpdateHandler={columnsUpdateHandler}
+          datasetFQN={tableFQN}
+          description={description}
+          descriptionUpdateHandler={descriptionUpdateHandler}
+          entityLineage={entityLineage}
+          entityName={name}
+          followers={followers}
+          followTableHandler={followTable}
+          joins={joins}
+          owner={owner as Table['owner'] & { displayName: string }}
+          sampleData={sampleData}
+          setActiveTabHandler={activeTabHandler}
+          settingsUpdateHandler={settingsUpdateHandler}
+          slashedTableName={slashedTableName}
+          tableDetails={tableDetails}
+          tableProfile={tableProfile}
+          tableTags={tableTags}
+          tier={tier as string}
+          unfollowTableHandler={unfollowTable}
+          usageSummary={usageSummary}
+          users={AppState.users}
+        />
+      )}
+    </>
   );
 };
 
