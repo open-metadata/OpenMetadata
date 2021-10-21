@@ -30,10 +30,16 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public interface EntityDAO<T> {
-  // TODO javadoc
+  /**
+   * Methods that need to be overridden by interfaces extending this
+   */
   String getTableName();
   Class<T> getEntityClass();
+  String getNameColumn();
 
+  /**
+   * Common queries for all entities implemented here. Do not override.
+   */
   @SqlUpdate("INSERT INTO <table> (json) VALUES (:json)")
   void insert(@Define("table") String table, @Bind("json") String json);
 
@@ -43,13 +49,50 @@ public interface EntityDAO<T> {
   @SqlQuery("SELECT json FROM <table> WHERE id = :id")
   String findById(@Define("table") String table, @Bind("id") String id);
 
-  String findByName(String table, String name);
-  int listCount(String table, String databaseFQN); // TODO check this
-  List<String> listBefore(String table, String parentFQN, int limit, String before);
-  List<String> listAfter(String table, String parentFQN, int limit, String after);
-  boolean exists(String table, String id);
-  int delete(String table, String id);
+  @SqlQuery("SELECT json FROM <table> WHERE <nameColumn> = :name")
+  String findByName(@Define("table") String table, @Define("nameColumn") String nameColumn,
+                    @Bind("name") String name);
 
+  @SqlQuery("SELECT count(*) FROM <table> WHERE " +
+          "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
+  int listCount(@Define("table") String table, @Define("nameColumn") String nameColumn,
+                @Bind("fqnPrefix") String fqnPrefix);
+
+  @SqlQuery(
+          "SELECT json FROM (" +
+                  "SELECT <nameColumn>, json FROM <table> WHERE " +
+                  "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
+                  // service name
+                  "<nameColumn> < :before " + // Pagination by chart fullyQualifiedName
+                  "ORDER BY <nameColumn> DESC " + // Pagination ordering by chart fullyQualifiedName
+                  "LIMIT :limit" +
+                  ") last_rows_subquery ORDER BY <nameColumn>")
+  List<String> listBefore(@Define("table") String table,
+                          @Define("nameColumn") String nameColumn,
+                          @Bind("fqnPrefix") String fqnPrefix,
+                          @Bind("limit") int limit,
+                          @Bind("before") String before);
+
+  @SqlQuery("SELECT json FROM <table> WHERE " +
+          "(<nameColumn> LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
+          "<nameColumn> > :after " +
+          "ORDER BY <nameColumn> " +
+          "LIMIT :limit")
+  List<String> listAfter(@Define("table") String table,
+                         @Define("nameColumn") String nameColumn,
+                         @Bind("fqnPrefix") String fqnPrefix,
+                         @Bind("limit") int limit,
+                         @Bind("after") String after);
+
+  @SqlQuery("SELECT EXISTS (SELECT * FROM <table> WHERE id = :id)")
+  boolean exists(@Define("table") String table, @Bind("id") String id);
+
+  @SqlUpdate("DELETE FROM <table> WHERE id = :id")
+  int delete(@Define("table") String table, @Bind("id") String id);
+
+  /**
+   * Default methods that interfaces with implementation. Don't override
+   */
   default void insert(String json) {
     insert(getTableName(), json);
   }
@@ -73,7 +116,7 @@ public interface EntityDAO<T> {
 
   default T findEntityByName(String fqn) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findByName(getTableName(), fqn);
+    String json = findByName(getTableName(), getNameColumn(), fqn);
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -89,19 +132,19 @@ public interface EntityDAO<T> {
   }
 
   default String findJsonByFqn(String fqn) throws IOException {
-    return findByName(getTableName(), fqn);
+    return findByName(getTableName(), getNameColumn(), fqn);
   }
 
   default int listCount(String databaseFQN) {
-    return listCount(getTableName(), databaseFQN);
+    return listCount(getTableName(), getNameColumn(), databaseFQN);
   }
 
   default List<String> listBefore(String parentFQN, int limit, String before) {
-    return listBefore(getTableName(), parentFQN, limit, before);
+    return listBefore(getTableName(), getNameColumn(), parentFQN, limit, before);
   }
 
   default List<String> listAfter(String databaseFQN, int limit, String after) {
-    return listAfter(getTableName(), databaseFQN, limit, after);
+    return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after);
   }
 
   default boolean exists(String id) {

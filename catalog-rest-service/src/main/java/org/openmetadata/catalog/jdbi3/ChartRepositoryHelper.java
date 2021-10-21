@@ -250,8 +250,7 @@ public class ChartRepositoryHelper implements EntityRepository<Chart>{
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = EntityUtil.validate(id, repo3.dashboardServiceDAO().findById(id),
-              DashboardService.class);
+      DashboardService serviceInstance = repo3.dashboardServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {

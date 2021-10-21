@@ -256,8 +256,7 @@ public class TopicRepositoryHelper implements EntityRepository<Topic> {
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = EntityUtil.validate(id, repo3.messageServiceDAO().findById(id),
-              MessagingService.class);
+      MessagingService serviceInstance = repo3.messageServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {

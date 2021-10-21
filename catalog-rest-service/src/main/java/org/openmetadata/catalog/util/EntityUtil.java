@@ -268,13 +268,13 @@ public final class EntityUtil {
     }
     String id = owner.getId().toString();
     if (owner.getType().equalsIgnoreCase("user")) {
-      User ownerInstance = EntityUtil.validate(id, userDAO3.findById(id), User.class);
+      User ownerInstance = userDAO3.findEntityById(id);
       owner.setName(ownerInstance.getName());
       if (Optional.ofNullable(ownerInstance.getDeactivated()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
       }
     } else if (owner.getType().equalsIgnoreCase("team")) {
-      Team ownerInstance = EntityUtil.validate(id, teamDAO.findById(id), Team.class);
+      Team ownerInstance = teamDAO.findEntityById(id);
       owner.setDescription(ownerInstance.getDescription());
       owner.setName(ownerInstance.getName());
     } else {
@@ -933,7 +933,7 @@ public final class EntityUtil {
                                     String followedEntityId,
                                     String followedEntityType, String followerId, String followerEntity)
           throws IOException {
-    User user = EntityUtil.validate(followerId, userDAO3.findById(followerId), User.class);
+    User user = userDAO3.findEntityById(followerId);
     if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
@@ -969,7 +969,7 @@ public final class EntityUtil {
             Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = EntityUtil.validate(followerId, userDAO3.findById(followerId), User.class);
+      User user = userDAO3.findEntityById(followerId);
       followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
     }
     return followers;
