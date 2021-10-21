@@ -13,6 +13,9 @@ install:
 install_test:
 	pip install -r ingestion/requirements-test.txt
 
+install_dev:
+	pip install -r ingestion/requirements-dev.txt
+
 precommit_install:
 	@echo "Installing pre-commit hooks"
 	@echo "Make sure to first run `make install_test`"
@@ -29,3 +32,6 @@ black:
 
 black_check:
 	black --check --diff $(PY_SOURCE) --exclude $(PY_SOURCE)/metadata/generated
+
+generate:
+	datamodel-codegen  --input catalog-rest-service/src/main/resources/json  --input-file-type jsonschema --output ingestion/src/metadata/generated

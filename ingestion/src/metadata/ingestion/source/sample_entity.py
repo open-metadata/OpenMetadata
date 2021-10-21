@@ -7,7 +7,7 @@ from typing import Iterable, List
 
 from faker import Faker
 
-from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceEntityRequest,
 )
@@ -281,7 +281,7 @@ class SampleEntitySource(Source):
                 )
                 yield dashboard
 
-    def ingest_topics(self) -> Iterable[CreateTopic]:
+    def ingest_topics(self) -> Iterable[CreateTopicEntityRequest]:
         for h in range(self.config.no_of_services):
             create_service = None
             while True:
@@ -304,7 +304,7 @@ class SampleEntitySource(Source):
                 "Ingesting service {}/{}".format(h + 1, self.config.no_of_services)
             )
             for j in range(self.config.no_of_topics):
-                topic_entity = CreateTopic(
+                topic_entity = CreateTopicEntityRequest(
                     name=self.table_name(),
                     description=self.description(),
                     partitions=self.chart_ids(),

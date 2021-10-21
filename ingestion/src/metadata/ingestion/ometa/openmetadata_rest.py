@@ -40,7 +40,7 @@ from metadata.generated.schema.api.data.createPipeline import (
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceEntityRequest,
@@ -419,7 +419,9 @@ class OpenMetadataAPIClient(object):
         )
         return MessagingService(**resp)
 
-    def create_or_update_topic(self, create_topic_request: CreateTopic) -> Topic:
+    def create_or_update_topic(
+        self, create_topic_request: CreateTopicEntityRequest
+    ) -> Topic:
         """Create or Update a Table"""
         resp = self.client.put("/topics", data=create_topic_request.json())
         return Topic(**resp)
