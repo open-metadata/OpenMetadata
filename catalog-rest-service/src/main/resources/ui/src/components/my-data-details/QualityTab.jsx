@@ -17,7 +17,7 @@
 
 import React from 'react';
 import { Button } from 'react-bootstrap';
-import { qualityDetails } from '../../pages/DatasetDetailsPage/DatasetDetails.mock';
+import { qualityDetails } from '../my-data-details/DatasetDetails.mock';
 import DatacenterTable from './DatacenterTable';
 import QualityCard from './QualityCard';
 import TestsTable from './TestsTable';

@@ -18,7 +18,7 @@
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import FrequentlyJoinedTables from './FrequentlyJoinedTables';
+import FrequentlyJoinedTables from './FrequentlyJoinedTables.component';
 
 const mockTableList = [
   {

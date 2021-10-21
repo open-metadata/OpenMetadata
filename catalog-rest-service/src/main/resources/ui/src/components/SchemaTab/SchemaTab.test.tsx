@@ -20,7 +20,7 @@ import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column, DataType } from '../../generated/entity/data/table';
-import SchemaTab from './SchemaTab';
+import SchemaTab from './SchemaTab.component';
 
 const mockColumns: Column[] = [
   {

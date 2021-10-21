@@ -11,7 +11,6 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
-import { DatasetDetailsProps } from '../../pages/DatasetDetailsPage/DatasetDetails.interface';
 import {
   getCurrentUserId,
   getPartialNameFromFQN,
@@ -24,11 +23,12 @@ import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
-import Entitylineage from '../dataset-lineage/EntityLineage';
-import FrequentlyJoinedTables from './FrequentlyJoinedTables';
-import ManageTab from './ManageTab';
-import SchemaTab from './SchemaTab';
-import TableProfiler from './TableProfiler';
+import Entitylineage from '../EntityLineage/EntityLineage.component';
+import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTables.component';
+import ManageTab from '../ManageTab/ManageTab.component';
+import SchemaTab from '../SchemaTab/SchemaTab.component';
+import TableProfiler from '../TableProfiler/TableProfiler.component';
+import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   entityName,

@@ -15,18 +15,20 @@
   * limitations under the License.
 */
 
-import { getAllByTestId, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import React from 'react';
-import { qualityDetails } from '../../pages/DatasetDetailsPage/DatasetDetails.mock';
-import TestsTable from './TestsTable';
+import { qualityDetails } from '../my-data-details/DatasetDetails.mock';
+import DatacenterTable from './DatacenterTable';
 
-describe('Test TestsTable Component', () => {
-  const { testsDetails } = qualityDetails;
+describe('Test DatacenterTable Component', () => {
+  const { datacenterDetails } = qualityDetails;
 
-  it('Renders all the tests sent to the component', () => {
-    const { container } = render(<TestsTable testsDetails={testsDetails} />);
-    const tests = getAllByTestId(container, 'test');
+  it('Renders all the datacenter details sent to the component', () => {
+    const { getAllByTestId } = render(
+      <DatacenterTable datacenterDetails={datacenterDetails} />
+    );
+    const datacenters = getAllByTestId('datacenter');
 
-    expect(tests.length).toBe(4);
+    expect(datacenters.length).toBe(3);
   });
 });
