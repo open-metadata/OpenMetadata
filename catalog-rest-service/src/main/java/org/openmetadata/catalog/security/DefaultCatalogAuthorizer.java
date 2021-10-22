@@ -23,7 +23,6 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository3;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;

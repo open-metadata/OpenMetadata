@@ -108,7 +108,7 @@ public class DatabaseResource {
 
   @Inject
   public DatabaseResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "DatabaseRepository3 must not be null");
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new DatabaseRepositoryHelper(dao);
     this.authorizer = authorizer;
   }

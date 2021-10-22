@@ -2,7 +2,6 @@ package org.openmetadata.catalog.util;
 
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO3;
-import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TagDAO3;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
@@ -22,7 +21,7 @@ import java.util.List;
  * of the entity.
  *
  * Concrete  implementations need to implement update for other fields. See
- * {@link TableRepository3.TableUpdater} for an example implementation.
+ * {@link org.openmetadata.catalog.jdbi3.TableRepositoryHelper.TableUpdater} for an example implementation.
  */
 public abstract class EntityUpdater3 {
   private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater3.class);

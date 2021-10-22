@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -104,7 +103,7 @@ public class TableResource {
 
   @Inject
   public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TableRepository3 must not be null");
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new TableRepositoryHelper(dao);
     this.authorizer = authorizer;
   }

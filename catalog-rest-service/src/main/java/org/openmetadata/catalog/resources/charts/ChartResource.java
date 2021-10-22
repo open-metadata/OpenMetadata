@@ -105,7 +105,7 @@ public class ChartResource {
 
   @Inject
   public ChartResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "ChartRepository3 must not be null");
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new ChartRepositoryHelper(dao);
     this.authorizer = authorizer;
   }

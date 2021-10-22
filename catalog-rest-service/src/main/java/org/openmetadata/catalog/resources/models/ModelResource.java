@@ -30,6 +30,7 @@ import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -75,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Models collection", tags = "Models collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "models", repositoryClass = "org.openmetadata.catalog.jdbi3.ModelRepositoryHelper")
+@Collection(name = "models")
 public class ModelResource {
   public static final String MODEL_COLLECTION_PATH = "v1/models/";
   private final ModelRepositoryHelper dao;

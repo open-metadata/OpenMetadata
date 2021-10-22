@@ -19,7 +19,6 @@ package org.openmetadata.catalog;
 import com.codahale.metrics.health.HealthCheck;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository3;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.util.EntityUtil;
 

@@ -103,7 +103,7 @@ public class TopicResource {
 
   @Inject
   public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TopicRepository3 must not be null");
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
     this.dao = new TopicRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
