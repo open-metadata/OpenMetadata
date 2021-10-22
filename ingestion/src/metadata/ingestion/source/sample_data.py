@@ -22,7 +22,6 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
-import pandas as pd
 from faker import Faker
 from pydantic import ValidationError
 
@@ -217,71 +216,6 @@ class SampleTableMetadataGenerator:
         for c in columns:
             data[c] = []
         return data
-
-    def generate_sample_table(self):
-        keys = [
-            "database",
-            "cluster",
-            "schema",
-            "name",
-            "description",
-            "tags",
-            "is_view",
-            "description_source",
-        ]
-        data = self.get_empty_dict_with_cols(keys)
-
-        for tname in self.table_to_df_dict.keys():
-            data["database"].append("hive")
-            data["cluster"].append("gold")
-            data["schema"].append("gdw")
-            data["name"].append(tname)
-            data["description"].append("this is the table to hold data on " + tname)
-            data["tags"].append("pii")
-            data["is_view"].append("false")
-            data["description_source"].append("")
-        sample_table = pd.DataFrame(data)
-        table_dict = {}
-        for index, row in sample_table.iterrows():
-            table_dict[row["name"]] = row
-        return table_dict
-
-    def generate_sample_col(self):
-        # name, description, col_type, sort_order, database, cluster, schema, table_name
-        # col1, "col1 description", "string", 1, hive, gold, test_schema, test_table1
-        keys = [
-            "name",
-            "description",
-            "col_type",
-            "sort_order",
-            "database",
-            "cluster",
-            "schema",
-            "table_name",
-        ]
-
-        data = self.get_empty_dict_with_cols(keys)
-
-        for (tname, df) in self.table_to_df_dict.items():
-            tschema = self.table_to_schema_map[tname].get_schema()
-            for col in df.columns:
-                data["name"].append(col)
-                for c in tschema:
-                    if c[COLUMN_NAME] is col:
-                        data["description"].append(c[COL_DESCRIPTION])
-                        data["col_type"].append(c[DATA_TYPE])
-                        break
-                data["sort_order"].append(1)
-                data["cluster"].append("gold")
-                data["database"].append("hive")
-                data["schema"].append("dwh")
-                data["table_name"].append(tname)
-        pd_rows = pd.DataFrame(data)
-        row_dict = []
-        for index, row in pd_rows.iterrows():
-            row_dict.append(row)
-        sorted_row_dict = sorted(row_dict, key=get_table_key)
-        return sorted_row_dict
 
 
 class GenerateFakeSampleData:
