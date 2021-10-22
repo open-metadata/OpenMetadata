@@ -39,9 +39,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseService> {
-  private final DatabaseServiceRepository3 repo3;
+  private final CollectionDAO repo3;
 
-  public DatabaseServiceRepositoryHelper(DatabaseServiceRepository3 repo3) {
+  public DatabaseServiceRepositoryHelper(CollectionDAO repo3) {
     super(DatabaseService.class, repo3.dbServiceDAO());
     this.repo3 = repo3;
   }

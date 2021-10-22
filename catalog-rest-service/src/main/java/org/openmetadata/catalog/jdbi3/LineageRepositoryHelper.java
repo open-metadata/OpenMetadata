@@ -36,9 +36,9 @@ import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 public class LineageRepositoryHelper {
   private static final Logger LOG = LoggerFactory.getLogger(LineageRepositoryHelper.class);
 
-  public LineageRepositoryHelper(LineageRepository3 repo3) { this.repo3 = repo3; }
+  public LineageRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
 
-  private final LineageRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {

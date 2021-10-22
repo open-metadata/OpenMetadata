@@ -40,9 +40,9 @@ import java.util.Optional;
 public class TagRepositoryHelper {
   public static final Logger LOG = LoggerFactory.getLogger(TagRepositoryHelper.class);
 
-  public TagRepositoryHelper(TagRepository3 repo3) { this.repo3 = repo3; }
+  public TagRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
 
-  private final TagRepository3 repo3;
+  private final CollectionDAO repo3;
 
   /**
    * Initialize a category one time when the service comes up for the first time

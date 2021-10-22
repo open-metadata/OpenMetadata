@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.UpdateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -62,7 +63,7 @@ import java.util.UUID;
 @Api(value = "Database service collection", tags = "Services -> Database service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "databaseServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DatabaseServiceRepositoryHelper")
+@Collection(name = "databaseServices")
 public class DatabaseServiceResource {
   private final DatabaseServiceRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
@@ -82,9 +83,9 @@ public class DatabaseServiceResource {
   }
 
   @Inject
-  public DatabaseServiceResource(DatabaseServiceRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public DatabaseServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DatabaseServiceRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new DatabaseServiceRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

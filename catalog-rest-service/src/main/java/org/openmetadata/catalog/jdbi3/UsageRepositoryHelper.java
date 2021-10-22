@@ -40,9 +40,9 @@ import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 public class UsageRepositoryHelper {
   private static final Logger LOG = LoggerFactory.getLogger(UsageRepositoryHelper.class);
 
-  public UsageRepositoryHelper(UsageRepository3 repo3) { this.repo3 = repo3; }
+  public UsageRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
 
-  private final UsageRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {

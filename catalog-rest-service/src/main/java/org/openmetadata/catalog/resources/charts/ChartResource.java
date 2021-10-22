@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -77,7 +78,7 @@ import java.util.UUID;
 @Api(value = "Chart data asset collection", tags = "Chart data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository3")
+@Collection(name = "charts")
 public class ChartResource {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
@@ -103,9 +104,9 @@ public class ChartResource {
   }
 
   @Inject
-  public ChartResource(ChartRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public ChartResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ChartRepository3 must not be null");
-    this.dao = dao;
+    this.dao = new ChartRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

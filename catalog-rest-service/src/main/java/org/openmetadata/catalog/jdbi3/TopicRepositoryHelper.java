@@ -58,12 +58,12 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
     return (topic.getService().getName() + "." + topic.getName());
   }
 
-  public TopicRepositoryHelper(TopicRepository3 repo3) {
+  public TopicRepositoryHelper(CollectionDAO repo3) {
     super(Topic.class, repo3.topicDAO());
     this.repo3 = repo3;
   }
 
-  private final TopicRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public Topic create(Topic topic) throws IOException {
@@ -214,7 +214,7 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = repo3.messageServiceDAO().findEntityById(id);
+      MessagingService serviceInstance = repo3.messagingServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {

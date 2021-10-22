@@ -22,6 +22,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository3;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.type.EntityReference;
@@ -56,7 +57,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    UserRepository3 repo = dbi.onDemand(UserRepository3.class);
+    CollectionDAO repo = dbi.onDemand(CollectionDAO.class);
     this.userRepositoryHelper = new UserRepositoryHelper(repo);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();

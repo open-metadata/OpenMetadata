@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
@@ -80,7 +81,7 @@ import java.util.UUID;
 @Api(value = "Tables collection", tags = "Tables collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "tables", repositoryClass = "org.openmetadata.catalog.jdbi3.TableRepository3")
+@Collection(name = "tables")
 public class TableResource {
   private static final Logger LOG = LoggerFactory.getLogger(TableResource.class);
   private static final String TABLE_COLLECTION_PATH = "v1/tables/";
@@ -102,9 +103,9 @@ public class TableResource {
   }
 
   @Inject
-  public TableResource(TableRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "TableRepository3 must not be null");
-    this.dao = dao;
+    this.dao = new TableRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

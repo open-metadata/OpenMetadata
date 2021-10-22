@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -72,7 +73,7 @@ import java.util.UUID;
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "teams", repositoryClass = "org.openmetadata.catalog.jdbi3.TeamRepositoryHelper")
+@Collection(name = "teams")
 public class TeamResource {
   private static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   public static final String TEAM_COLLECTION_PATH = "/v1/teams/";
@@ -92,9 +93,9 @@ public class TeamResource {
   }
 
   @Inject
-  public TeamResource(TeamRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public TeamResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "TeamRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new TeamRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

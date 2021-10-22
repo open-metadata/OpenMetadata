@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -75,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Pipelines collection", tags = "Pipelines collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepositoryHelper")
+@Collection(name = "pipelines")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
   private final PipelineRepositoryHelper dao;
@@ -102,9 +103,9 @@ public class PipelineResource {
   }
 
   @Inject
-  public PipelineResource(PipelineRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public PipelineResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new PipelineRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

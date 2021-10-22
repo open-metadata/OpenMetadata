@@ -26,9 +26,9 @@ import java.util.List;
 
 public class BotsRepositoryHelper {
 
-  public BotsRepositoryHelper(BotsRepository3 repo3) { this.repo3 = repo3; }
+  public BotsRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
 
-  private final BotsRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);

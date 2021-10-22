@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.jdbi3.BotsRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -54,7 +56,7 @@ import java.util.UUID;
 @Api(value = "Bots collection", tags = "Bots collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "bots", repositoryClass = "org.openmetadata.catalog.jdbi3.BotsRepository3")
+@Collection(name = "bots")
 public class BotsResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotsRepositoryHelper dao;
@@ -71,9 +73,9 @@ public class BotsResource {
   }
 
   @Inject
-  public BotsResource(BotsRepositoryHelper dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "BotsRepository3 must not be null");
-    this.dao = dao;
+  public BotsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
+    this.dao = new BotsRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

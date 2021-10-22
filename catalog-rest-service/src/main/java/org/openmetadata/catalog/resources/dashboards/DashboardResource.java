@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -75,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Dashboards collection", tags = "Dashboards collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper")
+@Collection(name = "dashboards")
 public class DashboardResource {
   public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
   private final DashboardRepositoryHelper dao;
@@ -102,9 +103,9 @@ public class DashboardResource {
   }
 
   @Inject
-  public DashboardResource(DashboardRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public DashboardResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new DashboardRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

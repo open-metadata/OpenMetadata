@@ -42,7 +42,6 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -59,10 +58,10 @@ public class UserRepositoryHelper extends EntityRepository<User> {
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
 
-  private final UserRepository3 repo3;
+  private final CollectionDAO repo3;
 
 
-  public UserRepositoryHelper(UserRepository3 repo3) {
+  public UserRepositoryHelper(CollectionDAO repo3) {
     super(User.class,repo3.userDAO());
     this.repo3 = repo3;
   }

@@ -18,6 +18,7 @@ package org.openmetadata.catalog;
 
 import com.codahale.metrics.health.HealthCheck;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository3;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -32,7 +33,7 @@ public class CatalogHealthCheck extends HealthCheck {
 
   public CatalogHealthCheck(CatalogApplicationConfig config, Jdbi jdbi) {
     super();
-    UserRepository3 repo = jdbi.onDemand(UserRepository3.class);
+    CollectionDAO repo = jdbi.onDemand(CollectionDAO.class);
     this.userRepositoryHelper = new UserRepositoryHelper(repo);
   }
 

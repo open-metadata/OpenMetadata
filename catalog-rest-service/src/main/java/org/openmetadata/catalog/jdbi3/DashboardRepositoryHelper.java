@@ -55,12 +55,12 @@ public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
 
-  public DashboardRepositoryHelper(DashboardRepository3 repo3) {
+  public DashboardRepositoryHelper(CollectionDAO repo3) {
     super(Dashboard.class, repo3.dashboardDAO());
     this.repo3 = repo3;
   }
 
-  private final DashboardRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard.getService().getName() + "." + dashboard.getName());

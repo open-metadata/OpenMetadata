@@ -80,12 +80,12 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
   static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
 
-  public TableRepositoryHelper(TableRepository3 repo3) {
+  public TableRepositoryHelper(CollectionDAO repo3) {
     super(Table.class, repo3.tableDAO());
     this.repo3 = repo3;
   }
 
-  private final TableRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Override
   public String getFullyQualifiedName(Table entity) {

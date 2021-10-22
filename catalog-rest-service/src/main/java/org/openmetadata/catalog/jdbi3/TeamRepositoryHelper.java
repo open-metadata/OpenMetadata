@@ -50,12 +50,12 @@ import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 public class TeamRepositoryHelper extends EntityRepository<Team> {
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
 
-  public TeamRepositoryHelper(TeamRepository3 repo3) {
+  public TeamRepositoryHelper(CollectionDAO repo3) {
     super(Team.class,repo3.teamDAO());
     this.repo3 = repo3;
   }
 
-  private final TeamRepository3 repo3;
+  private final CollectionDAO repo3;
 
 
   public static List<EntityReference> toEntityReference(List<User> users) {

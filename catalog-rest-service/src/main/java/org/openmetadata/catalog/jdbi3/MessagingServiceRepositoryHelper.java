@@ -38,9 +38,9 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class MessagingServiceRepositoryHelper extends EntityRepository<MessagingService> {
-  private final MessagingServiceRepository3 repo3;
+  private final CollectionDAO repo3;
 
-  public MessagingServiceRepositoryHelper(MessagingServiceRepository3 repo3) {
+  public MessagingServiceRepositoryHelper(CollectionDAO repo3) {
     super(MessagingService.class, repo3.messagingServiceDAO());
     this.repo3 = repo3;
   }

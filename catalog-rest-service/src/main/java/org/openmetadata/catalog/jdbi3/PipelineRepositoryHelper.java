@@ -54,12 +54,12 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
 
-  public PipelineRepositoryHelper(PipelineRepository3 repo3) {
+  public PipelineRepositoryHelper(CollectionDAO repo3) {
     super(Pipeline.class, repo3.pipelineDAO());
     this.repo3 = repo3;
   }
 
-  private final PipelineRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());

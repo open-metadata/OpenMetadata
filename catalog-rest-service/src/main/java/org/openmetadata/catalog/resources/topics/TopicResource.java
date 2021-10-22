@@ -28,7 +28,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -76,7 +78,7 @@ import java.util.UUID;
 @Api(value = "Topic data asset collection", tags = "Topic data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "topics", repositoryClass = "org.openmetadata.catalog.jdbi3.TopicRepository3")
+@Collection(name = "topics")
 public class TopicResource {
   private static final String TOPIC_COLLECTION_PATH = "v1/topics/";
   private final TopicRepositoryHelper dao;
@@ -100,9 +102,9 @@ public class TopicResource {
   }
 
   @Inject
-  public TopicResource(TopicRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "TopicRepository3 must not be null");
-    this.dao = dao;
+    this.dao = new TopicRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

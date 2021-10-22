@@ -39,12 +39,12 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineService> {
-  public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) {
+  public PipelineServiceRepositoryHelper(CollectionDAO repo3) {
     super(PipelineService.class, repo3.pipelineServiceDAO());
     this.repo3 = repo3;
   }
 
-  private final PipelineServiceRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {

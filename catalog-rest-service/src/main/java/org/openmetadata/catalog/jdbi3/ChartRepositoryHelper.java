@@ -50,12 +50,12 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
 
-  public ChartRepositoryHelper(ChartRepository3 repo3) {
+  public ChartRepositoryHelper(CollectionDAO repo3) {
     super(Chart.class, repo3.chartDAO());
     this.repo3 = repo3;
   }
 
-  private final ChartRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public static String getFQN(Chart chart) {
     return (chart.getService().getName() + "." + chart.getName());

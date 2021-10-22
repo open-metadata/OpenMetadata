@@ -57,12 +57,12 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
     return (task.getService().getName() + "." + task.getName());
   }
 
-  public TaskRepositoryHelper(TaskRepository3 repo3) {
+  public TaskRepositoryHelper(CollectionDAO repo3) {
     super(Task.class,repo3.taskDAO());
     this.repo3 = repo3;
   }
 
-  private final TaskRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public Task create(Task task) throws IOException {

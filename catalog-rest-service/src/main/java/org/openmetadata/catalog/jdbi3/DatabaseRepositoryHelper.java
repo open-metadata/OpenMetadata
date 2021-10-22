@@ -57,12 +57,12 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
 
-  public DatabaseRepositoryHelper(DatabaseRepository3 repo3) {
+  public DatabaseRepositoryHelper(CollectionDAO repo3) {
     super(Database.class, repo3.databaseDAO());
     this.repo3 = repo3;
   }
 
-  private final DatabaseRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public static String getFQN(Database database) {
     return (database.getService().getName() + "." + database.getName());

@@ -55,12 +55,12 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
   private static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
 
-  public ModelRepositoryHelper(ModelRepository3 repo3) {
+  public ModelRepositoryHelper(CollectionDAO repo3) {
     super(Model.class, repo3.modelDAO());
     this.repo3 = repo3;
   }
 
-  private final ModelRepository3 repo3;
+  private final CollectionDAO repo3;
 
   public static String getFQN(Model model) {
     return (model.getName());

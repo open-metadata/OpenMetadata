@@ -36,9 +36,9 @@ import java.util.Set;
 import java.util.UUID;
 
 public class FeedRepositoryHelper {
-  public FeedRepositoryHelper(FeedRepository3 repo3) { this.repo3 = repo3; }
+  public FeedRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
 
-  private final FeedRepository3 repo3;
+  private final CollectionDAO repo3;
 
   @Transaction
   public Thread create(Thread thread) throws IOException {

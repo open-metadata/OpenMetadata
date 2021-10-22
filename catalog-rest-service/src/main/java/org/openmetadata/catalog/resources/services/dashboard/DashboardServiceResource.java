@@ -27,7 +27,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -61,7 +63,7 @@ import java.util.UUID;
 @Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "dashboardServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper")
+@Collection(name = "dashboardServices")
 public class DashboardServiceResource {
   private final DashboardServiceRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
@@ -82,9 +84,9 @@ public class DashboardServiceResource {
   }
 
   @Inject
-  public DashboardServiceResource(DashboardServiceRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public DashboardServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new DashboardServiceRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

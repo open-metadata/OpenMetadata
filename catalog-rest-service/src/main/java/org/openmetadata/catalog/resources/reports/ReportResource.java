@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.data.Report;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -58,7 +59,7 @@ import java.util.UUID;
 @Api(value = "Reports collection", tags = "Reports collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "reports", repositoryClass = "org.openmetadata.catalog.jdbi3.ReportRepositoryHelper")
+@Collection(name = "reports")
 public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final ReportRepositoryHelper dao;
@@ -74,9 +75,9 @@ public class ReportResource {
   }
 
   @Inject
-  public ReportResource(ReportRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public ReportResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new ReportRepositoryHelper(dao);
   }
 
   public static class ReportList extends ResultList<Report> {

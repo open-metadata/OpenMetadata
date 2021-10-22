@@ -28,7 +28,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -76,7 +78,7 @@ import java.util.UUID;
 @Api(value = "Databases collection", tags = "Databases collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "databases", repositoryClass = "org.openmetadata.catalog.jdbi3.DatabaseRepository3")
+@Collection(name = "databases")
 public class DatabaseResource {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResource.class);
   private static final String DATABASE_COLLECTION_PATH = "v1/databases/";
@@ -105,9 +107,9 @@ public class DatabaseResource {
   }
 
   @Inject
-  public DatabaseResource(DatabaseRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public DatabaseResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DatabaseRepository3 must not be null");
-    this.dao = dao;
+    this.dao = new DatabaseRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

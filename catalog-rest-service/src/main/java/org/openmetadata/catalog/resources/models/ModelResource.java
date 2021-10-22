@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -98,9 +99,9 @@ public class ModelResource {
   }
 
   @Inject
-  public ModelResource(ModelRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public ModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ModelRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new ModelRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 

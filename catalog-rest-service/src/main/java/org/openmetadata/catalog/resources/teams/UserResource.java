@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -76,7 +77,7 @@ import java.util.UUID;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-//@Collection(name = "users", repositoryClass = "org.openmetadata.catalog.jdbi3.UserRepositoryHelper")
+@Collection(name = "users")
 public class UserResource {
   public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String USER_COLLECTION_PATH = "v1/users/";
@@ -96,9 +97,9 @@ public class UserResource {
   }
 
   @Inject
-  public UserResource(UserRepositoryHelper dao, CatalogAuthorizer authorizer) {
+  public UserResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "UserRepositoryHelper must not be null");
-    this.dao = dao;
+    this.dao = new UserRepositoryHelper(dao);
     this.authorizer = authorizer;
   }
 
