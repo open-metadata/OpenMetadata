@@ -56,7 +56,7 @@ import java.util.Objects;
 @Api(value = "Lineage resource", tags = "Lineage resource")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "lineage", repositoryClass = "org.openmetadata.catalog.jdbi3.LineageRepositoryHelper")
+//@Collection(name = "lineage", repositoryClass = "org.openmetadata.catalog.jdbi3.LineageRepositoryHelper")
 public class LineageResource {
   private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   private final LineageRepositoryHelper dao;

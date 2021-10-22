@@ -31,6 +31,10 @@ import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.FeedRepository3;
+import org.openmetadata.catalog.jdbi3.FeedRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.LineageRepository3;
+import org.openmetadata.catalog.jdbi3.LineageRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository3;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.MetricsRepository3;
@@ -51,6 +55,8 @@ import org.openmetadata.catalog.jdbi3.TeamRepository3;
 import org.openmetadata.catalog.jdbi3.TeamRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TopicRepository3;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.UsageRepository3;
+import org.openmetadata.catalog.jdbi3.UsageRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.UserRepository3;
 import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.resources.bots.BotsResource;
@@ -58,6 +64,8 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.feeds.FeedResource;
+import org.openmetadata.catalog.resources.lineage.LineageResource;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
@@ -70,6 +78,7 @@ import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
+import org.openmetadata.catalog.resources.usage.UsageResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
@@ -328,6 +337,27 @@ public final class CollectionRegistry {
             authorizer);
     environment.jersey().register(userResource);
     LOG.info("Registering {}", userResource);
+
+    final LineageRepository3 lineageRepository3 = jdbi.onDemand(LineageRepository3.class);
+    LineageRepositoryHelper lineageRepositoryHelper = new LineageRepositoryHelper(lineageRepository3);
+    LineageResource lineageResource = new LineageResource(lineageRepositoryHelper,
+            authorizer);
+    environment.jersey().register(lineageResource);
+    LOG.info("Registering {}", lineageResource);
+
+    final FeedRepository3 feedRepository3 = jdbi.onDemand(FeedRepository3.class);
+    FeedRepositoryHelper feedRepositoryHelper = new FeedRepositoryHelper(feedRepository3);
+    FeedResource feedResource = new FeedResource(feedRepositoryHelper,
+            authorizer);
+    environment.jersey().register(feedResource);
+    LOG.info("Registering {}", feedResource);
+
+    final UsageRepository3 usageRepository3 = jdbi.onDemand(UsageRepository3.class);
+    UsageRepositoryHelper usageRepositoryHelper = new UsageRepositoryHelper(usageRepository3);
+    UsageResource usageResource = new UsageResource(usageRepositoryHelper,
+            authorizer);
+    environment.jersey().register(usageResource);
+    LOG.info("Registering {}", usageResource);
 
     LOG.info("Initialized jdbi3");
   }

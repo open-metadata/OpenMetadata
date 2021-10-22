@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.feed.CreateThread;
 import org.openmetadata.catalog.entity.feed.Thread;
-import org.openmetadata.catalog.jdbi3.FeedRepository;
+import org.openmetadata.catalog.jdbi3.FeedRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.Post;
@@ -54,11 +54,11 @@ import java.util.UUID;
 @Api(value = "Feeds collection", tags = "Feeds collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "feeds", repositoryClass = "org.openmetadata.catalog.jdbi3.FeedRepository")
+//@Collection(name = "feeds", repositoryClass = "org.openmetadata.catalog.jdbi3.FeedRepositoryHelper")
 public class FeedResource {
   // TODO add /v1/feed?user=userid
   public static final String COLLECTION_PATH = "/v1/feed/";
-  private final FeedRepository dao;
+  private final FeedRepositoryHelper dao;
 
   public static List<Thread> addHref(UriInfo uriInfo, List<Thread> threads) {
     threads.forEach(t -> addHref(uriInfo, t));
@@ -71,8 +71,8 @@ public class FeedResource {
   }
 
   @Inject
-  public FeedResource(FeedRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "FeedRepository must not be null");
+  public FeedResource(FeedRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "FeedRepositoryHelper must not be null");
     this.dao = dao;
   }
 
