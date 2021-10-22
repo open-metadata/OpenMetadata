@@ -17,14 +17,15 @@
 package org.openmetadata.catalog.security;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository3;
+import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,18 +44,19 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
   private Set<String> botUsers;
 
   private String principalDomain;
-  private UserRepository userRepository;
+  private UserRepositoryHelper userRepositoryHelper;
   private final String fieldsParam = "teams";
 
 
   @Override
-  public void init(AuthorizerConfiguration config, DBI dbi) {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultCatalogAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    this.userRepository = dbi.onDemand(UserRepository.class);
+    UserRepository3 repo = dbi.onDemand(UserRepository3.class);
+    this.userRepositoryHelper = new UserRepositoryHelper(repo);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
   }
@@ -65,7 +67,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     adminUsers.stream()
             .filter(name -> {
               try {
-                User user = userRepository.getByName(name, fields);
+                User user = userRepositoryHelper.getByName(name, fields);
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
@@ -84,7 +86,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     botUsers.stream()
             .filter(name -> {
               try {
-                User user = userRepository.getByName(name, fields);
+                User user = userRepositoryHelper.getByName(name, fields);
                 if (user != null) {
                   LOG.debug("Entry for user '{}' already exists", name);
                   return false;
@@ -108,7 +110,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepositoryHelper.getByName(userName, fields);
       if (owner.getType().equals(Entity.TEAM)) {
         for (EntityReference team: user.getTeams()) {
           if (team.getName().equals(owner.getName())) {
@@ -130,7 +132,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepositoryHelper.getByName(userName, fields);
       if (user.getIsAdmin() == null) {
         return false;
       }
@@ -146,7 +148,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
     String userName = SecurityUtil.getUserName(ctx);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     try {
-      User user = userRepository.getByName(userName, fields);
+      User user = userRepositoryHelper.getByName(userName, fields);
       if (user.getIsBot() == null) {
         return false;
       }
@@ -171,7 +173,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .withUpdatedAt(new Date());
 
     try {
-      User addedUser = userRepository.create(user, null);
+      User addedUser = userRepositoryHelper.create(user, null);
       LOG.debug("Added bot user entry: {}", addedUser);
     } catch (DuplicateEntityException | IOException exception) {
       // In HA setup the other server may have already added the user.

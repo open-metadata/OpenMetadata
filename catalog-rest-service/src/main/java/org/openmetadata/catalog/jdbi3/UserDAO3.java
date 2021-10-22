@@ -26,4 +26,23 @@ public interface UserDAO3 extends EntityDAO<User> {
   @Override
   @SqlQuery("SELECT count(*) FROM <table>")
   int listCount(@Define("table") String table);
+
+  @SqlQuery(
+          "SELECT json FROM (" +
+                  "SELECT name, json FROM user_entity WHERE " +
+                  "name < :before " + // Pagination by user name
+                  "ORDER BY name DESC " + // Pagination ordering by user name
+                  "LIMIT :limit" +
+                  ") last_rows_subquery ORDER BY name")
+  List<String> listBefore(@org.skife.jdbi.v2.sqlobject.Bind("limit") int limit, @org.skife.jdbi.v2.sqlobject.Bind("before") String before);
+
+  @SqlQuery("SELECT json FROM user_entity WHERE " +
+          "name > :after " + // Pagination by user name
+          "ORDER BY name " + // Pagination ordering by user name
+          "LIMIT :limit")
+  List<String> listAfter(@org.skife.jdbi.v2.sqlobject.Bind("limit") int limit, @org.skife.jdbi.v2.sqlobject.Bind("after") String after);
+
+  @SqlQuery("SELECT count(*) FROM user_entity")
+  int listCount();
+
 }

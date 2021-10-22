@@ -16,15 +16,15 @@
 
 package org.openmetadata.catalog.security;
 
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
-import org.skife.jdbi.v2.DBI;
 
 public interface CatalogAuthorizer {
 
   /**
    * Initialize the authorizer
    */
-  void init(AuthorizerConfiguration config, DBI jdbi);
+  void init(AuthorizerConfiguration config, Jdbi jdbi);
 
   /**
    * Check if the authenticated user has given permission on the target entity

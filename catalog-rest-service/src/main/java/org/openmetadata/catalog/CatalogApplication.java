@@ -85,7 +85,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
 
     // Register Authorizer
-    registerAuthorizer(catalogConfig, environment, jdbi);
+    registerAuthorizer(catalogConfig, environment, jdbi3);
 
     // Registering config api
     environment.jersey().register(new ConfigResource(catalogConfig));
@@ -104,7 +104,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     environment.jersey().register(new JsonProcessingExceptionMapper(true));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
-    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi));
+    environment.healthChecks().register("UserDatabaseCheck", new CatalogHealthCheck(catalogConfig, jdbi3));
     registerResources(catalogConfig, environment, jdbi);
     registerResources(catalogConfig, environment, jdbi3);
 
@@ -132,7 +132,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     super.initialize(bootstrap);
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, DBI jdbi)
+  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
           throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException  {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();

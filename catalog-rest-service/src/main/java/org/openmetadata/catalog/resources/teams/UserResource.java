@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -76,11 +76,11 @@ import java.util.UUID;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users", repositoryClass = "org.openmetadata.catalog.jdbi3.UserRepository")
+//@Collection(name = "users", repositoryClass = "org.openmetadata.catalog.jdbi3.UserRepositoryHelper")
 public class UserResource {
   public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String USER_COLLECTION_PATH = "v1/users/";
-  private final UserRepository dao;
+  private final UserRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference user) {
@@ -96,8 +96,8 @@ public class UserResource {
   }
 
   @Inject
-  public UserResource(UserRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "UserRepository must not be null");
+  public UserResource(UserRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "UserRepositoryHelper must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }

@@ -51,6 +51,8 @@ import org.openmetadata.catalog.jdbi3.TeamRepository3;
 import org.openmetadata.catalog.jdbi3.TeamRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TopicRepository3;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.UserRepository3;
+import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.resources.bots.BotsResource;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
@@ -66,6 +68,7 @@ import org.openmetadata.catalog.resources.services.messaging.MessagingServiceRes
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
+import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -318,6 +321,13 @@ public final class CollectionRegistry {
             authorizer);
     environment.jersey().register(teamResource);
     LOG.info("Registering {}", teamResource);
+
+    final UserRepository3 userRepository3 = jdbi.onDemand(UserRepository3.class);
+    UserRepositoryHelper userRepositoryHelper = new UserRepositoryHelper(userRepository3);
+    UserResource userResource = new UserResource(userRepositoryHelper,
+            authorizer);
+    environment.jersey().register(userResource);
+    LOG.info("Registering {}", userResource);
 
     LOG.info("Initialized jdbi3");
   }

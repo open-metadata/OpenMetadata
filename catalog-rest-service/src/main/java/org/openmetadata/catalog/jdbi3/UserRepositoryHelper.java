@@ -25,14 +25,13 @@ import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,10 +54,14 @@ import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
-public abstract class UserRepository {
-  public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
+public class UserRepositoryHelper implements EntityRepository<User> {
+  public static final Logger LOG = LoggerFactory.getLogger(UserRepositoryHelper.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
+
+  public UserRepositoryHelper(UserRepository3 repo3) { this.repo3 = repo3; }
+
+  private final UserRepository3 repo3;
 
   public static List<EntityReference> toEntityReference(List<Team> teams) {
     if (teams == null) {
@@ -71,87 +74,22 @@ public abstract class UserRepository {
     return refList;
   }
 
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract TableDAO tableDAO();
-
-  @CreateSqlObject
-  abstract DatabaseDAO databaseDAO();
-
-  @CreateSqlObject
-  abstract MetricsDAO metricsDAO();
-
-  @CreateSqlObject
-  abstract DashboardDAO dashboardDAO();
-
-  @CreateSqlObject
-  abstract ReportDAO reportDAO();
-
-  @CreateSqlObject
-  abstract TopicDAO topicDAO();
-
-  @CreateSqlObject
-  abstract ChartDAO chartDAO();
-
-  @CreateSqlObject
-  abstract TaskDAO taskDAO();
-
-  @CreateSqlObject
-  abstract PipelineDAO pipelineDAO();
-
-  @CreateSqlObject
-  abstract ModelDAO modelDAO();
-
-  EntityRepository<User> entityRepository = new EntityRepository<User>() {
-    @Override
-    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-      return UserRepository.this.userDAO().listAfter(limitParam, after);
-    }
-
-    @Override
-    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-      return UserRepository.this.userDAO().listBefore(limitParam, before);
-    }
-
-    @Override
-    public int listCount(String fqnPrefix) {
-      return UserRepository.this.userDAO().listCount();
-    }
-
-    @Override
-    public String getFullyQualifiedName(User entity) {
-      // User does not have a FullyQualifiedName but needs a valid field to paginate
-      return entity.getName();
-    }
-
-    @Override
-    public User setFields(User entity, Fields fields) throws IOException, ParseException {
-      return UserRepository.this.setFields(entity, fields);
-    }
-
-    @Override
-    public ResultList<User> getResultList(List<User> entities, String beforeCursor, String afterCursor,
-                                          int total) throws GeneralSecurityException, UnsupportedEncodingException {
-      return new UserList(entities, beforeCursor, afterCursor, total);
-    }
-  };
-
-  @Transaction
-  public ResultList<User> listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(entityRepository, User.class, fields, null, limitParam, after);
+  @Override
+  public ResultList<User> getResultList(List<User> entities, String beforeCursor, String afterCursor,
+                                        int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new UserList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction
-  public ResultList<User> listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(entityRepository, User.class, fields, null, limitParam, before);
+  public ResultList<User> listAfter(Fields fields, int limitParam, String after) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listAfter(this, User.class, fields, null, limitParam, after);
+  }
+
+  @Transaction
+  public ResultList<User> listBefore(Fields fields, int limitParam, String before) throws IOException,
+          GeneralSecurityException, ParseException {
+    return EntityUtil.listBefore(this, User.class, fields, null, limitParam, before);
   }
 
   @Transaction
@@ -167,13 +105,13 @@ public abstract class UserRepository {
 
   @Transaction
   public User getByName(String name, Fields fields) throws IOException {
-    User user = EntityUtil.validate(name, userDAO().findByName(name), User.class);
+    User user = repo3.userDAO().findEntityByName(name);
     return setFields(user, fields);
   }
 
   @Transaction
   public User getByEmail(String email, Fields fields) throws IOException {
-    User user = EntityUtil.validate(email, userDAO().findByEmail(email), User.class);
+    User user = EntityUtil.validate(email, repo3.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);
   }
 
@@ -189,15 +127,15 @@ public abstract class UserRepository {
     User user = markUserAsDeactivated(id);
 
     // Remove relationship membership to teams
-    relationshipDAO().deleteTo(user.getId().toString(), CONTAINS.ordinal(), "team");
+    repo3.relationshipDAO().deleteTo(user.getId().toString(), CONTAINS.ordinal(), "team");
 
     // Remove follows relationship to entities
-    relationshipDAO().deleteFrom(id, FOLLOWS.ordinal());
+    repo3.relationshipDAO().deleteFrom(id, FOLLOWS.ordinal());
   }
 
   @Transaction
   public RestUtil.PutResponse<User> createOrUpdate(User updated) throws IOException {
-    User stored = JsonUtils.readValue(userDAO().findByName(updated.getName()), User.class);
+    User stored = JsonUtils.readValue(repo3.userDAO().findJsonByFqn(updated.getName()), User.class);
 
     // TODO why are we doing this?
     List<UUID> teamIds = new ArrayList<>();
@@ -243,12 +181,33 @@ public abstract class UserRepository {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
     validateRelationships(updated, teamIds);
-    UserRepository.UserUpdater userUpdater = new UserRepository.UserUpdater(original, updated, true);
+    UserRepositoryHelper.UserUpdater userUpdater = new UserRepositoryHelper.UserUpdater(original, updated, true);
     userUpdater.updateAll();
     userUpdater.store();
   }
 
-  private User setFields(User user, Fields fields) throws IOException {
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(User entity) {
+    return null;
+  }
+
+  @Override
+  public User setFields(User user, Fields fields) throws IOException {
     user.setProfile(fields.contains("profile") ? user.getProfile() : null);
     user.setTeams(fields.contains("teams") ? getTeams(user) : null);
     user.setOwns(fields.contains("owns") ? getOwns(user) : null);
@@ -258,26 +217,26 @@ public abstract class UserRepository {
 
   private List<EntityReference> getOwns(User user) throws IOException {
     // Compile entities owned by the user
-    List<EntityReference> ownedEntities = relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
+    List<EntityReference> ownedEntities = repo3.relationshipDAO().findTo(user.getId().toString(), OWNS.ordinal());
 
     // Compile entities owned by the team the user belongs to
     List<EntityReference> teams = user.getTeams() == null ? getTeams(user) : user.getTeams();
     for (EntityReference team : teams) {
-      ownedEntities.addAll(relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
+      ownedEntities.addAll(repo3.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.getEntityReference(ownedEntities, tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(),
-            reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
+    return EntityUtil.getEntityReference(ownedEntities, repo3.tableDAO(), repo3.databaseDAO(), repo3.metricsDAO(), repo3.dashboardDAO(),
+            repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(), repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.getEntityReference(relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
-            tableDAO(), databaseDAO(), metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(),
-            modelDAO(), pipelineDAO());
+    return EntityUtil.getEntityReference(repo3.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
+            repo3.tableDAO(), repo3.databaseDAO(), repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(),
+            repo3.topicDAO(), repo3.chartDAO(), repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
   }
 
   private User validateUser(String userId) throws IOException {
-    return EntityUtil.validate(userId, userDAO().findById(userId), User.class);
+    return repo3.userDAO().findEntityById(userId);
   }
 
   private User createInternal(User user) throws IOException {
@@ -302,9 +261,9 @@ public abstract class UserRepository {
     user.withTeams(null).withHref(null);
 
     if (update) {
-      userDAO().update(user.getId().toString(), JsonUtils.pojoToJson(user));
+      repo3.userDAO().update(user.getId().toString(), JsonUtils.pojoToJson(user));
     } else {
-      userDAO().insert(JsonUtils.pojoToJson(user));
+      repo3.userDAO().insert(JsonUtils.pojoToJson(user));
     }
 
     // Restore the relationships
@@ -317,19 +276,18 @@ public abstract class UserRepository {
     }
     List<EntityReference> validatedTeams = new ArrayList<>();
     for (UUID teamId : teamIds) {
-      validatedTeams.add(EntityUtil.getEntityReference(
-              EntityUtil.validate(teamId.toString(), teamDAO().findById(teamId.toString()), Team.class)));
+      validatedTeams.add(EntityUtil.getEntityReference(repo3.teamDAO().findEntityById(teamId.toString())));
     }
     return validatedTeams;
   }
 
   /* Add all the teams that user belongs to to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
-    List<String> teamIds = relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
+    List<String> teamIds = repo3.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<Team> teams = new ArrayList<>();
     for (String teamId : teamIds) {
       LOG.debug("Adding team {}", teamId);
-      String json = teamDAO().findById(teamId);
+      String json = repo3.teamDAO().findJsonById(teamId);
       Team team = JsonUtils.readValue(json, Team.class);
       if (team != null) {
         teams.add(team);
@@ -341,7 +299,7 @@ public abstract class UserRepository {
   private void assignTeams(User user, List<EntityReference> teams) {
     // Query - add team to the user
     for (EntityReference team : teams) {
-      relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
+      repo3.relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
               "team", "user", CONTAINS.ordinal());
     }
   }
@@ -353,9 +311,9 @@ public abstract class UserRepository {
       return user;
     }
     user.setDeactivated(true);
-    user.setName("deactivated." +user.getName());
-    user.setDisplayName("Deactivated " +user.getDisplayName());
-    userDAO().update(id, JsonUtils.pojoToJson(user));
+    user.setName("deactivated." + user.getName());
+    user.setDisplayName("Deactivated " + user.getDisplayName());
+    repo3.userDAO().update(id, JsonUtils.pojoToJson(user));
     return user;
   }
 
@@ -403,13 +361,13 @@ public abstract class UserRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class UserUpdater extends EntityUpdater {
+  public class UserUpdater extends EntityUpdater3 {
     final User orig;
     final User updated;
 
     public UserUpdater(User orig, User updated, boolean patchOperation) {
-      super(new UserRepository.UserEntityInterface(orig), new UserRepository.UserEntityInterface(updated),
-              patchOperation, relationshipDAO(), null);
+      super(new UserRepositoryHelper.UserEntityInterface(orig), new UserRepositoryHelper.UserEntityInterface(updated),
+              patchOperation, repo3.relationshipDAO(), null);
       this.orig = orig;
       this.updated = updated;
     }
@@ -425,11 +383,12 @@ public abstract class UserRepository {
 
     public void updateTeams() {
       // Remove teams from original and add teams from updated
-      relationshipDAO().deleteTo(orig.getId().toString(), CONTAINS.ordinal(), "team");
+      repo3.relationshipDAO().deleteTo(orig.getId().toString(), CONTAINS.ordinal(), "team");
       if (!updated.getTeams().isEmpty()) {
         assignTeams(updated, updated.getTeams());
       }
     }
+
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
       storeUser(updated, true);

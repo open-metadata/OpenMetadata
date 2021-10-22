@@ -14,33 +14,47 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.security;
+package org.openmetadata.catalog.jdbi3;
 
-import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.catalog.type.EntityReference;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jdbi.v3.sqlobject.CreateSqlObject;
 
-public class NoopAuthorizer implements CatalogAuthorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(NoopAuthorizer.class);
+public interface UserRepository3 {
+  @CreateSqlObject
+  UserDAO3 userDAO();
 
+  @CreateSqlObject
+  EntityRelationshipDAO3 relationshipDAO();
 
-  @Override
-  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
-  }
+  @CreateSqlObject
+  TeamDAO3 teamDAO();
 
-  @Override
-  public boolean hasPermissions(AuthenticationContext ctx, EntityReference entityOwnership) {
-    return true;
-  }
+  @CreateSqlObject
+  TableDAO3 tableDAO();
 
-  @Override
-  public boolean isAdmin(AuthenticationContext ctx) {
-    return true;
-  }
+  @CreateSqlObject
+  DatabaseDAO3 databaseDAO();
 
-  @Override
-  public boolean isBot(AuthenticationContext ctx) {
-    return true;
-  }
+  @CreateSqlObject
+  MetricsDAO3 metricsDAO();
+
+  @CreateSqlObject
+  DashboardDAO3 dashboardDAO();
+
+  @CreateSqlObject
+  ReportDAO3 reportDAO();
+
+  @CreateSqlObject
+  TopicDAO3 topicDAO();
+
+  @CreateSqlObject
+  ChartDAO3 chartDAO();
+
+  @CreateSqlObject
+  TaskDAO3 taskDAO();
+
+  @CreateSqlObject
+  PipelineDAO3 pipelineDAO();
+
+  @CreateSqlObject
+  ModelDAO3 modelDAO();
 }

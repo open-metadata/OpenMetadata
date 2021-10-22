@@ -17,29 +17,29 @@
 package org.openmetadata.catalog;
 
 import com.codahale.metrics.health.HealthCheck;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.UserRepository3;
+import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.ResultList;
-import org.skife.jdbi.v2.DBI;
 
 import java.io.IOException;
 
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 public class CatalogHealthCheck extends HealthCheck {
-  private final UserRepository userRepository;
+  private final UserRepositoryHelper userRepositoryHelper;
   private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "profile");
 
-  public CatalogHealthCheck(CatalogApplicationConfig config, DBI jdbi) {
+  public CatalogHealthCheck(CatalogApplicationConfig config, Jdbi jdbi) {
     super();
-    this.userRepository = jdbi.onDemand(UserRepository.class);
+    UserRepository3 repo = jdbi.onDemand(UserRepository3.class);
+    this.userRepositoryHelper = new UserRepositoryHelper(repo);
   }
 
   @Override
   protected Result check() throws Exception {
     try {
-      ResultList<User> users = userRepository.listAfter(fields, 1, "");
+      userRepositoryHelper.listAfter(fields, 1, "");
       return Result.healthy();
     } catch (IOException e) {
       return Result.unhealthy(e.getMessage());

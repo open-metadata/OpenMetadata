@@ -26,7 +26,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -507,7 +507,7 @@ public class UserResourceTest extends CatalogApplicationTest {
 
     // Update the user attributes
     before.setDisplayName(displayName);
-    before.setTeams(UserRepository.toEntityReference(teams));
+    before.setTeams(UserRepositoryHelper.toEntityReference(teams));
     before.setProfile(profile);
     before.setTimezone(timezone);
     before.setIsBot(isBot);
