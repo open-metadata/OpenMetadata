@@ -22,12 +22,10 @@ import java.util.Properties;
 
 public class Property {
 
-    private static String PATH;
     private static Integer waitTime;
     private static String URL;
     private static final Object LOCK = new Object();
     private static Property instance;
-    String pathToOpenMetadata = "pathToOpenMetadata";
     String openMetadataUrl = "openMetadataUrl";
     String openMetadataWaitTime = "waitTime";
 
@@ -48,13 +46,8 @@ public class Property {
         } catch (IOException e) {
             return;
         }
-        PATH = properties.getProperty(pathToOpenMetadata);
         URL = properties.getProperty(openMetadataUrl);
         waitTime = Integer.parseInt(properties.getProperty(openMetadataWaitTime));
-    }
-
-    public static String getPath() {
-        return PATH;
     }
 
     public static String getURL() {

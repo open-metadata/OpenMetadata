@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements. See the NOTICE file distributed with
@@ -14,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#OpenMetadata Url
-openMetadataUrl = http://localhost:8585
 
-# Enter Time In Milliseconds
-waitTime = 700
+mvn -DskipTests clean package
+cd docker/local-metadata/
+docker-compose up -d
+while ! wget -O /dev/null -o /dev/null localhost:8585/api/v1/teams/name/Finance; do sleep 5; done
