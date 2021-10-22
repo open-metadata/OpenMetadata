@@ -48,18 +48,14 @@ class SampleUsageSource(Source):
     def next_record(self) -> Iterable[TableQuery]:
         for row in self.query_logs:
             tq = TableQuery(
-                row["query"],
-                "",
-                100,
-                0,
-                0,
-                "",
-                "",
-                datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
-                100,
-                "shopify",
-                False,
-                row["query"],
+                query=row["query"],
+                user_name="",
+                starttime="",
+                endtime="",
+                analysis_date=datetime.today().strftime("%Y-%m-%d %H:%M:%S"),
+                database="shopify",
+                aborted=False,
+                sql=row["query"],
             )
             yield tq
 
