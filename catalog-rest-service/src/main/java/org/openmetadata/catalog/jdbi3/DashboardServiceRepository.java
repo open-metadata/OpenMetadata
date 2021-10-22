@@ -17,57 +17,40 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class DashboardServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DashboardServiceRepository.class);
+public class DashboardServiceRepository extends EntityRepository<DashboardService> {
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract DashboardServiceDAO dashboardServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @Transaction
-  public List<DashboardService> list(String name) throws IOException {
-    return JsonUtils.readObjects(dashboardServiceDAO().list(name), DashboardService.class);
-  }
-
-  @Transaction
-  public DashboardService get(String id) throws IOException {
-    return EntityUtil.validate(id, dashboardServiceDAO().findById(id), DashboardService.class);
-  }
-
-  @Transaction
-  public DashboardService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, dashboardServiceDAO().findByName(name), DashboardService.class);
+  public DashboardServiceRepository(CollectionDAO dao) {
+    super(DashboardService.class, dao.dashboardServiceDAO());
+    this.dao = dao;
   }
 
   @Transaction
   public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
-    dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
+    dao.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
@@ -75,40 +58,36 @@ public abstract class DashboardServiceRepository {
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
-            DashboardService.class);
+    DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
             .withPassword(password).withIngestionSchedule(ingestionSchedule);
-    dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (dashboardServiceDAO().delete(id) <= 0) {
+    if (dao.dashboardServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
-  public interface DashboardServiceDAO {
-    @SqlUpdate("INSERT INTO dashboard_service_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  @Override
+  public String getFullyQualifiedName(DashboardService entity) {
+    return entity.getName();
+  }
 
-    @SqlUpdate("UPDATE dashboard_service_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
 
-    @SqlQuery("SELECT json FROM dashboard_service_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT json FROM dashboard_service_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM dashboard_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
-
-    @SqlUpdate("DELETE FROM dashboard_service_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+  @Override
+  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
+                                                    String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DashboardServiceList(entities);
   }
 }

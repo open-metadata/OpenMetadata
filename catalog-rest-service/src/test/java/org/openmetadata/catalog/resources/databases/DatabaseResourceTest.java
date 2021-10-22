@@ -19,6 +19,7 @@ package org.openmetadata.catalog.resources.databases;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -239,6 +240,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
+  @Order(1)
   @Test
   public void get_databaseListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
     // Create a large number of databases

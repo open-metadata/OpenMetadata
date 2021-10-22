@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -61,6 +62,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -71,7 +73,7 @@ import java.util.UUID;
 @Api(value = "Teams collection", tags = "Teams collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "teams", repositoryClass = "org.openmetadata.catalog.jdbi3.TeamRepository")
+@Collection(name = "teams")
 public class TeamResource {
   private static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   public static final String TEAM_COLLECTION_PATH = "/v1/teams/";
@@ -91,9 +93,9 @@ public class TeamResource {
   }
 
   @Inject
-  public TeamResource(TeamRepository dao, CatalogAuthorizer authorizer) {
+  public TeamResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "TeamRepository must not be null");
-    this.dao = dao;
+    this.dao = new TeamRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -121,7 +123,7 @@ public class TeamResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = TeamList.class)))
           })
-  public TeamList list(@Context UriInfo uriInfo,
+  public ResultList<Team> list(@Context UriInfo uriInfo,
                        @Context SecurityContext securityContext,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
@@ -137,15 +139,15 @@ public class TeamResource {
                        @QueryParam("before") String before,
                        @Parameter(description = "Returns list of tables after this cursor",
                                schema = @Schema(type = "string"))
-                       @QueryParam("after") String after) throws IOException, GeneralSecurityException {
+                       @QueryParam("after") String after) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
 
-    TeamList teams;
+    ResultList<Team> teams;
     if (before != null) { // Reverse paging
-      teams = dao.listBefore(fields, limitParam, before); // Ask for one extra entry
+      teams = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      teams = dao.listAfter(fields, limitParam, after);
+      teams = dao.listAfter(fields, null, limitParam, after);
     }
     teams.getData().forEach(team -> addHref(uriInfo, team));
     return teams;
@@ -167,7 +169,7 @@ public class TeamResource {
                   @PathParam("id") String id,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -188,7 +190,7 @@ public class TeamResource {
                         @PathParam("name") String name,
                         @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam) throws IOException {
+                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(name, fields));
   }

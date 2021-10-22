@@ -16,18 +16,16 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import org.jdbi.v3.core.mapper.RowMapper;
 import org.openmetadata.catalog.type.EntityReference;
-import org.skife.jdbi.v2.StatementContext;
-import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class ToEntityReferenceMapper implements ResultSetMapper<EntityReference> {
+public class ToEntityReferenceMapper implements RowMapper<EntityReference> {
   @Override
-  public EntityReference map(int i, ResultSet resultSet, StatementContext statementContext) throws SQLException {
-    return new EntityReference().withId(UUID.fromString(resultSet.getString("toId")))
-            .withType(resultSet.getString("toEntity"));
+  public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
+    return new EntityReference().withId(UUID.fromString(rs.getString("toId"))).withType(rs.getString("toEntity"));
   }
 }

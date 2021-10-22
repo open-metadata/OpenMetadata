@@ -18,29 +18,14 @@ package org.openmetadata.catalog;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import io.dropwizard.health.conf.HealthConfiguration;
-import io.dropwizard.health.core.HealthCheckBundle;
-import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
-import org.openmetadata.catalog.events.EventFilter;
-import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
-import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
-import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
-import org.openmetadata.catalog.security.AuthenticationConfiguration;
-import org.openmetadata.catalog.security.NoopFilter;
-import org.openmetadata.catalog.security.AuthorizerConfiguration;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
-import org.openmetadata.catalog.security.NoopAuthorizer;
-import org.openmetadata.catalog.module.CatalogModule;
-import org.openmetadata.catalog.resources.CollectionRegistry;
-import org.openmetadata.catalog.resources.config.ConfigResource;
-import org.openmetadata.catalog.resources.search.SearchResource;
 import io.dropwizard.Application;
 import io.dropwizard.assets.AssetsBundle;
-import io.dropwizard.jdbi.DBIFactory;
-import io.dropwizard.jdbi.OptionalContainerFactory;
+import io.dropwizard.health.conf.HealthConfiguration;
+import io.dropwizard.health.core.HealthCheckBundle;
+import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.jersey.errors.EarlyEofExceptionMapper;
 import io.dropwizard.jersey.errors.LoggingExceptionMapper;
+import io.dropwizard.jersey.jackson.JsonProcessingExceptionMapper;
 import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.server.DefaultServerFactory;
 import io.dropwizard.setup.Bootstrap;
@@ -52,14 +37,32 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
-import org.skife.jdbi.v2.DBI;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlLogger;
+import org.jdbi.v3.core.statement.StatementContext;
+import org.openmetadata.catalog.events.EventFilter;
+import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
+import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
+import org.openmetadata.catalog.exception.JsonMappingExceptionMapper;
+import org.openmetadata.catalog.module.CatalogModule;
+import org.openmetadata.catalog.resources.CollectionRegistry;
+import org.openmetadata.catalog.resources.config.ConfigResource;
+import org.openmetadata.catalog.resources.search.SearchResource;
+import org.openmetadata.catalog.security.AuthenticationConfiguration;
+import org.openmetadata.catalog.security.AuthorizerConfiguration;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.NoopAuthorizer;
+import org.openmetadata.catalog.security.NoopFilter;
+import org.openmetadata.catalog.security.auth.CatalogSecurityContextRequestFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Main catalog application
@@ -73,10 +76,11 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
   @Override
   public void run(CatalogApplicationConfig catalogConfig, Environment environment) throws ClassNotFoundException,
-  IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException  {
+          IllegalAccessException, InstantiationException, NoSuchMethodException, InvocationTargetException,
+          IOException {
 
-    final DBIFactory factory = new DBIFactory();
-    final DBI jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql");
+    final JdbiFactory factory = new JdbiFactory();
+    final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
 
 
     // Register Authorizer
@@ -126,7 +130,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     super.initialize(bootstrap);
   }
 
-  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, DBI jdbi)
+  private void registerAuthorizer(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi)
           throws NoSuchMethodException, ClassNotFoundException, IllegalAccessException, InvocationTargetException,
           InstantiationException  {
     AuthorizerConfiguration authorizerConf = catalogConfig.getAuthorizerConfiguration();
@@ -154,18 +158,16 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     injector = Guice.createInjector(new CatalogModule(authorizer));
   }
 
-  private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, DBI jdbi) {
+  private void registerEventFilter(CatalogApplicationConfig catalogConfig, Environment environment, Jdbi jdbi) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
       ContainerResponseFilter eventFilter = new EventFilter(catalogConfig, jdbi);
       environment.jersey().register(eventFilter);
     }
   }
 
-  private void registerResources(CatalogApplicationConfig config, Environment environment, DBI jdbi) {
-
-    jdbi.registerContainerFactory(new OptionalContainerFactory());
-
+  private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) throws IOException {
     CollectionRegistry.getInstance().registerResources(jdbi, environment, authorizer);
+
     environment.lifecycle().manage(new Managed() {
       @Override
       public void start() {

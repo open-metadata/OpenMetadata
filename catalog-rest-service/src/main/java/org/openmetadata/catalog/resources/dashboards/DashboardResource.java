@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -75,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Dashboards collection", tags = "Dashboards collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepository")
+@Collection(name = "dashboards")
 public class DashboardResource {
   public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
   private final DashboardRepository dao;
@@ -102,9 +103,9 @@ public class DashboardResource {
   }
 
   @Inject
-  public DashboardResource(DashboardRepository dao, CatalogAuthorizer authorizer) {
+  public DashboardResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardRepository must not be null");
-    this.dao = dao;
+    this.dao = new DashboardRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -184,7 +185,7 @@ public class DashboardResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -203,7 +204,7 @@ public class DashboardResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Dashboard dashboard = dao.getByName(fqn, fields);
     return addHref(uriInfo, dashboard);
@@ -249,7 +250,7 @@ public class DashboardResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Dashboard dashboard = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -297,7 +298,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Dashboard dashboard = dao.get(id, fields);
@@ -315,7 +316,7 @@ public class DashboardResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException {
+                              @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Dashboard dashboard = dao.get(id, fields);

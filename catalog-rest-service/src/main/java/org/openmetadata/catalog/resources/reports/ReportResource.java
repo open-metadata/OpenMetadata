@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.data.Report;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.ReportRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -47,6 +48,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -57,7 +59,7 @@ import java.util.UUID;
 @Api(value = "Reports collection", tags = "Reports collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "reports", repositoryClass = "org.openmetadata.catalog.jdbi3.ReportRepository")
+@Collection(name = "reports")
 public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final ReportRepository dao;
@@ -73,13 +75,13 @@ public class ReportResource {
   }
 
   @Inject
-  public ReportResource(ReportRepository dao, CatalogAuthorizer authorizer) {
+  public ReportResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepository must not be null");
-    this.dao = dao;
+    this.dao = new ReportRepository(dao);
   }
 
-  static class ReportList extends ResultList<Report> {
-    ReportList(List<Report> data) {
+  public static class ReportList extends ResultList<Report> {
+    public ReportList(List<Report> data) {
       super(data);
     }
   }
@@ -117,7 +119,7 @@ public class ReportResource {
   public Report get(@Context UriInfo uriInfo, @PathParam("id") String id,
                      @Parameter(description = "Fields requested in the returned resource",
                              schema = @Schema(type = "string", example = FIELDS))
-                     @QueryParam("fields") String fieldsParam) throws IOException {
+                     @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }

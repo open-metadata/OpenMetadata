@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -38,8 +39,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -64,6 +63,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -76,9 +76,8 @@ import java.util.UUID;
 @Api(value = "Topic data asset collection", tags = "Topic data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "topics", repositoryClass = "org.openmetadata.catalog.jdbi3.TopicRepository")
+@Collection(name = "topics")
 public class TopicResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicResource.class);
   private static final String TOPIC_COLLECTION_PATH = "v1/topics/";
   private final TopicRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -101,9 +100,9 @@ public class TopicResource {
   }
 
   @Inject
-  public TopicResource(TopicRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TopicRepository must not be null");
-    this.dao = dao;
+  public TopicResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
+    this.dao = new TopicRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -124,7 +123,6 @@ public class TopicResource {
           .split(","));
 
   @GET
-  @Valid
   @Operation(summary = "List topics", tags = "topics",
           description = "Get a list of topics, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
@@ -134,30 +132,28 @@ public class TopicResource {
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = TopicList.class)))
           })
-  public TopicList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Topic> list(@Context UriInfo uriInfo,
+                                @Context SecurityContext securityContext,
+                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter topics by service name",
+                                @Parameter(description = "Filter topics by service name",
                                 schema = @Schema(type = "string", example = "kafkaWestCoast"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
+                                @Parameter(description = "Limit the number topics returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
-                        @Min(1)
-                        @Max(1000000)
-                        @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of topics before this cursor",
+                                @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
+                                @Parameter(description = "Returns list of topics before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of topics after this cursor",
+                                @Parameter(description = "Returns list of topics after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    TopicList topics;
+    ResultList<Topic> topics;
     if (before != null) { // Reverse paging
       topics = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
@@ -181,7 +177,7 @@ public class TopicResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException {
+                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -200,7 +196,7 @@ public class TopicResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Topic topic = dao.getByName(fqn, fields);
     addHref(uriInfo, topic);
@@ -253,7 +249,7 @@ public class TopicResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -307,7 +303,7 @@ public class TopicResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Topic table = dao.get(id, fields);
@@ -325,7 +321,7 @@ public class TopicResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException {
+                              @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Topic topic = dao.get(id, fields);

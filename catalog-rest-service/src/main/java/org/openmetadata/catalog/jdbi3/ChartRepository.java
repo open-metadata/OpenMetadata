@@ -17,37 +17,27 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
-import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -55,85 +45,18 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class ChartRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartRepository.class);
+public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
+  private final CollectionDAO dao;
+
+  public ChartRepository(CollectionDAO dao) {
+    super(Chart.class, dao.chartDAO());
+    this.dao = dao;
+  }
 
   public static String getFQN(Chart chart) {
     return (chart.getService().getName() + "." + chart.getName());
-  }
-
-  @CreateSqlObject
-  abstract ChartDAO chartDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract DashboardServiceDAO dashboardServiceDAO();
-
-  @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
-
-
-  @Transaction
-  public ChartList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = chartDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Chart> charts = new ArrayList<>();
-    for (String json : jsons) {
-      charts.add(setFields(JsonUtils.readValue(json, Chart.class), fields));
-    }
-    int total = chartDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : charts.get(0).getFullyQualifiedName();
-    if (charts.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      charts.remove(limitParam);
-      afterCursor = charts.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new ChartList(charts, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public ChartList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = chartDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Chart> charts = new ArrayList<>();
-    for (String json : jsons) {
-      charts.add(setFields(JsonUtils.readValue(json, Chart.class), fields));
-    }
-    int total = chartDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (charts.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      charts.remove(0);
-      beforeCursor = charts.get(0).getFullyQualifiedName();
-    }
-    afterCursor = charts.get(charts.size() - 1).getFullyQualifiedName();
-    return new ChartList(charts, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public Chart get(String id, Fields fields) throws IOException {
-    return setFields(validateChart(id), fields);
-  }
-
-  @Transaction
-  public Chart getByName(String fqn, Fields fields) throws IOException {
-    Chart chart = EntityUtil.validate(fqn, chartDAO().findByFQN(fqn), Chart.class);
-    return setFields(chart, fields);
   }
 
   @Transaction
@@ -144,19 +67,19 @@ public abstract class ChartRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.CHART) > 0) {
       throw new IllegalArgumentException("Chart is not empty");
     }
-    if (chartDAO().delete(id) <= 0) {
+    if (dao.chartDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Chart> createOrUpdate(Chart updated) throws IOException {
     validateRelationships(updated);
-    Chart stored = JsonUtils.readValue(chartDAO().findByFQN(updated.getFullyQualifiedName()), Chart.class);
+    Chart stored = JsonUtils.readValue(dao.chartDAO().findJsonByFqn(updated.getFullyQualifiedName()), Chart.class);
     if (stored == null) {  // Chart does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -187,8 +110,9 @@ public abstract class ChartRepository {
     EntityReference dashboardService = getService(chart.getService());
     chart.setService(dashboardService);
     chart.setFullyQualifiedName(getFQN(chart));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), chart.getOwner()); // Validate owner
-    chart.setTags(EntityUtil.addDerivedTags(tagDAO(), chart.getTags()));
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate owner
+    getService(chart.getService());
+    chart.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), chart.getTags()));
   }
 
   private void addRelationships(Chart chart) throws IOException {
@@ -207,9 +131,9 @@ public abstract class ChartRepository {
     chart.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      chartDAO().update(chart.getId().toString(), JsonUtils.pojoToJson(chart));
+      dao.chartDAO().update(chart.getId().toString(), JsonUtils.pojoToJson(chart));
     } else {
-      chartDAO().insert(JsonUtils.pojoToJson(chart));
+      dao.chartDAO().insert(JsonUtils.pojoToJson(chart));
     }
 
     // Restore the relationships
@@ -219,7 +143,7 @@ public abstract class ChartRepository {
 
   private void applyTags(Chart chart) throws IOException {
     // Add chart level tags by adding tag to chart relationship
-    EntityUtil.applyTags(tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
     chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
@@ -234,20 +158,27 @@ public abstract class ChartRepository {
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
-    return chart != null ? EntityUtil.populateOwner(chart.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
+    return chart != null ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO()) : null;
   }
 
   private void setOwner(Chart chart, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), chart.getId(), Entity.CHART, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), chart.getId(), Entity.CHART, owner);
     // TODO not required
     chart.setOwner(owner);
   }
 
   private Chart validateChart(String id) throws IOException {
-    return EntityUtil.validate(id, chartDAO().findById(id), Chart.class);
+    return dao.chartDAO().findEntityById(id);
   }
 
-  private Chart setFields(Chart chart, Fields fields) throws IOException {
+  @Override
+  public String getFullyQualifiedName(Chart entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
+  public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setOwner(fields.contains("owner") ? getOwner(chart) : null);
     chart.setService(fields.contains("service") ? getService(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
@@ -255,24 +186,29 @@ public abstract class ChartRepository {
     return chart;
   }
 
+  @Override
+  public ResultList<Chart> getResultList(List<Chart> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new ResultList<>(entities, beforeCursor, afterCursor, total);
+  }
+
   private List<EntityReference> getFollowers(Chart chart) throws IOException {
-    return chart == null ? null : EntityUtil.getFollowers(chart.getId(), relationshipDAO(), userDAO());
+    return chart == null ? null : EntityUtil.getFollowers(chart.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Chart chart) throws IOException {
-    return chart == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(relationshipDAO(),
+    return chart == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
             chart.getId(), Entity.DASHBOARD_SERVICE)));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
-              DashboardService.class);
+      DashboardService serviceInstance = dao.dashboardServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -285,7 +221,7 @@ public abstract class ChartRepository {
     if (service != null && chart != null) {
       // TODO remove this
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
               Entity.CHART, Relationship.CONTAINS.ordinal());
       chart.setService(service);
     }
@@ -293,59 +229,15 @@ public abstract class ChartRepository {
 
   @Transaction
   public Status addFollower(String chartId, String userId) throws IOException {
-    EntityUtil.validate(chartId, chartDAO().findById(chartId), Chart.class);
-    return EntityUtil.addFollower(relationshipDAO(), userDAO(), chartId, Entity.CHART, userId, Entity.USER) ?
+    dao.chartDAO().findEntityById(chartId);
+    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), chartId, Entity.CHART, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String chartId, String userId) {
-    EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), chartId, userId);
-  }
-
-  public interface ChartDAO {
-    @SqlUpdate("INSERT INTO chart_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE chart_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT count(*) FROM chart_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM chart_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by chart fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by chart fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM chart_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM chart_entity WHERE id = :id)")
-    boolean exists(@Bind("id") String id);
-
-    @SqlUpdate("DELETE FROM chart_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+    EntityUtil.validateUser(dao.userDAO(), userId);
+    EntityUtil.removeFollower(dao.relationshipDAO(), chartId, userId);
   }
 
   static class ChartEntityInterface implements EntityInterface {
@@ -404,13 +296,13 @@ public abstract class ChartRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class ChartUpdater extends EntityUpdater {
+  public class ChartUpdater extends EntityUpdater3 {
     final Chart orig;
     final Chart updated;
 
     public ChartUpdater(Chart orig, Chart updated, boolean patchOperation) {
-      super(new ChartEntityInterface(orig), new ChartEntityInterface(updated), patchOperation, relationshipDAO(),
-              tagDAO());
+      super(new ChartEntityInterface(orig), new ChartEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

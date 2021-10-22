@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -51,6 +52,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +63,7 @@ import java.util.UUID;
 @Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dashboardServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardServiceRepository")
+@Collection(name = "dashboardServices")
 public class DashboardServiceResource {
   private final DashboardServiceRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -81,14 +84,14 @@ public class DashboardServiceResource {
   }
 
   @Inject
-  public DashboardServiceResource(DashboardServiceRepository dao, CatalogAuthorizer authorizer) {
+  public DashboardServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
-    this.dao = dao;
+    this.dao = new DashboardServiceRepository(dao);
     this.authorizer = authorizer;
   }
 
-  static class DashboardServiceList extends ResultList<DashboardService> {
-    DashboardServiceList(List<DashboardService> data) {
+  public static class DashboardServiceList extends ResultList<DashboardService> {
+    public DashboardServiceList(List<DashboardService> data) {
       super(data);
     }
   }
@@ -101,8 +104,10 @@ public class DashboardServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = DashboardServiceList.class)))
           })
-  public DashboardServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new DashboardServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<DashboardService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException, GeneralSecurityException, ParseException {
+    ResultList<DashboardService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(d -> addHref(uriInfo, d));
+    return list;
   }
 
   @GET
@@ -117,8 +122,8 @@ public class DashboardServiceResource {
           })
   public DashboardService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -133,8 +138,8 @@ public class DashboardServiceResource {
           })
   public DashboardService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST

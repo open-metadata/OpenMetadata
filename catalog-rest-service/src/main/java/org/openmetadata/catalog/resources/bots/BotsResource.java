@@ -18,18 +18,19 @@ package org.openmetadata.catalog.resources.bots;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
-import org.openmetadata.catalog.entity.Bots;
-import org.openmetadata.catalog.jdbi3.BotsRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.entity.Bots;
+import org.openmetadata.catalog.jdbi3.BotsRepository;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -43,7 +44,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Date;
@@ -56,7 +56,7 @@ import java.util.UUID;
 @Api(value = "Bots collection", tags = "Bots collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "bots", repositoryClass = "org.openmetadata.catalog.jdbi3.BotsRepository")
+@Collection(name = "bots")
 public class BotsResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotsRepository dao;
@@ -73,9 +73,9 @@ public class BotsResource {
   }
 
   @Inject
-  public BotsResource(BotsRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "BotsRepository must not be null");
-    this.dao = dao;
+  public BotsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
+    this.dao = new BotsRepository(dao);
     this.authorizer = authorizer;
   }
 

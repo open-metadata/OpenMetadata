@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -75,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Pipelines collection", tags = "Pipelines collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
+@Collection(name = "pipelines")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
   private final PipelineRepository dao;
@@ -102,9 +103,9 @@ public class PipelineResource {
   }
 
   @Inject
-  public PipelineResource(PipelineRepository dao, CatalogAuthorizer authorizer) {
+  public PipelineResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineRepository must not be null");
-    this.dao = dao;
+    this.dao = new PipelineRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -136,25 +137,25 @@ public class PipelineResource {
                                   schema = @Schema(implementation = PipelineList.class)))
           })
   public ResultList<Pipeline> list(@Context UriInfo uriInfo,
-                                   @Context SecurityContext securityContext,
-                                   @Parameter(description = "Fields requested in the returned resource",
-                                           schema = @Schema(type = "string", example = FIELDS))
-                                   @QueryParam("fields") String fieldsParam,
-                                   @Parameter(description = "Filter pipelines by service name",
-                                           schema = @Schema(type = "string", example = "airflow"))
-                                   @QueryParam("service") String serviceParam,
-                                   @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " +
-                                           "default = 10)")
-                                   @DefaultValue("10")
-                                   @Min(1)
-                                   @Max(1000000)
-                                   @QueryParam("limit") int limitParam,
-                                   @Parameter(description = "Returns list of pipelines before this cursor",
-                                           schema = @Schema(type = "string"))
-                                   @QueryParam("before") String before,
-                                   @Parameter(description = "Returns list of pipelines after this cursor",
-                                           schema = @Schema(type = "string"))
-                                   @QueryParam("after") String after
+                            @Context SecurityContext securityContext,
+                            @Parameter(description = "Fields requested in the returned resource",
+                                    schema = @Schema(type = "string", example = FIELDS))
+                            @QueryParam("fields") String fieldsParam,
+                            @Parameter(description = "Filter pipelines by service name",
+                                    schema = @Schema(type = "string", example = "airflow"))
+                            @QueryParam("service") String serviceParam,
+                            @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " +
+                                    "default = 10)")
+                            @DefaultValue("10")
+                            @Min(1)
+                            @Max(1000000)
+                            @QueryParam("limit") int limitParam,
+                            @Parameter(description = "Returns list of pipelines before this cursor",
+                                    schema = @Schema(type = "string"))
+                            @QueryParam("before") String before,
+                            @Parameter(description = "Returns list of pipelines after this cursor",
+                                    schema = @Schema(type = "string"))
+                            @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
@@ -184,7 +185,7 @@ public class PipelineResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -203,7 +204,7 @@ public class PipelineResource {
                              @Context SecurityContext securityContext,
                              @Parameter(description = "Fields requested in the returned resource",
                                      schema = @Schema(type = "string", example = FIELDS))
-                             @QueryParam("fields") String fieldsParam) throws IOException {
+                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Pipeline pipeline = dao.getByName(fqn, fields);
     return addHref(uriInfo, pipeline);
@@ -250,7 +251,7 @@ public class PipelineResource {
                                                              "{op:remove, path:/a}," +
                                                              "{op:add, path: /b, value: val}" +
                                                              "]")}))
-                                             JsonPatch patch) throws IOException {
+                                             JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -299,7 +300,7 @@ public class PipelineResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);
@@ -317,7 +318,7 @@ public class PipelineResource {
                                   @PathParam("id") String id,
                                   @Parameter(description = "Id of the user being removed as follower",
                                           schema = @Schema(type = "string"))
-                                  @PathParam("userId") String userId) throws IOException {
+                                  @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);

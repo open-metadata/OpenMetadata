@@ -24,6 +24,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MetricsRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -47,6 +48,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -57,15 +60,10 @@ import java.util.UUID;
 @Api(value = "Metrics collection", tags = "Metrics collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metrics", repositoryClass = "org.openmetadata.catalog.jdbi3.MetricsRepository")
+@Collection(name = "metrics")
 public class MetricsResource {
   public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricsRepository dao;
-
-  private static List<Metrics> addHref(UriInfo uriInfo, List<Metrics> metrics) {
-    metrics.forEach(m -> addHref(uriInfo, m));
-    return metrics;
-  }
 
   private static Metrics addHref(UriInfo uriInfo, Metrics metrics) {
     metrics.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, metrics.getId()));
@@ -73,13 +71,13 @@ public class MetricsResource {
   }
 
   @Inject
-  public MetricsResource(MetricsRepository dao, CatalogAuthorizer authorizer) {
+  public MetricsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "MetricsRepository must not be null");
-    this.dao = dao;
+    this.dao = new MetricsRepository(dao);
   }
 
-  static class MetricsList extends ResultList<Metrics> {
-    MetricsList(List<Metrics> data) {
+  public static class MetricsList extends ResultList<Metrics> {
+    public MetricsList(List<Metrics> data) {
       super(data);
     }
   }
@@ -96,12 +94,15 @@ public class MetricsResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = MetricsList.class)))
           })
-  public MetricsList list(@Context UriInfo uriInfo,
-                          @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Metrics> list(@Context UriInfo uriInfo,
+                                  @Parameter(description = "Fields requested in the returned resource",
                                   schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam) throws IOException {
+                          @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
+          ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new MetricsList(addHref(uriInfo, dao.list(fields)));
+    ResultList<Metrics> metricsList = dao.listAfter(fields, null, 10000, null);
+    metricsList.getData().forEach(m -> addHref(uriInfo, m));
+    return metricsList;
   }
 
   @GET
@@ -118,7 +119,7 @@ public class MetricsResource {
                      @PathParam("id") String id,
                      @Parameter(description = "Fields requested in the returned resource",
                              schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }

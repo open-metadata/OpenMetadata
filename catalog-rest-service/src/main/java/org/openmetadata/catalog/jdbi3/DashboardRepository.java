@@ -17,32 +17,23 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.ChartRepository.ChartDAO;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceDAO;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response;
@@ -50,7 +41,6 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -58,93 +48,31 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class DashboardRepository {
+public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
+  private final CollectionDAO dao;
+
+  public DashboardRepository(CollectionDAO dao) {
+    super(Dashboard.class, dao.dashboardDAO());
+    this.dao = dao;
+  }
 
   public static String getFQN(Dashboard dashboard) {
     return (dashboard.getService().getName() + "." + dashboard.getName());
   }
 
-  @CreateSqlObject
-  abstract DashboardDAO dashboardDAO();
-
-  @CreateSqlObject
-  abstract ChartDAO chartDAO();
-
-  @CreateSqlObject
-  abstract DashboardServiceDAO dashboardServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
-
-  @CreateSqlObject
-  abstract TagRepository.TagDAO tagDAO();
-
-  EntityRepository<Dashboard> entityRepository = new EntityRepository<>() {
-    @Override
-    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-      return dashboardDAO().listAfter(fqnPrefix, limitParam, after);
-    }
-
-    @Override
-    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-      return dashboardDAO().listBefore(fqnPrefix, limitParam, before);
-    }
-
-    @Override
-    public int listCount(String fqnPrefix) {
-      return dashboardDAO().listCount(fqnPrefix);
-    }
-
-    @Override
-    public String getFullyQualifiedName(Dashboard entity) {
-      return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public Dashboard setFields(Dashboard entity, Fields fields) throws IOException {
-      return DashboardRepository.this.setFields(entity, fields);
-    }
-
-    @Override
-    public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-      return new DashboardList(entities, beforeCursor, afterCursor, total);
-    }
-  };
-
-  @Transaction
-  public ResultList<Dashboard> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(entityRepository, Dashboard.class, fields, serviceName, limitParam, after);
+  @Override
+  public String getFullyQualifiedName(Dashboard entity) {
+    return entity.getFullyQualifiedName();
   }
 
-  @Transaction
-  public ResultList<Dashboard> listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(entityRepository, Dashboard.class, fields, serviceName, limitParam, before);
-  }
-
-  @Transaction
-  public Dashboard get(String id, Fields fields) throws IOException {
-    return setFields(EntityUtil.validate(id, dashboardDAO().findById(id), Dashboard.class), fields);
-  }
-
-  @Transaction
-  public Dashboard getByName(String fqn, Fields fields) throws IOException {
-    Dashboard dashboard = EntityUtil.validate(fqn, dashboardDAO().findByFQN(fqn), Dashboard.class);
-    return setFields(dashboard, fields);
+  @Override
+  public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor,
+                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DashboardList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction
@@ -156,7 +84,8 @@ public abstract class DashboardRepository {
   @Transaction
   public PutResponse<Dashboard> createOrUpdate(Dashboard updated) throws IOException {
     validateRelationships(updated);
-    Dashboard stored = JsonUtils.readValue(dashboardDAO().findByFQN(updated.getFullyQualifiedName()), Dashboard.class);
+    Dashboard stored = JsonUtils.readValue(dao.dashboardDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+            Dashboard.class);
     if (stored == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -180,47 +109,49 @@ public abstract class DashboardRepository {
 
   @Transaction
   public Status addFollower(String dashboardId, String userId) throws IOException {
-    EntityUtil.validate(dashboardId, dashboardDAO().findById(dashboardId), Dashboard.class);
-    return EntityUtil.addFollower(relationshipDAO(), userDAO(), dashboardId, Entity.DASHBOARD, userId, Entity.USER) ?
+    dao.dashboardDAO().findEntityById(dashboardId);
+    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), dashboardId, Entity.DASHBOARD, userId,
+            Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String dashboardId, String userId) {
-    EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), dashboardId, userId);
+    EntityUtil.validateUser(dao.userDAO(), userId);
+    EntityUtil.removeFollower(dao.relationshipDAO(), dashboardId, userId);
   }
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
       throw new IllegalArgumentException("Dashboard is not empty");
     }
-    if (dashboardDAO().delete(id) <= 0) {
+    if (dao.dashboardDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DASHBOARD, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Dashboard dashboard) throws IOException {
-    return EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner());
+    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner());
   }
 
-  private Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
+  @Override
+  public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setDisplayName(dashboard.getDisplayName());
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
     dashboard.setService(fields.contains("service") ? getService(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? EntityUtil.toEntityReference(getCharts(dashboard)) : null);
     dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);
-    dashboard.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(),
+    dashboard.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             dashboard.getId()) : null);
     return dashboard;
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
 
@@ -232,14 +163,13 @@ public abstract class DashboardRepository {
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : getService(EntityUtil.getService(relationshipDAO(), dashboard.getId()));
+    return dashboard == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), dashboard.getId()));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = EntityUtil.validate(id, dashboardServiceDAO().findById(id),
-              DashboardService.class);
+      DashboardService serviceInstance = dao.dashboardServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -252,7 +182,7 @@ public abstract class DashboardRepository {
     if (service != null && dashboard != null) {
       // TODO remove this
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
               Entity.DASHBOARD, Relationship.CONTAINS.ordinal());
       dashboard.setService(service);
     }
@@ -273,28 +203,30 @@ public abstract class DashboardRepository {
     EntityReference dashboardService =  getService(dashboard.getService());
     dashboard.setService(dashboardService);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), dashboard.getOwner()); // Validate owner
-    dashboard.setTags(EntityUtil.addDerivedTags(tagDAO(), dashboard.getTags()));
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
+    getService(dashboard.getService());
+    dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
   }
 
   private EntityReference getOwner(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : EntityUtil.populateOwner(dashboard.getId(), relationshipDAO(),
-            userDAO(), teamDAO());
+    return dashboard == null ? null : EntityUtil.populateOwner(dashboard.getId(), dao.relationshipDAO(),
+            dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Dashboard dashboard, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, owner);
     dashboard.setOwner(owner);
   }
 
   private void applyTags(Dashboard dashboard) throws IOException {
     // Add dashboard level tags by adding tag to dashboard relationship
-    EntityUtil.applyTags(tagDAO(), dashboard.getTags(), dashboard.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), dashboard.getTags(), dashboard.getFullyQualifiedName());
     dashboard.setTags(getTags(dashboard.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<EntityReference> getFollowers(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : EntityUtil.getFollowers(dashboard.getId(), relationshipDAO(), userDAO());
+    return dashboard == null ? null : EntityUtil.getFollowers(dashboard.getId(), dao.relationshipDAO(),
+            dao.userDAO());
   }
 
   private List<Chart> getCharts(Dashboard dashboard) throws IOException {
@@ -302,10 +234,10 @@ public abstract class DashboardRepository {
       return null;
     }
     String dashboardId = dashboard.getId().toString();
-    List<String> chartIds = relationshipDAO().findTo(dashboardId, Relationship.CONTAINS.ordinal(), Entity.CHART);
+    List<String> chartIds = dao.relationshipDAO().findTo(dashboardId, Relationship.CONTAINS.ordinal(), Entity.CHART);
     List<Chart> charts = new ArrayList<>();
     for (String chartId : chartIds) {
-      String json = chartDAO().findById(chartId);
+      String json = dao.chartDAO().findJsonById(chartId);
       Chart chart = JsonUtils.readValue(json, Chart.class);
       charts.add(chart);
     }
@@ -319,19 +251,19 @@ public abstract class DashboardRepository {
     String dashboardId = dashboard.getId().toString();
     if (dashboard.getCharts() != null) {
       for (EntityReference chart : dashboard.getCharts()) {
-        relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
+        dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
                 Relationship.CONTAINS.ordinal());
       }
     }
     // Add owner relationship
-    EntityUtil.setOwner(relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+    EntityUtil.setOwner(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
 
     // Add tag to dashboard relationship
     applyTags(dashboard);
   }
 
   private Dashboard validateDashboard(String id) throws IOException {
-    return EntityUtil.validate(id, dashboardDAO().findById(id), Dashboard.class);
+    return dao.dashboardDAO().findEntityById(id);
   }
 
   private void storeDashboard(Dashboard dashboard, boolean update) throws JsonProcessingException {
@@ -343,56 +275,15 @@ public abstract class DashboardRepository {
     dashboard.withOwner(null).withHref(null).withTags(null);
 
     if (update) {
-      dashboardDAO().update(dashboard.getId().toString(), JsonUtils.pojoToJson(dashboard));
+      dao.dashboardDAO().update(dashboard.getId().toString(), JsonUtils.pojoToJson(dashboard));
     } else {
-      dashboardDAO().insert(JsonUtils.pojoToJson(dashboard));
+      dao.dashboardDAO().insert(JsonUtils.pojoToJson(dashboard));
     }
 
     // Restore the relationships
     dashboard.withOwner(owner).withTags(tags);
   }
 
-
-  public interface DashboardDAO {
-    @SqlUpdate("INSERT INTO dashboard_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE dashboard_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM dashboard_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT json FROM dashboard_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT count(*) FROM dashboard_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM dashboard_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by dashboard fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by chart fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM dashboard_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlUpdate("DELETE FROM dashboard_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
-  }
 
   static class DashboardEntityInterface implements EntityInterface {
     private final Dashboard dashboard;
@@ -450,13 +341,14 @@ public abstract class DashboardRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class DashboardUpdater extends EntityUpdater {
+  public class DashboardUpdater extends EntityUpdater3 {
     final Dashboard orig;
     final Dashboard updated;
 
     public DashboardUpdater(Dashboard orig, Dashboard updated, boolean patchOperation) {
-      super(new DashboardEntityInterface(orig), new DashboardEntityInterface(updated), patchOperation, relationshipDAO(),
-              tagDAO());
+      super(new DashboardEntityInterface(orig), new DashboardEntityInterface(updated), patchOperation,
+              dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }
@@ -470,12 +362,12 @@ public abstract class DashboardRepository {
       String dashboardId = updated.getId().toString();
 
       // Remove all charts associated with this dashboard
-      relationshipDAO().deleteFrom(dashboardId, Relationship.CONTAINS.ordinal(), "chart");
+      dao.relationshipDAO().deleteFrom(dashboardId, Relationship.CONTAINS.ordinal(), "chart");
 
       // Add relationship from dashboard to chart
       if (updated.getCharts() != null) {
         for (EntityReference chart : updated.getCharts()) {
-          relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
+          dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
                   Relationship.CONTAINS.ordinal());
         }
       }

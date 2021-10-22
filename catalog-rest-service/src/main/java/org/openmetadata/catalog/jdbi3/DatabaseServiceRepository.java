@@ -17,95 +17,73 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class DatabaseServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseServiceRepository.class);
+public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract DatabaseServiceDAO dbServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @Transaction
-  public List<DatabaseService> list(String name) throws IOException {
-    return JsonUtils.readObjects(dbServiceDAO().list(name), DatabaseService.class);
-  }
-
-  @Transaction
-  public DatabaseService get(String id) throws IOException {
-    return EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
-  }
-
-  @Transaction
-  public DatabaseService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, dbServiceDAO().findByName(name), DatabaseService.class);
+  public DatabaseServiceRepository(CollectionDAO dao) {
+    super(DatabaseService.class, dao.dbServiceDAO());
+    this.dao = dao;
   }
 
   @Transaction
   public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
+    dao.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
     return databaseService;
   }
 
   public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
+    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (dbServiceDAO().delete(id) <= 0) {
+    if (dao.dbServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
-  public interface DatabaseServiceDAO {
-    @SqlUpdate("INSERT INTO dbservice_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  @Override
+  public String getFullyQualifiedName(DatabaseService entity) {
+    return entity.getName();
+  }
 
-    @SqlUpdate("UPDATE dbservice_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
 
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
-
-    @SqlUpdate("DELETE FROM dbservice_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+  @Override
+  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DatabaseServiceList(entities);
   }
 }

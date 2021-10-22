@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.UpdateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -44,13 +45,14 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +62,7 @@ import java.util.UUID;
 @Api(value = "Database service collection", tags = "Services -> Database service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databaseServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DatabaseServiceRepository")
+@Collection(name = "databaseServices")
 public class DatabaseServiceResource {
   private final DatabaseServiceRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -80,14 +82,14 @@ public class DatabaseServiceResource {
   }
 
   @Inject
-  public DatabaseServiceResource(DatabaseServiceRepository dao, CatalogAuthorizer authorizer) {
+  public DatabaseServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "DatabaseServiceRepository must not be null");
-    this.dao = dao;
+    this.dao = new DatabaseServiceRepository(dao);
     this.authorizer = authorizer;
   }
 
-  static class DatabaseServiceList extends ResultList<DatabaseService> {
-    DatabaseServiceList(List<DatabaseService> data) {
+  public static class DatabaseServiceList extends ResultList<DatabaseService> {
+    public DatabaseServiceList(List<DatabaseService> data) {
       super(data);
     }
   }
@@ -100,8 +102,10 @@ public class DatabaseServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = DatabaseServiceList.class)))
           })
-  public DatabaseServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new DatabaseServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<DatabaseService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException, ParseException {
+    ResultList<DatabaseService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(d -> addHref(uriInfo, d));
+    return list;
   }
 
   @GET
@@ -116,8 +120,8 @@ public class DatabaseServiceResource {
           })
   public DatabaseService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -132,8 +136,8 @@ public class DatabaseServiceResource {
           })
   public DatabaseService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST

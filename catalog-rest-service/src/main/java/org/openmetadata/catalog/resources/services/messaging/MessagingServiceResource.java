@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -51,6 +52,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +63,7 @@ import java.util.UUID;
 @Api(value = "Messaging service collection", tags = "Services -> Messaging service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "messagingServices", repositoryClass = "org.openmetadata.catalog.jdbi3.MessagingServiceRepository")
+@Collection(name = "messagingServices")
 public class MessagingServiceResource {
   private final MessagingServiceRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -80,14 +83,14 @@ public class MessagingServiceResource {
   }
 
   @Inject
-  public MessagingServiceResource(MessagingServiceRepository dao, CatalogAuthorizer authorizer) {
+  public MessagingServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
-    this.dao = dao;
+    this.dao = new MessagingServiceRepository(dao);
     this.authorizer = authorizer;
   }
 
-  static class MessagingServiceList extends ResultList<MessagingService> {
-    MessagingServiceList(List<MessagingService> data) {
+  public static class MessagingServiceList extends ResultList<MessagingService> {
+    public MessagingServiceList(List<MessagingService> data) {
       super(data);
     }
   }
@@ -100,8 +103,12 @@ public class MessagingServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = MessagingServiceList.class)))
           })
-  public MessagingServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new MessagingServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<MessagingService> list(@Context UriInfo uriInfo,
+                                           @QueryParam("name") String name) throws IOException,
+          GeneralSecurityException, ParseException {
+    ResultList<MessagingService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(m -> addHref(uriInfo, m));
+    return list;
   }
 
   @GET
@@ -116,8 +123,8 @@ public class MessagingServiceResource {
           })
   public MessagingService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -132,8 +139,8 @@ public class MessagingServiceResource {
           })
   public MessagingService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST

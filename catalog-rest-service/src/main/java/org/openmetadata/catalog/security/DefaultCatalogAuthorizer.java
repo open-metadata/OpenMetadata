@@ -17,18 +17,20 @@
 package org.openmetadata.catalog.security;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.DuplicateEntityException;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -48,13 +50,14 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
 
 
   @Override
-  public void init(AuthorizerConfiguration config, DBI dbi) {
+  public void init(AuthorizerConfiguration config, Jdbi dbi) {
     LOG.debug("Initializing DefaultCatalogAuthorizer with config {}", config);
     this.adminUsers = new HashSet<>(config.getAdminPrincipals());
     this.botUsers = new HashSet<>(config.getBotPrincipals());
     this.principalDomain = config.getPrincipalDomain();
     LOG.debug("Admin users: {}", adminUsers);
-    this.userRepository = dbi.onDemand(UserRepository.class);
+    CollectionDAO repo = dbi.onDemand(CollectionDAO.class);
+    this.userRepository = new UserRepository(repo);
     mayBeAddAdminUsers();
     mayBeAddBotUsers();
   }
@@ -71,7 +74,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                   return false;
                 }
                 return true;
-              } catch (IOException | EntityNotFoundException ex) {
+              } catch (IOException | EntityNotFoundException | ParseException ex) {
                 return true;
               }
             })
@@ -90,7 +93,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                   return false;
                 }
                 return true;
-              } catch (IOException |EntityNotFoundException ex) {
+              } catch (IOException | EntityNotFoundException | ParseException ex) {
                 return true;
               }
             })
@@ -119,7 +122,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return user.getName().equals(owner.getName());
       }
       return false;
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }
@@ -135,7 +138,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return false;
       }
       return user.getIsAdmin();
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }
@@ -151,7 +154,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return false;
       }
       return user.getIsBot();
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }

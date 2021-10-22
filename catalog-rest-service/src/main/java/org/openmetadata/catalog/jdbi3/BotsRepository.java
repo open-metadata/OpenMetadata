@@ -18,42 +18,27 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.entity.Bots;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 
 import java.io.IOException;
 import java.util.List;
 
-public abstract class BotsRepository {
-  @CreateSqlObject
-  abstract BotsDAO botsDAO();
+public class BotsRepository {
+  private final CollectionDAO dao;
+
+  public BotsRepository(CollectionDAO dao) { this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
-    botsDAO().insert(JsonUtils.pojoToJson(bots));
+    dao.botsDAO().insert(JsonUtils.pojoToJson(bots));
     return bots;
   }
 
   public Bots findByName(String name) throws IOException {
-    return EntityUtil.validate(name, botsDAO().findByName(name), Bots.class);
+    return dao.botsDAO().findEntityByName(name);
   }
 
   public List<Bots> list(String name) throws IOException {
-    return JsonUtils.readObjects(botsDAO().list(name), Bots.class);
-  }
-
-  public interface BotsDAO {
-    @SqlUpdate("INSERT INTO bot_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM bot_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM bot_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    return JsonUtils.readObjects(dao.botsDAO().list(name), Bots.class);
   }
 }
