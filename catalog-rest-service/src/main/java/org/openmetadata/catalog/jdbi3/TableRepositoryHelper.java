@@ -84,49 +84,49 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
 
   private final TableRepository3 repo3;
 
-    @Override
-    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-      return repo3.tableDAO().listAfter(fqnPrefix, limitParam, after);
-    }
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return repo3.tableDAO().listAfter(fqnPrefix, limitParam, after);
+  }
 
-    @Override
-    public List<String> listBefore(String fqnPrefix, int limitParam, String after) {
-      return repo3.tableDAO().listBefore(fqnPrefix, limitParam, after);
-    }
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String after) {
+    return repo3.tableDAO().listBefore(fqnPrefix, limitParam, after);
+  }
 
-    @Override
-    public int listCount(String fqnPrefix) {
-      return repo3.tableDAO().listCount(fqnPrefix);
-    }
+  @Override
+  public int listCount(String fqnPrefix) {
+    return repo3.tableDAO().listCount(fqnPrefix);
+  }
 
-    @Override
-    public String getFullyQualifiedName(Table entity) {
-      return entity.getFullyQualifiedName();
-    }
+  @Override
+  public String getFullyQualifiedName(Table entity) {
+    return entity.getFullyQualifiedName();
+  }
 
-    @Override
-    public Table setFields(Table table, Fields fields) throws IOException, ParseException {
-      table.setColumns(fields.contains("columns") ? table.getColumns() : null);
-      table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
-      table.setOwner(fields.contains("owner") ? getOwner(table) : null);
-      table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
-      table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(), table.getId()) :
-              null);
-      table.setDatabase(fields.contains("database") ? EntityUtil.getEntityReference(getDatabase(table)) : null);
-      table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
-      getColumnTags(fields.contains("tags"), table.getColumns());
-      table.setJoins(fields.contains("joins") ? getJoins(table) : null);
-      table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
-      table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
-      table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table): null);
-      return table;
-    }
+  @Override
+  public Table setFields(Table table, Fields fields) throws IOException, ParseException {
+    table.setColumns(fields.contains("columns") ? table.getColumns() : null);
+    table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
+    table.setOwner(fields.contains("owner") ? getOwner(table) : null);
+    table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
+    table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(), table.getId()) :
+            null);
+    table.setDatabase(fields.contains("database") ? EntityUtil.getEntityReference(getDatabase(table)) : null);
+    table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
+    getColumnTags(fields.contains("tags"), table.getColumns());
+    table.setJoins(fields.contains("joins") ? getJoins(table) : null);
+    table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
+    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
+    return table;
+  }
 
-    @Override
-    public ResultList<Table> getResultList(List<Table> entities, String beforeCursor, String afterCursor, int total)
-            throws GeneralSecurityException, UnsupportedEncodingException {
-      return new TableList(entities, beforeCursor, afterCursor, total);
-    }
+  @Override
+  public ResultList<Table> getResultList(List<Table> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new TableList(entities, beforeCursor, afterCursor, total);
+  }
 
   public static String getFQN(Table table) {
     return (table.getDatabase().getName() + "." + table.getName());
@@ -135,7 +135,7 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
   @Transaction
   public ResultList<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after)
           throws IOException, ParseException, GeneralSecurityException {
-      return EntityUtil.listAfter(this, Table.class, fields, databaseFQN, limitParam, after);
+    return EntityUtil.listAfter(this, Table.class, fields, databaseFQN, limitParam, after);
   }
 
   @Transaction
@@ -204,7 +204,8 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
   @Transaction
   public Status addFollower(String tableId, String userId) throws IOException {
     repo3.tableDAO().findEntityById(tableId);
-    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), tableId, Entity.TABLE, userId, Entity.USER) ?
+    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), tableId, Entity.TABLE, userId,
+            Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
@@ -263,7 +264,7 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
       }
     }
     //validate all the columns
-    for (ColumnProfile columnProfile: tableProfile.getColumnProfile()) {
+    for (ColumnProfile columnProfile : tableProfile.getColumnProfile()) {
       validateColumn(table, columnProfile.getName());
     }
     storedMapTableProfiles.put(tableProfile.getProfileDate(), tableProfile);
@@ -448,7 +449,8 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
   }
 
   private EntityReference getOwner(Table table) throws IOException {
-    return table == null ? null : EntityUtil.populateOwner(table.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO());
+    return table == null ? null : EntityUtil.populateOwner(table.getId(), repo3.relationshipDAO(), repo3.userDAO(),
+            repo3.teamDAO());
   }
 
   private List<EntityReference> getFollowers(Table table) throws IOException {
@@ -628,8 +630,9 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
             TableData.class);
   }
 
-  private List<TableProfile> getTableProfile(Table table) throws IOException  {
-    List<TableProfile> tableProfiles = JsonUtils.readObjects(repo3.entityExtensionDAO().getExtension(table.getId().toString(),
+  private List<TableProfile> getTableProfile(Table table) throws IOException {
+    List<TableProfile> tableProfiles =
+            JsonUtils.readObjects(repo3.entityExtensionDAO().getExtension(table.getId().toString(),
             "table.tableProfile"),
             TableProfile.class);
     if (tableProfiles != null) {

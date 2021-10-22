@@ -17,14 +17,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
-import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.skife.jdbi.v2.StatementContext;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.skife.jdbi.v2.tweak.ResultSetMapper;
 import org.slf4j.Logger;
@@ -38,93 +37,62 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 
-public abstract class UsageRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
+public class UsageRepositoryHelper {
+  private static final Logger LOG = LoggerFactory.getLogger(UsageRepositoryHelper.class);
 
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
+  public UsageRepositoryHelper(UsageRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract TableDAO tableDAO();
-
-  @CreateSqlObject
-  abstract DatabaseDAO databaseDAO();
-
-  @CreateSqlObject
-  abstract MetricsDAO metricsDAO();
-
-  @CreateSqlObject
-  abstract DashboardDAO dashboardDAO();
-
-  @CreateSqlObject
-  abstract ReportDAO reportDAO();
-
-  @CreateSqlObject
-  abstract TopicDAO topicDAO();
-
-  @CreateSqlObject
-  abstract ChartDAO chartDAO();
-
-  @CreateSqlObject
-  abstract TaskDAO taskDAO();
-
-  @CreateSqlObject
-  abstract PipelineDAO pipelineDAO();
-
-  @CreateSqlObject
-  abstract ModelDAO modelDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-
+  private final UsageRepository3 repo3;
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), tableDAO(), databaseDAO(),
-            metricsDAO(), dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
-    List<UsageDetails> usageDetails = usageDAO().getUsageById(id, date, days - 1);
+    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), repo3.tableDAO(), repo3.databaseDAO(),
+            repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(),
+            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    List<UsageDetails> usageDetails = repo3.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, tableDAO(), databaseDAO(),
-            metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO(), taskDAO(), modelDAO(), pipelineDAO());
-    List<UsageDetails> usageDetails = usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, repo3.tableDAO(), repo3.databaseDAO(),
+            repo3.metricsDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(), repo3.dashboardDAO(),
+            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    List<UsageDetails> usageDetails = repo3.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    getEntityReference(entityType, UUID.fromString(id), tableDAO(), databaseDAO(), metricsDAO(),
-            dashboardDAO(), reportDAO(), topicDAO(), chartDAO(), taskDAO(), modelDAO(), pipelineDAO());
+    getEntityReference(entityType, UUID.fromString(id), repo3.tableDAO(), repo3.databaseDAO(), repo3.metricsDAO(),
+            repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(), repo3.taskDAO(),
+            repo3.modelDAO(), repo3.pipelineDAO());
     addUsage(entityType, id, usage);
   }
 
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, tableDAO(),
-            databaseDAO(), metricsDAO(), reportDAO(), topicDAO(), chartDAO(), dashboardDAO(),
-            taskDAO(), modelDAO(), pipelineDAO());
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, repo3.tableDAO(),
+            repo3.databaseDAO(), repo3.metricsDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(),
+            repo3.dashboardDAO(), repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }
 
   @Transaction
   public void computePercentile(String entityType, String date) {
-    usageDAO().computePercentile(entityType, date);
+    repo3.usageDAO().computePercentile(entityType, date);
   }
 
   private void addUsage(String entityType, String entityId, DailyCount usage) {
     // Insert usage record
-    usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
+    repo3.usageDAO().insert(usage.getDate(), entityId, entityType, usage.getCount());
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      List<String> databaseIds = relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
-      usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
+      List<String> databaseIds = repo3.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+      repo3.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }
 

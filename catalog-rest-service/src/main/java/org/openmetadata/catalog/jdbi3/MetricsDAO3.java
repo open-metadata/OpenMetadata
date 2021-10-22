@@ -1,10 +1,7 @@
 package org.openmetadata.catalog.jdbi3;
 
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.entity.data.Table;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 
 import java.util.List;
 

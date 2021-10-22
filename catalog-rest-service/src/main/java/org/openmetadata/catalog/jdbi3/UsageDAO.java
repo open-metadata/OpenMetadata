@@ -1,6 +1,6 @@
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDetailsMapper;
+import org.openmetadata.catalog.jdbi3.UsageRepositoryHelper.UsageDetailsMapper;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.skife.jdbi.v2.sqlobject.Bind;
 import org.skife.jdbi.v2.sqlobject.SqlQuery;
