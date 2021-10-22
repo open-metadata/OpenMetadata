@@ -39,37 +39,37 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
-  private final CollectionDAO repo3;
+  private final CollectionDAO dao;
 
-  public DatabaseServiceRepository(CollectionDAO repo3) {
-    super(DatabaseService.class, repo3.dbServiceDAO());
-    this.repo3 = repo3;
+  public DatabaseServiceRepository(CollectionDAO dao) {
+    super(DatabaseService.class, dao.dbServiceDAO());
+    this.dao = dao;
   }
 
   @Transaction
   public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    repo3.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
+    dao.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
     return databaseService;
   }
 
   public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = repo3.dbServiceDAO().findEntityById(id);
+    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    repo3.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.dbServiceDAO().delete(id) <= 0) {
+    if (dao.dbServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Override

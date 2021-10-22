@@ -39,18 +39,18 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class DashboardServiceRepository extends EntityRepository<DashboardService> {
-  private final CollectionDAO repo3;
+  private final CollectionDAO dao;
 
-  public DashboardServiceRepository(CollectionDAO repo3) {
-    super(DashboardService.class, repo3.dashboardServiceDAO());
-    this.repo3 = repo3;
+  public DashboardServiceRepository(CollectionDAO dao) {
+    super(DashboardService.class, dao.dashboardServiceDAO());
+    this.dao = dao;
   }
 
   @Transaction
   public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
-    repo3.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
+    dao.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
@@ -58,20 +58,20 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = repo3.dashboardServiceDAO().findEntityById(id);
+    DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
             .withPassword(password).withIngestionSchedule(ingestionSchedule);
-    repo3.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
     return dashboardService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.dashboardServiceDAO().delete(id) <= 0) {
+    if (dao.dashboardServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Override

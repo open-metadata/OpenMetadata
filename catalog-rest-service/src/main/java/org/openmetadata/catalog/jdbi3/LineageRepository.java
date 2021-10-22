@@ -35,16 +35,15 @@ import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 
 public class LineageRepository {
   private static final Logger LOG = LoggerFactory.getLogger(LineageRepository.class);
+  private final CollectionDAO dao;
 
-  public LineageRepository(CollectionDAO repo3) { this.repo3 = repo3; }
-
-  private final CollectionDAO repo3;
+  public LineageRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), repo3.tableDAO(), repo3.databaseDAO(),
-            repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(),
-            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao.tableDAO(), dao.databaseDAO(),
+            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
+            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -52,9 +51,9 @@ public class LineageRepository {
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
           throws IOException {
     // TODO clean this up
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, repo3.tableDAO(), repo3.databaseDAO(),
-            repo3.metricsDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(), repo3.dashboardDAO(), repo3.taskDAO(),
-            repo3.modelDAO(), repo3.pipelineDAO());
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao.tableDAO(), dao.databaseDAO(),
+            dao.metricsDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.dashboardDAO(), dao.taskDAO(),
+            dao.modelDAO(), dao.pipelineDAO());
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -62,18 +61,18 @@ public class LineageRepository {
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = EntityUtil.getEntityReference(from.getType(), from.getId(), repo3.tableDAO(), repo3.databaseDAO(),
-            repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(),
-            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    from = EntityUtil.getEntityReference(from.getType(), from.getId(), dao.tableDAO(), dao.databaseDAO(),
+            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
+            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
 
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
-    to = EntityUtil.getEntityReference(to.getType(), to.getId(), repo3.tableDAO(), repo3.databaseDAO(),
-            repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(),
-            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    to = EntityUtil.getEntityReference(to.getType(), to.getId(), dao.tableDAO(), dao.databaseDAO(),
+            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
+            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
 
     // Finally, add lineage relationship
-    repo3.relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
+    dao.relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
             Relationship.UPSTREAM.ordinal());
   }
 
@@ -90,9 +89,9 @@ public class LineageRepository {
     // Add entityReference details
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
-      ref = getEntityReference(ref.getType(), ref.getId(), repo3.tableDAO(), repo3.databaseDAO(), repo3.metricsDAO(),
-              repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(), repo3.chartDAO(), repo3.taskDAO(),
-              repo3.modelDAO(), repo3.pipelineDAO());
+      ref = getEntityReference(ref.getType(), ref.getId(), dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(),
+              dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(),
+              dao.modelDAO(), dao.pipelineDAO());
       lineage.getNodes().set(i, ref);
     }
     return lineage;
@@ -103,7 +102,7 @@ public class LineageRepository {
       return;
     }
     // from this id ---> find other ids
-    List<EntityReference> upstreamEntities = repo3.relationshipDAO().findFrom(id.toString(),
+    List<EntityReference> upstreamEntities = dao.relationshipDAO().findFrom(id.toString(),
             Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(upstreamEntities);
 
@@ -119,7 +118,7 @@ public class LineageRepository {
       return;
     }
     // from other ids ---> to this id
-    List<EntityReference> downStreamEntities = repo3.relationshipDAO().findTo(id.toString(),
+    List<EntityReference> downStreamEntities = dao.relationshipDAO().findTo(id.toString(),
             Relationship.UPSTREAM.ordinal());
     lineage.getNodes().addAll(downStreamEntities);
 

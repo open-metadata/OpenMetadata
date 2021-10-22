@@ -52,13 +52,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           "owner,service,tags,tasks");
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
+  private final CollectionDAO dao;
 
-  public PipelineRepository(CollectionDAO repo3) {
-    super(Pipeline.class, repo3.pipelineDAO());
-    this.repo3 = repo3;
+  public PipelineRepository(CollectionDAO dao) {
+    super(Pipeline.class, dao.pipelineDAO());
+    this.dao = dao;
   }
 
-  private final CollectionDAO repo3;
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
@@ -72,7 +72,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Transaction
   public PutResponse<Pipeline> createOrUpdate(Pipeline updated) throws IOException {
     validateRelationships(updated);
-    Pipeline stored = JsonUtils.readValue(repo3.pipelineDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+    Pipeline stored = JsonUtils.readValue(dao.pipelineDAO().findJsonByFqn(updated.getFullyQualifiedName()),
             Pipeline.class);
     if (stored == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updated));
@@ -97,32 +97,32 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Transaction
   public Status addFollower(String pipelineId, String userId) throws IOException {
-    repo3.pipelineDAO().findEntityById(pipelineId);
-    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), pipelineId, Entity.PIPELINE, userId,
+    dao.pipelineDAO().findEntityById(pipelineId);
+    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), pipelineId, Entity.PIPELINE, userId,
             Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String pipelineId, String userId) {
-    EntityUtil.validateUser(repo3.userDAO(), userId);
-    EntityUtil.removeFollower(repo3.relationshipDAO(), pipelineId, userId);
+    EntityUtil.validateUser(dao.userDAO(), userId);
+    EntityUtil.removeFollower(dao.relationshipDAO(), pipelineId, userId);
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
       throw new IllegalArgumentException("Pipeline is not empty");
     }
-    if (repo3.pipelineDAO().delete(id) <= 0) {
+    if (dao.pipelineDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Pipeline pipeline) throws IOException {
-    return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), pipeline.getOwner());
+    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner());
   }
 
   public static List<EntityReference> toEntityReference(List<Task> tasks) {
@@ -159,7 +159,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return repo3.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
 
@@ -173,9 +173,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     EntityReference pipelineService = getService(pipeline.getService());
     pipeline.setService(pipelineService);
     pipeline.setFullyQualifiedName(getFQN(pipeline));
-    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), pipeline.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner()); // Validate owner
     getService(pipeline.getService());
-    pipeline.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), pipeline.getTags()));
+    pipeline.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), pipeline.getTags()));
   }
 
   private void storePipeline(Pipeline pipeline, boolean update) throws JsonProcessingException {
@@ -189,9 +189,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withOwner(null).withService(null).withTasks(null).withHref(null).withTags(null);
 
     if (update) {
-      repo3.pipelineDAO().update(pipeline.getId().toString(), JsonUtils.pojoToJson(pipeline));
+      dao.pipelineDAO().update(pipeline.getId().toString(), JsonUtils.pojoToJson(pipeline));
     } else {
-      repo3.pipelineDAO().insert(JsonUtils.pojoToJson(pipeline));
+      dao.pipelineDAO().insert(JsonUtils.pojoToJson(pipeline));
     }
 
     // Restore the relationships
@@ -199,13 +199,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
-    return pipeline == null ? null : getService(EntityUtil.getService(repo3.relationshipDAO(), pipeline.getId()));
+    return pipeline == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), pipeline.getId()));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = repo3.pipelineServiceDAO().findEntityById(id);
+      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -217,7 +217,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public void setService(Pipeline pipeline, EntityReference service) throws IOException {
     if (service != null && pipeline != null) {
       getService(service); // Populate service details
-      repo3.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
               Entity.PIPELINE, Relationship.CONTAINS.ordinal());
       pipeline.setService(service);
     }
@@ -234,23 +234,23 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {
-    return pipeline == null ? null : EntityUtil.populateOwner(pipeline.getId(), repo3.relationshipDAO(),
-            repo3.userDAO(), repo3.teamDAO());
+    return pipeline == null ? null : EntityUtil.populateOwner(pipeline.getId(), dao.relationshipDAO(),
+            dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Pipeline pipeline, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, owner);
     pipeline.setOwner(owner);
   }
 
   private void applyTags(Pipeline pipeline) throws IOException {
     // Add pipeline level tags by adding tag to pipeline relationship
-    EntityUtil.applyTags(repo3.tagDAO(), pipeline.getTags(), pipeline.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), pipeline.getTags(), pipeline.getFullyQualifiedName());
     pipeline.setTags(getTags(pipeline.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<EntityReference> getFollowers(Pipeline pipeline) throws IOException {
-    return pipeline == null ? null : EntityUtil.getFollowers(pipeline.getId(), repo3.relationshipDAO(), repo3.userDAO());
+    return pipeline == null ? null : EntityUtil.getFollowers(pipeline.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<Task> getTasks(Pipeline pipeline) throws IOException {
@@ -258,10 +258,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       return null;
     }
     String pipelineId = pipeline.getId().toString();
-    List<String> taskIds = repo3.relationshipDAO().findTo(pipelineId, Relationship.CONTAINS.ordinal(), Entity.TASK);
+    List<String> taskIds = dao.relationshipDAO().findTo(pipelineId, Relationship.CONTAINS.ordinal(), Entity.TASK);
     List<Task> tasks = new ArrayList<>();
     for (String taskId : taskIds) {
-      String json = repo3.taskDAO().findJsonById(taskId);
+      String json = dao.taskDAO().findJsonById(taskId);
       Task task = JsonUtils.readValue(json, Task.class);
       tasks.add(task);
     }
@@ -275,12 +275,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     String pipelineId = pipeline.getId().toString();
     if (pipeline.getTasks() != null) {
       for (EntityReference task : pipeline.getTasks()) {
-        repo3.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
+        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
                 Relationship.CONTAINS.ordinal());
       }
     }
     // Add owner relationship
-    EntityUtil.setOwner(repo3.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+    EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
     // Add tag to pipeline relationship
     applyTags(pipeline);
@@ -295,19 +295,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       List<Task> existingTasks = getTasks(pipeline);
       if (existingTasks != null) {
         for (Task task: existingTasks) {
-          repo3.relationshipDAO().delete(pipelineId, task.getId().toString(), Relationship.CONTAINS.ordinal());
+          dao.relationshipDAO().delete(pipelineId, task.getId().toString(), Relationship.CONTAINS.ordinal());
         }
       }
 
       for (EntityReference task : pipeline.getTasks()) {
-        repo3.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
+        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
                 Relationship.CONTAINS.ordinal());
       }
     }
   }
 
   private Pipeline validatePipeline(String id) throws IOException {
-    return repo3.pipelineDAO().findEntityById(id);
+    return dao.pipelineDAO().findEntityById(id);
   }
 
   static class PipelineEntityInterface implements EntityInterface {
@@ -371,8 +371,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     final Pipeline updated;
 
     public PipelineUpdater(Pipeline orig, Pipeline updated, boolean patchOperation) {
-      super(new PipelineRepository.PipelineEntityInterface(orig), new PipelineRepository.PipelineEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
-              repo3.tagDAO());
+      super(new PipelineRepository.PipelineEntityInterface(orig), new PipelineRepository.PipelineEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

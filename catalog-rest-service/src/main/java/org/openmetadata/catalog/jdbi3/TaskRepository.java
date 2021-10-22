@@ -50,17 +50,16 @@ public class TaskRepository extends EntityRepository<Task>{
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
           "taskConfig,tags,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
+  private final CollectionDAO dao;
 
   public static String getFQN(Task task) {
     return (task.getService().getName() + "." + task.getName());
   }
 
-  public TaskRepository(CollectionDAO repo3) {
-    super(Task.class,repo3.taskDAO());
-    this.repo3 = repo3;
+  public TaskRepository(CollectionDAO dao) {
+    super(Task.class,dao.taskDAO());
+    this.dao = dao;
   }
-
-  private final CollectionDAO repo3;
 
   @Transaction
   public Task create(Task task) throws IOException {
@@ -70,19 +69,19 @@ public class TaskRepository extends EntityRepository<Task>{
 
   @Transaction
   public void delete(String id) {
-    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
       throw new IllegalArgumentException("Task is not empty");
     }
-    if (repo3.taskDAO().delete(id) <= 0) {
+    if (dao.taskDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TASK, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Task> createOrUpdate(Task updated) throws IOException {
     validateRelationships(updated);
-    Task stored = JsonUtils.readValue(repo3.taskDAO().findJsonByFqn(updated.getFullyQualifiedName()), Task.class);
+    Task stored = JsonUtils.readValue(dao.taskDAO().findJsonByFqn(updated.getFullyQualifiedName()), Task.class);
     if (stored == null) {  // Task does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -114,9 +113,9 @@ public class TaskRepository extends EntityRepository<Task>{
     EntityReference pipelineService = getService(task.getService());
     task.setService(pipelineService);
     task.setFullyQualifiedName(getFQN(task));
-    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), task.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), task.getOwner()); // Validate owner
     getService(task.getService());
-    task.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), task.getTags()));
+    task.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), task.getTags()));
   }
 
   private void addRelationships(Task task) throws IOException {
@@ -135,9 +134,9 @@ public class TaskRepository extends EntityRepository<Task>{
     task.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      repo3.taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
+      dao.taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
     } else {
-      repo3.taskDAO().insert(JsonUtils.pojoToJson(task));
+      dao.taskDAO().insert(JsonUtils.pojoToJson(task));
     }
 
     // Restore the relationships
@@ -147,7 +146,7 @@ public class TaskRepository extends EntityRepository<Task>{
 
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
-    EntityUtil.applyTags(repo3.tagDAO(), task.getTags(), task.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), task.getTags(), task.getFullyQualifiedName());
     task.setTags(getTags(task.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
@@ -162,16 +161,16 @@ public class TaskRepository extends EntityRepository<Task>{
   }
 
   public EntityReference getOwner(Task task) throws IOException {
-    return task != null ? EntityUtil.populateOwner(task.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO()) : null;
+    return task != null ? EntityUtil.populateOwner(task.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
   }
 
   private void setOwner(Task task, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), task.getId(), Entity.TASK, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), task.getId(), Entity.TASK, owner);
     task.setOwner(owner);
   }
 
   private Task validateTask(String id) throws IOException {
-    return repo3.taskDAO().findEntityById(id);
+    return dao.taskDAO().findEntityById(id);
   }
 
   @Override
@@ -199,18 +198,18 @@ public class TaskRepository extends EntityRepository<Task>{
 
 
   private List<TagLabel> getTags(String fqn) {
-    return repo3.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Task task) throws IOException {
-    return task == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
+    return task == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
             task.getId(), Entity.PIPELINE_SERVICE)));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = repo3.pipelineServiceDAO().findEntityById(id);
+      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -222,7 +221,7 @@ public class TaskRepository extends EntityRepository<Task>{
   public void setService(Task task, EntityReference service) throws IOException {
     if (service != null && task != null) {
       getService(service); // Populate service details
-      repo3.relationshipDAO().insert(service.getId().toString(), task.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), task.getId().toString(), service.getType(),
               Entity.TASK, Relationship.CONTAINS.ordinal());
       task.setService(service);
     }
@@ -289,8 +288,8 @@ public class TaskRepository extends EntityRepository<Task>{
     final Task updated;
 
     public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
-      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
-              repo3.tagDAO());
+      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

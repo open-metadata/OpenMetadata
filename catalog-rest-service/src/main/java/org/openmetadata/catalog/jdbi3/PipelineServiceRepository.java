@@ -39,18 +39,18 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class PipelineServiceRepository extends EntityRepository<PipelineService> {
-  public PipelineServiceRepository(CollectionDAO repo3) {
-    super(PipelineService.class, repo3.pipelineServiceDAO());
-    this.repo3 = repo3;
-  }
+  private final CollectionDAO dao;
 
-  private final CollectionDAO repo3;
+  public PipelineServiceRepository(CollectionDAO dao) {
+    super(PipelineService.class, dao.pipelineServiceDAO());
+    this.dao = dao;
+  }
 
   @Transaction
   public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(pipelineService.getIngestionSchedule());
-    repo3.pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
+    dao.pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }
 
@@ -59,20 +59,20 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    PipelineService pipelineService = repo3.pipelineServiceDAO().findEntityById(id);
+    PipelineService pipelineService = dao.pipelineServiceDAO().findEntityById(id);
     // Update fields
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withPipelineUrl(url);
-    repo3.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
+    dao.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.pipelineServiceDAO().delete(id) <= 0) {
+    if (dao.pipelineServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Override

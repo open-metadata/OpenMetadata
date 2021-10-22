@@ -48,14 +48,12 @@ import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
 public class TeamRepository extends EntityRepository<Team> {
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
+  private final CollectionDAO dao;
 
-  public TeamRepository(CollectionDAO repo3) {
-    super(Team.class,repo3.teamDAO());
-    this.repo3 = repo3;
+  public TeamRepository(CollectionDAO dao) {
+    super(Team.class,dao.teamDAO());
+    this.dao = dao;
   }
-
-  private final CollectionDAO repo3;
-
 
   public static List<EntityReference> toEntityReference(List<User> users) {
     if (users == null) {
@@ -79,7 +77,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Transaction
   public Team patch(String teamId, String user, JsonPatch patch) throws IOException {
-    Team original = setFields(repo3.teamDAO().findEntityById(teamId), TEAM_PATCH_FIELDS);
+    Team original = setFields(dao.teamDAO().findEntityById(teamId), TEAM_PATCH_FIELDS);
     Team updated = JsonUtils.applyPatch(original, patch, Team.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
@@ -89,12 +87,12 @@ public class TeamRepository extends EntityRepository<Team> {
   @Transaction
   public void delete(String id) {
     // Query 1 - delete team
-    if (repo3.teamDAO().delete(id) <= 0) {
+    if (dao.teamDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Team", id));
     }
 
     // Query 2 - Remove all relationship from and to this team
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   private void validateRelationships(Team team, List<UUID> userIds) throws IOException {
@@ -103,7 +101,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private void addRelationships(Team team) {
     for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
-      repo3.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
+      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
               Relationship.CONTAINS.ordinal());
     }
   }
@@ -116,9 +114,9 @@ public class TeamRepository extends EntityRepository<Team> {
     team.withUsers(null).withHref(null);
 
     if (update) {
-      repo3.teamDAO().update(team.getId().toString(), JsonUtils.pojoToJson(team));
+      dao.teamDAO().update(team.getId().toString(), JsonUtils.pojoToJson(team));
     } else {
-      repo3.teamDAO().insert(JsonUtils.pojoToJson(team));
+      dao.teamDAO().insert(JsonUtils.pojoToJson(team));
     }
 
     // Restore the relationships
@@ -139,7 +137,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<EntityReference> users = new ArrayList<>();
     for (UUID id : userIds) {
-      users.add(EntityUtil.getEntityReference(repo3.userDAO().findEntityById(id.toString())));
+      users.add(EntityUtil.getEntityReference(dao.userDAO().findEntityById(id.toString())));
     }
     return users;
   }
@@ -165,20 +163,20 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
-    List<String> userIds = repo3.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
+    List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
     List<User> users = new ArrayList<>();
     for (String userId : userIds) {
       // TODO not clean
-      users.add(JsonUtils.readValue(repo3.userDAO().findJsonById(userId), User.class));
+      users.add(JsonUtils.readValue(dao.userDAO().findJsonById(userId), User.class));
     }
     return toEntityReference(users);
   }
 
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
-    return EntityUtil.getEntityReference(repo3.relationshipDAO().findTo(teamId, OWNS.ordinal()), repo3.tableDAO(),
-            repo3.databaseDAO(), repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(),
-            repo3.topicDAO(), repo3.chartDAO(), repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()), dao.tableDAO(),
+            dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(),
+            dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
   }
 
   static class TeamEntityInterface implements EntityInterface {
@@ -233,7 +231,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     public TeamUpdater(Team orig, Team updated, boolean patchOperation) {
       super(new TeamRepository.TeamEntityInterface(orig), new TeamRepository.TeamEntityInterface(updated),
-              patchOperation, repo3.relationshipDAO(), null);
+              patchOperation, dao.relationshipDAO(), null);
       this.orig = orig;
       this.updated = updated;
     }
@@ -250,10 +248,10 @@ public class TeamRepository extends EntityRepository<Team> {
     public void updateUsers() throws IOException {
       // TODO cleanup
       // Remove users from original and add users from updated
-      repo3.relationshipDAO().deleteFrom(orig.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
+      dao.relationshipDAO().deleteFrom(orig.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
 
       for (EntityReference user : Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList())) {
-        repo3.relationshipDAO().insert(updated.getId().toString(), user.getId().toString(),
+        dao.relationshipDAO().insert(updated.getId().toString(), user.getId().toString(),
                 "team", "user", Relationship.CONTAINS.ordinal());
       }
       update("users", orig.getUsers(), updated.getUsers());

@@ -38,18 +38,18 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class MessagingServiceRepository extends EntityRepository<MessagingService> {
-  private final CollectionDAO repo3;
+  private final CollectionDAO dao;
 
-  public MessagingServiceRepository(CollectionDAO repo3) {
-    super(MessagingService.class, repo3.messagingServiceDAO());
-    this.repo3 = repo3;
+  public MessagingServiceRepository(CollectionDAO dao) {
+    super(MessagingService.class, dao.messagingServiceDAO());
+    this.dao = dao;
   }
 
   @Transaction
   public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
-    repo3.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
+    dao.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
     return messagingService;
   }
 
@@ -58,20 +58,20 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = repo3.messagingServiceDAO().findEntityById(id);
+    MessagingService dbService = dao.messagingServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    repo3.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dao.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.messagingServiceDAO().delete(id) <= 0) {
+    if (dao.messagingServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Override

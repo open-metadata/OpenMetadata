@@ -36,41 +36,41 @@ import java.util.Set;
 import java.util.UUID;
 
 public class FeedRepository {
-  public FeedRepository(CollectionDAO repo3) { this.repo3 = repo3; }
+  private final CollectionDAO dao;
 
-  private final CollectionDAO repo3;
+  public FeedRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
   public Thread create(Thread thread) throws IOException {
     // Validate user creating thread
     UUID fromUser = thread.getPosts().get(0).getFrom();
-    repo3.userDAO().findEntityById(fromUser.toString());
+    dao.userDAO().findEntityById(fromUser.toString());
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about, repo3.userDAO(), repo3.teamDAO(), repo3.tableDAO(),
-            repo3.databaseDAO(), repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(), repo3.topicDAO(),
-            repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about, dao.userDAO(), dao.teamDAO(), dao.tableDAO(),
+            dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(),
+            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
 
     // Get owner for the addressed to Entity
     EntityReference owner = EntityUtil.populateOwner(aboutRef.getId(),
-            repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO());
+            dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
 
     // Insert a new thread
-    repo3.feedDAO().insert(JsonUtils.pojoToJson(thread));
+    dao.feedDAO().insert(JsonUtils.pojoToJson(thread));
 
     // Add relationship User -- created --> Thread relationship
-    repo3.relationshipDAO().insert(fromUser.toString(), thread.getId().toString(),
+    dao.relationshipDAO().insert(fromUser.toString(), thread.getId().toString(),
             "user", "thread", Relationship.CREATED.ordinal());
 
     // Add field relationship data asset Thread -- isAbout ---> entity/entityField
     // relationship
-    repo3.fieldRelationshipDAO().insert(thread.getId().toString(), about.getFullyQualifiedFieldValue(),
+    dao.fieldRelationshipDAO().insert(thread.getId().toString(), about.getFullyQualifiedFieldValue(),
             "thread", about.getFullyQualifiedFieldType(), Relationship.IS_ABOUT.ordinal());
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is actually being addressed
     if (owner != null) {
-      repo3.relationshipDAO().insert(thread.getId().toString(), owner.getId().toString(), "thread", owner.getType(),
+      dao.relationshipDAO().insert(thread.getId().toString(), owner.getId().toString(), "thread", owner.getType(),
               Relationship.ADDRESSED_TO.ordinal());
     }
 
@@ -79,29 +79,29 @@ public class FeedRepository {
     List<EntityLink> mentions = MessageParser.getEntityLinks(thread.getPosts().get(0).getMessage());
 
     mentions.stream().distinct().forEach(mention ->
-            repo3.fieldRelationshipDAO().insert(mention.getFullyQualifiedFieldValue(), thread.getId().toString(),
+            dao.fieldRelationshipDAO().insert(mention.getFullyQualifiedFieldValue(), thread.getId().toString(),
             mention.getFullyQualifiedFieldType(), "thread", Relationship.MENTIONED_IN.ordinal()));
 
     return thread;
   }
 
   public Thread get(String id) throws IOException {
-    return EntityUtil.validate(id, repo3.feedDAO().findById(id), Thread.class);
+    return EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
   }
 
   @Transaction
   public Thread addPostToThread(String id, Post post) throws IOException {
     // Query 1 - validate user creating thread
     UUID fromUser = post.getFrom();
-    repo3.userDAO().findEntityById(fromUser.toString());
+    dao.userDAO().findEntityById(fromUser.toString());
 
     // Query 2 - Find the thread
-    Thread thread = EntityUtil.validate(id, repo3.feedDAO().findById(id), Thread.class);
+    Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);
     FeedUtil.addPost(thread, post);
 
     // TODO is rewriting entire json okay?
     // Query 3 - update the JSON document for the feed
-    repo3.feedDAO().update(id, JsonUtils.pojoToJson(thread));
+    dao.feedDAO().update(id, JsonUtils.pojoToJson(thread));
 
     // Query 4 - Add relation User -- repliedTo --> Thread
     // Add relationship from thread to the from entity that is posting a reply
@@ -113,7 +113,7 @@ public class FeedRepository {
       }
     }
     if (!relationAlreadyExists) {
-      repo3.relationshipDAO().insert(post.getFrom().toString(), thread.getId().toString(),
+      dao.relationshipDAO().insert(post.getFrom().toString(), thread.getId().toString(),
               "user", "thread", Relationship.REPLIED_TO.ordinal());
     }
     return thread;
@@ -123,17 +123,17 @@ public class FeedRepository {
   public List<Thread> listThreads(String link) throws IOException {
     if (link == null) {
       // Not listing thread by data asset or user
-      return JsonUtils.readObjects(repo3.feedDAO().list(), Thread.class);
+      return JsonUtils.readObjects(dao.feedDAO().list(), Thread.class);
     }
     EntityLink entityLink = EntityLink.parse(link);
     if (entityLink.getLinkType() != LinkType.ENTITY) {
       throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
     }
-    EntityReference reference = EntityUtil.validateEntityLink(entityLink, repo3.userDAO(), repo3.teamDAO(),
-            repo3.tableDAO(), repo3.databaseDAO(), repo3.metricsDAO(), repo3.dashboardDAO(), repo3.reportDAO(),
-            repo3.topicDAO(), repo3.taskDAO(), repo3.modelDAO(), repo3.pipelineDAO());
+    EntityReference reference = EntityUtil.validateEntityLink(entityLink, dao.userDAO(), dao.teamDAO(),
+            dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(),
+            dao.topicDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
     List<String> threadIds = new ArrayList<>();
-    List<List<String>> result = repo3.fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
+    List<List<String>> result = dao.fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
             entityLink.getFullyQualifiedFieldType(), "thread",
             Relationship.MENTIONED_IN.ordinal());
     result.forEach(l -> threadIds.add(l.get(1)));
@@ -141,13 +141,13 @@ public class FeedRepository {
     // TODO remove hardcoding of thread
     // For a user entitylink get created or replied relationships to the thread
     if (reference.getType().equals(Entity.USER)) {
-      threadIds.addAll(repo3.relationshipDAO().findTo(reference.getId().toString(),
+      threadIds.addAll(dao.relationshipDAO().findTo(reference.getId().toString(),
               Relationship.CREATED.ordinal(), "thread"));
-      threadIds.addAll(repo3.relationshipDAO().findTo(reference.getId().toString(),
+      threadIds.addAll(dao.relationshipDAO().findTo(reference.getId().toString(),
               Relationship.REPLIED_TO.ordinal(), "thread"));
     } else {
       // Only data assets are added as about
-      result = repo3.fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
+      result = dao.fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
               entityLink.getFullyQualifiedFieldType(), "thread",
               Relationship.IS_ABOUT.ordinal());
       result.forEach(l -> threadIds.add(l.get(1)));
@@ -159,7 +159,7 @@ public class FeedRepository {
       // If an entity has multiple relationships (created, mentioned, repliedTo etc.) to the same thread
       // Don't sent duplicated copies of the thread in response
       if (uniqueValues.add(t)) {
-        threads.add(EntityUtil.validate(t, repo3.feedDAO().findById(t), Thread.class));
+        threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
       }
     }
 

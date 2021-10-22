@@ -52,17 +52,16 @@ public class TopicRepository extends EntityRepository<Topic> {
   private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
+  private final CollectionDAO dao;
 
   public static String getFQN(Topic topic) {
     return (topic.getService().getName() + "." + topic.getName());
   }
 
-  public TopicRepository(CollectionDAO repo3) {
-    super(Topic.class, repo3.topicDAO());
-    this.repo3 = repo3;
+  public TopicRepository(CollectionDAO dao) {
+    super(Topic.class, dao.topicDAO());
+    this.dao = dao;
   }
-
-  private final CollectionDAO repo3;
 
   @Transaction
   public Topic create(Topic topic) throws IOException {
@@ -72,19 +71,19 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Transaction
   public void delete(String id) {
-    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
-    if (repo3.topicDAO().delete(id) <= 0) {
+    if (dao.topicDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Topic> createOrUpdate(Topic updated) throws IOException {
     validateRelationships(updated);
-    Topic stored = JsonUtils.readValue(repo3.topicDAO().findJsonByFqn(updated.getFullyQualifiedName()), Topic.class);
+    Topic stored = JsonUtils.readValue(dao.topicDAO().findJsonByFqn(updated.getFullyQualifiedName()), Topic.class);
     if (stored == null) {  // Topic does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -108,7 +107,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Transaction
   public EntityReference getOwnerReference(Topic topic) throws IOException {
-    return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), topic.getOwner());
+    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner());
   }
 
   public Topic createInternal(Topic topic) throws IOException {
@@ -119,9 +118,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   private void validateRelationships(Topic topic) throws IOException {
     topic.setFullyQualifiedName(getFQN(topic));
-    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), topic.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner()); // Validate owner
     getService(topic.getService());
-    topic.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), topic.getTags()));
+    topic.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), topic.getTags()));
   }
 
   private void addRelationships(Topic topic) throws IOException {
@@ -140,9 +139,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      repo3.topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
+      dao.topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
     } else {
-      repo3.topicDAO().insert(JsonUtils.pojoToJson(topic));
+      dao.topicDAO().insert(JsonUtils.pojoToJson(topic));
     }
 
     // Restore the relationships
@@ -151,7 +150,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   private void applyTags(Topic topic) throws IOException {
     // Add topic level tags by adding tag to topic relationship
-    EntityUtil.applyTags(repo3.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
     topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
@@ -166,16 +165,16 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null ? EntityUtil.populateOwner(topic.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO()) : null;
+    return topic != null ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
   }
 
   private void setOwner(Topic topic, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
     topic.setOwner(owner);
   }
 
   private Topic validateTopic(String id) throws IOException {
-    return repo3.topicDAO().findEntityById(id);
+    return dao.topicDAO().findEntityById(id);
   }
 
   @Override
@@ -198,22 +197,22 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private List<EntityReference> getFollowers(Topic topic) throws IOException {
-    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), repo3.relationshipDAO(), repo3.userDAO());
+    return topic == null ? null : EntityUtil.getFollowers(topic.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return repo3.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Topic topic) throws IOException {
-    return topic == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
+    return topic == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
             topic.getId())));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = repo3.messagingServiceDAO().findEntityById(id);
+      MessagingService serviceInstance = dao.messagingServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -225,7 +224,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   public void setService(Topic topic, EntityReference service) throws IOException {
     if (service != null && topic != null) {
       getService(service); // Populate service details
-      repo3.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), topic.getId().toString(), service.getType(),
               Entity.TOPIC, Relationship.CONTAINS.ordinal());
       topic.setService(service);
     }
@@ -233,15 +232,15 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Transaction
   public Status addFollower(String topicId, String userId) throws IOException {
-    repo3.topicDAO().findEntityById(topicId);
-    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
+    dao.topicDAO().findEntityById(topicId);
+    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String topicId, String userId) {
-    EntityUtil.validateUser(repo3.userDAO(), userId);
-    EntityUtil.removeFollower(repo3.relationshipDAO(), topicId, userId);
+    EntityUtil.validateUser(dao.userDAO(), userId);
+    EntityUtil.removeFollower(dao.relationshipDAO(), topicId, userId);
   }
 
   static class TopicEntityInterface implements EntityInterface {
@@ -305,8 +304,8 @@ public class TopicRepository extends EntityRepository<Topic> {
     final Topic updated;
 
     public TopicUpdater(Topic orig, Topic updated, boolean patchOperation) {
-      super(new TopicEntityInterface(orig), new TopicEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
-              repo3.tagDAO());
+      super(new TopicEntityInterface(orig), new TopicEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

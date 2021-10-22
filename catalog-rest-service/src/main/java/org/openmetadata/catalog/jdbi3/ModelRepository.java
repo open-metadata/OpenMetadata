@@ -52,13 +52,13 @@ public class ModelRepository extends EntityRepository<Model> {
           "owner,dashboard,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
+  private final CollectionDAO dao;
 
-  public ModelRepository(CollectionDAO repo3) {
-    super(Model.class, repo3.modelDAO());
-    this.repo3 = repo3;
+  public ModelRepository(CollectionDAO dao) {
+    super(Model.class, dao.modelDAO());
+    this.dao = dao;
   }
 
-  private final CollectionDAO repo3;
 
   public static String getFQN(Model model) {
     return (model.getName());
@@ -73,7 +73,7 @@ public class ModelRepository extends EntityRepository<Model> {
   @Transaction
   public PutResponse<Model> createOrUpdate(Model updated) throws IOException {
     validateRelationships(updated);
-    Model stored = JsonUtils.readValue(repo3.modelDAO().findJsonByFqn(updated.getFullyQualifiedName()), Model.class);
+    Model stored = JsonUtils.readValue(dao.modelDAO().findJsonByFqn(updated.getFullyQualifiedName()), Model.class);
     if (stored == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -97,32 +97,32 @@ public class ModelRepository extends EntityRepository<Model> {
 
   @Transaction
   public Status addFollower(String modelId, String userId) throws IOException {
-    repo3.modelDAO().findEntityById(modelId);
-    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), modelId, Entity.MODEL, userId,
+    dao.modelDAO().findEntityById(modelId);
+    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), modelId, Entity.MODEL, userId,
             Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String modelId, String userId) {
-    EntityUtil.validateUser(repo3.userDAO(), userId);
-    EntityUtil.removeFollower(repo3.relationshipDAO(), modelId, userId);
+    EntityUtil.validateUser(dao.userDAO(), userId);
+    EntityUtil.removeFollower(dao.relationshipDAO(), modelId, userId);
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.MODEL) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.MODEL) > 0) {
       throw new IllegalArgumentException("Model is not empty");
     }
-    if (repo3.modelDAO().delete(id) <= 0) {
+    if (dao.modelDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MODEL, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Model model) throws IOException {
-    return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), model.getOwner());
+    return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner());
   }
 
   @Override
@@ -137,7 +137,7 @@ public class ModelRepository extends EntityRepository<Model> {
     model.setDashboard(fields.contains("dashboard") ? getDashboard(model) : null);
     model.setFollowers(fields.contains("followers") ? getFollowers(model) : null);
     model.setTags(fields.contains("tags") ? getTags(model.getFullyQualifiedName()) : null);
-    model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(),
+    model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             model.getId()) : null);
     return model;
   }
@@ -148,7 +148,7 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return repo3.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
 
@@ -160,12 +160,12 @@ public class ModelRepository extends EntityRepository<Model> {
 
   private void validateRelationships(Model model) throws IOException {
     model.setFullyQualifiedName(getFQN(model));
-    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), model.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()); // Validate owner
     if (model.getDashboard() != null) {
       String dashboardId = model.getDashboard().getId().toString();
-      model.setDashboard(EntityUtil.getEntityReference(repo3.dashboardDAO().findEntityById(dashboardId)));
+      model.setDashboard(EntityUtil.getEntityReference(dao.dashboardDAO().findEntityById(dashboardId)));
     }
-    model.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), model.getTags()));
+    model.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), model.getTags()));
   }
 
   private void addRelationships(Model model) throws IOException {
@@ -184,9 +184,9 @@ public class ModelRepository extends EntityRepository<Model> {
     model.withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
     if (update) {
-     repo3.modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
+     dao.modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
     } else {
-     repo3.modelDAO().insert(JsonUtils.pojoToJson(model));
+     dao.modelDAO().insert(JsonUtils.pojoToJson(model));
     }
 
     // Restore the relationships
@@ -204,24 +204,24 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   private EntityReference getOwner(Model model) throws IOException {
-    return model == null ? null : EntityUtil.populateOwner(model.getId(), repo3.relationshipDAO(),
-            repo3.userDAO(), repo3.teamDAO());
+    return model == null ? null : EntityUtil.populateOwner(model.getId(), dao.relationshipDAO(),
+            dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Model model, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), model.getId(), Entity.MODEL, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), model.getId(), Entity.MODEL, owner);
     model.setOwner(owner);
   }
 
   private EntityReference getDashboard(Model model) throws IOException {
     if (model != null) {
-      List<EntityReference> ids = repo3.relationshipDAO().findTo(model.getId().toString(), Relationship.USES.ordinal());
+      List<EntityReference> ids = dao.relationshipDAO().findTo(model.getId().toString(), Relationship.USES.ordinal());
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, model.getId());
       }
       if (!ids.isEmpty()) {
         String dashboardId = ids.get(0).getId().toString();
-        return EntityUtil.getEntityReference(repo3.dashboardDAO().findEntityById(dashboardId));
+        return EntityUtil.getEntityReference(dao.dashboardDAO().findEntityById(dashboardId));
       }
     }
     return null;
@@ -229,27 +229,27 @@ public class ModelRepository extends EntityRepository<Model> {
 
   public void setDashboard(Model model, EntityReference dashboard) {
     if (dashboard != null) {
-      repo3.relationshipDAO().insert(model.getId().toString(), model.getDashboard().getId().toString(),
+      dao.relationshipDAO().insert(model.getId().toString(), model.getDashboard().getId().toString(),
               Entity.MODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
     }
   }
 
   public void removeDashboard(Model model) {
-    repo3.relationshipDAO().deleteFrom(model.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
+    dao.relationshipDAO().deleteFrom(model.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
   private void applyTags(Model model) throws IOException {
     // Add model level tags by adding tag to model relationship
-    EntityUtil.applyTags(repo3.tagDAO(), model.getTags(), model.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), model.getTags(), model.getFullyQualifiedName());
     model.setTags(getTags(model.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<EntityReference> getFollowers(Model model) throws IOException {
-    return model == null ? null : EntityUtil.getFollowers(model.getId(), repo3.relationshipDAO(), repo3.userDAO());
+    return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
   private Model validateModel(String id) throws IOException {
-    return repo3.modelDAO().findEntityById(id);
+    return dao.modelDAO().findEntityById(id);
   }
 
   static class ModelEntityInterface implements EntityInterface {
@@ -313,8 +313,8 @@ public class ModelRepository extends EntityRepository<Model> {
     final Model updated;
 
     public ModelUpdater(Model orig, Model updated, boolean patchOperation) {
-      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
-              repo3.tagDAO());
+      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

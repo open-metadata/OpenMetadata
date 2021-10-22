@@ -55,13 +55,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
+  private final CollectionDAO dao;
 
-  public DatabaseRepository(CollectionDAO repo3) {
-    super(Database.class, repo3.databaseDAO());
-    this.repo3 = repo3;
+  public DatabaseRepository(CollectionDAO dao) {
+    super(Database.class, dao.databaseDAO());
+    this.dao = dao;
   }
-
-  private final CollectionDAO repo3;
 
   public static String getFQN(Database database) {
     return (database.getService().getName() + "." + database.getName());
@@ -83,19 +82,19 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Transaction
   public void delete(String id) {
-    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
+    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
       throw new IllegalArgumentException("Database is not empty");
     }
-    if (repo3.databaseDAO().delete(id) <= 0) {
+    if (dao.databaseDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
     }
-    repo3.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Database> createOrUpdate(Database updated) throws IOException {
     validateRelationships(updated);
-    Database stored = JsonUtils.readValue(repo3.databaseDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+    Database stored = JsonUtils.readValue(dao.databaseDAO().findJsonByFqn(updated.getFullyQualifiedName()),
                     Database.class);
     if (stored == null) {  // Database does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
@@ -111,7 +110,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Transaction
   public Database patch(String id, String user, JsonPatch patch) throws IOException {
-    Database original = setFields(repo3.databaseDAO().findEntityById(id), DATABASE_PATCH_FIELDS);
+    Database original = setFields(dao.databaseDAO().findEntityById(id), DATABASE_PATCH_FIELDS);
     LOG.info("Database summary in original {}", original.getUsageSummary());
     Database updated = JsonUtils.applyPatch(original, patch, Database.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -131,7 +130,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     EntityReference dbService = getService(database.getService());
     database.setService(dbService);
     database.setFullyQualifiedName(getFQN(database));
-    database.setOwner(EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), database.getOwner())); // Validate owner
+    database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
     getService(database.getService());
   }
 
@@ -149,9 +148,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.withOwner(null).withService(null).withHref(null);
 
     if (update) {
-      repo3.databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
+      dao.databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
     } else {
-      repo3.databaseDAO().insert(JsonUtils.pojoToJson(database));
+      dao.databaseDAO().insert(JsonUtils.pojoToJson(database));
     }
 
     // Restore the relationships
@@ -169,12 +168,12 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public EntityReference getOwner(Database database) throws IOException {
-    return database != null ? EntityUtil.populateOwner(database.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO())
+    return database != null ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
             : null;
   }
 
   private void setOwner(Database database, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), database.getId(), Entity.DATABASE, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, owner);
     database.setOwner(owner);
   }
 
@@ -183,10 +182,10 @@ public class DatabaseRepository extends EntityRepository<Database> {
       return null;
     }
     String databaseId = database.getId().toString();
-    List<String> tableIds = repo3.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
+    List<String> tableIds = dao.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<Table> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      String json = repo3.tableDAO().findJsonById(tableId);
+      String json = dao.tableDAO().findJsonById(tableId);
       Table table = JsonUtils.readValue(json, Table.class);
       tables.add(table);
     }
@@ -202,7 +201,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? toEntityReference(getTables(database)) : null);
     database.setService(fields.contains("service") ? getService(database) : null);
-    database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(),
+    database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             database.getId()) : null);
     return database;
   }
@@ -214,14 +213,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getService(Database database) throws IOException {
-    return database == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
+    return database == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
             database.getId())));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      DatabaseService serviceInstance = repo3.dbServiceDAO().findEntityById(id);
+      DatabaseService serviceInstance = dao.dbServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -233,7 +232,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public void setService(Database database, EntityReference service) throws IOException {
     if (service != null && database != null) {
       getService(service); // Populate service details
-      repo3.relationshipDAO().insert(service.getId().toString(), database.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), database.getId().toString(), service.getType(),
               Entity.DATABASE, Relationship.CONTAINS.ordinal());
       database.setService(service);
     }
@@ -297,7 +296,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     public DatabaseUpdater(Database orig, Database updated, boolean patchOperation) {
       super(new DatabaseEntityInterface(orig),
-              new DatabaseEntityInterface(updated), patchOperation, repo3.relationshipDAO(), null);
+              new DatabaseEntityInterface(updated), patchOperation, dao.relationshipDAO(), null);
 
       this.orig = orig;
       this.updated = updated;

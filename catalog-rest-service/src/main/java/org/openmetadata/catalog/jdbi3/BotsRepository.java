@@ -18,29 +18,27 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.entity.Bots;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.util.List;
 
 public class BotsRepository {
+  private final CollectionDAO dao;
 
-  public BotsRepository(CollectionDAO repo3) { this.repo3 = repo3; }
-
-  private final CollectionDAO repo3;
+  public BotsRepository(CollectionDAO dao) { this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
-    repo3.botsDAO().insert(JsonUtils.pojoToJson(bots));
+    dao.botsDAO().insert(JsonUtils.pojoToJson(bots));
     return bots;
   }
 
   public Bots findByName(String name) throws IOException {
-    return repo3.botsDAO().findEntityByName(name);
+    return dao.botsDAO().findEntityByName(name);
   }
 
   public List<Bots> list(String name) throws IOException {
-    return JsonUtils.readObjects(repo3.botsDAO().list(name), Bots.class);
+    return JsonUtils.readObjects(dao.botsDAO().list(name), Bots.class);
   }
 }

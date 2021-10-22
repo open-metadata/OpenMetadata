@@ -36,19 +36,17 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
+  private final CollectionDAO dao;
 
-  public MetricsRepository(CollectionDAO repo3) {
-    super(Metrics.class, repo3.metricsDAO());
-    this.repo3 = repo3;
+  public MetricsRepository(CollectionDAO dao) {
+    super(Metrics.class, dao.metricsDAO());
+    this.dao = dao;
   }
-
-  private final CollectionDAO repo3;
 
   public static String getFQN(Metrics metrics) {
     return (metrics.getService().getName() + "." + metrics.getName());
@@ -62,7 +60,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Transaction
   public PutResponse<Metrics> createOrUpdate(Metrics updated) throws IOException {
     validateRelationships(updated);
-    Metrics stored = JsonUtils.readValue(repo3.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()), Metrics.class);
+    Metrics stored = JsonUtils.readValue(dao.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()), Metrics.class);
     if (stored == null) {  // Metrics does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -83,7 +81,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setService(fields.contains("service") ? getService(metrics) : null);
-    metrics.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(),
+    metrics.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             metrics.getId()) : null);
     return metrics;
   }
@@ -101,9 +99,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private void validateRelationships(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
-    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), metrics.getOwner()); // Validate owner
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
     getService(metrics.getService());
-    metrics.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), metrics.getTags()));
+    metrics.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), metrics.getTags()));
   }
 
   private void addRelationships(Metrics metrics) throws IOException {
@@ -122,9 +120,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      repo3.metricsDAO().update(metrics.getId().toString(), JsonUtils.pojoToJson(metrics));
+      dao.metricsDAO().update(metrics.getId().toString(), JsonUtils.pojoToJson(metrics));
     } else {
-      repo3.metricsDAO().insert(JsonUtils.pojoToJson(metrics));
+      dao.metricsDAO().insert(JsonUtils.pojoToJson(metrics));
     }
 
     // Restore the relationships
@@ -132,7 +130,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   private EntityReference getService(Metrics metrics) {
-    return metrics == null ? null : getService(EntityUtil.getService(repo3.relationshipDAO(), metrics.getId()));
+    return metrics == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), metrics.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -143,29 +141,29 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   public void setService(Metrics metrics, EntityReference service) {
     if (service != null && metrics != null) {
       getService(service); // Populate service details
-      repo3.relationshipDAO().insert(service.getId().toString(), metrics.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), metrics.getId().toString(), service.getType(),
               Entity.METRICS, Relationship.CONTAINS.ordinal());
       metrics.setService(service);
     }
   }
 
   private EntityReference getOwner(Metrics metrics) throws IOException {
-    return metrics == null ? null : EntityUtil.populateOwner(metrics.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO());
+    return metrics == null ? null : EntityUtil.populateOwner(metrics.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
   }
 
   public void setOwner(Metrics metrics, EntityReference owner) {
-    EntityUtil.setOwner(repo3.relationshipDAO(), metrics.getId(), Entity.METRICS, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), metrics.getId(), Entity.METRICS, owner);
     metrics.setOwner(owner);
   }
 
   private void applyTags(Metrics metrics) throws IOException {
     // Add chart level tags by adding tag to chart relationship
-    EntityUtil.applyTags(repo3.tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
+    EntityUtil.applyTags(dao.tagDAO(), metrics.getTags(), metrics.getFullyQualifiedName());
     metrics.setTags(getTags(metrics.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<TagLabel> getTags(String fqn) {
-    return repo3.tagDAO().getTags(fqn);
+    return dao.tagDAO().getTags(fqn);
   }
 
   static class MetricsEntityInterface implements EntityInterface {
@@ -229,8 +227,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     final Metrics updated;
 
     public MetricsUpdater(Metrics orig, Metrics updated, boolean patchOperation) {
-      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
-              repo3.tagDAO());
+      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+              dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }
