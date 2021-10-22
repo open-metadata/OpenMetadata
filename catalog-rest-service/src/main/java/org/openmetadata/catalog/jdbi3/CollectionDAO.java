@@ -146,7 +146,7 @@ public interface CollectionDAO {
 
   interface DatabaseServiceDAO extends EntityDAO<DatabaseService> {
     @Override
-    default String getTableName() { return "dbService_Entity"; }
+    default String getTableName() { return "dbservice_entity"; }
 
     @Override
     default Class<DatabaseService> getEntityClass() { return DatabaseService.class; }
