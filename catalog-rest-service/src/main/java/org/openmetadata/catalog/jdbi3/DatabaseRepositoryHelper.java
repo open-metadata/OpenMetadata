@@ -77,12 +77,6 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
   }
 
   @Transaction
-  public ResultList<Database> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(this, Database.class, fields, serviceName, limitParam, before);
-  }
-
-  @Transaction
   public Database create(Database database) throws IOException {
     validateRelationships(database);
     return createInternal(database);

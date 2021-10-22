@@ -64,41 +64,6 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
   }
-
-  @Transaction
-  public PipelineList listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = repo3.pipelineDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Pipeline> pipelines = new ArrayList<>();
-    for (String json : jsons) {
-      pipelines.add(setFields(JsonUtils.readValue(json, Pipeline.class), fields));
-    }
-    int total = repo3.pipelineDAO().listCount(serviceName);
-
-    @Override
-    public Pipeline setFields(Pipeline entity, Fields fields) throws IOException, ParseException {
-      return PipelineRepository.this.setFields(entity, fields);
-    }
-
-    @Override
-    public ResultList<Pipeline> getResultList(List<Pipeline> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-      return new PipelineList(entities, beforeCursor, afterCursor, total);
-    }
-  };
-
-  @Transaction
-  public ResultList<Pipeline> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(entityRepository, Pipeline.class, fields, serviceName, limitParam, after);
-  }
-
-  @Transaction
-  public ResultList<Pipeline> listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(entityRepository, Pipeline.class, fields, serviceName, limitParam, before);
-  }
-
   @Transaction
   public Pipeline create(Pipeline pipeline) throws IOException {
     validateRelationships(pipeline);

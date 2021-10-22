@@ -49,8 +49,23 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return dao.listBefore(fqnPrefix, limitParam, before);
+  public final ResultList<T> listBefore(Fields fields, String fqnPrefix, int limitParam, String before) throws IOException, GeneralSecurityException, ParseException {
+    // Reverse scrolling - Get one extra result used for computing before cursor
+    List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(setFields(JsonUtils.readValue(json, entityClass), fields));
+    }
+    int total = dao.listCount(fqnPrefix);
+
+    String beforeCursor = null, afterCursor;
+    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
+      entities.remove(0);
+      beforeCursor = getFullyQualifiedName(entities.get(0));
+    }
+    afterCursor = getFullyQualifiedName(entities.get(entities.size() - 1));
+    return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction

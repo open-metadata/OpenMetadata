@@ -85,12 +85,6 @@ public class UserRepositoryHelper extends EntityRepository<User> {
   }
 
   @Transaction
-  public ResultList<User> listBefore(Fields fields, int limitParam, String before) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(this, User.class, fields, null, limitParam, before);
-  }
-
-  @Transaction
   public User get(String id) throws IOException {
     return validateUser(id);
   }

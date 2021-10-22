@@ -78,12 +78,6 @@ public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
   }
 
   @Transaction
-  public ResultList<Dashboard> listBefore(Fields fields, String serviceName, int limitParam, String before)
-          throws IOException, GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(this, Dashboard.class, fields, serviceName, limitParam, before);
-  }
-
-  @Transaction
   public Dashboard create(Dashboard dashboard) throws IOException {
     validateRelationships(dashboard);
     return createInternal(dashboard);

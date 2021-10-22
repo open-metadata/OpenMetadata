@@ -711,27 +711,6 @@ public final class EntityUtil {
     }
   }
 
-  public static <T> ResultList<T> listBefore(EntityRepository<T> dao, Class<T> clz, Fields fields, String databaseFQN,
-                                             int limitParam, String before)
-          throws IOException, ParseException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(databaseFQN, limitParam + 1, CipherText.instance().decrypt(before));
-
-    List<T> entities = new ArrayList<>();
-    for (String json : jsons) {
-      entities.add(dao.setFields(JsonUtils.readValue(json, clz), fields));
-    }
-    int total = dao.listCount(databaseFQN);
-
-    String beforeCursor = null, afterCursor;
-    if (entities.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      entities.remove(0);
-      beforeCursor = dao.getFullyQualifiedName(entities.get(0));
-    }
-    afterCursor = dao.getFullyQualifiedName(entities.get(entities.size() - 1));
-    return dao.getResultList(entities, beforeCursor, afterCursor, total);
-  }
-
   public static List<UUID> getIDList(List<EntityReference> refList) {
     if (refList == null) {
       return null;

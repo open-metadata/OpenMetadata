@@ -66,12 +66,6 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
   private final TopicRepository3 repo3;
 
   @Transaction
-  public ResultList<Topic> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(this, Topic.class, fields, serviceName, limitParam, before);
-  }
-
-  @Transaction
   public Topic create(Topic topic) throws IOException {
     validateRelationships(topic);
     return createInternal(topic);

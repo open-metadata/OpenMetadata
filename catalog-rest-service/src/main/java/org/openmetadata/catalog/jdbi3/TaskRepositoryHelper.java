@@ -64,27 +64,6 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
 
   private final TaskRepository3 repo3;
 
-
-  @Transaction
-  public TaskList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = repo3.taskDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
-    List<Task> tasks = new ArrayList<>();
-    for (String json : jsons) {
-      tasks.add(setFields(JsonUtils.readValue(json, Task.class), fields));
-    }
-    int total = repo3.taskDAO().listCount(serviceName);
-
-    String beforeCursor = null, afterCursor;
-    if (tasks.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      tasks.remove(0);
-      beforeCursor = tasks.get(0).getFullyQualifiedName();
-    }
-    afterCursor = tasks.get(tasks.size() - 1).getFullyQualifiedName();
-    return new TaskList(tasks, beforeCursor, afterCursor, total);
-  }
-
   @Transaction
   public Task create(Task task) throws IOException {
     validateRelationships(task);

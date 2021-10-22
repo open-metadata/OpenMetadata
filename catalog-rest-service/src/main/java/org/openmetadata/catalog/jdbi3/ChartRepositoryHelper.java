@@ -62,12 +62,6 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
   }
 
   @Transaction
-  public ResultList<Chart> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listBefore(this, Chart.class, fields, serviceName, limitParam, before);
-  }
-
-  @Transaction
   public Chart create(Chart chart) throws IOException {
     validateRelationships(chart);
     return createInternal(chart);

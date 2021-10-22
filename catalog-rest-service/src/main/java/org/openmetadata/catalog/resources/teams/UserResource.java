@@ -149,7 +149,7 @@ public class UserResource {
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(fields, limitParam, before);
+      users = dao.listBefore(fields, null, limitParam, before);
     } else { // Forward paging or first page
       users = dao.listAfter(fields, null, limitParam, after);
     }

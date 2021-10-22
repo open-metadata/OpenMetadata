@@ -121,12 +121,6 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
   }
 
   @Transaction
-  public ResultList<Table> listBefore(Fields fields, String databaseFQN, int limitParam, String before)
-          throws IOException, ParseException, GeneralSecurityException {
-    return EntityUtil.listBefore(this, Table.class, fields, databaseFQN, limitParam, before);
-  }
-
-  @Transaction
   public Table create(Table table, UUID databaseId) throws IOException {
     validateRelationships(table, databaseId);
     return createInternal(table);
