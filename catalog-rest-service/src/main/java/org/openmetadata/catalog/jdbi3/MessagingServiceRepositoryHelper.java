@@ -21,50 +21,46 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
+public class MessagingServiceRepositoryHelper implements EntityRepository<MessagingService> {
+  public MessagingServiceRepositoryHelper(MessagingServiceRepository3 repo3) { this.repo3 = repo3; }
 
-public abstract class MessagingServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(MessagingServiceRepository.class);
-
-  @CreateSqlObject
-  abstract MessagingServiceDAO messagingServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
+  private final MessagingServiceRepository3 repo3;
 
   @Transaction
   public List<MessagingService> list(String name) throws IOException {
-    return JsonUtils.readObjects(messagingServiceDAO().list(name), MessagingService.class);
+    return JsonUtils.readObjects(repo3.messagingServiceDAO().list(name), MessagingService.class);
   }
 
   @Transaction
   public MessagingService get(String id) throws IOException {
-    return EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
+    return repo3.messagingServiceDAO().findEntityById(id);
   }
 
   @Transaction
   public MessagingService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, messagingServiceDAO().findByName(name), MessagingService.class);
+    return repo3.messagingServiceDAO().findEntityByName(name);
   }
 
   @Transaction
   public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
-    messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
+    repo3.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
     return messagingService;
   }
 
@@ -73,20 +69,49 @@ public abstract class MessagingServiceRepository {
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
+    MessagingService dbService = repo3.messagingServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    repo3.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (messagingServiceDAO().delete(id) <= 0) {
+    if (repo3.messagingServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(MessagingService entity) {
+    return null;
+  }
+
+  @Override
+  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+    return null;
+  }
+
+  @Override
+  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
 }

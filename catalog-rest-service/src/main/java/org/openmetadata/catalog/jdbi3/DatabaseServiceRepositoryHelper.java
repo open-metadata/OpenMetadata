@@ -22,68 +22,94 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class DatabaseServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseServiceRepository.class);
+public class DatabaseServiceRepositoryHelper implements EntityRepository<DatabaseService> {
+  public DatabaseServiceRepositoryHelper(DatabaseServiceRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract DatabaseServiceDAO dbServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
+  private final DatabaseServiceRepository3 repo3;
 
   @Transaction
   public List<DatabaseService> list(String name) throws IOException {
-    return JsonUtils.readObjects(dbServiceDAO().list(name), DatabaseService.class);
+    return JsonUtils.readObjects(repo3.dbServiceDAO().list(name), DatabaseService.class);
   }
 
   @Transaction
   public DatabaseService get(String id) throws IOException {
-    return EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
+    return repo3.dbServiceDAO().findEntityById(id);
   }
 
   @Transaction
   public DatabaseService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, dbServiceDAO().findByName(name), DatabaseService.class);
+    return repo3.dbServiceDAO().findEntityByName(name);
   }
 
   @Transaction
   public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
+    repo3.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
     return databaseService;
   }
 
   public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
+    DatabaseService dbService = repo3.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    repo3.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (dbServiceDAO().delete(id) <= 0) {
+    if (repo3.dbServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(DatabaseService entity) {
+    return null;
+  }
+
+  @Override
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+    return null;
+  }
+
+  @Override
+  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
 }

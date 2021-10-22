@@ -26,16 +26,13 @@ import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -52,8 +50,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class TaskRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskRepository.class);
+public class TaskRepositoryHelper implements EntityRepository<Task>{
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
           "taskConfig,tags,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
@@ -62,37 +59,22 @@ public abstract class TaskRepository {
     return (task.getService().getName() + "." + task.getName());
   }
 
-  @CreateSqlObject
-  abstract TaskDAO taskDAO();
+  public TaskRepositoryHelper(TaskRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract PipelineServiceDAO pipelineServiceDAO();
-
-  @CreateSqlObject
-  abstract TagDAO tagDAO();
-
+  private final TaskRepository3 repo3;
 
   @Transaction
   public TaskList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
           GeneralSecurityException {
     // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = taskDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
+    List<String> jsons = repo3.taskDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Task> tasks = new ArrayList<>();
     for (String json : jsons) {
       tasks.add(setFields(JsonUtils.readValue(json, Task.class), fields));
     }
-    int total = taskDAO().listCount(serviceName);
+    int total = repo3.taskDAO().listCount(serviceName);
 
     String beforeCursor, afterCursor = null;
     beforeCursor = after == null ? null : tasks.get(0).getFullyQualifiedName();
@@ -107,12 +89,12 @@ public abstract class TaskRepository {
   public TaskList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,
           GeneralSecurityException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = taskDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
+    List<String> jsons = repo3.taskDAO().listBefore(serviceName, limitParam + 1, CipherText.instance().decrypt(before));
     List<Task> tasks = new ArrayList<>();
     for (String json : jsons) {
       tasks.add(setFields(JsonUtils.readValue(json, Task.class), fields));
     }
-    int total = taskDAO().listCount(serviceName);
+    int total = repo3.taskDAO().listCount(serviceName);
 
     String beforeCursor = null, afterCursor;
     if (tasks.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
@@ -130,7 +112,7 @@ public abstract class TaskRepository {
 
   @Transaction
   public Task getByName(String fqn, Fields fields) throws IOException {
-    Task task = EntityUtil.validate(fqn, taskDAO().findByFQN(fqn), Task.class);
+    Task task = repo3.taskDAO().findEntityByName(fqn);
     return setFields(task, fields);
   }
 
@@ -142,19 +124,19 @@ public abstract class TaskRepository {
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
+    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
       throw new IllegalArgumentException("Task is not empty");
     }
-    if (taskDAO().delete(id) <= 0) {
+    if (repo3.taskDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TASK, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public PutResponse<Task> createOrUpdate(Task updated) throws IOException {
     validateRelationships(updated);
-    Task stored = JsonUtils.readValue(taskDAO().findByFQN(updated.getFullyQualifiedName()), Task.class);
+    Task stored = JsonUtils.readValue(repo3.taskDAO().findJsonByFqn(updated.getFullyQualifiedName()), Task.class);
     if (stored == null) {  // Task does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -186,8 +168,9 @@ public abstract class TaskRepository {
     EntityReference pipelineService = getService(task.getService());
     task.setService(pipelineService);
     task.setFullyQualifiedName(getFQN(task));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), task.getOwner()); // Validate owner
-    task.setTags(EntityUtil.addDerivedTags(tagDAO(), task.getTags()));
+    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), task.getOwner()); // Validate owner
+    getService(task.getService());
+    task.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), task.getTags()));
   }
 
   private void addRelationships(Task task) throws IOException {
@@ -206,9 +189,9 @@ public abstract class TaskRepository {
     task.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
+      repo3.taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
     } else {
-      taskDAO().insert(JsonUtils.pojoToJson(task));
+      repo3.taskDAO().insert(JsonUtils.pojoToJson(task));
     }
 
     // Restore the relationships
@@ -218,7 +201,7 @@ public abstract class TaskRepository {
 
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
-    EntityUtil.applyTags(tagDAO(), task.getTags(), task.getFullyQualifiedName());
+    EntityUtil.applyTags(repo3.tagDAO(), task.getTags(), task.getFullyQualifiedName());
     task.setTags(getTags(task.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
@@ -233,19 +216,40 @@ public abstract class TaskRepository {
   }
 
   public EntityReference getOwner(Task task) throws IOException {
-    return task != null ? EntityUtil.populateOwner(task.getId(), relationshipDAO(), userDAO(), teamDAO()) : null;
+    return task != null ? EntityUtil.populateOwner(task.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO()) : null;
   }
 
   private void setOwner(Task task, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), task.getId(), Entity.TASK, owner);
+    EntityUtil.setOwner(repo3.relationshipDAO(), task.getId(), Entity.TASK, owner);
     task.setOwner(owner);
   }
 
   private Task validateTask(String id) throws IOException {
-    return EntityUtil.validate(id, taskDAO().findById(id), Task.class);
+    return repo3.taskDAO().findEntityById(id);
   }
 
-  private Task setFields(Task task, Fields fields) throws IOException {
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(Task entity) {
+    return null;
+  }
+
+  @Override
+  public Task setFields(Task task, Fields fields) throws IOException {
     task.setTaskUrl(task.getTaskUrl());
     task.setTaskSQL(task.getTaskSQL());
     task.setStartDate(task.getStartDate());
@@ -257,21 +261,25 @@ public abstract class TaskRepository {
     return task;
   }
 
+  @Override
+  public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
+
 
   private List<TagLabel> getTags(String fqn) {
-    return tagDAO().getTags(fqn);
+    return repo3.tagDAO().getTags(fqn);
   }
 
   private EntityReference getService(Task task) throws IOException {
-    return task == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(relationshipDAO(),
+    return task == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(repo3.relationshipDAO(),
             task.getId(), Entity.PIPELINE_SERVICE)));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = EntityUtil.validate(id, pipelineServiceDAO().findById(id),
-              PipelineService.class);
+      PipelineService serviceInstance = repo3.pipelineServiceDAO().findEntityById(id);
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -283,54 +291,10 @@ public abstract class TaskRepository {
   public void setService(Task task, EntityReference service) throws IOException {
     if (service != null && task != null) {
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), task.getId().toString(), service.getType(),
+      repo3.relationshipDAO().insert(service.getId().toString(), task.getId().toString(), service.getType(),
               Entity.TASK, Relationship.CONTAINS.ordinal());
       task.setService(service);
     }
-  }
-
-  public interface TaskDAO {
-    @SqlUpdate("INSERT INTO task_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE task_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM task_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
-
-    @SqlQuery("SELECT json FROM task_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
-
-    @SqlQuery("SELECT count(*) FROM task_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL)")
-    int listCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery(
-            "SELECT json FROM (" +
-                    "SELECT fullyQualifiedName, json FROM task_entity WHERE " +
-                    "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +// Filter by
-                    // service name
-                    "fullyQualifiedName < :before " + // Pagination by task fullyQualifiedName
-                    "ORDER BY fullyQualifiedName DESC " + // Pagination ordering by task fullyQualifiedName
-                    "LIMIT :limit" +
-                    ") last_rows_subquery ORDER BY fullyQualifiedName")
-    List<String> listBefore(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                            @Bind("before") String before);
-
-    @SqlQuery("SELECT json FROM task_entity WHERE " +
-            "(fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') OR :fqnPrefix IS NULL) AND " +
-            "fullyQualifiedName > :after " +
-            "ORDER BY fullyQualifiedName " +
-            "LIMIT :limit")
-    List<String> listAfter(@Bind("fqnPrefix") String fqnPrefix, @Bind("limit") int limit,
-                           @Bind("after") String after);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM task_entity WHERE id = :id)")
-    boolean exists(@Bind("id") String id);
-
-    @SqlUpdate("DELETE FROM task_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
   }
 
   static class TaskEntityInterface implements EntityInterface {
@@ -389,13 +353,13 @@ public abstract class TaskRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class TaskUpdater extends EntityUpdater {
+  public class TaskUpdater extends EntityUpdater3 {
     final Task orig;
     final Task updated;
 
     public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
-      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, relationshipDAO(),
-              tagDAO());
+      super(new TaskRepositoryHelper.TaskEntityInterface(orig), new TaskRepositoryHelper.TaskEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+              repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

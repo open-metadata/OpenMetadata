@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.jdbi3.MetricsRepository;
+import org.openmetadata.catalog.jdbi3.MetricsRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -57,10 +57,10 @@ import java.util.UUID;
 @Api(value = "Metrics collection", tags = "Metrics collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "metrics", repositoryClass = "org.openmetadata.catalog.jdbi3.MetricsRepository")
+//@Collection(name = "metrics", repositoryClass = "org.openmetadata.catalog.jdbi3.MetricsRepositoryHelper")
 public class MetricsResource {
   public static final String COLLECTION_PATH = "/v1/metrics/";
-  private final MetricsRepository dao;
+  private final MetricsRepositoryHelper dao;
 
   private static List<Metrics> addHref(UriInfo uriInfo, List<Metrics> metrics) {
     metrics.forEach(m -> addHref(uriInfo, m));
@@ -73,8 +73,8 @@ public class MetricsResource {
   }
 
   @Inject
-  public MetricsResource(MetricsRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "MetricsRepository must not be null");
+  public MetricsResource(MetricsRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "MetricsRepositoryHelper must not be null");
     this.dao = dao;
   }
 

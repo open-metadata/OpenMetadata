@@ -29,8 +29,26 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository3;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository3;
 import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository3;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository3;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.MetricsRepository3;
+import org.openmetadata.catalog.jdbi3.MetricsRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.ModelRepository3;
+import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.PipelineRepository3;
+import org.openmetadata.catalog.jdbi3.PipelineRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository3;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.ReportRepository3;
+import org.openmetadata.catalog.jdbi3.ReportRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TaskRepository3;
+import org.openmetadata.catalog.jdbi3.TaskRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TeamRepository3;
+import org.openmetadata.catalog.jdbi3.TeamRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TopicRepository3;
 import org.openmetadata.catalog.jdbi3.TopicRepositoryHelper;
 import org.openmetadata.catalog.resources.bots.BotsResource;
@@ -38,7 +56,16 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
+import org.openmetadata.catalog.resources.metrics.MetricsResource;
+import org.openmetadata.catalog.resources.models.ModelResource;
+import org.openmetadata.catalog.resources.pipelines.PipelineResource;
+import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.catalog.resources.tasks.TaskResource;
+import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
@@ -228,6 +255,70 @@ public final class CollectionRegistry {
             authorizer);
     environment.jersey().register(dashboardServiceResource);
     LOG.info("Registering {}", dashboardServiceResource);
+
+    final DatabaseServiceRepository3 databaseServiceRepository3 = jdbi.onDemand(DatabaseServiceRepository3.class);
+    DatabaseServiceRepositoryHelper databaseServiceRepositoryHelper = new DatabaseServiceRepositoryHelper(databaseServiceRepository3);
+    DatabaseServiceResource databaseServiceResource = new DatabaseServiceResource(databaseServiceRepositoryHelper,
+            authorizer);
+    environment.jersey().register(databaseServiceResource);
+    LOG.info("Registering {}", databaseServiceResource);
+
+    final MessagingServiceRepository3 messagingServiceRepository3 = jdbi.onDemand(MessagingServiceRepository3.class);
+    MessagingServiceRepositoryHelper messagingServiceRepositoryHelper = new MessagingServiceRepositoryHelper(messagingServiceRepository3);
+    MessagingServiceResource messagingServiceResource = new MessagingServiceResource(messagingServiceRepositoryHelper,
+            authorizer);
+    environment.jersey().register(messagingServiceResource);
+    LOG.info("Registering {}", messagingServiceResource);
+
+    final MetricsRepository3 metricsRepository3 = jdbi.onDemand(MetricsRepository3.class);
+    MetricsRepositoryHelper metricsRepositoryHelper = new MetricsRepositoryHelper(metricsRepository3);
+    MetricsResource metricsResource = new MetricsResource(metricsRepositoryHelper,
+            authorizer);
+    environment.jersey().register(metricsResource);
+    LOG.info("Registering {}", metricsResource);
+
+    final ModelRepository3 modelRepository3 = jdbi.onDemand(ModelRepository3.class);
+    ModelRepositoryHelper modelRepositoryHelper = new ModelRepositoryHelper(modelRepository3);
+    ModelResource modelResource = new ModelResource(modelRepositoryHelper,
+            authorizer);
+    environment.jersey().register(modelResource);
+    LOG.info("Registering {}", modelResource);
+
+    final PipelineRepository3 pipelineRepository3 = jdbi.onDemand(PipelineRepository3.class);
+    PipelineRepositoryHelper pipelineRepositoryHelper = new PipelineRepositoryHelper(pipelineRepository3);
+    PipelineResource pipelineResource = new PipelineResource(pipelineRepositoryHelper,
+            authorizer);
+    environment.jersey().register(pipelineResource);
+    LOG.info("Registering {}", pipelineResource);
+
+    final PipelineServiceRepository3 pipelineServiceRepository3 = jdbi.onDemand(PipelineServiceRepository3.class);
+    PipelineServiceRepositoryHelper pipelineServiceRepositoryHelper = new PipelineServiceRepositoryHelper(pipelineServiceRepository3);
+    PipelineServiceResource pipelineServiceResource = new PipelineServiceResource(pipelineServiceRepositoryHelper,
+            authorizer);
+    environment.jersey().register(pipelineServiceResource);
+    LOG.info("Registering {}", pipelineServiceResource);
+
+    final ReportRepository3 reportRepository3 = jdbi.onDemand(ReportRepository3.class);
+    ReportRepositoryHelper reportRepositoryHelper = new ReportRepositoryHelper(reportRepository3);
+    ReportResource reportResource = new ReportResource(reportRepositoryHelper,
+            authorizer);
+    environment.jersey().register(reportResource);
+    LOG.info("Registering {}", reportResource);
+
+    final TaskRepository3 taskRepository3 = jdbi.onDemand(TaskRepository3.class);
+    TaskRepositoryHelper taskRepositoryHelper = new TaskRepositoryHelper(taskRepository3);
+    TaskResource taskResource = new TaskResource(taskRepositoryHelper,
+            authorizer);
+    environment.jersey().register(taskResource);
+    LOG.info("Registering {}", taskResource);
+
+    final TeamRepository3 teamRepository3 = jdbi.onDemand(TeamRepository3.class);
+    TeamRepositoryHelper teamRepositoryHelper = new TeamRepositoryHelper(teamRepository3);
+    TeamResource teamResource = new TeamResource(teamRepositoryHelper,
+            authorizer);
+    environment.jersey().register(teamResource);
+    LOG.info("Registering {}", teamResource);
+
     LOG.info("Initialized jdbi3");
   }
 

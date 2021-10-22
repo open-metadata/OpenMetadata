@@ -16,9 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;

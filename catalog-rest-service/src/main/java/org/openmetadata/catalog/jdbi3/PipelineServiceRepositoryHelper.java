@@ -21,50 +21,51 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class PipelineServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepository.class);
+public class PipelineServiceRepositoryHelper implements EntityRepository<PipelineService> {
+  private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepositoryHelper.class);
 
-  @CreateSqlObject
-  abstract PipelineServiceDAO pipelineServiceDAO();
+  public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
+  private final PipelineServiceRepository3 repo3;
 
   @Transaction
   public List<PipelineService> list(String name) throws IOException {
-    return JsonUtils.readObjects(pipelineServiceDAO().list(name), PipelineService.class);
+    return JsonUtils.readObjects(repo3.pipelineServiceDAO().list(name), PipelineService.class);
   }
 
   @Transaction
   public PipelineService get(String id) throws IOException {
-    return EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
+    return repo3.pipelineServiceDAO().findEntityById(id);
   }
 
   @Transaction
   public PipelineService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, pipelineServiceDAO().findByName(name), PipelineService.class);
+    return repo3.pipelineServiceDAO().findEntityByName(name);
   }
 
   @Transaction
   public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(pipelineService.getIngestionSchedule());
-    pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
+    repo3.pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }
 
@@ -73,21 +74,50 @@ public abstract class PipelineServiceRepository {
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    PipelineService pipelineService = EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
+    PipelineService pipelineService = repo3.pipelineServiceDAO().findEntityById(id);
     // Update fields
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withPipelineUrl(url);
-    pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
+    repo3.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (pipelineServiceDAO().delete(id) <= 0) {
+    if (repo3.pipelineServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
 
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(PipelineService entity) {
+    return null;
+  }
+
+  @Override
+  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+    return null;
+  }
+
+  @Override
+  public ResultList<PipelineService> getResultList(List<PipelineService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
 }

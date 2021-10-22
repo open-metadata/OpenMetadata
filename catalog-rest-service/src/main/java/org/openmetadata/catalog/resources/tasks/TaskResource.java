@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Task;
-import org.openmetadata.catalog.jdbi3.TaskRepository;
+import org.openmetadata.catalog.jdbi3.TaskRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -76,11 +76,11 @@ import java.util.UUID;
 @Api(value = "tasks data asset collection", tags = "Task data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tasks", repositoryClass = "org.openmetadata.catalog.jdbi3.TaskRepository")
+//@Collection(name = "tasks", repositoryClass = "org.openmetadata.catalog.jdbi3.TaskRepositoryHelper")
 public class TaskResource {
   private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
   private static final String TASK_COLLECTION_PATH = "v1/tasks/";
-  private final TaskRepository dao;
+  private final TaskRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -101,8 +101,8 @@ public class TaskResource {
   }
 
   @Inject
-  public TaskResource(TaskRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TaskRepository must not be null");
+  public TaskResource(TaskRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "TaskRepositoryHelper must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }

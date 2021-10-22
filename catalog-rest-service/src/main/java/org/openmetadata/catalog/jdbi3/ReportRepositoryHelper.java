@@ -16,40 +16,31 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
+import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
+import org.openmetadata.catalog.util.ResultList;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class ReportRepository {
+public class ReportRepositoryHelper implements EntityRepository<Report>{
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
 
-  @CreateSqlObject
-  abstract ReportDAO reportDAO();
+  public ReportRepositoryHelper(ReportRepository3 repo3) { this.repo3 = repo3; }
 
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
+  private final ReportRepository3 repo3;
 
   @Transaction
   public Report create(Report report, EntityReference service, EntityReference owner) throws IOException {
@@ -61,17 +52,17 @@ public abstract class ReportRepository {
   public PutResponse<Report> createOrUpdate(Report updatedReport, EntityReference service, EntityReference newOwner)
           throws IOException {
     String fqn = service.getName() + "." + updatedReport.getName();
-    Report storedReport = JsonUtils.readValue(reportDAO().findByFQN(fqn), Report.class);
+    Report storedReport = JsonUtils.readValue(repo3.reportDAO().findJsonByFqn(fqn), Report.class);
     if (storedReport == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updatedReport, service, newOwner));
     }
     // Update existing report
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
+    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), newOwner); // Validate new owner
     if (storedReport.getDescription() == null || storedReport.getDescription().isEmpty()) {
       storedReport.withDescription(updatedReport.getDescription());
     }
 
-    reportDAO().update(storedReport.getId().toString(), JsonUtils.pojoToJson(storedReport));
+    repo3.reportDAO().update(storedReport.getId().toString(), JsonUtils.pojoToJson(storedReport));
 
     // Update owner relationship
     setFields(storedReport, REPORT_UPDATE_FIELDS); // First get the ownership information
@@ -85,11 +76,11 @@ public abstract class ReportRepository {
   }
 
   public Report get(String id, Fields fields) throws IOException {
-    return setFields(EntityUtil.validate(id, reportDAO().findById(id), Report.class), fields);
+    return setFields(repo3.reportDAO().findEntityById(id), fields);
   }
 
   public List<Report> list(Fields fields) throws IOException {
-    List<String> jsonList = reportDAO().list();
+    List<String> jsonList = repo3.reportDAO().list();
     List<Report> reportList = new ArrayList<>();
     for (String json : jsonList) {
       reportList.add(setFields(JsonUtils.readValue(json, Report.class), fields));
@@ -97,28 +88,54 @@ public abstract class ReportRepository {
     return reportList;
   }
 
-  private Report setFields(Report report, Fields fields) throws IOException {
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(Report entity) {
+    return null;
+  }
+
+  @Override
+  public Report setFields(Report report, Fields fields) throws IOException {
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setService(fields.contains("service") ? getService(report) : null);
-    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(), report.getId()) :
+    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(), report.getId()) :
             null);
     return report;
+  }
+
+  @Override
+  public ResultList<Report> getResultList(List<Report> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
   }
 
   private Report createInternal(Report report, EntityReference service, EntityReference owner) throws IOException {
     String fqn = service.getName() + "." + report.getName();
     report.setFullyQualifiedName(fqn);
 
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), owner); // Validate owner
 
-    reportDAO().insert(JsonUtils.pojoToJson(report));
+    repo3.reportDAO().insert(JsonUtils.pojoToJson(report));
     setService(report, service);
     setOwner(report, owner);
     return report;
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(relationshipDAO(), report.getId()));
+    return report == null ? null : getService(EntityUtil.getService(repo3.relationshipDAO(), report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -129,23 +146,23 @@ public abstract class ReportRepository {
   public void setService(Report report, EntityReference service) {
     if (service != null && report != null) {
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), report.getId().toString(), service.getType(),
+      repo3.relationshipDAO().insert(service.getId().toString(), report.getId().toString(), service.getType(),
               Entity.REPORT, Relationship.CONTAINS.ordinal());
       report.setService(service);
     }
   }
 
   private EntityReference getOwner(Report report) throws IOException {
-    return report == null ? null : EntityUtil.populateOwner(report.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return report == null ? null : EntityUtil.populateOwner(report.getId(), repo3.relationshipDAO(), repo3.userDAO(), repo3.teamDAO());
   }
 
   public void setOwner(Report report, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), report.getId(), Entity.REPORT, owner);
+    EntityUtil.setOwner(repo3.relationshipDAO(), report.getId(), Entity.REPORT, owner);
     report.setOwner(owner);
   }
 
   private void updateOwner(Report report, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, report.getId(), Entity.REPORT);
+    EntityUtil.updateOwner(repo3.relationshipDAO(), origOwner, newOwner, report.getId(), Entity.REPORT);
     report.setOwner(newOwner);
   }
 

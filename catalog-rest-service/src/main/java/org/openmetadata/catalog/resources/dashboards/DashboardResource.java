@@ -75,7 +75,7 @@ import java.util.UUID;
 @Api(value = "Dashboards collection", tags = "Dashboards collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper")
+//@Collection(name = "dashboards", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper")
 public class DashboardResource {
   public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
   private final DashboardRepositoryHelper dao;

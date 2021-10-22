@@ -25,7 +25,7 @@ import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
+import org.openmetadata.catalog.jdbi3.TeamRepositoryHelper;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -525,7 +525,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     before.setDisplayName(displayName);
     before.setDescription(description);
     before.setProfile(profile);
-    before.setUsers(TeamRepository.toEntityReference(users));
+    before.setUsers(TeamRepositoryHelper.toEntityReference(users));
 
     // Validate information returned in patch response has the updates
     Team updatedTeam = patchTeam(tableJson, before, authHeaders);

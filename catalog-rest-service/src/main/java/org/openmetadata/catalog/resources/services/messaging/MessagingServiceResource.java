@@ -27,7 +27,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -60,9 +60,9 @@ import java.util.UUID;
 @Api(value = "Messaging service collection", tags = "Services -> Messaging service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "messagingServices", repositoryClass = "org.openmetadata.catalog.jdbi3.MessagingServiceRepository")
+//@Collection(name = "messagingServices", repositoryClass = "org.openmetadata.catalog.jdbi3.MessagingServiceRepositoryHelper")
 public class MessagingServiceResource {
-  private final MessagingServiceRepository dao;
+  private final MessagingServiceRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
@@ -80,8 +80,8 @@ public class MessagingServiceResource {
   }
 
   @Inject
-  public MessagingServiceResource(MessagingServiceRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
+  public MessagingServiceResource(MessagingServiceRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "MessagingServiceRepositoryHelper must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }

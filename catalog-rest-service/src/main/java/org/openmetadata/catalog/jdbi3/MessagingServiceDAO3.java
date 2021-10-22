@@ -18,5 +18,5 @@ public interface MessagingServiceDAO3 extends EntityDAO<MessagingService> {
   default String getNameColumn() { return "name"; }
 
   @SqlQuery("SELECT json FROM messaging_service_entity WHERE (name = :name OR :name is NULL)")
-  List<String> list(@Define("table") String table, @Bind("name") String name);
+  List<String> list(@Bind("name") String name);
 }

@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
-import org.openmetadata.catalog.jdbi3.ModelRepository;
+import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -74,10 +74,10 @@ import java.util.UUID;
 @Api(value = "Models collection", tags = "Models collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "models", repositoryClass = "org.openmetadata.catalog.jdbi3.ModelRepository")
+//@Collection(name = "models", repositoryClass = "org.openmetadata.catalog.jdbi3.ModelRepositoryHelper")
 public class ModelResource {
   public static final String MODEL_COLLECTION_PATH = "v1/models/";
-  private final ModelRepository dao;
+  private final ModelRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -98,8 +98,8 @@ public class ModelResource {
   }
 
   @Inject
-  public ModelResource(ModelRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "ModelRepository must not be null");
+  public ModelResource(ModelRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "ModelRepositoryHelper must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }

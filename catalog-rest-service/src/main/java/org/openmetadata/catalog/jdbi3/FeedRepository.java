@@ -19,8 +19,6 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
-import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
 
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
 import org.openmetadata.catalog.resources.feeds.MessageParser;

@@ -77,7 +77,7 @@ import java.util.UUID;
 @Api(value = "Chart data asset collection", tags = "Chart data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository3")
+//@Collection(name = "charts", repositoryClass = "org.openmetadata.catalog.jdbi3.ChartRepository3")
 public class ChartResource {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";

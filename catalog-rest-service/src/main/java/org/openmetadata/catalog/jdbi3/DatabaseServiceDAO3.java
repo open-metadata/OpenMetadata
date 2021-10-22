@@ -20,5 +20,5 @@ public interface DatabaseServiceDAO3 extends EntityDAO<DatabaseService> {
 
   // TODO clean this up
   @SqlQuery("SELECT json FROM dbService_Entity WHERE (name = :name OR :name is NULL)")
-  List<String> list(@Define("table") String table, @Bind("name") String name);
+  List<String> list(@Bind("name") String name);
 }

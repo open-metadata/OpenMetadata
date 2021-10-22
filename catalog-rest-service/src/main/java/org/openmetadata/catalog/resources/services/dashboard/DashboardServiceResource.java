@@ -60,7 +60,7 @@ import java.util.UUID;
 @Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "dashboardServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper")
+//@Collection(name = "dashboardServices", repositoryClass = "org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper")
 public class DashboardServiceResource {
   private final DashboardServiceRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;

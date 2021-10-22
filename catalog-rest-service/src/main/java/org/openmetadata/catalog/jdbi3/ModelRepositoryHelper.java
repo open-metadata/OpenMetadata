@@ -18,7 +18,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.models.ModelResource;
@@ -26,13 +25,13 @@ import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
+import org.openmetadata.catalog.util.EntityUpdater3;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
 import org.skife.jdbi.v2.sqlobject.Transaction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -48,51 +48,33 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public abstract class ModelRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(ModelRepository.class);
+public class ModelRepositoryHelper implements EntityRepository<Model> {
+  private static final Logger LOG = LoggerFactory.getLogger(ModelRepositoryHelper.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
 
+  public ModelRepositoryHelper(ModelRepository3 repo3) { this.repo3 = repo3; }
+
+  private final ModelRepository3 repo3;
+
   public static String getFQN(Model model) {
     return (model.getName());
   }
-
-  @CreateSqlObject
-  abstract ModelDAO modelDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
-
-  @CreateSqlObject
-  abstract DashboardDAO dashboardDAO();
-
-  @CreateSqlObject
-  abstract TagDAO tagDAO();
-
 
   @Transaction
   public ModelList listAfter(Fields fields, int limitParam, String after) throws IOException,
           GeneralSecurityException {
     // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = modelDAO().listAfter(limitParam + 1, after == null ? "" :
+    List<String> jsons =repo3.modelDAO().listAfter(limitParam + 1, after == null ? "" :
             CipherText.instance().decrypt(after));
 
     List<Model> models = new ArrayList<>();
     for (String json : jsons) {
       models.add(setFields(JsonUtils.readValue(json, Model.class), fields));
     }
-    int total = modelDAO().listCount();
+    int total =repo3.modelDAO().listCount();
 
     String beforeCursor, afterCursor = null;
     beforeCursor = after == null ? null : models.get(0).getFullyQualifiedName();
@@ -107,12 +89,12 @@ public abstract class ModelRepository {
   public ModelList listBefore(Fields fields, int limitParam, String before)
           throws IOException, GeneralSecurityException {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = modelDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
+    List<String> jsons =repo3.modelDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
     List<Model> models = new ArrayList<>();
     for (String json : jsons) {
       models.add(setFields(JsonUtils.readValue(json, Model.class), fields));
     }
-    int total = modelDAO().listCount();
+    int total =repo3.modelDAO().listCount();
 
     String beforeCursor = null, afterCursor;
     if (models.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
@@ -125,7 +107,7 @@ public abstract class ModelRepository {
 
   @Transaction
   public Model getByName(String fqn, Fields fields) throws IOException {
-    Model model = EntityUtil.validate(fqn, modelDAO().findByFQN(fqn), Model.class);
+    Model model = repo3.modelDAO().findEntityByName(fqn);
     return setFields(model, fields);
   }
 
@@ -138,7 +120,7 @@ public abstract class ModelRepository {
   @Transaction
   public PutResponse<Model> createOrUpdate(Model updated) throws IOException {
     validateRelationships(updated);
-    Model stored = JsonUtils.readValue(modelDAO().findByFQN(updated.getFullyQualifiedName()), Model.class);
+    Model stored = JsonUtils.readValue(repo3.modelDAO().findJsonByFqn(updated.getFullyQualifiedName()), Model.class);
     if (stored == null) {
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -162,50 +144,77 @@ public abstract class ModelRepository {
 
   @Transaction
   public Status addFollower(String modelId, String userId) throws IOException {
-    EntityUtil.validate(modelId, modelDAO().findById(modelId), Model.class);
-    return EntityUtil.addFollower(relationshipDAO(), userDAO(), modelId, Entity.MODEL, userId, Entity.USER) ?
+    repo3.modelDAO().findEntityById(modelId);
+    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), modelId, Entity.MODEL, userId,
+            Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
   public void deleteFollower(String modelId, String userId) {
-    EntityUtil.validateUser(userDAO(), userId);
-    EntityUtil.removeFollower(relationshipDAO(), modelId, userId);
+    EntityUtil.validateUser(repo3.userDAO(), userId);
+    EntityUtil.removeFollower(repo3.relationshipDAO(), modelId, userId);
   }
 
   @Transaction
   public void delete(String id) {
-    if (relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.MODEL) > 0) {
+    if (repo3.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.MODEL) > 0) {
       throw new IllegalArgumentException("Model is not empty");
     }
-    if (modelDAO().delete(id) <= 0) {
+    if (repo3.modelDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MODEL, id));
     }
-    relationshipDAO().deleteAll(id);
+    repo3.relationshipDAO().deleteAll(id);
   }
 
   @Transaction
   public EntityReference getOwnerReference(Model model) throws IOException {
-    return EntityUtil.populateOwner(userDAO(), teamDAO(), model.getOwner());
+    return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), model.getOwner());
   }
 
   public Model get(String id, Fields fields) throws IOException {
-    return setFields(EntityUtil.validate(id, modelDAO().findById(id), Model.class), fields);
+    return setFields(repo3.modelDAO().findEntityById(id), fields);
   }
 
-  private Model setFields(Model model, Fields fields) throws IOException {
+  @Override
+  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
+    return null;
+  }
+
+  @Override
+  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
+    return null;
+  }
+
+  @Override
+  public int listCount(String fqnPrefix) {
+    return 0;
+  }
+
+  @Override
+  public String getFullyQualifiedName(Model entity) {
+    return null;
+  }
+
+  @Override
+  public Model setFields(Model model, Fields fields) throws IOException {
     model.setDisplayName(model.getDisplayName());
     model.setOwner(fields.contains("owner") ? getOwner(model) : null);
     model.setDashboard(fields.contains("dashboard") ? getDashboard(model) : null);
     model.setFollowers(fields.contains("followers") ? getFollowers(model) : null);
     model.setTags(fields.contains("tags") ? getTags(model.getFullyQualifiedName()) : null);
-    model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(),
+    model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(repo3.usageDAO(),
             model.getId()) : null);
     return model;
   }
 
+  @Override
+  public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return null;
+  }
+
   private List<TagLabel> getTags(String fqn) {
-    return tagDAO().getTags(fqn);
+    return repo3.tagDAO().getTags(fqn);
   }
 
 
@@ -217,13 +226,12 @@ public abstract class ModelRepository {
 
   private void validateRelationships(Model model) throws IOException {
     model.setFullyQualifiedName(getFQN(model));
-    EntityUtil.populateOwner(userDAO(), teamDAO(), model.getOwner()); // Validate owner
+    EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), model.getOwner()); // Validate owner
     if (model.getDashboard() != null) {
       String dashboardId = model.getDashboard().getId().toString();
-      model.setDashboard(EntityUtil.getEntityReference(
-              EntityUtil.validate(dashboardId, dashboardDAO().findById(dashboardId), Dashboard.class)));
+      model.setDashboard(EntityUtil.getEntityReference(repo3.dashboardDAO().findEntityById(dashboardId)));
     }
-    model.setTags(EntityUtil.addDerivedTags(tagDAO(), model.getTags()));
+    model.setTags(EntityUtil.addDerivedTags(repo3.tagDAO(), model.getTags()));
   }
 
   private void addRelationships(Model model) throws IOException {
@@ -242,9 +250,9 @@ public abstract class ModelRepository {
     model.withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
     if (update) {
-      modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
+     repo3.modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
     } else {
-      modelDAO().insert(JsonUtils.pojoToJson(model));
+     repo3.modelDAO().insert(JsonUtils.pojoToJson(model));
     }
 
     // Restore the relationships
@@ -256,31 +264,30 @@ public abstract class ModelRepository {
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withId(original.getId());
     validateRelationships(updated);
-    ModelRepository.ModelUpdater modelUpdater = new ModelRepository.ModelUpdater(original, updated, true);
+    ModelRepositoryHelper.ModelUpdater modelUpdater = new ModelRepositoryHelper.ModelUpdater(original, updated, true);
     modelUpdater.updateAll();
     modelUpdater.store();
   }
 
   private EntityReference getOwner(Model model) throws IOException {
-    return model == null ? null : EntityUtil.populateOwner(model.getId(), relationshipDAO(),
-            userDAO(), teamDAO());
+    return model == null ? null : EntityUtil.populateOwner(model.getId(), repo3.relationshipDAO(),
+            repo3.userDAO(), repo3.teamDAO());
   }
 
   public void setOwner(Model model, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), model.getId(), Entity.MODEL, owner);
+    EntityUtil.setOwner(repo3.relationshipDAO(), model.getId(), Entity.MODEL, owner);
     model.setOwner(owner);
   }
 
   private EntityReference getDashboard(Model model) throws IOException {
     if (model != null) {
-      List<EntityReference> ids = relationshipDAO().findTo(model.getId().toString(), Relationship.USES.ordinal());
+      List<EntityReference> ids = repo3.relationshipDAO().findTo(model.getId().toString(), Relationship.USES.ordinal());
       if (ids.size() > 1) {
         LOG.warn("Possible database issues - multiple dashboards {} found for model {}", ids, model.getId());
       }
       if (!ids.isEmpty()) {
         String dashboardId = ids.get(0).getId().toString();
-        return EntityUtil.getEntityReference(EntityUtil.validate(dashboardId, dashboardDAO().findById(dashboardId),
-                Dashboard.class));
+        return EntityUtil.getEntityReference(repo3.dashboardDAO().findEntityById(dashboardId));
       }
     }
     return null;
@@ -288,27 +295,27 @@ public abstract class ModelRepository {
 
   public void setDashboard(Model model, EntityReference dashboard) {
     if (dashboard != null) {
-      relationshipDAO().insert(model.getId().toString(), model.getDashboard().getId().toString(),
+      repo3.relationshipDAO().insert(model.getId().toString(), model.getDashboard().getId().toString(),
               Entity.MODEL, Entity.DASHBOARD, Relationship.USES.ordinal());
     }
   }
 
   public void removeDashboard(Model model) {
-    relationshipDAO().deleteFrom(model.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
+    repo3.relationshipDAO().deleteFrom(model.getId().toString(), Relationship.USES.ordinal(), Entity.DASHBOARD);
   }
 
   private void applyTags(Model model) throws IOException {
     // Add model level tags by adding tag to model relationship
-    EntityUtil.applyTags(tagDAO(), model.getTags(), model.getFullyQualifiedName());
+    EntityUtil.applyTags(repo3.tagDAO(), model.getTags(), model.getFullyQualifiedName());
     model.setTags(getTags(model.getFullyQualifiedName())); // Update tag to handle additional derived tags
   }
 
   private List<EntityReference> getFollowers(Model model) throws IOException {
-    return model == null ? null : EntityUtil.getFollowers(model.getId(), relationshipDAO(), userDAO());
+    return model == null ? null : EntityUtil.getFollowers(model.getId(), repo3.relationshipDAO(), repo3.userDAO());
   }
 
   private Model validateModel(String id) throws IOException {
-    return EntityUtil.validate(id, modelDAO().findById(id), Model.class);
+    return repo3.modelDAO().findEntityById(id);
   }
 
   static class ModelEntityInterface implements EntityInterface {
@@ -367,13 +374,13 @@ public abstract class ModelRepository {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class ModelUpdater extends EntityUpdater {
+  public class ModelUpdater extends EntityUpdater3 {
     final Model orig;
     final Model updated;
 
     public ModelUpdater(Model orig, Model updated, boolean patchOperation) {
-      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated), patchOperation, relationshipDAO(),
-              tagDAO());
+      super(new ModelRepositoryHelper.ModelEntityInterface(orig), new ModelRepositoryHelper.ModelEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+              repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;
     }

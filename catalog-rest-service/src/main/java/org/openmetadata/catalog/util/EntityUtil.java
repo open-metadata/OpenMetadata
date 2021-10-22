@@ -36,25 +36,33 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.ChartDAO;
+import org.openmetadata.catalog.jdbi3.ChartDAO3;
 import org.openmetadata.catalog.jdbi3.DashboardDAO;
+import org.openmetadata.catalog.jdbi3.DashboardDAO3;
 import org.openmetadata.catalog.jdbi3.DatabaseDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseDAO3;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO3;
 import org.openmetadata.catalog.jdbi3.EntityRepository;
 import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO;
-import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsDAO;
+import org.openmetadata.catalog.jdbi3.MetricsDAO;
+import org.openmetadata.catalog.jdbi3.MetricsDAO3;
 import org.openmetadata.catalog.jdbi3.ModelDAO;
+import org.openmetadata.catalog.jdbi3.ModelDAO3;
 import org.openmetadata.catalog.jdbi3.PipelineDAO;
+import org.openmetadata.catalog.jdbi3.PipelineDAO3;
 import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.jdbi3.ReportDAO;
+import org.openmetadata.catalog.jdbi3.ReportDAO3;
 import org.openmetadata.catalog.jdbi3.TableDAO;
 import org.openmetadata.catalog.jdbi3.TableDAO3;
 import org.openmetadata.catalog.jdbi3.TagDAO3;
 import org.openmetadata.catalog.jdbi3.TagDAO;
-import org.openmetadata.catalog.jdbi3.TaskRepository.TaskDAO;
+import org.openmetadata.catalog.jdbi3.TaskDAO;
+import org.openmetadata.catalog.jdbi3.TaskDAO3;
 import org.openmetadata.catalog.jdbi3.TeamDAO3;
 import org.openmetadata.catalog.jdbi3.TeamDAO;
 import org.openmetadata.catalog.jdbi3.TopicDAO;
+import org.openmetadata.catalog.jdbi3.TopicDAO3;
 import org.openmetadata.catalog.jdbi3.UsageDAO;
 import org.openmetadata.catalog.jdbi3.UsageDAO3;
 import org.openmetadata.catalog.jdbi3.UserDAO;
@@ -208,8 +216,8 @@ public final class EntityUtil {
     }
   }
 
-  public static void validateUser(UserDAO3 userDAO3, String userId) {
-    if (!userDAO3.exists(userId)) {
+  public static void validateUser(UserDAO3 userDAO, String userId) {
+    if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
@@ -225,13 +233,13 @@ public final class EntityUtil {
   }
 
   // Get owner for a given entity
-  public static EntityReference populateOwner(UUID id, EntityRelationshipDAO3 entityRelationshipDAO, UserDAO3 userDAO3,
+  public static EntityReference populateOwner(UUID id, EntityRelationshipDAO3 entityRelationshipDAO, UserDAO3 userDAO,
                                               TeamDAO3 teamDAO) throws IOException {
     List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
-    return ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO3, teamDAO, ids.get(0));
+    return ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   /**
@@ -260,7 +268,7 @@ public final class EntityUtil {
     return owner;
   }
 
-  public static EntityReference populateOwner(UserDAO3 userDAO3, TeamDAO3 teamDAO,
+  public static EntityReference populateOwner(UserDAO3 userDAO, TeamDAO3 teamDAO,
                                               EntityReference owner)
           throws IOException {
     if (owner == null) {
@@ -268,7 +276,7 @@ public final class EntityUtil {
     }
     String id = owner.getId().toString();
     if (owner.getType().equalsIgnoreCase("user")) {
-      User ownerInstance = userDAO3.findEntityById(id);
+      User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
       if (Optional.ofNullable(ownerInstance.getDeactivated()).orElse(false)) {
         throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(id));
@@ -353,14 +361,14 @@ public final class EntityUtil {
     return list;
   }
 
-  public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO3 tableDAO3,
-                                                         DatabaseDAO3 databaseDAO3, MetricsDAO metricsDAO,
-                                                         DashboardDAO dashboardDAO, ReportDAO reportDAO,
-                                                         TopicDAO topicDAO, ChartDAO chartDAO,
-                                                         TaskDAO taskDAO, ModelDAO modelDAO,
-                                                         PipelineDAO pipelineDAO) throws IOException {
+  public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO3 tableDAO,
+                                                         DatabaseDAO3 databaseDAO, MetricsDAO3 metricsDAO,
+                                                         DashboardDAO3 dashboardDAO, ReportDAO3 reportDAO,
+                                                         TopicDAO3 topicDAO, ChartDAO3 chartDAO,
+                                                         TaskDAO3 taskDAO, ModelDAO3 modelDAO,
+                                                         PipelineDAO3 pipelineDAO) throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference3(ref, tableDAO3, databaseDAO3, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO,
+      getEntityReference3(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO,
               taskDAO, modelDAO, pipelineDAO);
     }
     return list;
@@ -409,43 +417,43 @@ public final class EntityUtil {
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
-  public static EntityReference getEntityReference3(EntityReference ref, TableDAO3 tableDAO3, DatabaseDAO3 databaseDAO3,
-                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                    ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
-                                                    TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
+  public static EntityReference getEntityReference3(EntityReference ref, TableDAO3 tableDAO, DatabaseDAO3 databaseDAO,
+                                                    MetricsDAO3 metricsDAO, DashboardDAO3 dashboardDAO,
+                                                    ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
+                                                    TaskDAO3 taskDAO, ModelDAO3 modelDAO, PipelineDAO3 pipelineDAO)
           throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
     String id = ref.getId().toString();
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      Table instance = tableDAO3.findEntityById(id);
+      Table instance = tableDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      Database instance = databaseDAO3.findEntityById(id);
+      Database instance = databaseDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
-      Metrics instance = EntityUtil.validate(id, metricsDAO.findById(id), Metrics.class);
+      Metrics instance = metricsDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      Dashboard instance = EntityUtil.validate(id, dashboardDAO.findById(id), Dashboard.class);
+      Dashboard instance = dashboardDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
-      Report instance = EntityUtil.validate(id, reportDAO.findById(id), Report.class);
+      Report instance = reportDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      Topic instance = EntityUtil.validate(id, topicDAO.findById(id), Topic.class);
+      Topic instance = topicDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      Chart instance = EntityUtil.validate(id, chartDAO.findById(id), Chart.class);
+      Chart instance = chartDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      Task instance = EntityUtil.validate(id, taskDAO.findById(id), Task.class);
+      Task instance = taskDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      Pipeline instance = EntityUtil.validate(id, pipelineDAO.findById(id), Pipeline.class);
+      Pipeline instance = pipelineDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      Model instance = EntityUtil.validate(id, modelDAO.findById(id), Model.class);
+      Model instance = modelDAO.findEntityById(id);
       return ref.withDescription(instance.getDescription()).withName(instance.getFullyQualifiedName());
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
@@ -461,14 +469,14 @@ public final class EntityUtil {
             reportDAO, topicDAO, chartDAO, taskDAO, modelDAO, pipelineDAO);
   }
 
-  public static EntityReference getEntityReference(String entity, UUID id, TableDAO3 tableDAO3,
-                                                   DatabaseDAO3 databaseDAO3,
-                                                   MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
-                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
-                                                   TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
+  public static EntityReference getEntityReference(String entity, UUID id, TableDAO3 tableDAO,
+                                                   DatabaseDAO3 databaseDAO,
+                                                   MetricsDAO3 metricsDAO, DashboardDAO3 dashboardDAO,
+                                                   ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
+                                                   TaskDAO3 taskDAO, ModelDAO3 modelDAO, PipelineDAO3 pipelineDAO)
           throws IOException {
     EntityReference ref = new EntityReference().withId(id).withType(entity);
-    return getEntityReference3(ref, tableDAO3, databaseDAO3, metricsDAO, dashboardDAO,
+    return getEntityReference3(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO,
             reportDAO, topicDAO, chartDAO, taskDAO, modelDAO, pipelineDAO);
   }
 
@@ -512,14 +520,14 @@ public final class EntityUtil {
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
 
-  public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO3 tableDAO3,
+  public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO3 tableDAO,
                                                          DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                          ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
                                                          DashboardDAO dashboardDAO, TaskDAO taskDAO, ModelDAO modelDAO,
                                                          PipelineDAO pipelineDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      Table instance = tableDAO3.findEntityByName(fqn);
+      Table instance = tableDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
       Database instance = EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class);
@@ -627,7 +635,7 @@ public final class EntityUtil {
   }
 
   public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
-                                                   TableDAO3 tableDAO3, DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
+                                                   TableDAO3 tableDAO, DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
                                                    DashboardDAO dashboardDAO, ReportDAO reportDAO, TopicDAO topicDAO,
                                                    TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
           throws IOException {
@@ -638,7 +646,7 @@ public final class EntityUtil {
     } else if (entityType.equalsIgnoreCase(Entity.TEAM)) {
       return getEntityReference(EntityUtil.validate(fqn, teamDAO.findByName(fqn), Team.class));
     } else if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      return getEntityReference(tableDAO3.findEntityByName(fqn));
+      return getEntityReference(tableDAO.findEntityByName(fqn));
     } else if (entityType.equalsIgnoreCase(Entity.DATABASE)) {
       return getEntityReference(EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class));
     } else if (entityType.equalsIgnoreCase(Entity.METRICS)) {
@@ -929,11 +937,11 @@ public final class EntityUtil {
             Relationship.FOLLOWS.ordinal()) > 0;
   }
 
-  public static boolean addFollower(EntityRelationshipDAO3 dao, UserDAO3 userDAO3,
+  public static boolean addFollower(EntityRelationshipDAO3 dao, UserDAO3 userDAO,
                                     String followedEntityId,
                                     String followedEntityType, String followerId, String followerEntity)
           throws IOException {
-    User user = userDAO3.findEntityById(followerId);
+    User user = userDAO.findEntityById(followerId);
     if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
@@ -963,13 +971,13 @@ public final class EntityUtil {
   }
 
   public static List<EntityReference> getFollowers(UUID followedEntityId, EntityRelationshipDAO3 entityRelationshipDAO,
-                                                   UserDAO3 userDAO3) throws IOException {
+                                                   UserDAO3 userDAO) throws IOException {
     List<String> followerIds = entityRelationshipDAO.findFrom(followedEntityId.toString(),
             Relationship.FOLLOWS.ordinal(),
             Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = userDAO3.findEntityById(followerId);
+      User user = userDAO.findEntityById(followerId);
       followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
     }
     return followers;
