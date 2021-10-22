@@ -37,7 +37,7 @@ public class BotsRepositoryHelper {
   }
 
   public Bots findByName(String name) throws IOException {
-    return EntityUtil.validate(name, repo3.botsDAO().findByName(name), Bots.class);
+    return repo3.botsDAO().findEntityByName(name);
   }
 
   public List<Bots> list(String name) throws IOException {

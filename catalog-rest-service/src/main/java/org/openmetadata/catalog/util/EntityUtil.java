@@ -521,40 +521,40 @@ public final class EntityUtil {
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO3 tableDAO,
-                                                         DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
-                                                         ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
-                                                         DashboardDAO dashboardDAO, TaskDAO taskDAO, ModelDAO modelDAO,
-                                                         PipelineDAO pipelineDAO)
+                                                         DatabaseDAO3 databaseDAO, MetricsDAO3 metricsDAO,
+                                                         ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
+                                                         DashboardDAO3 dashboardDAO, TaskDAO3 taskDAO, ModelDAO3 modelDAO,
+                                                         PipelineDAO3 pipelineDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = tableDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      Database instance = EntityUtil.validate(fqn, databaseDAO.findByFQN(fqn), Database.class);
+      Database instance = databaseDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
-      Metrics instance = EntityUtil.validate(fqn, metricsDAO.findByFQN(fqn), Metrics.class);
+      Metrics instance = metricsDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
-      Report instance = EntityUtil.validate(fqn, reportDAO.findByFQN(fqn), Report.class);
+      Report instance = reportDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      Topic instance = EntityUtil.validate(fqn, topicDAO.findByFQN(fqn), Topic.class);
+      Topic instance = topicDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      Chart instance = EntityUtil.validate(fqn, chartDAO.findByFQN(fqn), Chart.class);
+      Chart instance = chartDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      Dashboard instance = EntityUtil.validate(fqn, dashboardDAO.findByFQN(fqn), Dashboard.class);
+      Dashboard instance = dashboardDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      Task instance = EntityUtil.validate(fqn, taskDAO.findByFQN(fqn), Task.class);
+      Task instance = taskDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      Pipeline instance = EntityUtil.validate(fqn, pipelineDAO.findByFQN(fqn), Pipeline.class);
+      Pipeline instance = pipelineDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      Model instance = EntityUtil.validate(fqn, modelDAO.findByFQN(fqn), Model.class);
+      Model instance = modelDAO.findEntityByName(fqn);
       return getEntityReference(instance);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));

@@ -18,7 +18,37 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 
-public interface BotsRepository3 {
+public interface LineageRepository3 {
   @CreateSqlObject
-  BotsDAO3 botsDAO();
+  TableDAO3 tableDAO();
+
+  @CreateSqlObject
+  DatabaseDAO3 databaseDAO();
+
+  @CreateSqlObject
+  MetricsDAO3 metricsDAO();
+
+  @CreateSqlObject
+  DashboardDAO3 dashboardDAO();
+
+  @CreateSqlObject
+  ReportDAO3 reportDAO();
+
+  @CreateSqlObject
+  TopicDAO3 topicDAO();
+
+  @CreateSqlObject
+  ChartDAO3 chartDAO();
+
+  @CreateSqlObject
+  TaskDAO3 taskDAO();
+
+  @CreateSqlObject
+  PipelineDAO3 pipelineDAO();
+
+  @CreateSqlObject
+  ModelDAO3 modelDAO();
+
+  @CreateSqlObject
+  EntityRelationshipDAO3 relationshipDAO();
 }
