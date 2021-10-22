@@ -204,7 +204,7 @@ public class DatabaseResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                         schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);

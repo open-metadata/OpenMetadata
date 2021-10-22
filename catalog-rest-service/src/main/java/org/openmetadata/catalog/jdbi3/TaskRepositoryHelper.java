@@ -107,12 +107,6 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
   }
 
   @Transaction
-  public Task getByName(String fqn, Fields fields) throws IOException {
-    Task task = repo3.taskDAO().findEntityByName(fqn);
-    return setFields(task, fields);
-  }
-
-  @Transaction
   public Task create(Task task) throws IOException {
     validateRelationships(task);
     return createInternal(task);

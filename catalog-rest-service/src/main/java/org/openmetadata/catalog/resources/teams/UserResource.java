@@ -192,7 +192,7 @@ public class UserResource {
                       @PathParam("name") String name,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     User user = dao.getByName(name, fields);
     return addHref(uriInfo, user);
@@ -212,7 +212,7 @@ public class UserResource {
   public User getCurrentLoggedInUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                                      @Parameter(description = "Fields requested in the returned resource",
                                              schema = @Schema(type = "string", example = FIELDS))
-                                     @QueryParam("fields") String fieldsParam) throws IOException {
+                                     @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(currentUserName, fields);

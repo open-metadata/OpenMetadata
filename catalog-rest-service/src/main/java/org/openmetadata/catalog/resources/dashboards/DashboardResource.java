@@ -203,7 +203,7 @@ public class DashboardResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Dashboard dashboard = dao.getByName(fqn, fields);
     return addHref(uriInfo, dashboard);

@@ -118,12 +118,6 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline getByName(String fqn, Fields fields) throws IOException {
-    Pipeline pipeline = repo3.pipelineDAO().findEntityByName(fqn);
-    return setFields(pipeline, fields);
-  }
-
-  @Transaction
   public Pipeline create(Pipeline pipeline) throws IOException {
     validateRelationships(pipeline);
     return createInternal(pipeline);

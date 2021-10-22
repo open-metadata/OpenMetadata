@@ -109,12 +109,6 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
   }
 
   @Transaction
-  public Model getByName(String fqn, Fields fields) throws IOException {
-    Model model = repo3.modelDAO().findEntityByName(fqn);
-    return setFields(model, fields);
-  }
-
-  @Transaction
   public Model create(Model model) throws IOException {
     validateRelationships(model);
     return createInternal(model);

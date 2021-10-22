@@ -196,7 +196,7 @@ public class ModelResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Model model = dao.getByName(fqn, fields);
     return addHref(uriInfo, model);

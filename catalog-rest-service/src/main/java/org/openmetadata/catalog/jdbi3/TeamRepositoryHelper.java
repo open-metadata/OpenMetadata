@@ -79,11 +79,6 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
   }
 
   @Transaction
-  public Team getByName(String name, Fields fields) throws IOException {
-    return setFields(repo3.teamDAO().findEntityByName(name), fields);
-  }
-
-  @Transaction
   public TeamList listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException {
     // Forward scrolling, either because after != null or first page is being asked
     List<String> jsons = repo3.teamDAO().listAfter(limitParam + 1, after == null ? "" :

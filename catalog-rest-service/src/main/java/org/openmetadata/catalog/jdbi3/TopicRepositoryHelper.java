@@ -78,12 +78,6 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public Topic getByName(String fqn, Fields fields) throws IOException {
-    Topic topic = repo3.topicDAO().findEntityByName(fqn);
-    return setFields(topic, fields);
-  }
-
-  @Transaction
   public Topic create(Topic topic) throws IOException {
     validateRelationships(topic);
     return createInternal(topic);

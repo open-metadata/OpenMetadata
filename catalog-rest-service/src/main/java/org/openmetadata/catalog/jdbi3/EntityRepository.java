@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -42,6 +43,11 @@ public abstract class EntityRepository<T> {
   @Transaction
   public final T get(String id, Fields fields) throws IOException, ParseException {
     return setFields(dao.findEntityById(id), fields);
+  }
+
+  @Transaction
+  public final T getByName(String fqn, Fields fields) throws IOException, ParseException {
+    return setFields(dao.findEntityByName(fqn), fields);
   }
 
   /**

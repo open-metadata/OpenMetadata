@@ -189,7 +189,7 @@ public class TeamResource {
                         @PathParam("name") String name,
                         @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam) throws IOException {
+                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.getByName(name, fields));
   }

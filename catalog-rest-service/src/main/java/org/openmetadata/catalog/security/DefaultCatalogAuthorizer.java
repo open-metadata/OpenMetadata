@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -73,7 +74,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                   return false;
                 }
                 return true;
-              } catch (IOException | EntityNotFoundException ex) {
+              } catch (IOException | EntityNotFoundException | ParseException ex) {
                 return true;
               }
             })
@@ -92,7 +93,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
                   return false;
                 }
                 return true;
-              } catch (IOException |EntityNotFoundException ex) {
+              } catch (IOException | EntityNotFoundException | ParseException ex) {
                 return true;
               }
             })
@@ -121,7 +122,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return user.getName().equals(owner.getName());
       }
       return false;
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }
@@ -137,7 +138,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return false;
       }
       return user.getIsAdmin();
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }
@@ -153,7 +154,7 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
         return false;
       }
       return user.getIsBot();
-    } catch (IOException |EntityNotFoundException ex) {
+    } catch (IOException | EntityNotFoundException | ParseException ex) {
       return false;
     }
   }

@@ -201,7 +201,7 @@ public class TaskResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);
