@@ -1,15 +1,16 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
+import org.openmetadata.common.utils.CipherText;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -17,18 +18,34 @@ import java.util.List;
  * This gives a uniform access so that common boiler plate code can be reduced.
  */
 public abstract class EntityRepository<T> {
+  private final Class<T> entityClass;
   private final EntityDAO<T> dao;
 
-  EntityRepository(EntityDAO<T> entityDAO) {
+  EntityRepository(Class<T> entityClass, EntityDAO<T> entityDAO) {
+    this.entityClass = entityClass;
     this.dao = entityDAO;
   }
 
-  /**
-   * DAO related operations
-   */
   @Transaction
-  public final List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return dao.listAfter(fqnPrefix, limitParam, after);
+  public final ResultList<T> listAfter(Fields fields, String fqnPrefix, int limitParam, String after)
+          throws GeneralSecurityException, IOException, ParseException {
+    // forward scrolling, if after == null then first page is being asked
+    List<String> jsons = dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" :
+            CipherText.instance().decrypt(after));
+
+    List<T> entities = new ArrayList<>();
+    for (String json : jsons) {
+      entities.add(setFields(JsonUtils.readValue(json, entityClass), fields));
+    }
+    int total = dao.listCount(fqnPrefix);
+
+    String beforeCursor, afterCursor = null;
+    beforeCursor = after == null ? null : getFullyQualifiedName(entities.get(0));
+    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
+      entities.remove(limitParam);
+      afterCursor = getFullyQualifiedName(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
   @Transaction

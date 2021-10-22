@@ -56,7 +56,7 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
           "owner,dashboard,tags");
 
   public ModelRepositoryHelper(ModelRepository3 repo3) {
-    super(repo3.modelDAO());
+    super(Model.class, repo3.modelDAO());
     this.repo3 = repo3;
   }
 

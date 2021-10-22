@@ -151,7 +151,7 @@ public class UserResource {
     if (before != null) { // Reverse paging
       users = dao.listBefore(fields, limitParam, before);
     } else { // Forward paging or first page
-      users = dao.listAfter(fields, limitParam, after);
+      users = dao.listAfter(fields, null, limitParam, after);
     }
     Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
     return users;

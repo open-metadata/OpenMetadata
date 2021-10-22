@@ -136,25 +136,25 @@ public class PipelineResource {
                                   schema = @Schema(implementation = PipelineList.class)))
           })
   public ResultList<Pipeline> list(@Context UriInfo uriInfo,
-                                   @Context SecurityContext securityContext,
-                                   @Parameter(description = "Fields requested in the returned resource",
-                                           schema = @Schema(type = "string", example = FIELDS))
-                                   @QueryParam("fields") String fieldsParam,
-                                   @Parameter(description = "Filter pipelines by service name",
-                                           schema = @Schema(type = "string", example = "airflow"))
-                                   @QueryParam("service") String serviceParam,
-                                   @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " +
-                                           "default = 10)")
-                                   @DefaultValue("10")
-                                   @Min(1)
-                                   @Max(1000000)
-                                   @QueryParam("limit") int limitParam,
-                                   @Parameter(description = "Returns list of pipelines before this cursor",
-                                           schema = @Schema(type = "string"))
-                                   @QueryParam("before") String before,
-                                   @Parameter(description = "Returns list of pipelines after this cursor",
-                                           schema = @Schema(type = "string"))
-                                   @QueryParam("after") String after
+                            @Context SecurityContext securityContext,
+                            @Parameter(description = "Fields requested in the returned resource",
+                                    schema = @Schema(type = "string", example = FIELDS))
+                            @QueryParam("fields") String fieldsParam,
+                            @Parameter(description = "Filter pipelines by service name",
+                                    schema = @Schema(type = "string", example = "airflow"))
+                            @QueryParam("service") String serviceParam,
+                            @Parameter(description = "Limit the number pipelines returned. (1 to 1000000, " +
+                                    "default = 10)")
+                            @DefaultValue("10")
+                            @Min(1)
+                            @Max(1000000)
+                            @QueryParam("limit") int limitParam,
+                            @Parameter(description = "Returns list of pipelines before this cursor",
+                                    schema = @Schema(type = "string"))
+                            @QueryParam("before") String before,
+                            @Parameter(description = "Returns list of pipelines after this cursor",
+                                    schema = @Schema(type = "string"))
+                            @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);

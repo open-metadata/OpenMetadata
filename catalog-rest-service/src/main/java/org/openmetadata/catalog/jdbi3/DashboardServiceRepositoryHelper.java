@@ -42,7 +42,7 @@ public class DashboardServiceRepositoryHelper extends EntityRepository<Dashboard
   private final DashboardServiceRepository3 repo3;
 
   public DashboardServiceRepositoryHelper(DashboardServiceRepository3 repo3) {
-    super(repo3.dashboardServiceDAO());
+    super(DashboardService.class, repo3.dashboardServiceDAO());
     this.repo3 = repo3;
   }
 

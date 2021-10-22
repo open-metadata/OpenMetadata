@@ -58,33 +58,12 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
   }
 
   public TaskRepositoryHelper(TaskRepository3 repo3) {
-    super(repo3.taskDAO());
+    super(Task.class,repo3.taskDAO());
     this.repo3 = repo3;
   }
 
   private final TaskRepository3 repo3;
 
-  @Transaction
-  public TaskList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = repo3.taskDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Task> tasks = new ArrayList<>();
-    for (String json : jsons) {
-      tasks.add(setFields(JsonUtils.readValue(json, Task.class), fields));
-    }
-    int total = repo3.taskDAO().listCount(serviceName);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : tasks.get(0).getFullyQualifiedName();
-    if (tasks.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      tasks.remove(limitParam);
-      afterCursor = tasks.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new TaskList(tasks, beforeCursor, afterCursor, total);
-  }
 
   @Transaction
   public TaskList listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,

@@ -51,7 +51,7 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
 
   public ChartRepositoryHelper(ChartRepository3 repo3) {
-    super(repo3.chartDAO());
+    super(Chart.class, repo3.chartDAO());
     this.repo3 = repo3;
   }
 
@@ -59,12 +59,6 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
 
   public static String getFQN(Chart chart) {
     return (chart.getService().getName() + "." + chart.getName());
-  }
-
-  @Transaction
-  public ResultList<Chart> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(this, Chart.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction

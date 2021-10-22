@@ -41,7 +41,7 @@ public class MessagingServiceRepositoryHelper extends EntityRepository<Messaging
   private final MessagingServiceRepository3 repo3;
 
   public MessagingServiceRepositoryHelper(MessagingServiceRepository3 repo3) {
-    super(repo3.messagingServiceDAO());
+    super(MessagingService.class, repo3.messagingServiceDAO());
     this.repo3 = repo3;
   }
 

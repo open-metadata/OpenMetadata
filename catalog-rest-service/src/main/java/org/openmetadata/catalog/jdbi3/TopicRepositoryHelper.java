@@ -59,17 +59,11 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
   }
 
   public TopicRepositoryHelper(TopicRepository3 repo3) {
-    super(repo3.topicDAO());
+    super(Topic.class, repo3.topicDAO());
     this.repo3 = repo3;
   }
 
   private final TopicRepository3 repo3;
-
-  @Transaction
-  public ResultList<Topic> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(this, Topic.class, fields, serviceName, limitParam, after);
-  }
 
   @Transaction
   public ResultList<Topic> listBefore(Fields fields, String serviceName, int limitParam, String before) throws IOException,

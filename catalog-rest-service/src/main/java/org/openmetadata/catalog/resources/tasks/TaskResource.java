@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.TaskRepositoryHelper;
-import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -125,7 +124,6 @@ public class TaskResource {
           .split(","));
 
   @GET
-  @Valid
   @Operation(summary = "List tasks", tags = "tasks",
           description = "Get a list of tasks, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
@@ -135,30 +133,28 @@ public class TaskResource {
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = TaskList.class)))
           })
-  public TaskList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Task> list(@Context UriInfo uriInfo,
+                               @Context SecurityContext securityContext,
+                               @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter tasks by service name",
+                               @Parameter(description = "Filter tasks by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
+                               @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
-                        @Min(1)
-                        @Max(1000000)
-                        @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of tasks before this cursor",
+                               @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
+                               @Parameter(description = "Returns list of tasks before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of tasks after this cursor",
+                               @Parameter(description = "Returns list of tasks after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    TaskList tasks;
+    ResultList<Task> tasks;
     if (before != null) { // Reverse paging
       tasks = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page

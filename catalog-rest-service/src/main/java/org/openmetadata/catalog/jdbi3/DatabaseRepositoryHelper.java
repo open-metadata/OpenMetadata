@@ -58,7 +58,7 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
           "owner,service, usageSummary");
 
   public DatabaseRepositoryHelper(DatabaseRepository3 repo3) {
-    super(repo3.databaseDAO());
+    super(Database.class, repo3.databaseDAO());
     this.repo3 = repo3;
   }
 
@@ -74,12 +74,6 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
       refList.add(EntityUtil.getEntityReference(table));
     }
     return refList;
-  }
-
-  @Transaction
-  public ResultList<Database> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(this, Database.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction

@@ -40,7 +40,7 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineService> {
   public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) {
-    super(repo3.pipelineServiceDAO());
+    super(PipelineService.class, repo3.pipelineServiceDAO());
     this.repo3 = repo3;
   }
 

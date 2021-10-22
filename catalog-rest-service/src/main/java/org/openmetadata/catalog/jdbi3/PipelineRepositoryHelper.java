@@ -55,7 +55,7 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
           "owner,service,tags,tasks");
 
   public PipelineRepositoryHelper(PipelineRepository3 repo3) {
-    super(repo3.pipelineDAO());
+    super(Pipeline.class, repo3.pipelineDAO());
     this.repo3 = repo3;
   }
 
@@ -64,24 +64,6 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
   }
-
-  @Transaction
-  public PipelineList listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons = repo3.pipelineDAO().listAfter(serviceName, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Pipeline> pipelines = new ArrayList<>();
-    for (String json : jsons) {
-      pipelines.add(setFields(JsonUtils.readValue(json, Pipeline.class), fields));
-    }
-    int total = repo3.pipelineDAO().listCount(serviceName);
-
-    @Override
-    public int listCount(String fqnPrefix) {
-      return pipelineDAO().listCount(fqnPrefix);
-    }
 
   @Transaction
   public PipelineList listBefore(Fields fields, String serviceName, int limitParam, String before)

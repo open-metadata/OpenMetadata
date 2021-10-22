@@ -39,7 +39,7 @@ public class CatalogHealthCheck extends HealthCheck {
   @Override
   protected Result check() throws Exception {
     try {
-      userRepositoryHelper.listAfter(fields, 1, "");
+      userRepositoryHelper.listAfter(fields, null, 1, "");
       return Result.healthy();
     } catch (IOException e) {
       return Result.unhealthy(e.getMessage());

@@ -42,7 +42,7 @@ public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseSe
   private final DatabaseServiceRepository3 repo3;
 
   public DatabaseServiceRepositoryHelper(DatabaseServiceRepository3 repo3) {
-    super(repo3.dbServiceDAO());
+    super(DatabaseService.class, repo3.dbServiceDAO());
     this.repo3 = repo3;
   }
 

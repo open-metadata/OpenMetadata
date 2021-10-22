@@ -711,28 +711,6 @@ public final class EntityUtil {
     }
   }
 
-  public static <T> ResultList<T> listAfter(EntityRepository<T> dao, Class<T> clz, Fields fields, String prefixFqn,
-                                            int limitParam, String after)
-          throws IOException, ParseException, GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(prefixFqn, limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<T> entities = new ArrayList<>();
-    for (String json : jsons) {
-      entities.add(dao.setFields(JsonUtils.readValue(json, clz), fields));
-    }
-    int total = dao.listCount(prefixFqn);
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : dao.getFullyQualifiedName(entities.get(0));
-    if (entities.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      entities.remove(limitParam);
-      afterCursor = dao.getFullyQualifiedName(entities.get(limitParam - 1));
-    }
-    return dao.getResultList(entities, beforeCursor, afterCursor, total);
-  }
-
   public static <T> ResultList<T> listBefore(EntityRepository<T> dao, Class<T> clz, Fields fields, String databaseFQN,
                                              int limitParam, String before)
           throws IOException, ParseException, GeneralSecurityException {

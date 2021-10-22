@@ -40,7 +40,7 @@ public class ReportRepositoryHelper extends EntityRepository<Report>{
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
 
   public ReportRepositoryHelper(ReportRepository3 repo3) {
-    super(repo3.reportDAO());
+    super(Report.class, repo3.reportDAO());
     this.repo3 = repo3;
   }
 

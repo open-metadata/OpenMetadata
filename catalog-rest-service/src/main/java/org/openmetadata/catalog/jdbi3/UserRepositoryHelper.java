@@ -63,7 +63,7 @@ public class UserRepositoryHelper extends EntityRepository<User> {
 
 
   public UserRepositoryHelper(UserRepository3 repo3) {
-    super(repo3.userDAO());
+    super(User.class,repo3.userDAO());
     this.repo3 = repo3;
   }
 
@@ -82,12 +82,6 @@ public class UserRepositoryHelper extends EntityRepository<User> {
   public ResultList<User> getResultList(List<User> entities, String beforeCursor, String afterCursor,
                                         int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new UserList(entities, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public ResultList<User> listAfter(Fields fields, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(this, User.class, fields, null, limitParam, after);
   }
 
   @Transaction

@@ -56,7 +56,7 @@ public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
           "owner,service,tags,charts");
 
   public DashboardRepositoryHelper(DashboardRepository3 repo3) {
-    super(repo3.dashboardDAO());
+    super(Dashboard.class, repo3.dashboardDAO());
     this.repo3 = repo3;
   }
 
@@ -75,12 +75,6 @@ public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
   public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor,
                                              int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new DashboardList(entities, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public ResultList<Dashboard> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
-          GeneralSecurityException, ParseException {
-    return EntityUtil.listAfter(this, Dashboard.class, fields, serviceName, limitParam, after);
   }
 
   @Transaction

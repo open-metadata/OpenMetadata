@@ -44,7 +44,7 @@ public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
 
   public MetricsRepositoryHelper(MetricsRepository3 repo3) {
-    super(repo3.metricsDAO());
+    super(Metrics.class, repo3.metricsDAO());
     this.repo3 = repo3;
   }
 

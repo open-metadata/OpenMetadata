@@ -51,7 +51,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
 
   public TeamRepositoryHelper(TeamRepository3 repo3) {
-    super(repo3.teamDAO());
+    super(Team.class,repo3.teamDAO());
     this.repo3 = repo3;
   }
 

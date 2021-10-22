@@ -81,7 +81,7 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
           "owner,columns,database,tags,tableConstraints");
 
   public TableRepositoryHelper(TableRepository3 repo3) {
-    super(repo3.tableDAO());
+    super(Table.class, repo3.tableDAO());
     this.repo3 = repo3;
   }
 
@@ -118,12 +118,6 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
 
   public static String getFQN(Table table) {
     return (table.getDatabase().getName() + "." + table.getName());
-  }
-
-  @Transaction
-  public ResultList<Table> listAfter(Fields fields, String databaseFQN, int limitParam, String after)
-          throws IOException, ParseException, GeneralSecurityException {
-    return EntityUtil.listAfter(this, Table.class, fields, databaseFQN, limitParam, after);
   }
 
   @Transaction
