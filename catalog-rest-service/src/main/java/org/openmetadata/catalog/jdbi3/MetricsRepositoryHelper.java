@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
@@ -29,7 +30,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;

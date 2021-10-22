@@ -16,6 +16,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.DailyCount;
 import org.openmetadata.catalog.type.EntityReference;
@@ -23,9 +26,6 @@ import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.skife.jdbi.v2.StatementContext;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.skife.jdbi.v2.tweak.ResultSetMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,9 +96,9 @@ public class UsageRepositoryHelper {
     }
   }
 
-  public static class UsageDetailsMapper implements ResultSetMapper<UsageDetails> {
+  public static class UsageDetailsMapper implements RowMapper<UsageDetails> {
     @Override
-    public UsageDetails map(int i, ResultSet r, StatementContext statementContext) throws SQLException {
+    public UsageDetails map(ResultSet r, StatementContext ctx) throws SQLException {
       UsageStats dailyStats = new UsageStats().withCount(r.getInt("count1")).withPercentileRank(r.getDouble(
               "percentile1"));
       UsageStats weeklyStats = new UsageStats().withCount(r.getInt("count7")).withPercentileRank(r.getDouble(

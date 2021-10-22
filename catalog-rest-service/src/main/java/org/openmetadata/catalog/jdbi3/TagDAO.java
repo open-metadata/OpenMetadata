@@ -1,11 +1,11 @@
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.jdbi3.TagRepository.TagLabelMapper;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.catalog.jdbi3.TagRepositoryHelper.TagLabelMapper;
 import org.openmetadata.catalog.type.TagLabel;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.customizers.RegisterMapper;
 
 import java.util.List;
 
@@ -16,7 +16,7 @@ import java.util.List;
  * Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except
  * href, usageCount and children tags which are constructed on the fly as needed.
  */
-@RegisterMapper(TagLabelMapper.class)
+@RegisterRowMapper(TagLabelMapper.class)
 public interface TagDAO {
   @SqlUpdate("INSERT INTO tag_category (json) VALUES (:json)")
   void insertCategory(@Bind("json") String json);

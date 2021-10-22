@@ -42,7 +42,6 @@
     <slf4j.version>1.7.31</slf4j.version>
     <jackson.version>2.12.3</jackson.version>
     <dropwizard.version>2.0.23</dropwizard.version>
-    <dropwizard-jdbi.version>2.0.0-rc9</dropwizard-jdbi.version>
     <dropwizard-jdbi3.version>2.0.25</dropwizard-jdbi3.version>
     <jersey-media-multipart.version>2.33</jersey-media-multipart.version>
     <jersey-client.version>2.33</jersey-client.version>
@@ -61,7 +60,6 @@
     <jaxb.version>2.3.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.6</jacoco-plugin.version>
-    <jdbi.version>2.78</jdbi.version>
     <jdbi3.version>3.23.0</jdbi3.version>
     <commons-cli.version>1.4</commons-cli.version>
     <commons-io.version>2.10.0</commons-io.version>
@@ -143,11 +141,6 @@
         <groupId>io.dropwizard</groupId>
         <artifactId>dropwizard-jdbi3</artifactId>
         <version>${dropwizard-jdbi3.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.jdbi</groupId>
-        <artifactId>jdbi</artifactId>
-        <version>${jdbi.version}</version>
       </dependency>
       <dependency>
         <groupId>org.jdbi</groupId>

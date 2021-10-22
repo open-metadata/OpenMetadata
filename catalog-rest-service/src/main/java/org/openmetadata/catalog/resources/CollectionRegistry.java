@@ -49,6 +49,8 @@ import org.openmetadata.catalog.jdbi3.ReportRepository3;
 import org.openmetadata.catalog.jdbi3.ReportRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TableRepository3;
 import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TagRepository3;
+import org.openmetadata.catalog.jdbi3.TagRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TaskRepository3;
 import org.openmetadata.catalog.jdbi3.TaskRepositoryHelper;
 import org.openmetadata.catalog.jdbi3.TeamRepository3;
@@ -74,6 +76,7 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
@@ -84,13 +87,13 @@ import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.reflections.Reflections;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.Path;
 import javax.ws.rs.core.UriInfo;
 import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -203,7 +206,7 @@ public final class CollectionRegistry {
   /**
    * Register resources from CollectionRegistry
    */
-  public void registerResources(DBI jdbi, Environment environment, CatalogAuthorizer authorizer) {
+  public void registerResources(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
@@ -222,7 +225,7 @@ public final class CollectionRegistry {
   /**
    * Register resources from CollectionRegistry
    */
-  public void registerResources3(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
+  public void registerResources3(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) throws IOException {
     LOG.info("Initializing jdbi3");
 
     final TableRepository3 daoObject = jdbi.onDemand(TableRepository3.class);
@@ -359,6 +362,14 @@ public final class CollectionRegistry {
     environment.jersey().register(usageResource);
     LOG.info("Registering {}", usageResource);
 
+    final TagRepository3 tagRepository3 = jdbi.onDemand(TagRepository3.class);
+    TagRepositoryHelper tagRepositoryHelper = new TagRepositoryHelper(tagRepository3);
+    TagResource tagResource = new TagResource(tagRepositoryHelper,
+            authorizer);
+    tagResource.initialize();
+    environment.jersey().register(tagResource);
+    LOG.info("Registering {}", tagResource);
+
     LOG.info("Initialized jdbi3");
   }
 
@@ -403,7 +414,7 @@ public final class CollectionRegistry {
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
-  private static Object createResource(DBI jdbi, String resourceClass, String repositoryClass,
+  private static Object createResource(Jdbi jdbi, String resourceClass, String repositoryClass,
                                        CatalogAuthorizer authorizer) throws
           ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {

@@ -34,13 +34,13 @@ public interface UserDAO3 extends EntityDAO<User> {
                   "ORDER BY name DESC " + // Pagination ordering by user name
                   "LIMIT :limit" +
                   ") last_rows_subquery ORDER BY name")
-  List<String> listBefore(@org.skife.jdbi.v2.sqlobject.Bind("limit") int limit, @org.skife.jdbi.v2.sqlobject.Bind("before") String before);
+  List<String> listBefore(@Bind("limit") int limit, @Bind("before") String before);
 
   @SqlQuery("SELECT json FROM user_entity WHERE " +
           "name > :after " + // Pagination by user name
           "ORDER BY name " + // Pagination ordering by user name
           "LIMIT :limit")
-  List<String> listAfter(@org.skife.jdbi.v2.sqlobject.Bind("limit") int limit, @org.skife.jdbi.v2.sqlobject.Bind("after") String after);
+  List<String> listAfter(@Bind("limit") int limit, @Bind("after") String after);
 
   @SqlQuery("SELECT count(*) FROM user_entity")
   int listCount();

@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.feed.Thread;
 import org.openmetadata.catalog.resources.feeds.FeedUtil;
@@ -26,7 +27,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.skife.jdbi.v2.sqlobject.Transaction;
 
 import java.io.IOException;
 import java.util.ArrayList;

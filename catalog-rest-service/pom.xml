@@ -33,10 +33,6 @@
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
-      <artifactId>dropwizard-jdbi</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-jdbi3</artifactId>
     </dependency>
     <dependency>

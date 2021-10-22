@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.maven.shared.utils.io.IOUtil;
-import org.openmetadata.catalog.jdbi3.TagRepository;
+import org.openmetadata.catalog.jdbi3.TagRepositoryHelper;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -67,11 +67,11 @@ import java.util.regex.Pattern;
 @Path("/v1/tags")
 @Api(value = "Tags resources collection", tags = "Tags resources collection")
 @Produces(MediaType.APPLICATION_JSON)
-@Collection(name = "tags", repositoryClass = "org.openmetadata.catalog.jdbi3.TagRepository")
+//@Collection(name = "tags", repositoryClass = "org.openmetadata.catalog.jdbi3.TagRepositoryHelper")
 public class TagResource {
   public static final Logger LOG = LoggerFactory.getLogger(TagResource.class);
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  private final TagRepository dao;
+  private final TagRepositoryHelper dao;
   private final CatalogAuthorizer authorizer;
 
   static class CategoryList extends ResultList<TagCategory> {
@@ -85,8 +85,8 @@ public class TagResource {
   }
 
   @Inject
-  public TagResource(TagRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TagRepository must not be null");
+  public TagResource(TagRepositoryHelper dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "TagRepositoryHelper must not be null");
     this.dao = dao;
     this.authorizer = authorizer;
   }

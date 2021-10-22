@@ -18,7 +18,6 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.openmetadata.catalog.type.EntityReference;
-import org.skife.jdbi.v2.StatementContext;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

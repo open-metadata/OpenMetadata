@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
@@ -32,9 +33,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import java.io.IOException;
@@ -50,7 +48,6 @@ import java.util.UUID;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
 public class TeamRepositoryHelper implements EntityRepository<Team> {
-  private static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
 
   public TeamRepositoryHelper(TeamRepository3 repo3) { this.repo3 = repo3; }

@@ -17,9 +17,9 @@
 package org.openmetadata.catalog.exception;
 
 import io.dropwizard.jersey.errors.ErrorMessage;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.openmetadata.catalog.security.AuthenticationException;
 import org.openmetadata.catalog.security.AuthorizationException;
-import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,15 +56,6 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
               .entity(new ErrorMessage(response.getStatus(), ex.getLocalizedMessage()))
               .build();
     } else if (ex instanceof UnableToExecuteStatementException) {
-      // TODO remove this
-      if (ex.getCause() instanceof SQLIntegrityConstraintViolationException) {
-        return Response.status(CONFLICT)
-                .type(MediaType.APPLICATION_JSON_TYPE)
-                .entity(new ErrorMessage(CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-                .build();
-
-      }
-    } else if (ex instanceof org.jdbi.v3.core.statement.UnableToExecuteStatementException) {
       // TODO remove this
       if (ex.getCause() instanceof SQLIntegrityConstraintViolationException) {
         return Response.status(CONFLICT)
