@@ -147,7 +147,8 @@ public final class CollectionRegistry {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, authorizer);
+        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+        Object resource = createResource(daoObject, resourceClass, authorizer);
         environment.jersey().register(resource);
         LOG.info("Registering {}", resourceClass);
       } catch (Exception ex) {
@@ -194,14 +195,13 @@ public final class CollectionRegistry {
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
-  private static Object createResource(Jdbi jdbi, String resourceClass, CatalogAuthorizer authorizer) throws
+  private static Object createResource(CollectionDAO daoObject, String resourceClass, CatalogAuthorizer authorizer) throws
           ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
-    final CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
     try {
       LOG.info("Creating resource {}", resourceClass);
       resource = clz.getDeclaredConstructor(CollectionDAO.class, CatalogAuthorizer.class).newInstance(daoObject,
