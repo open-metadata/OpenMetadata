@@ -80,7 +80,7 @@ public class FeedRepository {
 
     mentions.stream().distinct().forEach(mention ->
             dao.fieldRelationshipDAO().insert(mention.getFullyQualifiedFieldValue(), thread.getId().toString(),
-            mention.getFullyQualifiedFieldType(), "thread", Relationship.MENTIONED_IN.ordinal()));
+                    mention.getFullyQualifiedFieldType(), "thread", Relationship.MENTIONED_IN.ordinal()));
 
     return thread;
   }
@@ -162,8 +162,6 @@ public class FeedRepository {
         threads.add(EntityUtil.validate(t, dao.feedDAO().findById(t), Thread.class));
       }
     }
-
     return threads;
   }
-
 }

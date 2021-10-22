@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as JSON
  * document except href, usageCount and children tags which are constructed on the fly as needed.
- *
+ * <p>
  * Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except
  * href, usageCount and children tags which are constructed on the fly as needed.
  */

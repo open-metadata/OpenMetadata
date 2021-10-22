@@ -60,7 +60,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   @Transaction
   public PutResponse<Metrics> createOrUpdate(Metrics updated) throws IOException {
     validateRelationships(updated);
-    Metrics stored = JsonUtils.readValue(dao.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()), Metrics.class);
+    Metrics stored = JsonUtils.readValue(dao.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()),
+            Metrics.class);
     if (stored == null) {  // Metrics does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -87,7 +88,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public ResultList<Metrics> getResultList(List<Metrics> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList<Metrics> getResultList(List<Metrics> entities, String beforeCursor, String afterCursor,
+                                           int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new MetricsList(entities);
   }
 
@@ -148,7 +150,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   private EntityReference getOwner(Metrics metrics) throws IOException {
-    return metrics == null ? null : EntityUtil.populateOwner(metrics.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+    return metrics == null ? null : EntityUtil.populateOwner(metrics.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO());
   }
 
   public void setOwner(Metrics metrics, EntityReference owner) {
@@ -227,7 +230,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     final Metrics updated;
 
     public MetricsUpdater(Metrics orig, Metrics updated, boolean patchOperation) {
-      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation,
+              dao.relationshipDAO(),
               dao.tagDAO());
       this.orig = orig;
       this.updated = updated;

@@ -143,7 +143,8 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   @Override
-  public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
     return new ModelList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -184,9 +185,9 @@ public class ModelRepository extends EntityRepository<Model> {
     model.withOwner(null).withDashboard(null).withHref(null).withTags(null);
 
     if (update) {
-     dao.modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
+      dao.modelDAO().update(model.getId().toString(), JsonUtils.pojoToJson(model));
     } else {
-     dao.modelDAO().insert(JsonUtils.pojoToJson(model));
+      dao.modelDAO().insert(JsonUtils.pojoToJson(model));
     }
 
     // Restore the relationships
@@ -313,7 +314,8 @@ public class ModelRepository extends EntityRepository<Model> {
     final Model updated;
 
     public ModelUpdater(Model orig, Model updated, boolean patchOperation) {
-      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated),
+              patchOperation, dao.relationshipDAO(),
               dao.tagDAO());
       this.orig = orig;
       this.updated = updated;

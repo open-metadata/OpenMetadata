@@ -45,7 +45,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class ChartRepository extends EntityRepository<Chart>{
+public class ChartRepository extends EntityRepository<Chart> {
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
   private final CollectionDAO dao;
@@ -158,7 +158,8 @@ public class ChartRepository extends EntityRepository<Chart>{
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
-    return chart != null ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
+    return chart != null ? EntityUtil.populateOwner(chart.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO()) : null;
   }
 
   private void setOwner(Chart chart, EntityReference owner) {
@@ -186,7 +187,8 @@ public class ChartRepository extends EntityRepository<Chart>{
   }
 
   @Override
-  public ResultList<Chart> getResultList(List<Chart> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList<Chart> getResultList(List<Chart> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 

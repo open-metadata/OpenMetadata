@@ -99,7 +99,8 @@ public class TagRepository {
 
   @Transaction
   public TagCategory getCategory(String categoryName, Fields fields) throws IOException {
-    TagCategory category = EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
+    TagCategory category = EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName),
+            TagCategory.class);
     category = setFields(category, fields);
     return populateCategoryTags(category, fields);
   }

@@ -95,7 +95,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   public PutResponse<Database> createOrUpdate(Database updated) throws IOException {
     validateRelationships(updated);
     Database stored = JsonUtils.readValue(dao.databaseDAO().findJsonByFqn(updated.getFullyQualifiedName()),
-                    Database.class);
+            Database.class);
     if (stored == null) {  // Database does not exist. Create a new one
       return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
@@ -168,7 +168,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public EntityReference getOwner(Database database) throws IOException {
-    return database != null ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO())
+    return database != null ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO())
             : null;
   }
 

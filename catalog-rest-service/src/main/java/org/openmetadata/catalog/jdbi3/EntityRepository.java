@@ -49,7 +49,8 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listBefore(Fields fields, String fqnPrefix, int limitParam, String before) throws IOException, GeneralSecurityException, ParseException {
+  public final ResultList<T> listBefore(Fields fields, String fqnPrefix, int limitParam, String before)
+          throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
 
@@ -68,7 +69,7 @@ public abstract class EntityRepository<T> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-//  @Transaction
+  //  @Transaction
 //  public final int listCount(String fqnPrefix) {
 //    return dao.listCount(fqnPrefix);
 //  }
@@ -91,5 +92,5 @@ public abstract class EntityRepository<T> {
   public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
 
   public abstract ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor,
-                                     int total) throws GeneralSecurityException, UnsupportedEncodingException;
+                                              int total) throws GeneralSecurityException, UnsupportedEncodingException;
 }

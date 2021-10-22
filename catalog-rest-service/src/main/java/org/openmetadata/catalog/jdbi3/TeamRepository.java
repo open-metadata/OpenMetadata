@@ -51,7 +51,7 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(Team.class,dao.teamDAO());
+    super(Team.class, dao.teamDAO());
     this.dao = dao;
   }
 
@@ -122,6 +122,7 @@ public class TeamRepository extends EntityRepository<Team> {
     // Restore the relationships
     team.withUsers(users);
   }
+
   private void patch(Team original, Team updated) throws IOException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
@@ -158,7 +159,8 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public ResultList<Team> getResultList(List<Team> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList<Team> getResultList(List<Team> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
     return new TeamList(entities, beforeCursor, afterCursor, total);
   }
 

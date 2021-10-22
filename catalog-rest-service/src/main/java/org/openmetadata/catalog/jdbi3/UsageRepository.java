@@ -91,7 +91,8 @@ public class UsageRepository {
 
     // If table usage was reported, add the usage count to database
     if (entityType.equalsIgnoreCase(Entity.TABLE)) {
-      List<String> databaseIds = dao.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+      List<String> databaseIds = dao.relationshipDAO().findFrom(entityId, Relationship.CONTAINS.ordinal(),
+              Entity.DATABASE);
       dao.usageDAO().insertOrUpdateCount(usage.getDate(), databaseIds.get(0), Entity.DATABASE, usage.getCount());
     }
   }

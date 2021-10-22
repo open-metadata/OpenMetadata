@@ -165,7 +165,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
-    return topic != null ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
+    return topic != null ? EntityUtil.populateOwner(topic.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO()) : null;
   }
 
   private void setOwner(Topic topic, EntityReference owner) {

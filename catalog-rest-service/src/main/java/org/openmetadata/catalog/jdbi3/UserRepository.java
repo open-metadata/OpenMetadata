@@ -62,7 +62,7 @@ public class UserRepository extends EntityRepository<User> {
 
 
   public UserRepository(CollectionDAO dao) {
-    super(User.class,dao.userDAO());
+    super(User.class, dao.userDAO());
     this.dao = dao;
   }
 
@@ -184,8 +184,9 @@ public class UserRepository extends EntityRepository<User> {
       ownedEntities.addAll(dao.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.getEntityReference(ownedEntities, dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(),
-            dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    return EntityUtil.getEntityReference(ownedEntities, dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(),
+            dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(),
+            dao.pipelineDAO());
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {

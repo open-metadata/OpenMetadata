@@ -36,7 +36,7 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReportRepository extends EntityRepository<Report>{
+public class ReportRepository extends EntityRepository<Report> {
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
   private final CollectionDAO dao;
 
@@ -96,8 +96,8 @@ public class ReportRepository extends EntityRepository<Report>{
   public Report setFields(Report report, Fields fields) throws IOException {
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setService(fields.contains("service") ? getService(report) : null);
-    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), report.getId()) :
-            null);
+    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
+            report.getId()) : null);
     return report;
   }
 
@@ -138,7 +138,8 @@ public class ReportRepository extends EntityRepository<Report>{
   }
 
   private EntityReference getOwner(Report report) throws IOException {
-    return report == null ? null : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO());
+    return report == null ? null : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO());
   }
 
   public void setOwner(Report report, EntityReference owner) {
@@ -150,5 +151,4 @@ public class ReportRepository extends EntityRepository<Report>{
     EntityUtil.updateOwner(dao.relationshipDAO(), origOwner, newOwner, report.getId(), Entity.REPORT);
     report.setOwner(newOwner);
   }
-
 }

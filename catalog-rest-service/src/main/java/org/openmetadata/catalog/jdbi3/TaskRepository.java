@@ -46,7 +46,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class TaskRepository extends EntityRepository<Task>{
+public class TaskRepository extends EntityRepository<Task> {
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
           "taskConfig,tags,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
@@ -57,7 +57,7 @@ public class TaskRepository extends EntityRepository<Task>{
   }
 
   public TaskRepository(CollectionDAO dao) {
-    super(Task.class,dao.taskDAO());
+    super(Task.class, dao.taskDAO());
     this.dao = dao;
   }
 
@@ -161,7 +161,8 @@ public class TaskRepository extends EntityRepository<Task>{
   }
 
   public EntityReference getOwner(Task task) throws IOException {
-    return task != null ? EntityUtil.populateOwner(task.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
+    return task != null ?
+            EntityUtil.populateOwner(task.getId(), dao.relationshipDAO(), dao.userDAO(), dao.teamDAO()) : null;
   }
 
   private void setOwner(Task task, EntityReference owner) {
@@ -192,7 +193,8 @@ public class TaskRepository extends EntityRepository<Task>{
   }
 
   @Override
-  public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
     return new TaskList(entities, beforeCursor, afterCursor, total);
   }
 
@@ -288,7 +290,8 @@ public class TaskRepository extends EntityRepository<Task>{
     final Task updated;
 
     public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
-      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated),
+              patchOperation, dao.relationshipDAO(),
               dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
