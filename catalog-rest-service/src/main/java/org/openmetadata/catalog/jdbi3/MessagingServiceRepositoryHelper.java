@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -90,16 +91,18 @@ public class MessagingServiceRepositoryHelper extends EntityRepository<Messaging
 
   @Override
   public String getFullyQualifiedName(MessagingService entity) {
-    return null;
+    return entity.getName();
   }
 
   @Override
   public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
-    return null;
+    return entity;
   }
 
   @Override
-  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor,
+                                                    String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new MessagingServiceList(entities);
   }
 }

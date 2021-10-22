@@ -189,7 +189,7 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
 
   @Override
   public String getFullyQualifiedName(Pipeline entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override
@@ -209,7 +209,7 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   @Override
   public ResultList<Pipeline> getResultList(List<Pipeline> entities, String beforeCursor, String afterCursor,
                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new PipelineList(entities, beforeCursor, afterCursor, total);
   }
 
   private List<TagLabel> getTags(String fqn) {

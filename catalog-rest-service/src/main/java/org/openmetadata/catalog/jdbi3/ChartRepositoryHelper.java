@@ -187,7 +187,7 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
 
   @Override
   public String getFullyQualifiedName(Chart entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override

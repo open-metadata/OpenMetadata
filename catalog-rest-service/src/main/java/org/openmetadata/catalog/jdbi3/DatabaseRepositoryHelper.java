@@ -208,7 +208,7 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
 
   @Override
   public String getFullyQualifiedName(Database entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   public Database setFields(Database database, Fields fields) throws IOException {

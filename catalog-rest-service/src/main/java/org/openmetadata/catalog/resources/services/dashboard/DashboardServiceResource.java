@@ -87,8 +87,8 @@ public class DashboardServiceResource {
     this.authorizer = authorizer;
   }
 
-  static class DashboardServiceList extends ResultList<DashboardService> {
-    DashboardServiceList(List<DashboardService> data) {
+  public static class DashboardServiceList extends ResultList<DashboardService> {
+    public DashboardServiceList(List<DashboardService> data) {
       super(data);
     }
   }

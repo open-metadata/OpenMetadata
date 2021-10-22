@@ -79,8 +79,8 @@ public class MetricsResource {
     this.dao = dao;
   }
 
-  static class MetricsList extends ResultList<Metrics> {
-    MetricsList(List<Metrics> data) {
+  public static class MetricsList extends ResultList<Metrics> {
+    public MetricsList(List<Metrics> data) {
       super(data);
     }
   }

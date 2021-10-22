@@ -193,7 +193,7 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
 
   @Override
   public String getFullyQualifiedName(Topic entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override

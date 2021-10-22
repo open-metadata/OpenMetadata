@@ -20,6 +20,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.resources.reports.ReportResource;
+import org.openmetadata.catalog.resources.reports.ReportResource.ReportList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -89,7 +90,7 @@ public class ReportRepositoryHelper extends EntityRepository<Report>{
 
   @Override
   public String getFullyQualifiedName(Report entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override
@@ -102,8 +103,9 @@ public class ReportRepositoryHelper extends EntityRepository<Report>{
   }
 
   @Override
-  public ResultList<Report> getResultList(List<Report> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+  public ResultList<Report> getResultList(List<Report> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new ReportList(entities);
   }
 
   private Report createInternal(Report report, EntityReference service, EntityReference owner) throws IOException {

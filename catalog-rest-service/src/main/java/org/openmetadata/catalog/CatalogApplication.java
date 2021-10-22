@@ -38,6 +38,8 @@ import org.eclipse.jetty.servlet.ErrorPageErrorHandler;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlLogger;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.openmetadata.catalog.events.EventFilter;
 import org.openmetadata.catalog.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.catalog.exception.ConstraintViolationExceptionMapper;
@@ -60,6 +62,7 @@ import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Main catalog application
@@ -82,6 +85,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
+
+    SqlLogger sqlLogger = new SqlLogger() {
+      @Override
+      public void logAfterExecution(StatementContext context) {
+        LOG.info("sql {}, parameters {}, timeTaken {} ms", context.getRenderedSql(),
+                context.getBinding().toString(), context.getElapsedTime(ChronoUnit.MILLIS));
+      }
+    };
+    jdbi.setSqlLogger(sqlLogger);
 
     // Registering config api
     environment.jersey().register(new ConfigResource(catalogConfig));

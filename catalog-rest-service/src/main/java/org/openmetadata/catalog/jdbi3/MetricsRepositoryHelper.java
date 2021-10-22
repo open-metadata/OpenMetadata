@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
+import org.openmetadata.catalog.resources.metrics.MetricsResource.MetricsList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -99,7 +100,7 @@ public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
 
   @Override
   public ResultList<Metrics> getResultList(List<Metrics> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new MetricsList(entities);
   }
 
   private Metrics createInternal(Metrics metrics) throws IOException {

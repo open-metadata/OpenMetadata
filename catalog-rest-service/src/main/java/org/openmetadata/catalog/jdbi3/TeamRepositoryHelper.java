@@ -189,7 +189,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
 
   @Override
   public String getFullyQualifiedName(Team entity) {
-    return null;
+    return entity.getName();
   }
 
   @Override
@@ -204,7 +204,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
 
   @Override
   public ResultList<Team> getResultList(List<Team> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new TeamList(entities, beforeCursor, afterCursor, total);
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
@@ -250,7 +250,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
     public EntityReference getOwner() { return null; }
 
     @Override
-    public String getFullyQualifiedName() { return null; }
+    public String getFullyQualifiedName() { return team.getName(); }
 
     @Override
     public List<TagLabel> getTags() { return null; }

@@ -86,8 +86,8 @@ public class DatabaseServiceResource {
     this.authorizer = authorizer;
   }
 
-  static class DatabaseServiceList extends ResultList<DatabaseService> {
-    DatabaseServiceList(List<DatabaseService> data) {
+  public static class DatabaseServiceList extends ResultList<DatabaseService> {
+    public DatabaseServiceList(List<DatabaseService> data) {
       super(data);
     }
   }

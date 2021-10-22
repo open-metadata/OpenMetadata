@@ -180,7 +180,7 @@ public class UserRepositoryHelper extends EntityRepository<User> {
 
   @Override
   public String getFullyQualifiedName(User entity) {
-    return null;
+    return entity.getName();
   }
 
   @Override

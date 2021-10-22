@@ -220,7 +220,7 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
 
   @Override
   public String getFullyQualifiedName(Task entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override
@@ -238,7 +238,7 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
 
   @Override
   public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new TaskList(entities, beforeCursor, afterCursor, total);
   }
 
 

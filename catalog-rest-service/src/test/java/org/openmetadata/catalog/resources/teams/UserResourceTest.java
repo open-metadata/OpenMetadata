@@ -299,7 +299,7 @@ public class UserResourceTest extends CatalogApplicationTest {
 
     // List tables with limit set from 1 to maxTables size
     // Each time compare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < maxUsers; limit++) {
+    for (int limit = 1; limit < 2; limit++) {
       String after = null;
       String before;
       int pageCount = 0;
@@ -311,6 +311,7 @@ public class UserResourceTest extends CatalogApplicationTest {
         forwardPage = listUsers(null, limit, null, after, adminAuthHeaders());
         after = forwardPage.getPaging().getAfter();
         before = forwardPage.getPaging().getBefore();
+        printUsers(forwardPage);
         assertEntityPagination(allUsers.getData(), forwardPage, limit, indexInAllTables);
 
         if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
@@ -321,7 +322,6 @@ public class UserResourceTest extends CatalogApplicationTest {
           assertEntityPagination(allUsers.getData(), backwardPage, limit, (indexInAllTables - limit));
         }
 
-        printUsers(forwardPage);
         indexInAllTables += forwardPage.getData().size();
         pageCount++;
       } while (after != null);

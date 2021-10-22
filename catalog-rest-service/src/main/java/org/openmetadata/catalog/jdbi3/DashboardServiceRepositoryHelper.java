@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -90,17 +91,18 @@ public class DashboardServiceRepositoryHelper extends EntityRepository<Dashboard
 
   @Override
   public String getFullyQualifiedName(DashboardService entity) {
-    // TODO clean this up
-    return null;
+    return entity.getName();
   }
 
   @Override
   public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
-    return null;
+    return entity;
   }
 
   @Override
-  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
+                                                    String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DashboardServiceList(entities);
   }
 }

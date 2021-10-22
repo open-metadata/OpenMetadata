@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
 import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -89,16 +90,16 @@ public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseSe
 
   @Override
   public String getFullyQualifiedName(DatabaseService entity) {
-    return null;
+    return entity.getName();
   }
 
   @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
-    return null;
+    return entity;
   }
 
   @Override
   public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new DatabaseServiceList(entities);
   }
 }

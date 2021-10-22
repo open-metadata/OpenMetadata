@@ -171,7 +171,7 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
 
   @Override
   public String getFullyQualifiedName(Model entity) {
-    return null;
+    return entity.getFullyQualifiedName();
   }
 
   @Override
@@ -188,7 +188,7 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
 
   @Override
   public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+    return new ModelList(entities, beforeCursor, afterCursor, total);
   }
 
   private List<TagLabel> getTags(String fqn) {

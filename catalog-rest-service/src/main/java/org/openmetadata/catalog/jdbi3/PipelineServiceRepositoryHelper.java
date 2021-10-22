@@ -21,13 +21,12 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -40,8 +39,6 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineService> {
-  private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepositoryHelper.class);
-
   public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) {
     super(repo3.pipelineServiceDAO());
     this.repo3 = repo3;
@@ -95,16 +92,18 @@ public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineSe
 
   @Override
   public String getFullyQualifiedName(PipelineService entity) {
-    return null;
+    return entity.getName();
   }
 
   @Override
   public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
-    return null;
+    return entity;
   }
 
   @Override
-  public ResultList<PipelineService> getResultList(List<PipelineService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return null;
+  public ResultList<PipelineService> getResultList(List<PipelineService> entities, String beforeCursor,
+                                                   String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new PipelineServiceList(entities);
   }
 }

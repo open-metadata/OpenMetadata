@@ -87,8 +87,8 @@ public class PipelineServiceResource {
     this.authorizer = authorizer;
   }
 
-  static class PipelineServiceList extends ResultList<PipelineService> {
-    PipelineServiceList(List<PipelineService> data) {
+  public static class PipelineServiceList extends ResultList<PipelineService> {
+    public PipelineServiceList(List<PipelineService> data) {
       super(data);
     }
   }

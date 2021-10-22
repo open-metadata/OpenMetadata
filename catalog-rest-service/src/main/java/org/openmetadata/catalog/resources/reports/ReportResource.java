@@ -79,8 +79,8 @@ public class ReportResource {
     this.dao = dao;
   }
 
-  static class ReportList extends ResultList<Report> {
-    ReportList(List<Report> data) {
+  public static class ReportList extends ResultList<Report> {
+    public ReportList(List<Report> data) {
       super(data);
     }
   }

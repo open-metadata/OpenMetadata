@@ -86,8 +86,8 @@ public class MessagingServiceResource {
     this.authorizer = authorizer;
   }
 
-  static class MessagingServiceList extends ResultList<MessagingService> {
-    MessagingServiceList(List<MessagingService> data) {
+  public static class MessagingServiceList extends ResultList<MessagingService> {
+    public MessagingServiceList(List<MessagingService> data) {
       super(data);
     }
   }
