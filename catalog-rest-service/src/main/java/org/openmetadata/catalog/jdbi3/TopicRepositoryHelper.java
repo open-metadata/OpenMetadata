@@ -49,7 +49,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class TopicRepositoryHelper implements EntityRepository<Topic> {
+public class TopicRepositoryHelper extends EntityRepository<Topic> {
   private static final Logger LOG = LoggerFactory.getLogger(TopicRepositoryHelper.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
@@ -58,8 +58,9 @@ public class TopicRepositoryHelper implements EntityRepository<Topic> {
     return (topic.getService().getName() + "." + topic.getName());
   }
 
-  public TopicRepositoryHelper(TopicRepository3 topicRepository3) {
-    this.repo3 = topicRepository3;
+  public TopicRepositoryHelper(TopicRepository3 repo3) {
+    super(repo3.topicDAO());
+    this.repo3 = repo3;
   }
 
   private final TopicRepository3 repo3;
@@ -199,21 +200,6 @@ public class TopicRepositoryHelper implements EntityRepository<Topic> {
 
   private Topic validateTopic(String id) throws IOException {
     return repo3.topicDAO().findEntityById(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

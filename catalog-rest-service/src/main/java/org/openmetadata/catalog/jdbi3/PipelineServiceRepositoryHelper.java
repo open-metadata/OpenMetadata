@@ -39,10 +39,13 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public class PipelineServiceRepositoryHelper implements EntityRepository<PipelineService> {
+public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineService> {
   private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepositoryHelper.class);
 
-  public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) { this.repo3 = repo3; }
+  public PipelineServiceRepositoryHelper(PipelineServiceRepository3 repo3) {
+    super(repo3.pipelineServiceDAO());
+    this.repo3 = repo3;
+  }
 
   private final PipelineServiceRepository3 repo3;
 
@@ -88,22 +91,6 @@ public class PipelineServiceRepositoryHelper implements EntityRepository<Pipelin
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
     repo3.relationshipDAO().deleteAll(id);
-  }
-
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

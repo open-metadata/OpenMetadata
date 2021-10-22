@@ -46,11 +46,14 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class ChartRepositoryHelper implements EntityRepository<Chart>{
+public class ChartRepositoryHelper extends EntityRepository<Chart>{
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
 
-  public ChartRepositoryHelper(ChartRepository3 chartRepo) { this.repo3 = chartRepo; }
+  public ChartRepositoryHelper(ChartRepository3 repo3) {
+    super(repo3.chartDAO());
+    this.repo3 = repo3;
+  }
 
   private final ChartRepository3 repo3;
 
@@ -191,21 +194,6 @@ public class ChartRepositoryHelper implements EntityRepository<Chart>{
 
   private Chart validateChart(String id) throws IOException {
     return repo3.chartDAO().findEntityById(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

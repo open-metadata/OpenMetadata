@@ -48,13 +48,16 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class PipelineRepositoryHelper implements EntityRepository<Pipeline> {
+public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
 
-  public PipelineRepositoryHelper(PipelineRepository3 repo3) { this.repo3 = repo3; }
+  public PipelineRepositoryHelper(PipelineRepository3 repo3) {
+    super(repo3.pipelineDAO());
+    this.repo3 = repo3;
+  }
 
   private final PipelineRepository3 repo3;
 
@@ -192,21 +195,6 @@ public class PipelineRepositoryHelper implements EntityRepository<Pipeline> {
 
   public Pipeline get(String id, Fields fields) throws IOException {
     return setFields(repo3.pipelineDAO().findEntityById(id), fields);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

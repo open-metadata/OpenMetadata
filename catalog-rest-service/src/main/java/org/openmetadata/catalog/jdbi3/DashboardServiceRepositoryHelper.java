@@ -37,10 +37,13 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public class DashboardServiceRepositoryHelper implements EntityRepository<DashboardService> {
-  public DashboardServiceRepositoryHelper(DashboardServiceRepository3 repo3) { this.repo3 = repo3; }
-
+public class DashboardServiceRepositoryHelper extends EntityRepository<DashboardService> {
   private final DashboardServiceRepository3 repo3;
+
+  public DashboardServiceRepositoryHelper(DashboardServiceRepository3 repo3) {
+    super(repo3.dashboardServiceDAO());
+    this.repo3 = repo3;
+  }
 
   @Transaction
   public List<DashboardService> list(String name) throws IOException {
@@ -83,21 +86,6 @@ public class DashboardServiceRepositoryHelper implements EntityRepository<Dashbo
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
     repo3.relationshipDAO().deleteAll(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return repo3.dashboardServiceDAO().listAfter(fqnPrefix, limitParam, after);
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return repo3.dashboardServiceDAO().listBefore(fqnPrefix, limitParam, before);
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return repo3.dashboardServiceDAO().listCount(fqnPrefix);
   }
 
   @Override

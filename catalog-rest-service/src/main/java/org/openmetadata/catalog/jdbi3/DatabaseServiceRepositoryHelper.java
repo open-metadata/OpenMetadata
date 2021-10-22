@@ -37,10 +37,14 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public class DatabaseServiceRepositoryHelper implements EntityRepository<DatabaseService> {
-  public DatabaseServiceRepositoryHelper(DatabaseServiceRepository3 repo3) { this.repo3 = repo3; }
-
+public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseService> {
   private final DatabaseServiceRepository3 repo3;
+
+  public DatabaseServiceRepositoryHelper(DatabaseServiceRepository3 repo3) {
+    super(repo3.dbServiceDAO());
+    this.repo3 = repo3;
+  }
+
 
   @Transaction
   public List<DatabaseService> list(String name) throws IOException {
@@ -81,21 +85,6 @@ public class DatabaseServiceRepositoryHelper implements EntityRepository<Databas
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
     repo3.relationshipDAO().deleteAll(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

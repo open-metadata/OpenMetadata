@@ -49,13 +49,16 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class DashboardRepositoryHelper implements EntityRepository<Dashboard> {
+public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
 
-  public DashboardRepositoryHelper(DashboardRepository3 repo3) { this.repo3 = repo3; }
+  public DashboardRepositoryHelper(DashboardRepository3 repo3) {
+    super(repo3.dashboardDAO());
+    this.repo3 = repo3;
+  }
 
   private final DashboardRepository3 repo3;
 
@@ -63,30 +66,16 @@ public class DashboardRepositoryHelper implements EntityRepository<Dashboard> {
     return (dashboard.getService().getName() + "." + dashboard.getName());
   }
 
-    @Override
-    public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-      return repo3.dashboardDAO().listAfter(fqnPrefix, limitParam, after);
-    }
+  @Override
+  public String getFullyQualifiedName(Dashboard entity) {
+    return entity.getFullyQualifiedName();
+  }
 
-    @Override
-    public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-      return repo3.dashboardDAO().listBefore(fqnPrefix, limitParam, before);
-    }
-
-    @Override
-    public int listCount(String fqnPrefix) {
-      return repo3.dashboardDAO().listCount(fqnPrefix);
-    }
-
-    @Override
-    public String getFullyQualifiedName(Dashboard entity) {
-      return entity.getFullyQualifiedName();
-    }
-
-    @Override
-    public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-      return new DashboardList(entities, beforeCursor, afterCursor, total);
-    }
+  @Override
+  public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor,
+                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DashboardList(entities, beforeCursor, afterCursor, total);
+  }
 
   @Transaction
   public ResultList<Dashboard> listAfter(Fields fields, String serviceName, int limitParam, String after) throws IOException,
@@ -146,7 +135,8 @@ public class DashboardRepositoryHelper implements EntityRepository<Dashboard> {
   @Transaction
   public Status addFollower(String dashboardId, String userId) throws IOException {
     repo3.dashboardDAO().findEntityById(dashboardId);
-    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), dashboardId, Entity.DASHBOARD, userId, Entity.USER) ?
+    return EntityUtil.addFollower(repo3.relationshipDAO(), repo3.userDAO(), dashboardId, Entity.DASHBOARD, userId,
+            Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
@@ -260,7 +250,8 @@ public class DashboardRepositoryHelper implements EntityRepository<Dashboard> {
   }
 
   private List<EntityReference> getFollowers(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : EntityUtil.getFollowers(dashboard.getId(), repo3.relationshipDAO(), repo3.userDAO());
+    return dashboard == null ? null : EntityUtil.getFollowers(dashboard.getId(), repo3.relationshipDAO(),
+            repo3.userDAO());
   }
 
   private List<Chart> getCharts(Dashboard dashboard) throws IOException {
@@ -380,7 +371,8 @@ public class DashboardRepositoryHelper implements EntityRepository<Dashboard> {
     final Dashboard updated;
 
     public DashboardUpdater(Dashboard orig, Dashboard updated, boolean patchOperation) {
-      super(new DashboardEntityInterface(orig), new DashboardEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+      super(new DashboardEntityInterface(orig), new DashboardEntityInterface(updated), patchOperation,
+              repo3.relationshipDAO(),
               repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;

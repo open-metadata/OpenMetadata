@@ -39,10 +39,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class MetricsRepositoryHelper implements EntityRepository<Metrics> {
+public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
 
-  public MetricsRepositoryHelper(MetricsRepository3 repo3) { this.repo3 = repo3; }
+  public MetricsRepositoryHelper(MetricsRepository3 repo3) {
+    super(repo3.metricsDAO());
+    this.repo3 = repo3;
+  }
 
   private final MetricsRepository3 repo3;
 
@@ -83,21 +86,6 @@ public class MetricsRepositoryHelper implements EntityRepository<Metrics> {
       metricsList.add(setFields(JsonUtils.readValue(json, Metrics.class), fields));
     }
     return metricsList;
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return repo3.metricsDAO().listAfter(fqnPrefix, limitParam, after);
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return repo3.metricsDAO().listBefore(fqnPrefix, limitParam, before);
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return repo3.metricsDAO().listCount(fqnPrefix);
   }
 
   @Override

@@ -71,7 +71,7 @@ import java.util.UUID;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
-public class TableRepositoryHelper implements EntityRepository<Table> {
+public class TableRepositoryHelper extends EntityRepository<Table> {
   static final Logger LOG = LoggerFactory.getLogger(TableRepositoryHelper.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
@@ -80,24 +80,12 @@ public class TableRepositoryHelper implements EntityRepository<Table> {
   static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
 
-  public TableRepositoryHelper(TableRepository3 repo3) { this.repo3 = repo3; }
+  public TableRepositoryHelper(TableRepository3 repo3) {
+    super(repo3.tableDAO());
+    this.repo3 = repo3;
+  }
 
   private final TableRepository3 repo3;
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return repo3.tableDAO().listAfter(fqnPrefix, limitParam, after);
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String after) {
-    return repo3.tableDAO().listBefore(fqnPrefix, limitParam, after);
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return repo3.tableDAO().listCount(fqnPrefix);
-  }
 
   @Override
   public String getFullyQualifiedName(Table entity) {

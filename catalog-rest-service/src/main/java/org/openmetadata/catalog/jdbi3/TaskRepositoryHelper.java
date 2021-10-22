@@ -48,7 +48,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class TaskRepositoryHelper implements EntityRepository<Task>{
+public class TaskRepositoryHelper extends EntityRepository<Task>{
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
           "taskConfig,tags,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
@@ -57,7 +57,10 @@ public class TaskRepositoryHelper implements EntityRepository<Task>{
     return (task.getService().getName() + "." + task.getName());
   }
 
-  public TaskRepositoryHelper(TaskRepository3 repo3) { this.repo3 = repo3; }
+  public TaskRepositoryHelper(TaskRepository3 repo3) {
+    super(repo3.taskDAO());
+    this.repo3 = repo3;
+  }
 
   private final TaskRepository3 repo3;
 
@@ -224,21 +227,6 @@ public class TaskRepositoryHelper implements EntityRepository<Task>{
 
   private Task validateTask(String id) throws IOException {
     return repo3.taskDAO().findEntityById(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

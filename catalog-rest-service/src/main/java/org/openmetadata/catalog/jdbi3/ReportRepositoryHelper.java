@@ -35,10 +35,13 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReportRepositoryHelper implements EntityRepository<Report>{
+public class ReportRepositoryHelper extends EntityRepository<Report>{
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
 
-  public ReportRepositoryHelper(ReportRepository3 repo3) { this.repo3 = repo3; }
+  public ReportRepositoryHelper(ReportRepository3 repo3) {
+    super(repo3.reportDAO());
+    this.repo3 = repo3;
+  }
 
   private final ReportRepository3 repo3;
 
@@ -86,21 +89,6 @@ public class ReportRepositoryHelper implements EntityRepository<Report>{
       reportList.add(setFields(JsonUtils.readValue(json, Report.class), fields));
     }
     return reportList;
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

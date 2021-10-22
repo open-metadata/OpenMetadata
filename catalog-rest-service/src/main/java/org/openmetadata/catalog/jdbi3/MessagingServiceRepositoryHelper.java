@@ -36,10 +36,13 @@ import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class MessagingServiceRepositoryHelper implements EntityRepository<MessagingService> {
-  public MessagingServiceRepositoryHelper(MessagingServiceRepository3 repo3) { this.repo3 = repo3; }
-
+public class MessagingServiceRepositoryHelper extends EntityRepository<MessagingService> {
   private final MessagingServiceRepository3 repo3;
+
+  public MessagingServiceRepositoryHelper(MessagingServiceRepository3 repo3) {
+    super(repo3.messagingServiceDAO());
+    this.repo3 = repo3;
+  }
 
   @Transaction
   public List<MessagingService> list(String name) throws IOException {
@@ -83,21 +86,6 @@ public class MessagingServiceRepositoryHelper implements EntityRepository<Messag
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
     repo3.relationshipDAO().deleteAll(id);
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

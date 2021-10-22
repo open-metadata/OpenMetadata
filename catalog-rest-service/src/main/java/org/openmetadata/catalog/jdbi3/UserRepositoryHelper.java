@@ -54,14 +54,18 @@ import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
-public class UserRepositoryHelper implements EntityRepository<User> {
+public class UserRepositoryHelper extends EntityRepository<User> {
   public static final Logger LOG = LoggerFactory.getLogger(UserRepositoryHelper.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
 
-  public UserRepositoryHelper(UserRepository3 repo3) { this.repo3 = repo3; }
-
   private final UserRepository3 repo3;
+
+
+  public UserRepositoryHelper(UserRepository3 repo3) {
+    super(repo3.userDAO());
+    this.repo3 = repo3;
+  }
 
   public static List<EntityReference> toEntityReference(List<Team> teams) {
     if (teams == null) {
@@ -184,21 +188,6 @@ public class UserRepositoryHelper implements EntityRepository<User> {
     UserRepositoryHelper.UserUpdater userUpdater = new UserRepositoryHelper.UserUpdater(original, updated, true);
     userUpdater.updateAll();
     userUpdater.store();
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

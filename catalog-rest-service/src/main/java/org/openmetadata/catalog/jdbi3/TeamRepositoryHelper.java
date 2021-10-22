@@ -47,10 +47,13 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
-public class TeamRepositoryHelper implements EntityRepository<Team> {
+public class TeamRepositoryHelper extends EntityRepository<Team> {
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
 
-  public TeamRepositoryHelper(TeamRepository3 repo3) { this.repo3 = repo3; }
+  public TeamRepositoryHelper(TeamRepository3 repo3) {
+    super(repo3.teamDAO());
+    this.repo3 = repo3;
+  }
 
   private final TeamRepository3 repo3;
 
@@ -192,21 +195,6 @@ public class TeamRepositoryHelper implements EntityRepository<Team> {
       users.add(EntityUtil.getEntityReference(repo3.userDAO().findEntityById(id.toString())));
     }
     return users;
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return null;
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return null;
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return 0;
   }
 
   @Override

@@ -51,13 +51,14 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class DatabaseRepositoryHelper implements EntityRepository<Database> {
+public class DatabaseRepositoryHelper extends EntityRepository<Database> {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseRepositoryHelper.class);
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
 
   public DatabaseRepositoryHelper(DatabaseRepository3 repo3) {
+    super(repo3.databaseDAO());
     this.repo3 = repo3;
   }
 
@@ -214,21 +215,6 @@ public class DatabaseRepositoryHelper implements EntityRepository<Database> {
       tables.add(table);
     }
     return tables;
-  }
-
-  @Override
-  public List<String> listAfter(String fqnPrefix, int limitParam, String after) {
-    return repo3.databaseDAO().listAfter(fqnPrefix, limitParam, after);
-  }
-
-  @Override
-  public List<String> listBefore(String fqnPrefix, int limitParam, String before) {
-    return repo3.databaseDAO().listBefore(fqnPrefix, limitParam, before);
-  }
-
-  @Override
-  public int listCount(String fqnPrefix) {
-    return repo3.databaseDAO().listCount(fqnPrefix);
   }
 
   @Override
