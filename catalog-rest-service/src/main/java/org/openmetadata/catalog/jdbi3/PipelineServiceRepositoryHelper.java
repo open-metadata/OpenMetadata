@@ -47,21 +47,6 @@ public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineSe
   private final PipelineServiceRepository3 repo3;
 
   @Transaction
-  public List<PipelineService> list(String name) throws IOException {
-    return JsonUtils.readObjects(repo3.pipelineServiceDAO().list(name), PipelineService.class);
-  }
-
-  @Transaction
-  public PipelineService get(String id) throws IOException {
-    return repo3.pipelineServiceDAO().findEntityById(id);
-  }
-
-  @Transaction
-  public PipelineService getByName(String name) throws IOException {
-    return repo3.pipelineServiceDAO().findEntityByName(name);
-  }
-
-  @Transaction
   public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(pipelineService.getIngestionSchedule());

@@ -47,21 +47,6 @@ public class DashboardServiceRepositoryHelper extends EntityRepository<Dashboard
   }
 
   @Transaction
-  public List<DashboardService> list(String name) throws IOException {
-    return JsonUtils.readObjects(repo3.dashboardServiceDAO().list(name), DashboardService.class);
-  }
-
-  @Transaction
-  public DashboardService get(String id) throws IOException {
-    return repo3.dashboardServiceDAO().findEntityById(id);
-  }
-
-  @Transaction
-  public DashboardService getByName(String name) throws IOException {
-    return repo3.dashboardServiceDAO().findEntityByName(name);
-  }
-
-  @Transaction
   public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());

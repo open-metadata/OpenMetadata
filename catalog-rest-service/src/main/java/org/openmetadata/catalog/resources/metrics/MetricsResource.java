@@ -25,7 +25,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.jdbi3.MetricsRepositoryHelper;
-import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -47,6 +46,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -62,11 +62,6 @@ import java.util.UUID;
 public class MetricsResource {
   public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricsRepositoryHelper dao;
-
-  private static List<Metrics> addHref(UriInfo uriInfo, List<Metrics> metrics) {
-    metrics.forEach(m -> addHref(uriInfo, m));
-    return metrics;
-  }
 
   private static Metrics addHref(UriInfo uriInfo, Metrics metrics) {
     metrics.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, metrics.getId()));
@@ -97,12 +92,15 @@ public class MetricsResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = MetricsList.class)))
           })
-  public MetricsList list(@Context UriInfo uriInfo,
-                          @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Metrics> list(@Context UriInfo uriInfo,
+                                  @Parameter(description = "Fields requested in the returned resource",
                                   schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam) throws IOException {
+                          @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
+          ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new MetricsList(addHref(uriInfo, dao.list(fields)));
+    ResultList<Metrics> metricsList = dao.listAfter(fields, null, 10000, null);
+    metricsList.getData().forEach(m -> addHref(uriInfo, m));
+    return metricsList;
   }
 
   @GET

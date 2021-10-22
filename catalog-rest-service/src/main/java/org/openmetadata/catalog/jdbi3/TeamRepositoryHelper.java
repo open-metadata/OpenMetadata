@@ -79,48 +79,6 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
   }
 
   @Transaction
-  public TeamList listAfter(Fields fields, int limitParam, String after) throws IOException, GeneralSecurityException {
-    // Forward scrolling, either because after != null or first page is being asked
-    List<String> jsons = repo3.teamDAO().listAfter(limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Team> teams = new ArrayList<>();
-    for (String json : jsons) {
-      teams.add(setFields(JsonUtils.readValue(json, Team.class), fields));
-    }
-
-    int total = repo3.teamDAO().listCount();
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : teams.get(0).getName();
-    if (teams.size() > limitParam) {
-      teams.remove(limitParam);
-      afterCursor = teams.get(limitParam - 1).getName();
-    }
-    return new TeamList(teams, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public TeamList listBefore(Fields fields, int limitParam, String before) throws IOException, GeneralSecurityException {
-    // Reverse scrolling
-    List<String> jsons = repo3.teamDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
-
-    List<Team> teams = new ArrayList<>();
-    for (String json : jsons) {
-      teams.add(setFields(JsonUtils.readValue(json, Team.class), fields));
-    }
-    int total = repo3.teamDAO().listCount();
-
-    String beforeCursor = null, afterCursor;
-    if (teams.size() > limitParam) {
-      teams.remove(0);
-      beforeCursor = teams.get(0).getName();
-    }
-    afterCursor = teams.get(teams.size() - 1).getName();
-    return new TeamList(teams, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
   public Team patch(String teamId, String user, JsonPatch patch) throws IOException {
     Team original = setFields(repo3.teamDAO().findEntityById(teamId), TEAM_PATCH_FIELDS);
     Team updated = JsonUtils.applyPatch(original, patch, Team.class);

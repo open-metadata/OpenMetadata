@@ -46,22 +46,6 @@ public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseSe
     this.repo3 = repo3;
   }
 
-
-  @Transaction
-  public List<DatabaseService> list(String name) throws IOException {
-    return JsonUtils.readObjects(repo3.dbServiceDAO().list(name), DatabaseService.class);
-  }
-
-  @Transaction
-  public DatabaseService get(String id) throws IOException {
-    return repo3.dbServiceDAO().findEntityById(id);
-  }
-
-  @Transaction
-  public DatabaseService getByName(String name) throws IOException {
-    return repo3.dbServiceDAO().findEntityByName(name);
-  }
-
   @Transaction
   public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields

@@ -74,16 +74,6 @@ public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
     return new PutResponse<>(Status.OK, updated);
   }
 
-  @Transaction
-  public List<Metrics> list(Fields fields) throws IOException {
-    List<String> jsonList = repo3.metricsDAO().list();
-    List<Metrics> metricsList = new ArrayList<>();
-    for (String json : jsonList) {
-      metricsList.add(setFields(JsonUtils.readValue(json, Metrics.class), fields));
-    }
-    return metricsList;
-  }
-
   @Override
   public String getFullyQualifiedName(Metrics entity) {
     return entity.getFullyQualifiedName();

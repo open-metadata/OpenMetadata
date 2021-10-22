@@ -67,48 +67,6 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
   }
 
   @Transaction
-  public ModelList listAfter(Fields fields, int limitParam, String after) throws IOException,
-          GeneralSecurityException {
-    // forward scrolling, if after == null then first page is being asked being asked
-    List<String> jsons =repo3.modelDAO().listAfter(limitParam + 1, after == null ? "" :
-            CipherText.instance().decrypt(after));
-
-    List<Model> models = new ArrayList<>();
-    for (String json : jsons) {
-      models.add(setFields(JsonUtils.readValue(json, Model.class), fields));
-    }
-    int total =repo3.modelDAO().listCount();
-
-    String beforeCursor, afterCursor = null;
-    beforeCursor = after == null ? null : models.get(0).getFullyQualifiedName();
-    if (models.size() > limitParam) { // If extra result exists, then next page exists - return after cursor
-      models.remove(limitParam);
-      afterCursor = models.get(limitParam - 1).getFullyQualifiedName();
-    }
-    return new ModelList(models, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
-  public ModelList listBefore(Fields fields, int limitParam, String before)
-          throws IOException, GeneralSecurityException {
-    // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons =repo3.modelDAO().listBefore(limitParam + 1, CipherText.instance().decrypt(before));
-    List<Model> models = new ArrayList<>();
-    for (String json : jsons) {
-      models.add(setFields(JsonUtils.readValue(json, Model.class), fields));
-    }
-    int total =repo3.modelDAO().listCount();
-
-    String beforeCursor = null, afterCursor;
-    if (models.size() > limitParam) { // If extra result exists, then previous page exists - return before cursor
-      models.remove(0);
-      beforeCursor = models.get(0).getFullyQualifiedName();
-    }
-    afterCursor = models.get(models.size() - 1).getFullyQualifiedName();
-    return new ModelList(models, beforeCursor, afterCursor, total);
-  }
-
-  @Transaction
   public Model create(Model model) throws IOException {
     validateRelationships(model);
     return createInternal(model);

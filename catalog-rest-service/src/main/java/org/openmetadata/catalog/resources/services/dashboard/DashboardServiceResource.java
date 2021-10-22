@@ -28,7 +28,6 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper;
-import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -51,6 +50,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -101,8 +102,10 @@ public class DashboardServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = DashboardServiceList.class)))
           })
-  public DashboardServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new DashboardServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<DashboardService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException, GeneralSecurityException, ParseException {
+    ResultList<DashboardService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(d -> addHref(uriInfo, d));
+    return list;
   }
 
   @GET
@@ -117,8 +120,8 @@ public class DashboardServiceResource {
           })
   public DashboardService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -133,8 +136,8 @@ public class DashboardServiceResource {
           })
   public DashboardService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST

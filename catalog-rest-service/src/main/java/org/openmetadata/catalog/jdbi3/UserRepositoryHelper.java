@@ -85,11 +85,6 @@ public class UserRepositoryHelper extends EntityRepository<User> {
   }
 
   @Transaction
-  public User get(String id) throws IOException {
-    return validateUser(id);
-  }
-
-  @Transaction
   public User getByEmail(String email, Fields fields) throws IOException {
     User user = EntityUtil.validate(email, repo3.userDAO().findByEmail(email), User.class);
     return setFields(user, fields);

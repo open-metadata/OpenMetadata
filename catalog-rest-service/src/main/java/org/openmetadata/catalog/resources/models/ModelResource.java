@@ -131,7 +131,7 @@ public class ModelResource {
                                content = @Content(mediaType = "application/json",
                                        schema = @Schema(implementation = ModelList.class)))
           })
-  public ModelList list(@Context UriInfo uriInfo,
+  public ResultList<Model> list(@Context UriInfo uriInfo,
                                       @Context SecurityContext securityContext,
                                       @Parameter(description = "Fields requested in the returned resource",
                                               schema = @Schema(type = "string", example = FIELDS))
@@ -148,15 +148,15 @@ public class ModelResource {
                                       @Parameter(description = "Returns list of models after this cursor",
                                               schema = @Schema(type = "string"))
                                       @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ModelList models;
+    ResultList<Model> models;
     if (before != null) { // Reverse paging
-      models = dao.listBefore(fields, limitParam, before); // Ask for one extra entry
+      models = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      models = dao.listAfter(fields, limitParam, after);
+      models = dao.listAfter(fields, null, limitParam, after);
     }
     addHref(uriInfo, models.getData());
     return models;

@@ -46,21 +46,6 @@ public class MessagingServiceRepositoryHelper extends EntityRepository<Messaging
   }
 
   @Transaction
-  public List<MessagingService> list(String name) throws IOException {
-    return JsonUtils.readObjects(repo3.messagingServiceDAO().list(name), MessagingService.class);
-  }
-
-  @Transaction
-  public MessagingService get(String id) throws IOException {
-    return repo3.messagingServiceDAO().findEntityById(id);
-  }
-
-  @Transaction
-  public MessagingService getByName(String name) throws IOException {
-    return repo3.messagingServiceDAO().findEntityByName(name);
-  }
-
-  @Transaction
   public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
     // Validate fields
     Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());

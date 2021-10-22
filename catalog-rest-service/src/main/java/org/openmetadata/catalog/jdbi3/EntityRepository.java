@@ -68,11 +68,11 @@ public abstract class EntityRepository<T> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
-  @Transaction
-  public final int listCount(String fqnPrefix) {
-    return dao.listCount(fqnPrefix);
-  }
-
+//  @Transaction
+//  public final int listCount(String fqnPrefix) {
+//    return dao.listCount(fqnPrefix);
+//  }
+//
   @Transaction
   public final T get(String id, Fields fields) throws IOException, ParseException {
     return setFields(dao.findEntityById(id), fields);

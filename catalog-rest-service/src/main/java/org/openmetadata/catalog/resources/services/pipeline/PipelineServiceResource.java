@@ -28,7 +28,6 @@ import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepositoryHelper;
-import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -51,6 +50,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -101,8 +102,11 @@ public class PipelineServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = PipelineServiceList.class)))
           })
-  public PipelineServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new PipelineServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<PipelineService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException,
+          GeneralSecurityException, ParseException {
+    ResultList<PipelineService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(p -> addHref(uriInfo, p));
+    return list;
   }
 
   @GET
@@ -117,8 +121,8 @@ public class PipelineServiceResource {
           })
   public  PipelineService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -133,8 +137,8 @@ public class PipelineServiceResource {
           })
   public PipelineService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST

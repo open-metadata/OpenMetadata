@@ -284,8 +284,8 @@ public class UserResource {
                                             "{op:remove, path:/a}," +
                                             "{op:add, path: /b, value: val}" +
                                             "]")}))
-                            JsonPatch patch) throws IOException {
-    User user = dao.get(id);
+                            JsonPatch patch) throws IOException, ParseException {
+    User user = dao.get(id, new Fields(FIELD_LIST, null));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             EntityUtil.getEntityReference(user));
     return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
