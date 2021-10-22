@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DashboardRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -79,7 +79,7 @@ import java.util.UUID;
 @Collection(name = "dashboards")
 public class DashboardResource {
   public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
-  private final DashboardRepositoryHelper dao;
+  private final DashboardRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -104,8 +104,8 @@ public class DashboardResource {
 
   @Inject
   public DashboardResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "DashboardRepositoryHelper must not be null");
-    this.dao = new DashboardRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "DashboardRepository must not be null");
+    this.dao = new DashboardRepository(dao);
     this.authorizer = authorizer;
   }
 

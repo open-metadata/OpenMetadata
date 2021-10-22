@@ -19,9 +19,9 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -37,57 +37,57 @@ import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class MessagingServiceRepositoryHelper extends EntityRepository<MessagingService> {
+
+public class DashboardServiceRepository extends EntityRepository<DashboardService> {
   private final CollectionDAO repo3;
 
-  public MessagingServiceRepositoryHelper(CollectionDAO repo3) {
-    super(MessagingService.class, repo3.messagingServiceDAO());
+  public DashboardServiceRepository(CollectionDAO repo3) {
+    super(DashboardService.class, repo3.dashboardServiceDAO());
     this.repo3 = repo3;
   }
 
   @Transaction
-  public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
+  public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
     // Validate fields
-    Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
-    repo3.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
-    return messagingService;
+    Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
+    repo3.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
+    return dashboardService;
   }
 
-  @Transaction
-  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+  public DashboardService update(String id, String description, URI dashboardUrl, String username, String password,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = repo3.messagingServiceDAO().findEntityById(id);
+    DashboardService dashboardService = repo3.dashboardServiceDAO().findEntityById(id);
     // Update fields
-    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
-            .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    repo3.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return dbService;
+    dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
+            .withPassword(password).withIngestionSchedule(ingestionSchedule);
+    repo3.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
+    return dashboardService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.messagingServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
+    if (repo3.dashboardServiceDAO().delete(id) <= 0) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
     repo3.relationshipDAO().deleteAll(id);
   }
 
   @Override
-  public String getFullyQualifiedName(MessagingService entity) {
+  public String getFullyQualifiedName(DashboardService entity) {
     return entity.getName();
   }
 
   @Override
-  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
 
   @Override
-  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor,
+  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
-    return new MessagingServiceList(entities);
+    return new DashboardServiceList(entities);
   }
 }

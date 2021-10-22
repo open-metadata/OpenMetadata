@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 
 import javax.json.JsonPatch;
 import java.io.IOException;
@@ -47,10 +46,10 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
-public class TeamRepositoryHelper extends EntityRepository<Team> {
+public class TeamRepository extends EntityRepository<Team> {
   static final Fields TEAM_PATCH_FIELDS = new Fields(TeamResource.FIELD_LIST, "profile,users");
 
-  public TeamRepositoryHelper(CollectionDAO repo3) {
+  public TeamRepository(CollectionDAO repo3) {
     super(Team.class,repo3.teamDAO());
     this.repo3 = repo3;
   }
@@ -129,7 +128,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
     validateRelationships(updated, EntityUtil.getIDList(updated.getUsers()));
-    TeamRepositoryHelper.TeamUpdater teamUpdater = new TeamRepositoryHelper.TeamUpdater(original, updated, true);
+    TeamRepository.TeamUpdater teamUpdater = new TeamRepository.TeamUpdater(original, updated, true);
     teamUpdater.updateAll();
     teamUpdater.store();
   }
@@ -233,7 +232,7 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
     final Team updated;
 
     public TeamUpdater(Team orig, Team updated, boolean patchOperation) {
-      super(new TeamRepositoryHelper.TeamEntityInterface(orig), new TeamRepositoryHelper.TeamEntityInterface(updated),
+      super(new TeamRepository.TeamEntityInterface(orig), new TeamRepository.TeamEntityInterface(updated),
               patchOperation, repo3.relationshipDAO(), null);
       this.orig = orig;
       this.updated = updated;

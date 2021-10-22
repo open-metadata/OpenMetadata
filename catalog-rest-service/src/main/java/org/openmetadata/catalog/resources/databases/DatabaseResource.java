@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DatabaseRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -82,7 +82,7 @@ import java.util.UUID;
 public class DatabaseResource {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResource.class);
   private static final String DATABASE_COLLECTION_PATH = "v1/databases/";
-  private final DatabaseRepositoryHelper dao;
+  private final DatabaseRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static List<Database> addHref(UriInfo uriInfo, List<Database> databases) {
@@ -109,7 +109,7 @@ public class DatabaseResource {
   @Inject
   public DatabaseResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "CollectionDAO must not be null");
-    this.dao = new DatabaseRepositoryHelper(dao);
+    this.dao = new DatabaseRepository(dao);
     this.authorizer = authorizer;
   }
 

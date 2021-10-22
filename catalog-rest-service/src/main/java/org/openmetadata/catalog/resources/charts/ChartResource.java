@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.jdbi3.ChartRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -82,7 +82,7 @@ import java.util.UUID;
 public class ChartResource {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
-  private final ChartRepositoryHelper dao;
+  private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -106,7 +106,7 @@ public class ChartResource {
   @Inject
   public ChartResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "CollectionDAO must not be null");
-    this.dao = new ChartRepositoryHelper(dao);
+    this.dao = new ChartRepository(dao);
     this.authorizer = authorizer;
   }
 

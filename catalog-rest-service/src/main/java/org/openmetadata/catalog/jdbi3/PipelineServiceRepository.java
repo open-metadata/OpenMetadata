@@ -38,8 +38,8 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public class PipelineServiceRepositoryHelper extends EntityRepository<PipelineService> {
-  public PipelineServiceRepositoryHelper(CollectionDAO repo3) {
+public class PipelineServiceRepository extends EntityRepository<PipelineService> {
+  public PipelineServiceRepository(CollectionDAO repo3) {
     super(PipelineService.class, repo3.pipelineServiceDAO());
     this.repo3 = repo3;
   }

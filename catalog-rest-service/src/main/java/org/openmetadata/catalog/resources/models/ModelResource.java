@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.ModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -79,7 +79,7 @@ import java.util.UUID;
 @Collection(name = "models")
 public class ModelResource {
   public static final String MODEL_COLLECTION_PATH = "v1/models/";
-  private final ModelRepositoryHelper dao;
+  private final ModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -101,8 +101,8 @@ public class ModelResource {
 
   @Inject
   public ModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "ModelRepositoryHelper must not be null");
-    this.dao = new ModelRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "ModelRepository must not be null");
+    this.dao = new ModelRepository(dao);
     this.authorizer = authorizer;
   }
 

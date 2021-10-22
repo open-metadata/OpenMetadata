@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.LineageRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.LineageRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -60,12 +60,12 @@ import java.util.Objects;
 @Collection(name = "lineage")
 public class LineageResource {
   private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
-  private final LineageRepositoryHelper dao;
+  private final LineageRepository dao;
 
   @Inject
   public LineageResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "LineageRepositoryHelper must not be null");
-    this.dao = new LineageRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "LineageRepository must not be null");
+    this.dao = new LineageRepository(dao);
   }
 
   @GET

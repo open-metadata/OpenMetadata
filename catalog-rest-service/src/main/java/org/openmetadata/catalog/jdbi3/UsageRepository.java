@@ -37,10 +37,10 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 
-public class UsageRepositoryHelper {
-  private static final Logger LOG = LoggerFactory.getLogger(UsageRepositoryHelper.class);
+public class UsageRepository {
+  private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
 
-  public UsageRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
+  public UsageRepository(CollectionDAO repo3) { this.repo3 = repo3; }
 
   private final CollectionDAO repo3;
 

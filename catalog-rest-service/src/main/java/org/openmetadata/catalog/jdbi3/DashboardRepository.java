@@ -49,13 +49,13 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
+public class DashboardRepository extends EntityRepository<Dashboard> {
   private static final Fields DASHBOARD_UPDATE_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
   private static final Fields DASHBOARD_PATCH_FIELDS = new Fields(DashboardResource.FIELD_LIST,
           "owner,service,tags,charts");
 
-  public DashboardRepositoryHelper(CollectionDAO repo3) {
+  public DashboardRepository(CollectionDAO repo3) {
     super(Dashboard.class, repo3.dashboardDAO());
     this.repo3 = repo3;
   }

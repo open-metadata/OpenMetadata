@@ -19,9 +19,10 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
+import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -30,7 +31,6 @@ import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
@@ -38,56 +38,52 @@ import java.util.List;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public class DashboardServiceRepositoryHelper extends EntityRepository<DashboardService> {
+public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
   private final CollectionDAO repo3;
 
-  public DashboardServiceRepositoryHelper(CollectionDAO repo3) {
-    super(DashboardService.class, repo3.dashboardServiceDAO());
+  public DatabaseServiceRepository(CollectionDAO repo3) {
+    super(DatabaseService.class, repo3.dbServiceDAO());
     this.repo3 = repo3;
   }
 
   @Transaction
-  public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
+  public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
     // Validate fields
-    Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
-    repo3.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
-    return dashboardService;
+    Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
+    repo3.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
+    return databaseService;
   }
 
-  public DashboardService update(String id, String description, URI dashboardUrl, String username, String password,
-                                 Schedule ingestionSchedule)
+  public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DashboardService dashboardService = repo3.dashboardServiceDAO().findEntityById(id);
+    DatabaseService dbService = repo3.dbServiceDAO().findEntityById(id);
     // Update fields
-    dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
-            .withPassword(password).withIngestionSchedule(ingestionSchedule);
-    repo3.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
-    return dashboardService;
+    dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
+    repo3.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.dashboardServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
+    if (repo3.dbServiceDAO().delete(id) <= 0) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
     repo3.relationshipDAO().deleteAll(id);
   }
 
   @Override
-  public String getFullyQualifiedName(DashboardService entity) {
+  public String getFullyQualifiedName(DatabaseService entity) {
     return entity.getName();
   }
 
   @Override
-  public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
 
   @Override
-  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
-                                                    String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DashboardServiceList(entities);
+  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new DatabaseServiceList(entities);
   }
 }

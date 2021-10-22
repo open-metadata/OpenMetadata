@@ -19,10 +19,9 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
-import org.openmetadata.catalog.type.JdbcInfo;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -31,59 +30,64 @@ import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-
-public class DatabaseServiceRepositoryHelper extends EntityRepository<DatabaseService> {
+public class MessagingServiceRepository extends EntityRepository<MessagingService> {
   private final CollectionDAO repo3;
 
-  public DatabaseServiceRepositoryHelper(CollectionDAO repo3) {
-    super(DatabaseService.class, repo3.dbServiceDAO());
+  public MessagingServiceRepository(CollectionDAO repo3) {
+    super(MessagingService.class, repo3.messagingServiceDAO());
     this.repo3 = repo3;
   }
 
   @Transaction
-  public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
+  public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
     // Validate fields
-    Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    repo3.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
-    return databaseService;
+    Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
+    repo3.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
+    return messagingService;
   }
 
-  public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
+  @Transaction
+  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+                                 Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = repo3.dbServiceDAO().findEntityById(id);
+    MessagingService dbService = repo3.messagingServiceDAO().findEntityById(id);
     // Update fields
-    dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    repo3.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
+            .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
+    repo3.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
   public void delete(String id) {
-    if (repo3.dbServiceDAO().delete(id) <= 0) {
-      throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
+    if (repo3.messagingServiceDAO().delete(id) <= 0) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
     repo3.relationshipDAO().deleteAll(id);
   }
 
   @Override
-  public String getFullyQualifiedName(DatabaseService entity) {
+  public String getFullyQualifiedName(MessagingService entity) {
     return entity.getName();
   }
 
   @Override
-  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
 
   @Override
-  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DatabaseServiceList(entities);
+  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor,
+                                                    String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new MessagingServiceList(entities);
   }
 }

@@ -28,7 +28,7 @@ import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -65,7 +65,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource {
-  private final PipelineServiceRepositoryHelper dao;
+  private final PipelineServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
@@ -85,8 +85,8 @@ public class PipelineServiceResource {
 
   @Inject
   public PipelineServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "PipelineServiceRepositoryHelper must not be null");
-    this.dao = new PipelineServiceRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "PipelineServiceRepository must not be null");
+    this.dao = new PipelineServiceRepository(dao);
     this.authorizer = authorizer;
   }
 

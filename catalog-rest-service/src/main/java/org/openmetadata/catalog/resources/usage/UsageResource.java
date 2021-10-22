@@ -18,7 +18,7 @@ package org.openmetadata.catalog.resources.usage;
 
 import com.google.inject.Inject;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.UsageRepository;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.type.EntityUsage;
@@ -58,12 +58,12 @@ import java.util.Objects;
 @Collection(name = "usage")
 public class UsageResource {
   private static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
-  private final UsageRepositoryHelper dao;
+  private final UsageRepository dao;
 
   @Inject
   public UsageResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "UsageRepositoryHelper must not be null");
-    this.dao = new UsageRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "UsageRepository must not be null");
+    this.dao = new UsageRepository(dao);
   }
 
   @GET

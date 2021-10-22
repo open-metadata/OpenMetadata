@@ -23,7 +23,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.UUID;
 
-public class FromEntityReferenceMapper3 implements RowMapper<EntityReference> {
+public class FromEntityReferenceMapper implements RowMapper<EntityReference> {
   @Override
   public EntityReference map(ResultSet rs, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
     return new EntityReference().withId(UUID.fromString(rs.getString("fromId")))

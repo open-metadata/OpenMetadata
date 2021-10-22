@@ -175,7 +175,7 @@ public interface CollectionDAO {
     // Find to operations
     //
     @SqlQuery("SELECT toId, toEntity FROM entity_relationship WHERE fromId = :fromId AND relation = :relation")
-    @RegisterRowMapper(ToEntityReferenceMapper3.class)
+    @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT toId FROM entity_relationship WHERE " +
@@ -197,12 +197,12 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship WHERE toId = :toId AND relation = :relation " +
             "ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper3.class)
+    @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship WHERE toId = :toId AND relation = :relation AND " +
             "fromEntity = :fromEntity ORDER BY fromId")
-    @RegisterRowMapper(FromEntityReferenceMapper3.class)
+    @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(@Bind("toId") String toId, @Bind("relation") int relation,
                                          @Bind("fromEntity") String fromEntity);
 

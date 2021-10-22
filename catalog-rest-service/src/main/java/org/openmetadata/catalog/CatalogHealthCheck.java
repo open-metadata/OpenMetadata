@@ -19,7 +19,7 @@ package org.openmetadata.catalog;
 import com.codahale.metrics.health.HealthCheck;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.util.EntityUtil;
 
 import java.io.IOException;
@@ -27,19 +27,19 @@ import java.io.IOException;
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
 
 public class CatalogHealthCheck extends HealthCheck {
-  private final UserRepositoryHelper userRepositoryHelper;
+  private final UserRepository userRepository;
   private final EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, "profile");
 
   public CatalogHealthCheck(CatalogApplicationConfig config, Jdbi jdbi) {
     super();
     CollectionDAO repo = jdbi.onDemand(CollectionDAO.class);
-    this.userRepositoryHelper = new UserRepositoryHelper(repo);
+    this.userRepository = new UserRepository(repo);
   }
 
   @Override
   protected Result check() throws Exception {
     try {
-      userRepositoryHelper.listAfter(fields, null, 1, "");
+      userRepository.listAfter(fields, null, 1, "");
       return Result.healthy();
     } catch (IOException e) {
       return Result.unhealthy(e.getMessage());

@@ -30,7 +30,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UserRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.UserRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -81,7 +81,7 @@ import java.util.UUID;
 public class UserResource {
   public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String USER_COLLECTION_PATH = "v1/users/";
-  private final UserRepositoryHelper dao;
+  private final UserRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference user) {
@@ -98,8 +98,8 @@ public class UserResource {
 
   @Inject
   public UserResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "UserRepositoryHelper must not be null");
-    this.dao = new UserRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "UserRepository must not be null");
+    this.dao = new UserRepository(dao);
     this.authorizer = authorizer;
   }
 

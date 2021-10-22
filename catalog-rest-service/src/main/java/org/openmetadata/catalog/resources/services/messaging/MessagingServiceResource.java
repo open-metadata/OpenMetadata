@@ -28,7 +28,7 @@ import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.UpdateMessagingService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -65,7 +65,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
 public class MessagingServiceResource {
-  private final MessagingServiceRepositoryHelper dao;
+  private final MessagingServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
@@ -84,8 +84,8 @@ public class MessagingServiceResource {
 
   @Inject
   public MessagingServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "MessagingServiceRepositoryHelper must not be null");
-    this.dao = new MessagingServiceRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "MessagingServiceRepository must not be null");
+    this.dao = new MessagingServiceRepository(dao);
     this.authorizer = authorizer;
   }
 

@@ -28,7 +28,7 @@ import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.UpdateDatabaseService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DatabaseServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -45,7 +45,6 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -65,7 +64,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databaseServices")
 public class DatabaseServiceResource {
-  private final DatabaseServiceRepositoryHelper dao;
+  private final DatabaseServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
@@ -84,8 +83,8 @@ public class DatabaseServiceResource {
 
   @Inject
   public DatabaseServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "DatabaseServiceRepositoryHelper must not be null");
-    this.dao = new DatabaseServiceRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "DatabaseServiceRepository must not be null");
+    this.dao = new DatabaseServiceRepository(dao);
     this.authorizer = authorizer;
   }
 

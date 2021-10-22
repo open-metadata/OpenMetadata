@@ -32,7 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,21 +40,20 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class ModelRepositoryHelper extends EntityRepository<Model> {
-  private static final Logger LOG = LoggerFactory.getLogger(ModelRepositoryHelper.class);
+public class ModelRepository extends EntityRepository<Model> {
+  private static final Logger LOG = LoggerFactory.getLogger(ModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
           "owner,dashboard,tags");
 
-  public ModelRepositoryHelper(CollectionDAO repo3) {
+  public ModelRepository(CollectionDAO repo3) {
     super(Model.class, repo3.modelDAO());
     this.repo3 = repo3;
   }
@@ -200,7 +198,7 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withId(original.getId());
     validateRelationships(updated);
-    ModelRepositoryHelper.ModelUpdater modelUpdater = new ModelRepositoryHelper.ModelUpdater(original, updated, true);
+    ModelRepository.ModelUpdater modelUpdater = new ModelRepository.ModelUpdater(original, updated, true);
     modelUpdater.updateAll();
     modelUpdater.store();
   }
@@ -315,7 +313,7 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
     final Model updated;
 
     public ModelUpdater(Model orig, Model updated, boolean patchOperation) {
-      super(new ModelRepositoryHelper.ModelEntityInterface(orig), new ModelRepositoryHelper.ModelEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
               repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;

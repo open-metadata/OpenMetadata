@@ -46,11 +46,11 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class ChartRepositoryHelper extends EntityRepository<Chart>{
+public class ChartRepository extends EntityRepository<Chart>{
   private static final Fields CHART_UPDATE_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner");
   private static final Fields CHART_PATCH_FIELDS = new Fields(ChartResource.FIELD_LIST, "owner,service,tags");
 
-  public ChartRepositoryHelper(CollectionDAO repo3) {
+  public ChartRepository(CollectionDAO repo3) {
     super(Chart.class, repo3.chartDAO());
     this.repo3 = repo3;
   }

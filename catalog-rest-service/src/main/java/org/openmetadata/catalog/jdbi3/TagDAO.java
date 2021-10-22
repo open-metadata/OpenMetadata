@@ -4,7 +4,7 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
-import org.openmetadata.catalog.jdbi3.TagRepositoryHelper.TagLabelMapper;
+import org.openmetadata.catalog.jdbi3.TagRepository.TagLabelMapper;
 import org.openmetadata.catalog.type.TagLabel;
 
 import java.util.List;

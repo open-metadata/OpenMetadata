@@ -36,10 +36,10 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ReportRepositoryHelper extends EntityRepository<Report>{
+public class ReportRepository extends EntityRepository<Report>{
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
 
-  public ReportRepositoryHelper(CollectionDAO repo3) {
+  public ReportRepository(CollectionDAO repo3) {
     super(Report.class, repo3.reportDAO());
     this.repo3 = repo3;
   }

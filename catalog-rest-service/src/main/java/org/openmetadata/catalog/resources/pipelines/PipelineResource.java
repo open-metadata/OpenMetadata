@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.PipelineRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -79,7 +79,7 @@ import java.util.UUID;
 @Collection(name = "pipelines")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
-  private final PipelineRepositoryHelper dao;
+  private final PipelineRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -104,8 +104,8 @@ public class PipelineResource {
 
   @Inject
   public PipelineResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "PipelineRepositoryHelper must not be null");
-    this.dao = new PipelineRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "PipelineRepository must not be null");
+    this.dao = new PipelineRepository(dao);
     this.authorizer = authorizer;
   }
 

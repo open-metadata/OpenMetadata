@@ -26,7 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.apache.maven.shared.utils.io.IOUtil;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.TagRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TagRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -72,7 +72,7 @@ import java.util.regex.Pattern;
 public class TagResource {
   public static final Logger LOG = LoggerFactory.getLogger(TagResource.class);
   public static final String TAG_COLLECTION_PATH = "/v1/tags/";
-  private final TagRepositoryHelper dao;
+  private final TagRepository dao;
   private final CatalogAuthorizer authorizer;
 
   static class CategoryList extends ResultList<TagCategory> {
@@ -87,8 +87,8 @@ public class TagResource {
 
   @Inject
   public TagResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TagRepositoryHelper must not be null");
-    this.dao = new TagRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "TagRepository must not be null");
+    this.dao = new TagRepository(dao);
     this.authorizer = authorizer;
   }
 

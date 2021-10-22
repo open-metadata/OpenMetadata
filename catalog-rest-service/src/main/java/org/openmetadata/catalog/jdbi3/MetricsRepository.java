@@ -40,10 +40,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
+public class MetricsRepository extends EntityRepository<Metrics> {
   private static final Fields METRICS_UPDATE_FIELDS = new Fields(MetricsResource.FIELD_LIST, "owner,service");
 
-  public MetricsRepositoryHelper(CollectionDAO repo3) {
+  public MetricsRepository(CollectionDAO repo3) {
     super(Metrics.class, repo3.metricsDAO());
     this.repo3 = repo3;
   }

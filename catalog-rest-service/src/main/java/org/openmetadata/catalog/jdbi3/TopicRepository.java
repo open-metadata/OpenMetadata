@@ -41,7 +41,6 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -49,8 +48,8 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class TopicRepositoryHelper extends EntityRepository<Topic> {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicRepositoryHelper.class);
+public class TopicRepository extends EntityRepository<Topic> {
+  private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
 
@@ -58,7 +57,7 @@ public class TopicRepositoryHelper extends EntityRepository<Topic> {
     return (topic.getService().getName() + "." + topic.getName());
   }
 
-  public TopicRepositoryHelper(CollectionDAO repo3) {
+  public TopicRepository(CollectionDAO repo3) {
     super(Topic.class, repo3.topicDAO());
     this.repo3 = repo3;
   }

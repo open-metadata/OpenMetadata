@@ -42,7 +42,6 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -51,13 +50,13 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class DatabaseRepositoryHelper extends EntityRepository<Database> {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseRepositoryHelper.class);
+public class DatabaseRepository extends EntityRepository<Database> {
+  private static final Logger LOG = LoggerFactory.getLogger(DatabaseRepository.class);
   private static final Fields DATABASE_UPDATE_FIELDS = new Fields(DatabaseResource.FIELD_LIST, "owner");
   private static final Fields DATABASE_PATCH_FIELDS = new Fields(DatabaseResource.FIELD_LIST,
           "owner,service, usageSummary");
 
-  public DatabaseRepositoryHelper(CollectionDAO repo3) {
+  public DatabaseRepository(CollectionDAO repo3) {
     super(Database.class, repo3.databaseDAO());
     this.repo3 = repo3;
   }

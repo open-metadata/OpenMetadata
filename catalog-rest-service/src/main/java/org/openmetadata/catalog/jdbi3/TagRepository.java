@@ -37,10 +37,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public class TagRepositoryHelper {
-  public static final Logger LOG = LoggerFactory.getLogger(TagRepositoryHelper.class);
+public class TagRepository {
+  public static final Logger LOG = LoggerFactory.getLogger(TagRepository.class);
 
-  public TagRepositoryHelper(CollectionDAO repo3) { this.repo3 = repo3; }
+  public TagRepository(CollectionDAO repo3) { this.repo3 = repo3; }
 
   private final CollectionDAO repo3;
 

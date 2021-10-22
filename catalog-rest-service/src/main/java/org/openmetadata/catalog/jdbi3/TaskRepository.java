@@ -33,14 +33,12 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -48,7 +46,7 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class TaskRepositoryHelper extends EntityRepository<Task>{
+public class TaskRepository extends EntityRepository<Task>{
   private static final Fields TASK_UPDATE_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner," +
           "taskConfig,tags,downstreamTasks");
   private static final Fields TASK_PATCH_FIELDS = new Fields(TaskResource.FIELD_LIST, "owner,service,tags");
@@ -57,7 +55,7 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
     return (task.getService().getName() + "." + task.getName());
   }
 
-  public TaskRepositoryHelper(CollectionDAO repo3) {
+  public TaskRepository(CollectionDAO repo3) {
     super(Task.class,repo3.taskDAO());
     this.repo3 = repo3;
   }
@@ -291,7 +289,7 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
     final Task updated;
 
     public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
-      super(new TaskRepositoryHelper.TaskEntityInterface(orig), new TaskRepositoryHelper.TaskEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
               repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;

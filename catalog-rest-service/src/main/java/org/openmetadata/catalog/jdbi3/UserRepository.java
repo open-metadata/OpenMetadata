@@ -53,15 +53,15 @@ import static org.openmetadata.catalog.jdbi3.Relationship.CONTAINS;
 import static org.openmetadata.catalog.jdbi3.Relationship.FOLLOWS;
 import static org.openmetadata.catalog.jdbi3.Relationship.OWNS;
 
-public class UserRepositoryHelper extends EntityRepository<User> {
-  public static final Logger LOG = LoggerFactory.getLogger(UserRepositoryHelper.class);
+public class UserRepository extends EntityRepository<User> {
+  public static final Logger LOG = LoggerFactory.getLogger(UserRepository.class);
   static final Fields USER_PATCH_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
   static final Fields USER_UPDATE_FIELDS = new Fields(UserResource.FIELD_LIST, "profile,teams");
 
   private final CollectionDAO repo3;
 
 
-  public UserRepositoryHelper(CollectionDAO repo3) {
+  public UserRepository(CollectionDAO repo3) {
     super(User.class,repo3.userDAO());
     this.repo3 = repo3;
   }
@@ -155,7 +155,7 @@ public class UserRepositoryHelper extends EntityRepository<User> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
     validateRelationships(updated, teamIds);
-    UserRepositoryHelper.UserUpdater userUpdater = new UserRepositoryHelper.UserUpdater(original, updated, true);
+    UserRepository.UserUpdater userUpdater = new UserRepository.UserUpdater(original, updated, true);
     userUpdater.updateAll();
     userUpdater.store();
   }
@@ -325,7 +325,7 @@ public class UserRepositoryHelper extends EntityRepository<User> {
     final User updated;
 
     public UserUpdater(User orig, User updated, boolean patchOperation) {
-      super(new UserRepositoryHelper.UserEntityInterface(orig), new UserRepositoryHelper.UserEntityInterface(updated),
+      super(new UserRepository.UserEntityInterface(orig), new UserRepository.UserEntityInterface(updated),
               patchOperation, repo3.relationshipDAO(), null);
       this.orig = orig;
       this.updated = updated;

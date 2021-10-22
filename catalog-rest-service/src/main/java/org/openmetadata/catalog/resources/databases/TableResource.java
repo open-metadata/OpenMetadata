@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.TableRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -84,7 +84,7 @@ import java.util.UUID;
 public class TableResource {
   private static final Logger LOG = LoggerFactory.getLogger(TableResource.class);
   private static final String TABLE_COLLECTION_PATH = "v1/tables/";
-  private final TableRepositoryHelper dao;
+  private final TableRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static void addHref(UriInfo uriInfo, EntityReference ref) {
@@ -104,7 +104,7 @@ public class TableResource {
   @Inject
   public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "CollectionDAO must not be null");
-    this.dao = new TableRepositoryHelper(dao);
+    this.dao = new TableRepository(dao);
     this.authorizer = authorizer;
   }
 

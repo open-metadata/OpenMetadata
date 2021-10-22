@@ -28,7 +28,7 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.UpdateDashboardService;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepositoryHelper;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -65,7 +65,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboardServices")
 public class DashboardServiceResource {
-  private final DashboardServiceRepositoryHelper dao;
+  private final DashboardServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
@@ -85,8 +85,8 @@ public class DashboardServiceResource {
 
   @Inject
   public DashboardServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "DashboardServiceRepositoryHelper must not be null");
-    this.dao = new DashboardServiceRepositoryHelper(dao);
+    Objects.requireNonNull(dao, "DashboardServiceRepository must not be null");
+    this.dao = new DashboardServiceRepository(dao);
     this.authorizer = authorizer;
   }
 

@@ -33,7 +33,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.openmetadata.common.utils.CipherText;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
@@ -48,13 +47,13 @@ import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
-public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
+public class PipelineRepository extends EntityRepository<Pipeline> {
   private static final Fields PIPELINE_UPDATE_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
   private static final Fields PIPELINE_PATCH_FIELDS = new Fields(PipelineResource.FIELD_LIST,
           "owner,service,tags,tasks");
 
-  public PipelineRepositoryHelper(CollectionDAO repo3) {
+  public PipelineRepository(CollectionDAO repo3) {
     super(Pipeline.class, repo3.pipelineDAO());
     this.repo3 = repo3;
   }
@@ -229,7 +228,7 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
     validateRelationships(updated);
-    PipelineRepositoryHelper.PipelineUpdater pipelineUpdater = new PipelineRepositoryHelper.PipelineUpdater(original, updated, true);
+    PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated, true);
     pipelineUpdater.updateAll();
     pipelineUpdater.store();
   }
@@ -372,7 +371,7 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
     final Pipeline updated;
 
     public PipelineUpdater(Pipeline orig, Pipeline updated, boolean patchOperation) {
-      super(new PipelineRepositoryHelper.PipelineEntityInterface(orig), new PipelineRepositoryHelper.PipelineEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
+      super(new PipelineRepository.PipelineEntityInterface(orig), new PipelineRepository.PipelineEntityInterface(updated), patchOperation, repo3.relationshipDAO(),
               repo3.tagDAO());
       this.orig = orig;
       this.updated = updated;

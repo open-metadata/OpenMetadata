@@ -71,8 +71,8 @@ import java.util.UUID;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
-public class TableRepositoryHelper extends EntityRepository<Table> {
-  static final Logger LOG = LoggerFactory.getLogger(TableRepositoryHelper.class);
+public class TableRepository extends EntityRepository<Table> {
+  static final Logger LOG = LoggerFactory.getLogger(TableRepository.class);
   // Table fields that can be patched in a PATCH request
   static final Fields TABLE_PATCH_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
@@ -80,7 +80,7 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
   static final Fields TABLE_UPDATE_FIELDS = new Fields(TableResource.FIELD_LIST,
           "owner,columns,database,tags,tableConstraints");
 
-  public TableRepositoryHelper(CollectionDAO repo3) {
+  public TableRepository(CollectionDAO repo3) {
     super(Table.class, repo3.tableDAO());
     this.repo3 = repo3;
   }
