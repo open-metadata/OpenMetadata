@@ -61,6 +61,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -167,7 +168,7 @@ public class TeamResource {
                   @PathParam("id") String id,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }

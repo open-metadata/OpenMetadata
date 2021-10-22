@@ -175,10 +175,6 @@ public class ModelRepositoryHelper extends EntityRepository<Model> {
     return EntityUtil.populateOwner(repo3.userDAO(), repo3.teamDAO(), model.getOwner());
   }
 
-  public Model get(String id, Fields fields) throws IOException {
-    return setFields(repo3.modelDAO().findEntityById(id), fields);
-  }
-
   @Override
   public String getFullyQualifiedName(Model entity) {
     return null;

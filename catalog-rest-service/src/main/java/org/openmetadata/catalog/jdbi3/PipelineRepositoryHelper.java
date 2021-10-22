@@ -193,10 +193,6 @@ public class PipelineRepositoryHelper extends EntityRepository<Pipeline> {
     return refList;
   }
 
-  public Pipeline get(String id, Fields fields) throws IOException {
-    return setFields(repo3.pipelineDAO().findEntityById(id), fields);
-  }
-
   @Override
   public String getFullyQualifiedName(Pipeline entity) {
     return null;

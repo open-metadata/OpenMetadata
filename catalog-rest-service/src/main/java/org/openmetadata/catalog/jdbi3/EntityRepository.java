@@ -1,5 +1,6 @@
 package org.openmetadata.catalog.jdbi3;
 
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -23,16 +24,24 @@ public abstract class EntityRepository<T> {
   /**
    * DAO related operations
    */
+  @Transaction
   public final List<String> listAfter(String fqnPrefix, int limitParam, String after) {
     return dao.listAfter(fqnPrefix, limitParam, after);
   }
 
+  @Transaction
   public final List<String> listBefore(String fqnPrefix, int limitParam, String before) {
     return dao.listBefore(fqnPrefix, limitParam, before);
   }
 
+  @Transaction
   public final int listCount(String fqnPrefix) {
     return dao.listCount(fqnPrefix);
+  }
+
+  @Transaction
+  public final T get(String id, Fields fields) throws IOException, ParseException {
+    return setFields(dao.findEntityById(id), fields);
   }
 
   /**

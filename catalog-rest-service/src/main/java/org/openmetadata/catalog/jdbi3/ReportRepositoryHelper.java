@@ -78,10 +78,6 @@ public class ReportRepositoryHelper extends EntityRepository<Report>{
     return new PutResponse<>(Response.Status.OK, storedReport);
   }
 
-  public Report get(String id, Fields fields) throws IOException {
-    return setFields(repo3.reportDAO().findEntityById(id), fields);
-  }
-
   public List<Report> list(Fields fields) throws IOException {
     List<String> jsonList = repo3.reportDAO().list();
     List<Report> reportList = new ArrayList<>();

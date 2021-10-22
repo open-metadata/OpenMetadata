@@ -89,11 +89,6 @@ public class DatabaseRepositoryHelper extends EntityRepository<Database> {
   }
 
   @Transaction
-  public Database get(String id, Fields fields) throws IOException {
-    return setFields(repo3.databaseDAO().findEntityById(id), fields);
-  }
-
-  @Transaction
   public Database getByName(String fqn, Fields fields) throws IOException {
     Database database = repo3.databaseDAO().findEntityByName(fqn);
     return setFields(database, fields);

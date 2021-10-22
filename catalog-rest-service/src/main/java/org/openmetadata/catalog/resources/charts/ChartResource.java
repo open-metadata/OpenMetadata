@@ -180,7 +180,7 @@ public class ChartResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException {
+                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -247,7 +247,7 @@ public class ChartResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Chart chart = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -296,7 +296,7 @@ public class ChartResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Chart chart = addHref(uriInfo, dao.get(id, fields));
@@ -314,7 +314,7 @@ public class ChartResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException {
+                              @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     return addHref(uriInfo, dao.get(id, fields));

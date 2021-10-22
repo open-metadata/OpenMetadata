@@ -133,11 +133,6 @@ public class TableRepositoryHelper extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table get(String id, Fields fields) throws IOException, ParseException {
-    return setFields(repo3.tableDAO().findEntityById(id), fields);
-  }
-
-  @Transaction
   public Table getByName(String fqn, Fields fields) throws IOException, ParseException {
     return setFields(repo3.tableDAO().findEntityByName(fqn), fields);
   }

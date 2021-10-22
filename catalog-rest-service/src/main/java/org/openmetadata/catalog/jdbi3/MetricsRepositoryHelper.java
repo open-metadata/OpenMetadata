@@ -74,11 +74,6 @@ public class MetricsRepositoryHelper extends EntityRepository<Metrics> {
   }
 
   @Transaction
-  public Metrics get(String id, Fields fields) throws IOException {
-    return setFields(repo3.metricsDAO().findEntityById(id), fields);
-  }
-
-  @Transaction
   public List<Metrics> list(Fields fields) throws IOException {
     List<String> jsonList = repo3.metricsDAO().list();
     List<Metrics> metricsList = new ArrayList<>();

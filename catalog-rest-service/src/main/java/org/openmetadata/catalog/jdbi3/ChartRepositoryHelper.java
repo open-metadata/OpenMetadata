@@ -74,11 +74,6 @@ public class ChartRepositoryHelper extends EntityRepository<Chart>{
   }
 
   @Transaction
-  public Chart get(String id, Fields fields) throws IOException {
-    return setFields(validateChart(id), fields);
-  }
-
-  @Transaction
   public Chart getByName(String fqn, Fields fields) throws IOException {
     Chart chart = repo3.chartDAO().findEntityByName(fqn);
     return setFields(chart, fields);

@@ -102,12 +102,6 @@ public class UserRepositoryHelper extends EntityRepository<User> {
   }
 
   @Transaction
-  public User get(String id, Fields fields) throws IOException {
-    // Query 1 - get user for given user name
-    return setFields(validateUser(id), fields);
-  }
-
-  @Transaction
   public User getByName(String name, Fields fields) throws IOException {
     User user = repo3.userDAO().findEntityByName(name);
     return setFields(user, fields);

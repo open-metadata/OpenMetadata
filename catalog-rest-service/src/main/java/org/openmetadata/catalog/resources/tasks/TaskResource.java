@@ -64,6 +64,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -181,7 +182,7 @@ public class TaskResource {
                   @Context SecurityContext securityContext,
                   @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -252,7 +253,7 @@ public class TaskResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,

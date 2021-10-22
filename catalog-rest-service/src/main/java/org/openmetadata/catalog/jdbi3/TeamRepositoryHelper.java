@@ -79,11 +79,6 @@ public class TeamRepositoryHelper extends EntityRepository<Team> {
   }
 
   @Transaction
-  public Team get(String id, Fields fields) throws IOException {
-    return setFields(repo3.teamDAO().findEntityById(id), fields);
-  }
-
-  @Transaction
   public Team getByName(String name, Fields fields) throws IOException {
     return setFields(repo3.teamDAO().findEntityByName(name), fields);
   }

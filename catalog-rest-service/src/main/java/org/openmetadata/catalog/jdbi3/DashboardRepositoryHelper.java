@@ -90,11 +90,6 @@ public class DashboardRepositoryHelper extends EntityRepository<Dashboard> {
   }
 
   @Transaction
-  public Dashboard get(String id, Fields fields) throws IOException {
-    return setFields(repo3.dashboardDAO().findEntityById(id), fields);
-  }
-
-  @Transaction
   public Dashboard getByName(String fqn, Fields fields) throws IOException {
     Dashboard dashboard = repo3.dashboardDAO().findEntityByName(fqn);
     return setFields(dashboard, fields);

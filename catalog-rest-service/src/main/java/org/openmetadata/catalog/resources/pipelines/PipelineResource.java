@@ -184,7 +184,7 @@ public class PipelineResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -250,7 +250,7 @@ public class PipelineResource {
                                                              "{op:remove, path:/a}," +
                                                              "{op:add, path: /b, value: val}" +
                                                              "]")}))
-                                             JsonPatch patch) throws IOException {
+                                             JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -299,7 +299,7 @@ public class PipelineResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);
@@ -317,7 +317,7 @@ public class PipelineResource {
                                   @PathParam("id") String id,
                                   @Parameter(description = "Id of the user being removed as follower",
                                           schema = @Schema(type = "string"))
-                                  @PathParam("userId") String userId) throws IOException {
+                                  @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Pipeline pipeline = dao.get(id, fields);

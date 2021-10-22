@@ -107,11 +107,6 @@ public class TaskRepositoryHelper extends EntityRepository<Task>{
   }
 
   @Transaction
-  public Task get(String id, Fields fields) throws IOException {
-    return setFields(validateTask(id), fields);
-  }
-
-  @Transaction
   public Task getByName(String fqn, Fields fields) throws IOException {
     Task task = repo3.taskDAO().findEntityByName(fqn);
     return setFields(task, fields);

@@ -171,7 +171,7 @@ public class UserResource {
   public User get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     User user = dao.get(id, fields);
     return addHref(uriInfo, user);

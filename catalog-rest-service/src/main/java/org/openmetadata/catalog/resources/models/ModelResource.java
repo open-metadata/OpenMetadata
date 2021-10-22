@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.jdbi3.ModelRepositoryHelper;
-import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityReference;
@@ -62,6 +61,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -177,7 +177,7 @@ public class ModelResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -244,7 +244,7 @@ public class ModelResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Model model = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
@@ -294,7 +294,7 @@ public class ModelResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     Response.Status status = dao.addFollower(id, userId);
     Model model = dao.get(id, fields);
@@ -312,7 +312,7 @@ public class ModelResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
-                              @PathParam("userId") String userId) throws IOException {
+                              @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
     dao.deleteFollower(id, userId);
     Model model = dao.get(id, fields);
