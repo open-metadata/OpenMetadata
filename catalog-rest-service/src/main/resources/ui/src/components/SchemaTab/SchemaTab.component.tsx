@@ -23,8 +23,10 @@ import {
   TableData,
 } from '../../generated/entity/data/table';
 import Searchbar from '../common/searchbar/Searchbar';
-import EntityTable from './EntityTable';
-import SampleDataTable, { SampleColumns } from './SampleDataTable';
+import EntityTable from '../EntityTable/EntityTable.component';
+import SampleDataTable, {
+  SampleColumns,
+} from '../SampleDataTable/SampleDataTable.component';
 
 type Props = {
   owner: Table['owner'];

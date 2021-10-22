@@ -31,8 +31,8 @@ from metadata.utils.helpers import get_start_and_end
 class SnowflakeUsageSource(Source):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
-        select query_id as query,Query_text as sql,query_type as label,
-        database_name as database,start_time as starttime,end_time as endtime,schema_name
+        select query_type,query_text,user_name,database_name,
+        schema_name,start_time,end_time
         from table(information_schema.query_history(
         end_time_range_start=>to_timestamp_ltz('{start_date}'),
         end_time_range_end=>to_timestamp_ltz('{end_date}')));
@@ -50,6 +50,7 @@ class SnowflakeUsageSource(Source):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(ctx)
         start, end = get_start_and_end(config.duration)
+        self.analysis_date = start
         print(start)
         print(end)
         self.sql_stmt = SnowflakeUsageSource.SQL_STATEMENT.format(
@@ -87,23 +88,19 @@ class SnowflakeUsageSource(Source):
         """
         for row in self._get_raw_extract_iter():
             tq = TableQuery(
-                row["query"],
-                row["label"],
-                0,
-                0,
-                0,
-                str(row["starttime"]),
-                str(row["endtime"]),
-                str(row["starttime"])[0:19],
-                2,
-                row["database"],
-                0,
-                row["sql"],
+                query=row["query_type"],
+                user_name=row["user_name"],
+                starttime=str(row["start_time"]),
+                endtime=str(row["end_time"]),
+                analysis_date=self.analysis_date,
+                aborted=True if "1969" in str(row["end_time"]) else False,
+                database=row["database_name"],
+                sql=row["query_text"],
             )
             if row["schema_name"] is not None:
-                self.report.scanned(f"{row['database']}.{row['schema_name']}")
+                self.report.scanned(f"{row['database_name']}.{row['schema_name']}")
             else:
-                self.report.scanned(f"{row['database']}")
+                self.report.scanned(f"{row['database_name']}")
             yield tq
 
     def get_report(self):

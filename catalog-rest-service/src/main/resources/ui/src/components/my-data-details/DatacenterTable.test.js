@@ -17,7 +17,7 @@
 
 import { render } from '@testing-library/react';
 import React from 'react';
-import { qualityDetails } from '../../pages/my-data-details/index.mock';
+import { qualityDetails } from '../my-data-details/DatasetDetails.mock';
 import DatacenterTable from './DatacenterTable';
 
 describe('Test DatacenterTable Component', () => {

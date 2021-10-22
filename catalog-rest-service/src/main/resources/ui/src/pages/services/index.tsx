@@ -242,7 +242,7 @@ const ServicesPage = () => {
       .catch((err: AxiosError) => {
         showToast({
           variant: 'error',
-          body: err.response?.data?.responseMessage ?? 'Something went wrong!',
+          body: err.message || 'Something went wrong!',
         });
       });
   };

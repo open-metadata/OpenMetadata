@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { uniqueId } from 'lodash';
+import { startCase, uniqueId } from 'lodash';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -99,7 +99,7 @@ const TableDataCard: FunctionComponent<Props> = ({
           <span className="tw-text-grey-muted">Matches :</span>
           {matches.map((data, i) => (
             <span className="tw-ml-2" key={uniqueId()}>
-              {`${data.value} in ${data.key}${
+              {`${data.value} in ${startCase(data.key)}${
                 i !== matches.length - 1 ? ',' : ''
               }`}
             </span>

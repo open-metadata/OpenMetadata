@@ -6,7 +6,7 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import ManageTab from './ManageTab';
+import ManageTab from './ManageTab.component';
 
 const mockTierData = {
   children: [

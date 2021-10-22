@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
 import { Table, TableProfile } from '../../generated/entity/data/table';
-import TableProfilerGraph from './TableProfilerGraph';
+import TableProfilerGraph from './TableProfilerGraph.component';
 
 type Props = {
   tableProfiles: Table['tableProfile'];

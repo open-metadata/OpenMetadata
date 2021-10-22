@@ -17,7 +17,7 @@
 
 import { getAllByTestId, render } from '@testing-library/react';
 import React from 'react';
-import SampleDataTable from './SampleDataTable';
+import SampleDataTable from './SampleDataTable.component';
 
 const mockSampleData = {
   columns: [

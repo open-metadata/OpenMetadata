@@ -20,8 +20,7 @@ import { TableDetail } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Column, DataType } from '../../generated/entity/data/table';
-import SchemaTab from './SchemaTab';
-
+import SchemaTab from './SchemaTab.component';
 const mockColumns: Column[] = [
   {
     name: 'testId',
@@ -56,18 +55,12 @@ const mockSampleData = {
   ],
 };
 
-jest.mock('./SampleDataTable', () => {
+jest.mock('../SampleDataTable/SampleDataTable.component', () => {
   return jest.fn().mockReturnValue(<p>SampleDataTable</p>);
 });
 
-jest.mock('./EntityTable', () => {
+jest.mock('../EntityTable/EntityTable.component', () => {
   return jest.fn().mockReturnValue(<p>EntityTable</p>);
-});
-
-jest.mock('./SchemaTable', () => {
-  return jest
-    .fn()
-    .mockReturnValue(<p data-testid="schema-table">SchemaTable</p>);
 });
 
 describe('Test SchemaTab Component', () => {

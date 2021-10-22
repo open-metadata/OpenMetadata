@@ -77,6 +77,10 @@ declare module 'Models' {
     isRemovable?: boolean;
   } & TagLabel;
 
+  export interface EntityTags extends TagLabel {
+    isRemovable?: boolean;
+  }
+
   export type TableColumn = {
     name: string;
     columnDataType: string;

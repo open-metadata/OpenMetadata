@@ -22,7 +22,7 @@ import {
   render,
 } from '@testing-library/react';
 import React from 'react';
-import { issues } from '../../pages/my-data-details/index.mock';
+import { issues } from '../my-data-details/DatasetDetails.mock';
 import IssuesTab from './IssuesTab';
 
 describe('Test IssuesTab Component', () => {
