@@ -86,15 +86,6 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);
 
-    SqlLogger sqlLogger = new SqlLogger() {
-      @Override
-      public void logAfterExecution(StatementContext context) {
-        LOG.debug("sql {}, parameters {}, timeTaken {} ms", context.getRenderedSql(),
-                context.getBinding().toString(), context.getElapsedTime(ChronoUnit.MILLIS));
-      }
-    };
-    jdbi.setSqlLogger(sqlLogger);
-
     // Registering config api
     environment.jersey().register(new ConfigResource(catalogConfig));
 

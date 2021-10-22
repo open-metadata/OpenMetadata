@@ -1,8 +1,8 @@
 package org.openmetadata.catalog.util;
 
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO3;
-import org.openmetadata.catalog.jdbi3.TagDAO3;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,8 +27,8 @@ public abstract class EntityUpdater3 {
   private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater3.class);
   private final EntityInterface originalEntity;
   private final EntityInterface updatedEntity;
-  private final EntityRelationshipDAO3 relationshipDAO;
-  private final TagDAO3 tagDAO;
+  private final EntityRelationshipDAO relationshipDAO;
+  private final TagDAO tagDAO;
 
   protected final boolean patchOperation;
   protected List<String> fieldsUpdated = new ArrayList<>();
@@ -37,7 +37,7 @@ public abstract class EntityUpdater3 {
   protected boolean majorVersionChange = false;
 
   public EntityUpdater3(EntityInterface originalEntity, EntityInterface updatedEntity, boolean patchOperation,
-                        EntityRelationshipDAO3 relationshipDAO, TagDAO3 tagDAO) {
+                        EntityRelationshipDAO relationshipDAO, TagDAO tagDAO) {
     this.originalEntity = originalEntity;
     this.updatedEntity = updatedEntity;
     this.patchOperation = patchOperation;

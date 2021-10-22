@@ -35,24 +35,22 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.ChartDAO3;
-import org.openmetadata.catalog.jdbi3.DashboardDAO3;
-import org.openmetadata.catalog.jdbi3.DatabaseDAO3;
-import org.openmetadata.catalog.jdbi3.EntityRelationshipDAO3;
-import org.openmetadata.catalog.jdbi3.EntityRepository;
-import org.openmetadata.catalog.jdbi3.MetricsDAO3;
-import org.openmetadata.catalog.jdbi3.ModelDAO3;
-import org.openmetadata.catalog.jdbi3.PipelineDAO3;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.ChartDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.DashboardDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.DatabaseDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.MetricsDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.ModelDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.PipelineDAO;
 import org.openmetadata.catalog.jdbi3.Relationship;
-import org.openmetadata.catalog.jdbi3.ReportDAO3;
-import org.openmetadata.catalog.jdbi3.TableDAO3;
-import org.openmetadata.catalog.jdbi3.TagDAO;
-import org.openmetadata.catalog.jdbi3.TagDAO3;
-import org.openmetadata.catalog.jdbi3.TaskDAO3;
-import org.openmetadata.catalog.jdbi3.TeamDAO3;
-import org.openmetadata.catalog.jdbi3.TopicDAO3;
-import org.openmetadata.catalog.jdbi3.UsageDAO3;
-import org.openmetadata.catalog.jdbi3.UserDAO3;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.ReportDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TaskDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.TopicDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
@@ -74,15 +72,12 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.openmetadata.common.utils.CipherText;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -115,7 +110,7 @@ public final class EntityUtil {
     return entity;
   }
 
-  public static EntityReference getService(EntityRelationshipDAO3 dao, UUID entityId) {
+  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId) {
     List<EntityReference> refs = dao.findFrom(entityId.toString(), Relationship.CONTAINS.ordinal());
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
@@ -124,7 +119,7 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  public static EntityReference getService(EntityRelationshipDAO3 dao, UUID entityId, String serviceType) {
+  public static EntityReference getService(EntityRelationshipDAO dao, UUID entityId, String serviceType) {
     List<EntityReference> refs = dao.findFromEntity(entityId.toString(), Relationship.CONTAINS.ordinal(), serviceType);
     if (refs.size() > 1) {
       LOG.warn("Possible database issues - multiple services found for entity {}", entityId);
@@ -178,15 +173,15 @@ public final class EntityUtil {
     Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> addHref(uriInfo, ref));
   }
 
-  public static void validateUser(UserDAO3 userDAO, String userId) {
+  public static void validateUser(UserDAO userDAO, String userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
   }
 
   // Get owner for a given entity
-  public static EntityReference populateOwner(UUID id, EntityRelationshipDAO3 entityRelationshipDAO, UserDAO3 userDAO,
-                                              TeamDAO3 teamDAO) throws IOException {
+  public static EntityReference populateOwner(UUID id, EntityRelationshipDAO entityRelationshipDAO, UserDAO userDAO,
+                                              TeamDAO teamDAO) throws IOException {
     List<EntityReference> ids = entityRelationshipDAO.findFrom(id.toString(), Relationship.OWNS.ordinal());
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
@@ -194,7 +189,7 @@ public final class EntityUtil {
     return ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
-  public static EntityReference populateOwner(UserDAO3 userDAO, TeamDAO3 teamDAO,
+  public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO,
                                               EntityReference owner)
           throws IOException {
     if (owner == null) {
@@ -216,7 +211,7 @@ public final class EntityUtil {
     }
     return owner;
   }
-  public static void setOwner(EntityRelationshipDAO3 dao, UUID ownedEntityId, String ownedEntityType,
+  public static void setOwner(EntityRelationshipDAO dao, UUID ownedEntityId, String ownedEntityType,
                               EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
@@ -229,7 +224,7 @@ public final class EntityUtil {
   /**
    * Unassign owner relationship for a given entity
    */
-  public static void unassignOwner(EntityRelationshipDAO3 dao, EntityReference owner, String ownedEntityId) {
+  public static void unassignOwner(EntityRelationshipDAO dao, EntityReference owner, String ownedEntityId) {
     if (owner != null && owner.getId() != null) {
       LOG.info("Removing owner {}:{} for entity {}", owner.getType(), owner.getId(),
               ownedEntityId);
@@ -237,7 +232,7 @@ public final class EntityUtil {
     }
   }
 
-  public static void updateOwner(EntityRelationshipDAO3 dao, EntityReference originalOwner, EntityReference newOwner,
+  public static void updateOwner(EntityRelationshipDAO dao, EntityReference originalOwner, EntityReference newOwner,
                                  UUID ownedEntityId, String ownedEntityType) {
     // TODO inefficient use replace instead of delete and add?
     // TODO check for orig and new owners being the same
@@ -245,12 +240,12 @@ public final class EntityUtil {
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
-  public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO3 tableDAO,
-                                                         DatabaseDAO3 databaseDAO, MetricsDAO3 metricsDAO,
-                                                         DashboardDAO3 dashboardDAO, ReportDAO3 reportDAO,
-                                                         TopicDAO3 topicDAO, ChartDAO3 chartDAO,
-                                                         TaskDAO3 taskDAO, ModelDAO3 modelDAO,
-                                                         PipelineDAO3 pipelineDAO) throws IOException {
+  public static List<EntityReference> getEntityReference(List<EntityReference> list, TableDAO tableDAO,
+                                                         DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
+                                                         DashboardDAO dashboardDAO, ReportDAO reportDAO,
+                                                         TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         TaskDAO taskDAO, ModelDAO modelDAO,
+                                                         PipelineDAO pipelineDAO) throws IOException {
     for (EntityReference ref : list) {
       getEntityReference3(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO, reportDAO, topicDAO, chartDAO,
               taskDAO, modelDAO, pipelineDAO);
@@ -260,10 +255,10 @@ public final class EntityUtil {
 
 
 
-  public static EntityReference getEntityReference3(EntityReference ref, TableDAO3 tableDAO, DatabaseDAO3 databaseDAO,
-                                                    MetricsDAO3 metricsDAO, DashboardDAO3 dashboardDAO,
-                                                    ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
-                                                    TaskDAO3 taskDAO, ModelDAO3 modelDAO, PipelineDAO3 pipelineDAO)
+  public static EntityReference getEntityReference3(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
+                                                    MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
+                                                    ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                    TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
           throws IOException {
     // Note href to entity reference is not added here
     String entity = ref.getType();
@@ -302,22 +297,22 @@ public final class EntityUtil {
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
 
-  public static EntityReference getEntityReference(String entity, UUID id, TableDAO3 tableDAO,
-                                                   DatabaseDAO3 databaseDAO,
-                                                   MetricsDAO3 metricsDAO, DashboardDAO3 dashboardDAO,
-                                                   ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
-                                                   TaskDAO3 taskDAO, ModelDAO3 modelDAO, PipelineDAO3 pipelineDAO)
+  public static EntityReference getEntityReference(String entity, UUID id, TableDAO tableDAO,
+                                                   DatabaseDAO databaseDAO,
+                                                   MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
+                                                   ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                   TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
           throws IOException {
     EntityReference ref = new EntityReference().withId(id).withType(entity);
     return getEntityReference3(ref, tableDAO, databaseDAO, metricsDAO, dashboardDAO,
             reportDAO, topicDAO, chartDAO, taskDAO, modelDAO, pipelineDAO);
   }
 
-  public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO3 tableDAO,
-                                                         DatabaseDAO3 databaseDAO, MetricsDAO3 metricsDAO,
-                                                         ReportDAO3 reportDAO, TopicDAO3 topicDAO, ChartDAO3 chartDAO,
-                                                         DashboardDAO3 dashboardDAO, TaskDAO3 taskDAO, ModelDAO3 modelDAO,
-                                                         PipelineDAO3 pipelineDAO)
+  public static EntityReference getEntityReferenceByName(String entity, String fqn, TableDAO tableDAO,
+                                                         DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
+                                                         ReportDAO reportDAO, TopicDAO topicDAO, ChartDAO chartDAO,
+                                                         DashboardDAO dashboardDAO, TaskDAO taskDAO, ModelDAO modelDAO,
+                                                         PipelineDAO pipelineDAO)
           throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
       Table instance = tableDAO.findEntityByName(fqn);
@@ -427,10 +422,10 @@ public final class EntityUtil {
             .withType(Entity.PIPELINE_SERVICE);
   }
 
-  public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO3 userDAO, TeamDAO3 teamDAO,
-                                                   TableDAO3 tableDAO, DatabaseDAO3 databaseDAO, MetricsDAO3 metricsDAO,
-                                                   DashboardDAO3 dashboardDAO, ReportDAO3 reportDAO, TopicDAO3 topicDAO,
-                                                   TaskDAO3 taskDAO, ModelDAO3 modelDAO, PipelineDAO3 pipelineDAO)
+  public static EntityReference validateEntityLink(EntityLink entityLink, UserDAO userDAO, TeamDAO teamDAO,
+                                                   TableDAO tableDAO, DatabaseDAO databaseDAO, MetricsDAO metricsDAO,
+                                                   DashboardDAO dashboardDAO, ReportDAO reportDAO, TopicDAO topicDAO,
+                                                   TaskDAO taskDAO, ModelDAO modelDAO, PipelineDAO pipelineDAO)
           throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityId();
@@ -461,7 +456,7 @@ public final class EntityUtil {
     }
   }
 
-  public static UsageDetails getLatestUsage(UsageDAO3 usageDAO, UUID entityId) {
+  public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
     LOG.debug("Getting latest usage for {}", entityId);
     UsageDetails details = usageDAO.getLatestUsage(entityId.toString());
     if (details == null) {
@@ -536,7 +531,7 @@ public final class EntityUtil {
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
    */
-  public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
+  public static void applyTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
@@ -559,7 +554,7 @@ public final class EntityUtil {
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
    */
-  public static void applyTags(TagDAO3 tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
+  public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
       if (json == null) {
@@ -589,7 +584,7 @@ public final class EntityUtil {
   /**
    * Validate given list of tags and add derived tags to it
    */
-  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
+  public static List<TagLabel> addDerivedTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
@@ -611,7 +606,7 @@ public final class EntityUtil {
   /**
    * Validate given list of tags and add derived tags to it
    */
-  public static List<TagLabel> addDerivedTags(TagDAO3 tagDAO, List<TagLabel> tagLabels) throws IOException {
+  public static List<TagLabel> addDerivedTags(TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
     List<TagLabel> updatedTagLabels = new ArrayList<>();
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
@@ -629,15 +624,15 @@ public final class EntityUtil {
     }
     return updatedTagLabels;
   }
-  public static void removeTags(TagDAO tagDAO, String fullyQualifiedName) {
+  public static void removeTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, String fullyQualifiedName) {
     tagDAO.deleteTags(fullyQualifiedName);
   }
 
-  public static void removeTagsByPrefix(TagDAO tagDAO, String fullyQualifiedName) {
+  public static void removeTagsByPrefix(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, String fullyQualifiedName) {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
-  public static void removeTagsByPrefix(TagDAO3 tagDAO, String fullyQualifiedName) {
+  public static void removeTagsByPrefix(TagDAO tagDAO, String fullyQualifiedName) {
     tagDAO.deleteTagsByPrefix(fullyQualifiedName);
   }
 
@@ -662,7 +657,7 @@ public final class EntityUtil {
     LOG.info(print);
   }
 
-  public static boolean addFollower(EntityRelationshipDAO3 dao, UserDAO3 userDAO,
+  public static boolean addFollower(EntityRelationshipDAO dao, UserDAO userDAO,
                                     String followedEntityId,
                                     String followedEntityType, String followerId, String followerEntity)
           throws IOException {
@@ -674,12 +669,12 @@ public final class EntityUtil {
             Relationship.FOLLOWS.ordinal()) > 0;
   }
 
-  public static void removeFollower(EntityRelationshipDAO3 dao, String followedEntityId, String followerId) {
+  public static void removeFollower(EntityRelationshipDAO dao, String followedEntityId, String followerId) {
     dao.delete(followerId, followedEntityId, Relationship.FOLLOWS.ordinal());
   }
 
-  public static List<EntityReference> getFollowers(UUID followedEntityId, EntityRelationshipDAO3 entityRelationshipDAO,
-                                                   UserDAO3 userDAO) throws IOException {
+  public static List<EntityReference> getFollowers(UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO,
+                                                   UserDAO userDAO) throws IOException {
     List<String> followerIds = entityRelationshipDAO.findFrom(followedEntityId.toString(),
             Relationship.FOLLOWS.ordinal(),
             Entity.USER);
