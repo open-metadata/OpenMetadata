@@ -92,7 +92,7 @@ In that list look for "jersey-client:2.25.1"
 Select it and click "OK". Now run/debug the application.
 
 ## Troubleshooting
-* If you see blank page at http://localhost:8585 , please check the logs at `logs/metadata.log`. You might be encountering one of the following errors: 
+* If you see blank page at http://localhost:8585 , please check the logs at `logs/openmetadata.log`. You might be encountering one of the following errors: 
     * `connection refused` or `unreachable` - please confirm that MySQL and ES are reachable outside of docker by running `docker ps` and  checking that ports 3306 and 9200 are listening on 0.0.0.0
         * If ElasticSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4GB
         * If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
