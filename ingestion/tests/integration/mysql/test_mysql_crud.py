@@ -14,7 +14,6 @@
 #  limitations under the License.
 
 import time
-from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
@@ -26,6 +25,8 @@ import requests
 from requests.exceptions import ConnectionError
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 
 
 def is_responsive(url):
@@ -39,8 +40,8 @@ def is_responsive(url):
 
 def create_delete_table(client):
     databases = client.list_databases()
-    columns = [Column(name="id", columnDataType="INT"),
-               Column(name="name", columnDataType="VARCHAR")]
+    columns = [Column(name="id", dataType="INT", dataLength=1),
+               Column(name="name", dataType="VARCHAR", dataLength=1)]
     table = CreateTableEntityRequest(
         name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update_table(table)
@@ -78,15 +79,21 @@ def catalog_service(docker_ip, docker_services):
     port = docker_services.port_for("db", 3306)
     print("Mysql is running on port {}".format(port))
     url = "http://localhost:8585"
-    time.sleep(420)
+    time.sleep(20)
     docker_services.wait_until_responsive(
-        timeout=60.0, pause=0.5, check=lambda: is_responsive(url)
+        timeout=30.0, pause=0.5, check=lambda: is_responsive(url)
     )
     return url
 
 
 def test_check_tables(catalog_service):
-    client = REST(catalog_service + "/api", 'test', 'test')
+    metadata_config = MetadataServerConfig.parse_obj(
+        {
+            "api_endpoint": catalog_service + "/api",
+            "auth_provider_type": "no-auth"
+        }
+    )
+    client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
     if len(databases) > 0:
         assert create_delete_table(client)
