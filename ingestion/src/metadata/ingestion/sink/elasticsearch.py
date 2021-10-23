@@ -97,7 +97,7 @@ class ElasticsearchSink(Sink):
             [
                 {"host": self.config.es_host, "port": self.config.es_port},
             ],
-            http_auth= http_auth,
+            http_auth=http_auth,
         )
         if self.config.index_tables:
             self._check_or_create_index(
