@@ -28,7 +28,7 @@ import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineLis
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -40,7 +40,6 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -64,6 +63,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
   }
+
   @Transaction
   public Pipeline create(Pipeline pipeline) throws IOException {
     validateRelationships(pipeline);
@@ -89,7 +89,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   @Transaction
   public Pipeline patch(String id, String user, JsonPatch patch) throws IOException {
-    Pipeline original = setFields(validatePipeline(id), PIPELINE_PATCH_FIELDS);
+    Pipeline original = setFields(dao.pipelineDAO().findEntityById(id), PIPELINE_PATCH_FIELDS);
     Pipeline updated = JsonUtils.applyPatch(original, patch, Pipeline.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
     patch(original, updated);
@@ -128,7 +128,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static List<EntityReference> toEntityReference(List<Task> tasks) {
     List<EntityReference> refList = new ArrayList<>();
-    for (Task task: tasks) {
+    for (Task task : tasks) {
       refList.add(EntityUtil.getEntityReference(task));
     }
     return refList;
@@ -229,7 +229,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
     validateRelationships(updated);
-    PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated, true);
+    PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated,
+            true);
     pipelineUpdater.updateAll();
     pipelineUpdater.store();
   }
@@ -287,7 +288,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     applyTags(pipeline);
   }
 
-  private void updateTaskRelationships(Pipeline pipeline) throws IOException  {
+  private void updateTaskRelationships(Pipeline pipeline) throws IOException {
     String pipelineId = pipeline.getId().toString();
 
     // Add relationship from pipeline to task
@@ -295,7 +296,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       // Remove any existing tasks associated with this pipeline
       List<Task> existingTasks = getTasks(pipeline);
       if (existingTasks != null) {
-        for (Task task: existingTasks) {
+        for (Task task : existingTasks) {
           dao.relationshipDAO().delete(pipelineId, task.getId().toString(), Relationship.CONTAINS.ordinal());
         }
       }
@@ -305,10 +306,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                 Relationship.CONTAINS.ordinal());
       }
     }
-  }
-
-  private Pipeline validatePipeline(String id) throws IOException {
-    return dao.pipelineDAO().findEntityById(id);
   }
 
   static class PipelineEntityInterface implements EntityInterface {
@@ -367,12 +364,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class PipelineUpdater extends EntityUpdater3 {
+  public class PipelineUpdater extends EntityUpdater {
     final Pipeline orig;
     final Pipeline updated;
 
     public PipelineUpdater(Pipeline orig, Pipeline updated, boolean patchOperation) {
-      super(new PipelineRepository.PipelineEntityInterface(orig), new PipelineRepository.PipelineEntityInterface(updated), patchOperation, dao.relationshipDAO(),
+      super(new PipelineRepository.PipelineEntityInterface(orig),
+              new PipelineRepository.PipelineEntityInterface(updated), patchOperation, dao.relationshipDAO(),
               dao.tagDAO());
       this.orig = orig;
       this.updated = updated;
@@ -385,7 +383,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     private void updateTasks() throws IOException {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
-      // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a pipeline
+      // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a
+      // pipeline
       // in the next task run we may have to update. To take care of this we will merge the tasks
       if (updated.getTasks() == null) {
         updated.setTasks(orig.getTasks());

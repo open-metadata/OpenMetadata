@@ -28,7 +28,7 @@ import org.openmetadata.catalog.resources.dashboards.DashboardResource.Dashboard
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -200,7 +200,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private void validateRelationships(Dashboard dashboard)
           throws IOException {
-    EntityReference dashboardService =  getService(dashboard.getService());
+    EntityReference dashboardService = getService(dashboard.getService());
     dashboard.setService(dashboardService);
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
@@ -341,7 +341,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class DashboardUpdater extends EntityUpdater3 {
+  public class DashboardUpdater extends EntityUpdater {
     final Dashboard orig;
     final Dashboard updated;
 

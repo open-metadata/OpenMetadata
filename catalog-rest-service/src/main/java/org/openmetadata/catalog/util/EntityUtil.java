@@ -42,7 +42,6 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.MetricsDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.ModelDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.PipelineDAO;
-import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.ReportDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TableDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
@@ -51,6 +50,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TopicDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
+import org.openmetadata.catalog.jdbi3.Relationship;
 import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
@@ -211,6 +211,7 @@ public final class EntityUtil {
     }
     return owner;
   }
+
   public static void setOwner(EntityRelationshipDAO dao, UUID ownedEntityId, String ownedEntityType,
                               EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
@@ -252,8 +253,6 @@ public final class EntityUtil {
     }
     return list;
   }
-
-
 
   public static EntityReference getEntityReference3(EntityReference ref, TableDAO tableDAO, DatabaseDAO databaseDAO,
                                                     MetricsDAO metricsDAO, DashboardDAO dashboardDAO,
@@ -531,29 +530,6 @@ public final class EntityUtil {
   /**
    * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
    */
-  public static void applyTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
-    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
-      String json = tagDAO.findTag(tagLabel.getTagFQN());
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(),
-                tagLabel.getTagFQN()));
-      }
-      Tag tag = JsonUtils.readValue(json, Tag.class);
-
-      // Apply tagLabel to targetFQN that identifies an entity or field
-      tagDAO.applyTag(tagLabel.getTagFQN(), targetFQN, tagLabel.getLabelType().ordinal(),
-              tagLabel.getState().ordinal());
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
-      applyTags(tagDAO, derivedTags, targetFQN);
-    }
-  }
-
-  /**
-   * Apply tags {@code tagLabels} to the entity or field identified by {@code targetFQN}
-   */
   public static void applyTags(TagDAO tagDAO, List<TagLabel> tagLabels, String targetFQN) throws IOException {
     for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
       String json = tagDAO.findTag(tagLabel.getTagFQN());
@@ -573,34 +549,13 @@ public final class EntityUtil {
       applyTags(tagDAO, derivedTags, targetFQN);
     }
   }
+
   public static List<TagLabel> getDerivedTags(TagLabel tagLabel, Tag tag) {
     List<TagLabel> derivedTags = new ArrayList<>();
     for (String fqn : Optional.ofNullable(tag.getAssociatedTags()).orElse(Collections.emptyList())) {
       derivedTags.add(new TagLabel().withTagFQN(fqn).withState(tagLabel.getState()).withLabelType(LabelType.DERIVED));
     }
     return derivedTags;
-  }
-
-  /**
-   * Validate given list of tags and add derived tags to it
-   */
-  public static List<TagLabel> addDerivedTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, List<TagLabel> tagLabels) throws IOException {
-    List<TagLabel> updatedTagLabels = new ArrayList<>();
-    for (TagLabel tagLabel : Optional.ofNullable(tagLabels).orElse(Collections.emptyList())) {
-      String json = tagDAO.findTag(tagLabel.getTagFQN());
-      if (json == null) {
-        // Invalid TagLabel
-        throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Tag.class.getSimpleName(),
-                tagLabel.getTagFQN()));
-      }
-      Tag tag = JsonUtils.readValue(json, Tag.class);
-      updatedTagLabels.add(tagLabel);
-
-      // Apply derived tags
-      List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
-      updatedTagLabels = EntityUtil.mergeTags(updatedTagLabels, derivedTags);
-    }
-    return updatedTagLabels;
   }
 
   /**
@@ -624,12 +579,9 @@ public final class EntityUtil {
     }
     return updatedTagLabels;
   }
-  public static void removeTags(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, String fullyQualifiedName) {
-    tagDAO.deleteTags(fullyQualifiedName);
-  }
 
-  public static void removeTagsByPrefix(org.openmetadata.catalog.jdbi3.TagDAO tagDAO, String fullyQualifiedName) {
-    tagDAO.deleteTagsByPrefix(fullyQualifiedName);
+  public static void removeTags(TagDAO tagDAO, String fullyQualifiedName) {
+    tagDAO.deleteTags(fullyQualifiedName);
   }
 
   public static void removeTagsByPrefix(TagDAO tagDAO, String fullyQualifiedName) {
@@ -685,6 +637,7 @@ public final class EntityUtil {
     }
     return followers;
   }
+
   public static class Fields {
     private final List<String> fieldList;
 
@@ -719,7 +672,7 @@ public final class EntityUtil {
       return null;
     }
     List<EntityReference> refList = new ArrayList<>();
-    for (Chart chart: charts) {
+    for (Chart chart : charts) {
       refList.add(EntityUtil.getEntityReference(chart));
     }
     return refList;

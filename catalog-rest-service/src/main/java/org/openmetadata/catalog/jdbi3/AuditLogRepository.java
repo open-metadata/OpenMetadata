@@ -23,11 +23,9 @@ import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.util.EntityUtil;
-
 import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -38,7 +36,6 @@ public abstract class AuditLogRepository {
 
   @CreateSqlObject
   abstract AuditLogDAO auditLogDAO();
-
 
   @Transaction
   public List<AuditLog> list() throws IOException {
@@ -59,7 +56,7 @@ public abstract class AuditLogRepository {
   public List<AuditLog> getByEntityType(String entityType) throws IOException {
     List<String> jsons = auditLogDAO().findByEntityType(entityType);
     List<AuditLog> auditLogs = new ArrayList<>();
-    for (String json: jsons) {
+    for (String json : jsons) {
       auditLogs.add(JsonUtils.readValue(json, AuditLog.class));
     }
     return auditLogs;
@@ -75,7 +72,6 @@ public abstract class AuditLogRepository {
   public void delete(String id) {
     auditLogDAO().delete(id);
   }
-
 
   public interface AuditLogDAO {
     @SqlUpdate("INSERT INTO audit_log (json) VALUES (:json)")
@@ -95,6 +91,5 @@ public abstract class AuditLogRepository {
 
     @SqlUpdate("DELETE FROM audit_log_entity WHERE id = :id")
     int delete(@Bind("id") String id);
-
   }
 }
