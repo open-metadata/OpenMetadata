@@ -17,4 +17,4 @@
 
 mvn -DskipTests clean package
 cd docker/local-metadata/
-docker-compose up
+docker-compose up --build
