@@ -28,7 +28,7 @@ import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseLis
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -291,7 +291,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class DatabaseUpdater extends EntityUpdater3 {
+  public class DatabaseUpdater extends EntityUpdater {
     final Database orig;
     final Database updated;
 
