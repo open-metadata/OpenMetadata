@@ -26,7 +26,7 @@ import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -321,7 +321,7 @@ public class UserRepository extends EntityRepository<User> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class UserUpdater extends EntityUpdater3 {
+  public class UserUpdater extends EntityUpdater {
     final User orig;
     final User updated;
 

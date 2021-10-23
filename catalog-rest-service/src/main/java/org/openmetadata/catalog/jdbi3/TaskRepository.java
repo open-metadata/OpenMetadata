@@ -27,7 +27,7 @@ import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -285,7 +285,7 @@ public class TaskRepository extends EntityRepository<Task> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class TaskUpdater extends EntityUpdater3 {
+  public class TaskUpdater extends EntityUpdater {
     final Task orig;
     final Task updated;
 

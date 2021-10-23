@@ -37,7 +37,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.EventUtils;
@@ -599,8 +599,8 @@ public class TableRepository extends EntityRepository<Table> {
   private List<TableProfile> getTableProfile(Table table) throws IOException {
     List<TableProfile> tableProfiles =
             JsonUtils.readObjects(dao.entityExtensionDAO().getExtension(table.getId().toString(),
-            "table.tableProfile"),
-            TableProfile.class);
+                    "table.tableProfile"),
+                    TableProfile.class);
     if (tableProfiles != null) {
       tableProfiles.sort(Comparator.comparing(p -> parseDate(p.getProfileDate(), RestUtil.DATE_FORMAT),
               Comparator.reverseOrder()));
@@ -665,7 +665,7 @@ public class TableRepository extends EntityRepository<Table> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class TableUpdater extends EntityUpdater3 {
+  public class TableUpdater extends EntityUpdater {
     final Table orig;
     final Table updated;
 

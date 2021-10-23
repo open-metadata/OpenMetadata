@@ -17,15 +17,15 @@ import java.util.List;
  * - description
  * - tags
  * - owner
- *
+ * <p>
  * This class handles tracking all the changes in an update operation and also versioning
  * of the entity.
- *
+ * <p>
  * Concrete  implementations need to implement update for other fields. See
  * {@link TableRepository.TableUpdater} for an example implementation.
  */
-public abstract class EntityUpdater3 {
-  private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater3.class);
+public abstract class EntityUpdater {
+  private static final Logger LOG = LoggerFactory.getLogger(EntityUpdater.class);
   private final EntityInterface originalEntity;
   private final EntityInterface updatedEntity;
   private final EntityRelationshipDAO relationshipDAO;
@@ -37,8 +37,8 @@ public abstract class EntityUpdater3 {
   protected List<String> fieldsDeleted = new ArrayList<>();
   protected boolean majorVersionChange = false;
 
-  public EntityUpdater3(EntityInterface originalEntity, EntityInterface updatedEntity, boolean patchOperation,
-                        EntityRelationshipDAO relationshipDAO, TagDAO tagDAO) {
+  public EntityUpdater(EntityInterface originalEntity, EntityInterface updatedEntity, boolean patchOperation,
+                       EntityRelationshipDAO relationshipDAO, TagDAO tagDAO) {
     this.originalEntity = originalEntity;
     this.updatedEntity = updatedEntity;
     this.patchOperation = patchOperation;

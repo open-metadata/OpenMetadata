@@ -26,7 +26,7 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater3;
+import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -296,7 +296,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   /**
    * Handles entity updated from PUT and POST operation.
    */
-  public class ChartUpdater extends EntityUpdater3 {
+  public class ChartUpdater extends EntityUpdater {
     final Chart orig;
     final Chart updated;
 
