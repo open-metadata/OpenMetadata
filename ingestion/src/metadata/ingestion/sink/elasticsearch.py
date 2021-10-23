@@ -52,6 +52,8 @@ logger = logging.getLogger(__name__)
 class ElasticSearchConfig(ConfigModel):
     es_host: str
     es_port: int = 9200
+    es_username: str
+    es_password: str
     index_tables: Optional[bool] = True
     index_topics: Optional[bool] = True
     index_dashboards: Optional[bool] = True
@@ -88,10 +90,14 @@ class ElasticsearchSink(Sink):
         self.status = SinkStatus()
         self.rest = OpenMetadataAPIClient(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"
+        http_auth = None
+        if self.config.es_username:
+            http_auth = (self.config.es_username, self.config.es_password)
         self.elasticsearch_client = Elasticsearch(
             [
                 {"host": self.config.es_host, "port": self.config.es_port},
-            ]
+            ],
+            http_auth=http_auth,
         )
         if self.config.index_tables:
             self._check_or_create_index(
