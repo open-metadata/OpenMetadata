@@ -31,6 +31,7 @@ import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -264,7 +265,8 @@ public class UserResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(user));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+            new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
     user = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(user).build();
@@ -288,7 +290,7 @@ public class UserResource {
                             JsonPatch patch) throws IOException, ParseException {
     User user = dao.get(id, new Fields(FIELD_LIST, null));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(user));
+            new UserEntityInterface(user).getEntityReference());
     return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
   }
 

@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -80,7 +81,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
   private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -252,7 +252,7 @@ public class ChartResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Chart chart = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(chart));
+            new ChartEntityInterface(chart).getEntityReference());
     chart = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, chart);
   }

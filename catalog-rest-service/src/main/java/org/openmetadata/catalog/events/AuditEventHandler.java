@@ -47,8 +47,10 @@ public class AuditEventHandler implements  EventHandler {
       Date nowAsISO = new Date();
 
       try {
-        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
-                responseContext.getEntity().getClass());
+        EntityReference entityReference = null;
+        // TODO fix this
+//        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
+//                responseContext.getEntity().getClass());
         if (entityReference != null) {
           AuditLog auditLog = new AuditLog()
                   .withPath(path)

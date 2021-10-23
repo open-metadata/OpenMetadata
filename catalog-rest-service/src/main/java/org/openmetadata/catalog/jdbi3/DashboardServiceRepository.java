@@ -19,10 +19,14 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -34,6 +38,7 @@ import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -89,5 +94,56 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new DashboardServiceList(entities);
+  }
+
+  public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
+    private final DashboardService entity;
+
+    public DashboardServiceEntityInterface(DashboardService entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD_SERVICE);
+    }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

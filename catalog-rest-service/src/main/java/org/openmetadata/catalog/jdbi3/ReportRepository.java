@@ -22,6 +22,8 @@ import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.resources.reports.ReportResource.ReportList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -33,8 +35,8 @@ import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class ReportRepository extends EntityRepository<Report> {
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
@@ -76,15 +78,6 @@ public class ReportRepository extends EntityRepository<Report> {
     storedReport.setService(service);
 
     return new PutResponse<>(Response.Status.OK, storedReport);
-  }
-
-  public List<Report> list(Fields fields) throws IOException {
-    List<String> jsonList = dao.reportDAO().list();
-    List<Report> reportList = new ArrayList<>();
-    for (String json : jsonList) {
-      reportList.add(setFields(JsonUtils.readValue(json, Report.class), fields));
-    }
-    return reportList;
   }
 
   @Override
@@ -150,5 +143,60 @@ public class ReportRepository extends EntityRepository<Report> {
   private void updateOwner(Report report, EntityReference origOwner, EntityReference newOwner) {
     EntityUtil.updateOwner(dao.relationshipDAO(), origOwner, newOwner, report.getId(), Entity.REPORT);
     report.setOwner(newOwner);
+  }
+
+  public static class ReportEntityInterface implements EntityInterface<Report> {
+    private final Report entity;
+
+    ReportEntityInterface(Report entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
+
+    @Override
+    public String getFullyQualifiedName() {
+      return entity.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.REPORT);
+    }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

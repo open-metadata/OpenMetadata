@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
@@ -102,12 +103,12 @@ public class ChartResourceTest extends CatalogApplicationTest {
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker)
             .withDashboardUrl(new URI("http://localhost:0"));
     service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    LOOKER_REFERENCE = EntityUtil.getEntityReference(service);
+    LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
   }
 
   @Test

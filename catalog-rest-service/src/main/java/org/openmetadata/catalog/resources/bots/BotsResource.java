@@ -29,6 +29,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -45,11 +46,11 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.util.Collections;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @Path("/v1/bots")
@@ -61,11 +62,6 @@ public class BotsResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final BotsRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  private static List<Bots> addHref(UriInfo uriInfo, List<Bots> bots) {
-    Optional.ofNullable(bots).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-    return bots;
-  }
 
   private static Bots addHref(UriInfo uriInfo, Bots bot) {
     bot.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, bot.getId()));
@@ -79,8 +75,8 @@ public class BotsResource {
     this.authorizer = authorizer;
   }
 
-  static class BotsList extends ResultList<Bots> {
-    BotsList(List<Bots> data) {
+  public static class BotsList extends ResultList<Bots> {
+    public BotsList(List<Bots> data) {
       super(data);
     }
   }
@@ -93,11 +89,12 @@ public class BotsResource {
                           content = @Content(mediaType = "application/json", schema = @Schema(implementation =
                                   BotsList.class)))
           })
-  public BotsList list(@Context UriInfo uriInfo,
+  public ResultList<Bots> list(@Context UriInfo uriInfo,
                        @Context SecurityContext securityContext,
-                       @QueryParam("name") String name) throws IOException {
-    List<Bots> list = addHref(uriInfo, dao.list(name));
-    return new BotsList(list);
+                       @QueryParam("name") String name) throws IOException, GeneralSecurityException, ParseException {
+    ResultList<Bots> list = dao.listAfter(null, name, 10000, null);
+    list.getData().forEach(b -> addHref(uriInfo, b));
+    return list;
   }
 
   @GET
@@ -112,8 +109,8 @@ public class BotsResource {
           })
   public Bots get(@Context UriInfo uriInfo,
                   @Context SecurityContext securityContext,
-                  @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.findByName(name));
+                  @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, new Fields(null, null)));
   }
 
   @POST

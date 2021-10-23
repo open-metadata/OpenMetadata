@@ -102,12 +102,13 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private void validateRelationships(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
-    getService(metrics.getService());
+    metrics.setService(getService(metrics.getService()));
     metrics.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), metrics.getTags()));
   }
 
   private void addRelationships(Metrics metrics) throws IOException {
-    setService(metrics, metrics.getService());
+    dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
+            metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
     setOwner(metrics, metrics.getOwner());
     applyTags(metrics);
   }
@@ -131,21 +132,17 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.withOwner(owner).withService(service).withTags(tags);
   }
 
-  private EntityReference getService(Metrics metrics) {
-    return metrics == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), metrics.getId()));
+  private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics Id
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
+    return getService(ref);
   }
 
-  private EntityReference getService(EntityReference service) {
-    // TODO What are the metrics services?
-    return service;
-  }
-
-  public void setService(Metrics metrics, EntityReference service) {
-    if (service != null && metrics != null) {
-      getService(service); // Populate service details
-      dao.relationshipDAO().insert(service.getId().toString(), metrics.getId().toString(), service.getType(),
-              Entity.METRICS, Relationship.CONTAINS.ordinal());
-      metrics.setService(service);
+  private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
+    String id = service.getId().toString();
+    if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
+      return dao.dbServiceDAO().findEntityReferenceById(id);
+    } else {
+      throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
   }
 
@@ -169,56 +166,58 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     return dao.tagDAO().getTags(fqn);
   }
 
-  static class MetricsEntityInterface implements EntityInterface {
-    private final Metrics metrics;
+  static class MetricsEntityInterface implements EntityInterface<Metrics> {
+    private final Metrics entity;
 
-    MetricsEntityInterface(Metrics Metrics) {
-      this.metrics = Metrics;
+    MetricsEntityInterface(Metrics entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return metrics.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return metrics.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return metrics.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return metrics.getOwner();
+      return entity.getOwner();
     }
 
     @Override
-    public String getFullyQualifiedName() {
-      return metrics.getFullyQualifiedName();
-    }
+    public String getFullyQualifiedName() { return entity.getFullyQualifiedName(); }
 
     @Override
-    public List<TagLabel> getTags() {
-      return metrics.getTags();
+    public List<TagLabel> getTags() { return entity.getTags(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.METRICS);
     }
 
     @Override
     public void setDescription(String description) {
-      metrics.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      metrics.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      metrics.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

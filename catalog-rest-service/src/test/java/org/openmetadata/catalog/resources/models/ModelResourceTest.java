@@ -32,15 +32,15 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -51,11 +51,9 @@ import org.slf4j.LoggerFactory;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -68,9 +66,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -104,13 +100,12 @@ public class ModelResourceTest extends CatalogApplicationTest {
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
 
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     DASHBOARD = DashboardResourceTest.createDashboard(
             DashboardResourceTest.create(test).withService(SUPERSET_REFERENCE), adminAuthHeaders()
     );
-    DASHBOARD_REFERENCE = EntityUtil.getEntityReference(DASHBOARD);
-
+    DASHBOARD_REFERENCE = new DashboardEntityInterface(DASHBOARD).getEntityReference();
   }
 
   @Test

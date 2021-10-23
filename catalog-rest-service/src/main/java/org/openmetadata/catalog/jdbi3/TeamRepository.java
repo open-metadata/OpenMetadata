@@ -18,8 +18,8 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.teams.TeamResource;
@@ -54,18 +54,6 @@ public class TeamRepository extends EntityRepository<Team> {
     super(Team.class, dao.teamDAO());
     this.dao = dao;
   }
-
-  public static List<EntityReference> toEntityReference(List<User> users) {
-    if (users == null) {
-      return null;
-    }
-    List<EntityReference> refList = new ArrayList<>();
-    for (User user : users) {
-      refList.add(EntityUtil.getEntityReference(user));
-    }
-    return refList;
-  }
-
 
   @Transaction
   public Team create(Team team, List<UUID> userIds) throws IOException {
@@ -138,7 +126,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
     List<EntityReference> users = new ArrayList<>();
     for (UUID id : userIds) {
-      users.add(EntityUtil.getEntityReference(dao.userDAO().findEntityById(id.toString())));
+      users.add(dao.userDAO().findEntityReferenceById(id.toString()));
     }
     return users;
   }
@@ -166,58 +154,61 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getUsers(String id) throws IOException {
     List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
-    List<User> users = new ArrayList<>();
+    List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
-      // TODO not clean
-      users.add(JsonUtils.readValue(dao.userDAO().findJsonById(userId), User.class));
+      users.add(dao.userDAO().findEntityReferenceById(userId));
     }
-    return toEntityReference(users);
+    return users;
   }
 
   private List<EntityReference> getOwns(String teamId) throws IOException {
     // Compile entities owned by the team
-    return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()), dao.tableDAO(),
-            dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(),
-            dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()), dao);
   }
 
-  static class TeamEntityInterface implements EntityInterface {
-    private final Team team;
+  public static class TeamEntityInterface implements EntityInterface<Team> {
+    private final Team entity;
 
-    TeamEntityInterface(Team Team) {
-      this.team = Team;
+    public TeamEntityInterface(Team entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return team.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return team.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return team.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() { return null; }
 
     @Override
-    public String getFullyQualifiedName() { return team.getName(); }
+    public String getFullyQualifiedName() { return entity.getName(); }
 
     @Override
     public List<TagLabel> getTags() { return null; }
 
     @Override
-    public void setDescription(String description) { team.setDescription(description); }
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.TEAM);
+    }
+
+    @Override
+    public void setDescription(String description) { entity.setDescription(description); }
 
     @Override
     public void setDisplayName(String displayName) {
-      team.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override

@@ -20,7 +20,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
@@ -45,7 +44,6 @@ import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -64,14 +62,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public static String getFQN(Database database) {
     return (database.getService().getName() + "." + database.getName());
-  }
-
-  public static List<EntityReference> toEntityReference(List<Table> tables) {
-    List<EntityReference> refList = new ArrayList<>();
-    for (Table table : tables) {
-      refList.add(EntityUtil.getEntityReference(table));
-    }
-    return refList;
   }
 
   @Transaction
@@ -127,15 +117,14 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private void validateRelationships(Database database) throws IOException {
-    EntityReference dbService = getService(database.getService());
-    database.setService(dbService);
+    database.setService(getService(database.getService()));
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
-    getService(database.getService());
   }
 
   private void addRelationships(Database database) throws IOException {
-    setService(database, database.getService());
+    dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
+            database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
     setOwner(database, database.getOwner());
   }
 
@@ -178,17 +167,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setOwner(owner);
   }
 
-  private List<Table> getTables(Database database) throws IOException {
+  private List<EntityReference> getTables(Database database) throws IOException {
     if (database == null) {
       return null;
     }
     String databaseId = database.getId().toString();
     List<String> tableIds = dao.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
-    List<Table> tables = new ArrayList<>();
+    List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      String json = dao.tableDAO().findJsonById(tableId);
-      Table table = JsonUtils.readValue(json, Table.class);
-      tables.add(table);
+      tables.add(dao.tableDAO().findEntityReferenceById(tableId));
     }
     return tables;
   }
@@ -200,7 +187,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
-    database.setTables(fields.contains("tables") ? toEntityReference(getTables(database)) : null);
+    database.setTables(fields.contains("tables") ? getTables(database) : null);
     database.setService(fields.contains("service") ? getService(database) : null);
     database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             database.getId()) : null);
@@ -214,74 +201,68 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getService(Database database) throws IOException {
-    return database == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
-            database.getId())));
+    EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), database.getId(), Entity.DATABASE_SERVICE);
+    return getService(ref);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      DatabaseService serviceInstance = dao.dbServiceDAO().findEntityById(id);
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
+      return dao.dbServiceDAO().findEntityReferenceById(id);
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
-    return service;
   }
 
-  public void setService(Database database, EntityReference service) throws IOException {
-    if (service != null && database != null) {
-      getService(service); // Populate service details
-      dao.relationshipDAO().insert(service.getId().toString(), database.getId().toString(), service.getType(),
-              Entity.DATABASE, Relationship.CONTAINS.ordinal());
-      database.setService(service);
-    }
-  }
+  public static class DatabaseEntityInterface implements EntityInterface<Database> {
+    private final Database entity;
 
-  static class DatabaseEntityInterface implements EntityInterface {
-    private final Database database;
-
-    DatabaseEntityInterface(Database Database) {
-      this.database = Database;
+    public DatabaseEntityInterface(Database entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return database.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return database.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return database.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return database.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return database.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.DATABASE);
+    }
+
+    @Override
     public void setDescription(String description) {
-      database.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      database.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override

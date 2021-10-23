@@ -18,7 +18,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
@@ -64,17 +64,6 @@ public class UserRepository extends EntityRepository<User> {
   public UserRepository(CollectionDAO dao) {
     super(User.class, dao.userDAO());
     this.dao = dao;
-  }
-
-  public static List<EntityReference> toEntityReference(List<Team> teams) {
-    if (teams == null) {
-      return null;
-    }
-    List<EntityReference> refList = new ArrayList<>();
-    for (Team team : teams) {
-      refList.add(EntityUtil.getEntityReference(team));
-    }
-    return refList;
   }
 
   @Override
@@ -142,11 +131,6 @@ public class UserRepository extends EntityRepository<User> {
     return updated;
   }
 
-  @Transaction
-  public EntityReference getOwnerReference(User user) {
-    return EntityUtil.getEntityReference(user);
-  }
-
   private void patch(User original, User updated) throws IOException {
     List<UUID> teamIds = new ArrayList<>();
     if (updated.getTeams() != null) {
@@ -184,15 +168,12 @@ public class UserRepository extends EntityRepository<User> {
       ownedEntities.addAll(dao.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.getEntityReference(ownedEntities, dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(),
-            dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(),
-            dao.pipelineDAO());
+    return EntityUtil.getEntityReference(ownedEntities, dao);
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
     return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
-            dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(),
-            dao.topicDAO(), dao.chartDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+            dao);
   }
 
   private User validateUser(String userId) throws IOException {
@@ -236,7 +217,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     List<EntityReference> validatedTeams = new ArrayList<>();
     for (UUID teamId : teamIds) {
-      validatedTeams.add(EntityUtil.getEntityReference(dao.teamDAO().findEntityById(teamId.toString())));
+      validatedTeams.add(dao.teamDAO().findEntityReferenceById(teamId.toString()));
     }
     return validatedTeams;
   }
@@ -244,16 +225,11 @@ public class UserRepository extends EntityRepository<User> {
   /* Add all the teams that user belongs to to User entity */
   private List<EntityReference> getTeams(User user) throws IOException {
     List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
-    List<Team> teams = new ArrayList<>();
+    List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
-      LOG.debug("Adding team {}", teamId);
-      String json = dao.teamDAO().findJsonById(teamId);
-      Team team = JsonUtils.readValue(json, Team.class);
-      if (team != null) {
-        teams.add(team);
-      }
+      teams.add(dao.teamDAO().findEntityReferenceById(teamId));
     }
-    return toEntityReference(teams);
+    return teams;
   }
 
   private void assignTeams(User user, List<EntityReference> teams) {
@@ -277,16 +253,16 @@ public class UserRepository extends EntityRepository<User> {
     return user;
   }
 
-  static class UserEntityInterface implements EntityInterface {
-    private final User user;
+  public static class UserEntityInterface implements EntityInterface<User> {
+    private final User entity;
 
-    UserEntityInterface(User User) {
-      this.user = User;
+    public UserEntityInterface(User entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return user.getId();
+      return entity.getId();
     }
 
     @Override
@@ -296,17 +272,23 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public String getDisplayName() {
-      return user.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() { return null; }
 
     @Override
-    public String getFullyQualifiedName() { return null; }
+    public String getFullyQualifiedName() { return entity.getName(); }
 
     @Override
     public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.USER);
+    }
 
     @Override
     public void setDescription(String description) { }

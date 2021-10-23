@@ -21,11 +21,12 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.TeamRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -351,7 +352,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
     User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
     User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
 
-    List<User> users = Arrays.asList(user1, user2);
+    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+            new UserEntityInterface(user2).getEntityReference());
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     // Add previously absent attributes
@@ -359,7 +361,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
             adminAuthHeaders(), MINOR_UPDATE);
 
     // Replace the attributes
-    users = Arrays.asList(user1, user3); // user2 dropped and user3 is added
+    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
     profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
     team = patchTeamAttributesAndCheck(team, "displayName1", "description1", profile, users,
             adminAuthHeaders(), MINOR_UPDATE);
@@ -383,7 +386,10 @@ public class TeamResourceTest extends CatalogApplicationTest {
     User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
     User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
 
-    List<User> users = Arrays.asList(user1, user2, user3);
+    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+            new UserEntityInterface(user2).getEntityReference(),
+            new UserEntityInterface(user3).getEntityReference());
+
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -409,9 +415,9 @@ public class TeamResourceTest extends CatalogApplicationTest {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Team team = createTeam(create, authHeaders);
     assertEquals(0.1, team.getVersion());
-    List<User> expectedUsers = new ArrayList<>();
+    List<EntityReference> expectedUsers = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getUsers()).orElse(Collections.emptyList())) {
-      expectedUsers.add(new User().withId(teamId));
+      expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
     }
 
     assertEquals(team.getName(), create.getName());
@@ -458,7 +464,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
   }
 
   private static void validateTeam(Team team, String expectedDescription, String expectedDisplayName,
-                                   Profile expectedProfile, List<User> expectedUsers, String expectedUpdatedBy) {
+                                   Profile expectedProfile, List<EntityReference> expectedUsers,
+                                   String expectedUpdatedBy) {
     assertNotNull(team.getId());
     assertNotNull(team.getHref());
     assertEquals(expectedDescription, team.getDescription());
@@ -470,7 +477,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
       for (EntityReference user : team.getUsers()) {
         TestUtils.validateEntityReference(user);
         boolean foundUser = false;
-        for (User expected : expectedUsers) {
+        for (EntityReference expected : expectedUsers) {
           if (expected.getId().equals(user.getId())) {
             foundUser = true;
             break;
@@ -515,7 +522,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
   }
 
   private Team patchTeamAttributesAndCheck(Team before, String displayName, String description, Profile profile,
-                                           List<User> users, Map<String, String> authHeaders, UpdateType updateType)
+                                           List<EntityReference> users, Map<String, String> authHeaders, UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     Optional.ofNullable(before.getUsers()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
@@ -525,7 +532,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     before.setDisplayName(displayName);
     before.setDescription(description);
     before.setProfile(profile);
-    before.setUsers(TeamRepository.toEntityReference(users));
+    before.setUsers(users);
 
     // Validate information returned in patch response has the updates
     Team updatedTeam = patchTeam(tableJson, before, authHeaders);

@@ -27,6 +27,16 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public final T get(String id, Fields fields) throws IOException, ParseException {
+    return setFields(dao.findEntityById(id), fields);
+  }
+
+  @Transaction
+  public final T getByName(String fqn, Fields fields) throws IOException, ParseException {
+    return setFields(dao.findEntityByName(fqn), fields);
+  }
+
+  @Transaction
   public final ResultList<T> listAfter(Fields fields, String fqnPrefix, int limitParam, String after)
           throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
@@ -74,16 +84,6 @@ public abstract class EntityRepository<T> {
 //    return dao.listCount(fqnPrefix);
 //  }
 //
-  @Transaction
-  public final T get(String id, Fields fields) throws IOException, ParseException {
-    return setFields(dao.findEntityById(id), fields);
-  }
-
-  @Transaction
-  public final T getByName(String fqn, Fields fields) throws IOException, ParseException {
-    return setFields(dao.findEntityByName(fqn), fields);
-  }
-
   /**
    * Entity related operations
    */

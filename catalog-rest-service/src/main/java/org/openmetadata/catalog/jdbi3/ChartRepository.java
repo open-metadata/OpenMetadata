@@ -40,7 +40,6 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -107,8 +106,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   private void validateRelationships(Chart chart) throws IOException {
-    EntityReference dashboardService = getService(chart.getService());
-    chart.setService(dashboardService);
+    chart.setService(getService(chart.getService()));
     chart.setFullyQualifiedName(getFQN(chart));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), chart.getOwner()); // Validate owner
     getService(chart.getService());
@@ -116,7 +114,9 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   private void addRelationships(Chart chart) throws IOException {
-    setService(chart, chart.getService());
+    EntityReference service = chart.getService();
+    dao.relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
+            Entity.CHART, Relationship.CONTAINS.ordinal());
     setOwner(chart, chart.getOwner());
     applyTags(chart);
   }
@@ -201,8 +201,8 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   private EntityReference getService(Chart chart) throws IOException {
-    return chart == null ? null : getService(Objects.requireNonNull(EntityUtil.getService(dao.relationshipDAO(),
-            chart.getId(), Entity.DASHBOARD_SERVICE)));
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
+    return getService(ref);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
@@ -215,16 +215,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the chart", service.getType()));
     }
     return service;
-  }
-
-  public void setService(Chart chart, EntityReference service) throws IOException {
-    if (service != null && chart != null) {
-      // TODO remove this
-      getService(service); // Populate service details
-      dao.relationshipDAO().insert(service.getId().toString(), chart.getId().toString(), service.getType(),
-              Entity.CHART, Relationship.CONTAINS.ordinal());
-      chart.setService(service);
-    }
   }
 
   @Transaction
@@ -240,56 +230,62 @@ public class ChartRepository extends EntityRepository<Chart> {
     EntityUtil.removeFollower(dao.relationshipDAO(), chartId, userId);
   }
 
-  static class ChartEntityInterface implements EntityInterface {
-    private final Chart chart;
+  public static class ChartEntityInterface implements EntityInterface<Chart> {
+    private final Chart entity;
 
-    ChartEntityInterface(Chart Chart) {
-      this.chart = Chart;
+    public ChartEntityInterface(Chart entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return chart.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return chart.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return chart.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return chart.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return chart.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return chart.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.CHART);
     }
 
     @Override
     public void setDescription(String description) {
-      chart.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      chart.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      chart.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

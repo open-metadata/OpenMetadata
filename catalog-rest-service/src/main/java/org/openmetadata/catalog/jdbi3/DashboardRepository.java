@@ -19,9 +19,7 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
@@ -143,7 +141,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
     dashboard.setService(fields.contains("service") ? getService(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
-    dashboard.setCharts(fields.contains("charts") ? EntityUtil.toEntityReference(getCharts(dashboard)) : null);
+    dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
     dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);
     dashboard.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             dashboard.getId()) : null);
@@ -163,25 +161,22 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), dashboard.getId()));
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
+    return getService(ref);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
     String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = dao.dashboardServiceDAO().findEntityById(id);
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
+      return dao.dashboardServiceDAO().findEntityReferenceById(id);
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the dashboard", service.getType()));
     }
-    return service;
   }
 
   public void setService(Dashboard dashboard, EntityReference service) throws IOException {
     if (service != null && dashboard != null) {
       // TODO remove this
-      getService(service); // Populate service details
       dao.relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
               Entity.DASHBOARD, Relationship.CONTAINS.ordinal());
       dashboard.setService(service);
@@ -200,11 +195,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private void validateRelationships(Dashboard dashboard)
           throws IOException {
-    EntityReference dashboardService = getService(dashboard.getService());
-    dashboard.setService(dashboardService);
+    dashboard.setService(getService(dashboard.getService()));
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
-    getService(dashboard.getService());
     dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
   }
 
@@ -229,17 +222,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dao.userDAO());
   }
 
-  private List<Chart> getCharts(Dashboard dashboard) throws IOException {
+  private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
     if (dashboard == null) {
       return null;
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds = dao.relationshipDAO().findTo(dashboardId, Relationship.CONTAINS.ordinal(), Entity.CHART);
-    List<Chart> charts = new ArrayList<>();
+    List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
-      String json = dao.chartDAO().findJsonById(chartId);
-      Chart chart = JsonUtils.readValue(json, Chart.class);
-      charts.add(chart);
+      charts.add(dao.chartDAO().findEntityReferenceById(chartId));
     }
     return charts.isEmpty() ? null : charts;
   }
@@ -285,56 +276,62 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
 
-  static class DashboardEntityInterface implements EntityInterface {
-    private final Dashboard dashboard;
+  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
+    private final Dashboard entity;
 
-    DashboardEntityInterface(Dashboard dashboard) {
-      this.dashboard = dashboard;
+    public DashboardEntityInterface(Dashboard entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return dashboard.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return dashboard.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return dashboard.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return dashboard.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return dashboard.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return dashboard.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
     }
 
     @Override
     public void setDescription(String description) {
-      dashboard.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      dashboard.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      dashboard.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

@@ -7,13 +7,17 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
-public interface EntityInterface {
+/**
+ * Interface to be implemented by all entities to provide a way to access all the common fields.
+ */
+public interface EntityInterface<T> {
   UUID getId();
   String getDescription();
   String getDisplayName();
   EntityReference getOwner();
   String getFullyQualifiedName();
   List<TagLabel> getTags();
+  EntityReference getEntityReference();
 
   void setDescription(String description);
   void setTags(List<TagLabel> tags);

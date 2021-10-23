@@ -229,56 +229,62 @@ public class TaskRepository extends EntityRepository<Task> {
     }
   }
 
-  static class TaskEntityInterface implements EntityInterface {
-    private final Task task;
+  public static class TaskEntityInterface implements EntityInterface<Task> {
+    private final Task entity;
 
-    TaskEntityInterface(Task Task) {
-      this.task = Task;
+    public TaskEntityInterface(Task entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return task.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return task.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return task.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return task.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return task.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return task.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.TASK);
     }
 
     @Override
     public void setDescription(String description) {
-      task.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      task.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      task.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

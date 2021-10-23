@@ -244,56 +244,62 @@ public class TopicRepository extends EntityRepository<Topic> {
     EntityUtil.removeFollower(dao.relationshipDAO(), topicId, userId);
   }
 
-  static class TopicEntityInterface implements EntityInterface {
-    private final Topic topic;
+  static class TopicEntityInterface implements EntityInterface<Topic> {
+    private final Topic entity;
 
-    TopicEntityInterface(Topic Topic) {
-      this.topic = Topic;
+    TopicEntityInterface(Topic entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return topic.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return topic.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return topic.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return topic.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return topic.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return topic.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.TOPIC);
     }
 
     @Override
     public void setDescription(String description) {
-      topic.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      topic.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      topic.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

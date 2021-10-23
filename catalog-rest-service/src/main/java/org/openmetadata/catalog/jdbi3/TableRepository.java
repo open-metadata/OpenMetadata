@@ -23,6 +23,7 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.type.Column;
@@ -100,7 +101,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setFollowers(fields.contains("followers") ? getFollowers(table) : null);
     table.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(), table.getId()) :
             null);
-    table.setDatabase(fields.contains("database") ? EntityUtil.getEntityReference(getDatabase(table)) : null);
+    table.setDatabase(fields.contains("database") ? getDatabase(table.getId()) : null);
     table.setTags(fields.contains("tags") ? getTags(table.getFullyQualifiedName()) : null);
     getColumnTags(fields.contains("tags"), table.getColumns());
     table.setJoins(fields.contains("joins") ? getJoins(table) : null);
@@ -264,8 +265,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   private void validateRelationships(Table table, UUID databaseId) throws IOException {
     // Validate database
-    Database db = dao.databaseDAO().findEntityById(databaseId.toString());
-    table.setDatabase(EntityUtil.getEntityReference(db));
+    EntityReference database = dao.databaseDAO().findEntityReferenceById(databaseId.toString());
+    table.setDatabase(database);
     // Validate and set other relationships
     validateRelationships(table);
   }
@@ -403,15 +404,14 @@ public class TableRepository extends EntityRepository<Table> {
     tableUpdater.store();
   }
 
-  private Database getDatabase(Table table) throws IOException {
+  private EntityReference getDatabase(UUID tableId) throws IOException {
     // Find database for the table
-    String id = table.getId().toString();
-    List<String> result = dao.relationshipDAO().findFrom(id, Relationship.CONTAINS.ordinal(), Entity.DATABASE);
+    List<String> result = dao.relationshipDAO().findFrom(tableId.toString(),
+            Relationship.CONTAINS.ordinal(), Entity.DATABASE);
     if (result.size() != 1) {
-      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", id));
+      throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
-    String databaseId = result.get(0);
-    return dao.databaseDAO().findEntityById(databaseId);
+    return dao.databaseDAO().findEntityReferenceById(result.get(0));
   }
 
   private EntityReference getOwner(Table table) throws IOException {
@@ -608,57 +608,62 @@ public class TableRepository extends EntityRepository<Table> {
     return tableProfiles;
   }
 
+  public static class TableEntityInterface implements EntityInterface<Table> {
+    private final Table entity;
 
-  static class TableEntityInterface implements EntityInterface {
-    private final Table table;
-
-    TableEntityInterface(Table table) {
-      this.table = table;
+    public TableEntityInterface(Table entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return table.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return table.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return table.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return table.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return table.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return table.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.TABLE);
     }
 
     @Override
     public void setDescription(String description) {
-      table.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      table.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      table.setTags(tags);
+      entity.setTags(tags);
     }
   }
 

@@ -22,6 +22,7 @@ import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
@@ -36,6 +37,7 @@ public interface EntityDAO<T> {
   String getTableName();
   Class<T> getEntityClass();
   String getNameColumn();
+  EntityReference getEntityReference(T entity);
 
   /**
    * Common queries for all entities implemented here. Do not override.
@@ -125,6 +127,14 @@ public interface EntityDAO<T> {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(clz.getSimpleName(), fqn));
     }
     return entity;
+  }
+
+  default EntityReference findEntityReferenceById(String id) throws IOException {
+    return getEntityReference(findEntityById(id));
+  }
+
+  default EntityReference findEntityReferenceByName(String fqn) throws IOException {
+    return getEntityReference(findEntityByName(fqn));
   }
 
   default String findJsonById(String fqn) throws IOException {

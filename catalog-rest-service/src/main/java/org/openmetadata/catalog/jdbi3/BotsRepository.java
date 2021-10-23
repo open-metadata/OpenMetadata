@@ -17,16 +17,29 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
+import org.openmetadata.catalog.resources.bots.BotsResource.BotsList;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.List;
+import java.util.UUID;
 
-public class BotsRepository {
+public class BotsRepository extends EntityRepository<Bots>{
   private final CollectionDAO dao;
 
-  public BotsRepository(CollectionDAO dao) { this.dao = dao; }
+  public BotsRepository(CollectionDAO dao) {
+    super(Bots.class, dao.botsDAO());
+    this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
@@ -34,11 +47,69 @@ public class BotsRepository {
     return bots;
   }
 
-  public Bots findByName(String name) throws IOException {
-    return dao.botsDAO().findEntityByName(name);
+  @Override
+  public String getFullyQualifiedName(Bots entity) {
+    return entity.getName();
   }
 
-  public List<Bots> list(String name) throws IOException {
-    return JsonUtils.readObjects(dao.botsDAO().list(name), Bots.class);
+  @Override
+  public Bots setFields(Bots entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
+
+  @Override
+  public ResultList<Bots> getResultList(List<Bots> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+    return new BotsList(entities);
+  }
+
+  static class BotsEntityInterface implements EntityInterface<Bots> {
+    private final Bots entity;
+
+    BotsEntityInterface(Bots entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.BOTS);
+    }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

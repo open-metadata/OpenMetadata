@@ -164,7 +164,7 @@ public class ModelRepository extends EntityRepository<Model> {
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), model.getOwner()); // Validate owner
     if (model.getDashboard() != null) {
       String dashboardId = model.getDashboard().getId().toString();
-      model.setDashboard(EntityUtil.getEntityReference(dao.dashboardDAO().findEntityById(dashboardId)));
+      model.setDashboard(dao.dashboardDAO().findEntityReferenceById(dashboardId));
     }
     model.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), model.getTags()));
   }
@@ -222,7 +222,7 @@ public class ModelRepository extends EntityRepository<Model> {
       }
       if (!ids.isEmpty()) {
         String dashboardId = ids.get(0).getId().toString();
-        return EntityUtil.getEntityReference(dao.dashboardDAO().findEntityById(dashboardId));
+        return dao.dashboardDAO().findEntityReferenceById(dashboardId);
       }
     }
     return null;
@@ -253,56 +253,62 @@ public class ModelRepository extends EntityRepository<Model> {
     return dao.modelDAO().findEntityById(id);
   }
 
-  static class ModelEntityInterface implements EntityInterface {
-    private final Model model;
+  static class ModelEntityInterface implements EntityInterface<Model> {
+    private final Model entity;
 
-    ModelEntityInterface(Model Model) {
-      this.model = Model;
+    ModelEntityInterface(Model entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return model.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return model.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return model.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return model.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return model.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return model.getTags();
+      return entity.getTags();
+    }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.MODEL);
     }
 
     @Override
     public void setDescription(String description) {
-      model.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      model.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
     public void setTags(List<TagLabel> tags) {
-      model.setTags(tags);
+      entity.setTags(tags);
     }
   }
 
