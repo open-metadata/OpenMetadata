@@ -91,7 +91,7 @@ class ElasticsearchSink(Sink):
         self.rest = OpenMetadataAPIClient(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"
         http_auth = None
-        if  self.config.es_username:
+        if self.config.es_username:
             http_auth = (self.config.es_username, self.config.es_password)
         self.elasticsearch_client = Elasticsearch(
             [
