@@ -58,7 +58,7 @@ def create_delete_table(client):
 def create_delete_database(client):
     data = {'jdbc': {'connectionUrl': 'mysql://localhost/catalog_db', 'driverClass': 'jdbc'},
             'name': 'temp_local_mysql',
-            'serviceType': 'MYSQL',
+            'serviceType': 'MySQL',
             'description': 'local mysql env'}
     create_mysql_service = CreateDatabaseServiceEntityRequest(**data)
     mysql_service = client.create_database_service(create_mysql_service)
@@ -95,11 +95,11 @@ def test_check_tables(catalog_service):
     )
     client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
-    if len(databases) > 0:
-        assert create_delete_table(client)
-    else:
-        assert create_delete_database(client)
-
+    # if len(databases) > 0:
+    #     assert create_delete_table(client)
+    # else:
+    #     assert create_delete_database(client)
+    assert create_delete_database(client)
 
 def test_read_schema():
     url = "mysql+pymysql://catalog_user:catalog_password@localhost:3307"
