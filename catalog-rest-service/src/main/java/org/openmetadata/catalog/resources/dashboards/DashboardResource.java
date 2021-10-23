@@ -185,8 +185,9 @@ public class DashboardResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                       @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
 
@@ -204,8 +205,9 @@ public class DashboardResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     Dashboard dashboard = dao.getByName(fqn, fields);
     return addHref(uriInfo, dashboard);
   }

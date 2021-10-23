@@ -177,8 +177,9 @@ public class TopicResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                      @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
 
@@ -196,8 +197,9 @@ public class TopicResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     Topic topic = dao.getByName(fqn, fields);
     addHref(uriInfo, topic);
     return Response.ok(topic).build();

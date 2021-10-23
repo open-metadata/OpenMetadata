@@ -185,8 +185,9 @@ public class DatabaseResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                      @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     Database database = dao.get(id, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
@@ -206,8 +207,9 @@ public class DatabaseResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                         schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
+    String getFields = fieldsParam.orElse("service");
+    Fields fields = new Fields(FIELD_LIST, getFields);
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
