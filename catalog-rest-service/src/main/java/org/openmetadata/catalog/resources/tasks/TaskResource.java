@@ -39,8 +39,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -153,7 +151,7 @@ public class TaskResource {
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Task> tasks;
@@ -181,7 +179,7 @@ public class TaskResource {
                   @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
                   @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -201,7 +199,7 @@ public class TaskResource {
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);

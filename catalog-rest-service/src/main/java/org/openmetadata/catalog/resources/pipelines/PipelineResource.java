@@ -158,7 +158,7 @@ public class PipelineResource {
                             @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Pipeline> pipelines;
@@ -187,7 +187,7 @@ public class PipelineResource {
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -207,7 +207,7 @@ public class PipelineResource {
                              @Parameter(description = "Fields requested in the returned resource",
                                      schema = @Schema(type = "string", example = FIELDS))
                              @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Pipeline pipeline = dao.getByName(fqn, fields);
     return addHref(uriInfo, pipeline);
