@@ -239,8 +239,9 @@ public class UserResource {
             .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
             .withProfile(create.getProfile()).withTimezone(create.getTimezone())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(user, create.getTeams()));
+            .withUpdatedAt(new Date())
+            .withTeams(dao.validateTeams(create.getTeams()));
+    addHref(uriInfo, dao.create(user));
     return Response.created(user.getHref()).entity(user).build();
   }
 
@@ -291,7 +292,7 @@ public class UserResource {
     User user = dao.get(id, new Fields(FIELD_LIST, null));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
-    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
+    return addHref(uriInfo, dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE
@@ -306,7 +307,7 @@ public class UserResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @PathParam("id") String id) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

@@ -249,7 +249,7 @@ public class DatabaseResource {
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
                                             JsonPatch patch) throws IOException {
-      Database database = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+      Database database = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
       SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new DatabaseEntityInterface(database).getEntityReference());
       return addHref(uriInfo, database);
@@ -285,7 +285,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

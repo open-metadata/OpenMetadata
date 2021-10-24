@@ -16,10 +16,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
@@ -52,15 +50,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Transaction
-  public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(pipelineService.getIngestionSchedule());
-    dao.pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
-    return pipelineService;
-  }
-
-  @Transaction
-  public PipelineService update(String id, String description, URI url,
+  public PipelineService update(UUID id, String description, URI url,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
@@ -73,11 +63,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Transaction
-  public void delete(String id) {
+  public void delete(UUID id) {
     if (dao.pipelineServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -95,6 +85,21 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
                                                    String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new PipelineServiceList(entities);
+  }
+
+  @Override
+  public void validate(PipelineService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
+
+  @Override
+  public void store(PipelineService entity, boolean update) throws IOException {
+    dao.pipelineServiceDAO().insert(entity);
+  }
+
+  @Override
+  public void storeRelationships(PipelineService entity) throws IOException {
+
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {

@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -56,15 +55,7 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Transaction
-  public Team create(Team team, List<UUID> userIds) throws IOException {
-    validateRelationships(team, userIds);
-    storeTeam(team, false);
-    addRelationships(team);
-    return team;
-  }
-
-  @Transaction
-  public Team patch(String teamId, String user, JsonPatch patch) throws IOException {
+  public Team patch(UUID teamId, String user, JsonPatch patch) throws IOException {
     Team original = setFields(dao.teamDAO().findEntityById(teamId), TEAM_PATCH_FIELDS);
     Team updated = JsonUtils.applyPatch(original, patch, Team.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -73,62 +64,46 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Transaction
-  public void delete(String id) {
+  public void delete(UUID id) {
     // Query 1 - delete team
     if (dao.teamDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound("Team", id));
     }
 
     // Query 2 - Remove all relationship from and to this team
-    dao.relationshipDAO().deleteAll(id);
+    // TODO make this UUID based
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
-  private void validateRelationships(Team team, List<UUID> userIds) throws IOException {
-    team.setUsers(validateUsers(userIds));
-  }
-
-  private void addRelationships(Team team) {
-    for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
-      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
-              Relationship.CONTAINS.ordinal());
-    }
-  }
-
-  private void storeTeam(Team team, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<EntityReference> users = team.getUsers();
-
-    // Don't store users, href as JSON. Build it on the fly based on relationships
-    team.withUsers(null).withHref(null);
-
-    if (update) {
-      dao.teamDAO().update(team.getId().toString(), JsonUtils.pojoToJson(team));
-    } else {
-      dao.teamDAO().insert(JsonUtils.pojoToJson(team));
-    }
-
-    // Restore the relationships
-    team.withUsers(users);
-  }
 
   private void patch(Team original, Team updated) throws IOException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
-    validateRelationships(updated, EntityUtil.getIDList(updated.getUsers()));
+    validateUsers(updated.getUsers());
     TeamRepository.TeamUpdater teamUpdater = new TeamRepository.TeamUpdater(original, updated, true);
     teamUpdater.updateAll();
     teamUpdater.store();
   }
 
-  private List<EntityReference> validateUsers(List<UUID> userIds) throws IOException {
+  // TODO clean this up
+  public List<EntityReference> getUsers(List<UUID> userIds) throws IOException {
     if (userIds == null) {
       return null;
     }
     List<EntityReference> users = new ArrayList<>();
     for (UUID id : userIds) {
-      users.add(dao.userDAO().findEntityReferenceById(id.toString()));
+      users.add(new EntityReference().withId(id));
     }
     return users;
+  }
+
+  public void validateUsers(List<EntityReference> users) throws IOException {
+    if (users != null) {
+      for (EntityReference user : users) {
+        EntityReference ref = dao.userDAO().findEntityReferenceById(user.getId());
+        user.withType(ref.getType()).withName(ref.getName()).withDisplayName(ref.getDisplayName());
+      }
+    }
   }
 
   @Override
@@ -152,11 +127,42 @@ public class TeamRepository extends EntityRepository<Team> {
     return new TeamList(entities, beforeCursor, afterCursor, total);
   }
 
+  @Override
+  public void validate(Team team) throws IOException {
+    validateUsers(team.getUsers());
+  }
+
+  @Override
+  public void store(Team team, boolean update) throws IOException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    List<EntityReference> users = team.getUsers();
+
+    // Don't store users, href as JSON. Build it on the fly based on relationships
+    team.withUsers(null).withHref(null);
+
+    if (update) {
+      dao.teamDAO().update(team.getId(), JsonUtils.pojoToJson(team));
+    } else {
+      dao.teamDAO().insert(team);
+    }
+
+    // Restore the relationships
+    team.withUsers(users);
+  }
+
+  @Override
+  public void storeRelationships(Team team) throws IOException {
+    for (EntityReference user : Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList())) {
+      dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
+              Relationship.CONTAINS.ordinal());
+    }
+  }
+
   private List<EntityReference> getUsers(String id) throws IOException {
     List<String> userIds = dao.relationshipDAO().findTo(id, Relationship.CONTAINS.ordinal(), "user");
     List<EntityReference> users = new ArrayList<>();
     for (String userId : userIds) {
-      users.add(dao.userDAO().findEntityReferenceById(userId));
+      users.add(dao.userDAO().findEntityReferenceById(UUID.fromString(userId)));
     }
     return users;
   }
@@ -252,7 +258,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storeTeam(updated, true);
+      TeamRepository.this.store(updated, true);
     }
   }
 }

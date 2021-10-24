@@ -257,7 +257,7 @@ public class TaskResource {
     Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new TaskEntityInterface(task).getEntityReference());
-    task = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    task = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, task);
   }
 
@@ -302,7 +302,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "404", description = "task for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

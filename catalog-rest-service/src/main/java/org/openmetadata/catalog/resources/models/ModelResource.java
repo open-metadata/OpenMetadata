@@ -251,7 +251,7 @@ public class ModelResource {
     Model model = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(model));
-    model = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    model = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, model);
   }
 
@@ -298,7 +298,7 @@ public class ModelResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
+    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Model model = dao.get(id, fields);
     return Response.status(status).entity(model).build();
   }
@@ -316,7 +316,7 @@ public class ModelResource {
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     Model model = dao.get(id, fields);
     return addHref(uriInfo, model);
   }
@@ -330,7 +330,7 @@ public class ModelResource {
                   @ApiResponse(responseCode = "404", description = "model for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

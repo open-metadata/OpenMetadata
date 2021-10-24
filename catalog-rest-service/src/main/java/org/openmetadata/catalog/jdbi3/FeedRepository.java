@@ -44,7 +44,7 @@ public class FeedRepository {
   public Thread create(Thread thread) throws IOException {
     // Validate user creating thread
     UUID fromUser = thread.getPosts().get(0).getFrom();
-    dao.userDAO().findEntityById(fromUser.toString());
+    dao.userDAO().findEntityById(fromUser);
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
@@ -91,7 +91,7 @@ public class FeedRepository {
   public Thread addPostToThread(String id, Post post) throws IOException {
     // Query 1 - validate user creating thread
     UUID fromUser = post.getFrom();
-    dao.userDAO().findEntityById(fromUser.toString());
+    dao.userDAO().findEntityById(fromUser);
 
     // Query 2 - Find the thread
     Thread thread = EntityUtil.validate(id, dao.feedDAO().findById(id), Thread.class);

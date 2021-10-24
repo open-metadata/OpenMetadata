@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -64,18 +63,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline create(Pipeline pipeline) throws IOException {
-    validateRelationships(pipeline);
-    return createInternal(pipeline);
-  }
-
-  @Transaction
   public PutResponse<Pipeline> createOrUpdate(Pipeline updated) throws IOException {
-    validateRelationships(updated);
+    validate(updated);
     Pipeline stored = JsonUtils.readValue(dao.pipelineDAO().findJsonByFqn(updated.getFullyQualifiedName()),
             Pipeline.class);
     if (stored == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
+//      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, PIPELINE_UPDATE_FIELDS);
     updated.setId(stored.getId());
@@ -87,7 +80,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Pipeline patch(String id, String user, JsonPatch patch) throws IOException {
+  public Pipeline patch(UUID id, String user, JsonPatch patch) throws IOException {
     Pipeline original = setFields(dao.pipelineDAO().findEntityById(id), PIPELINE_PATCH_FIELDS);
     Pipeline updated = JsonUtils.applyPatch(original, patch, Pipeline.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -96,7 +89,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public Status addFollower(String pipelineId, String userId) throws IOException {
+  public Status addFollower(UUID pipelineId, UUID userId) throws IOException {
     dao.pipelineDAO().findEntityById(pipelineId);
     return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), pipelineId, Entity.PIPELINE, userId,
             Entity.USER) ?
@@ -104,20 +97,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Transaction
-  public void deleteFollower(String pipelineId, String userId) {
+  public void deleteFollower(UUID pipelineId, UUID userId) {
     EntityUtil.validateUser(dao.userDAO(), userId);
     EntityUtil.removeFollower(dao.relationshipDAO(), pipelineId, userId);
   }
 
   @Transaction
-  public void delete(String id) {
-    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
+  public void delete(UUID id) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.PIPELINE) > 0) {
       throw new IllegalArgumentException("Pipeline is not empty");
     }
     if (dao.pipelineDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
@@ -155,13 +148,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
 
-  private Pipeline createInternal(Pipeline pipeline) throws IOException {
-    storePipeline(pipeline, false);
-    addRelationships(pipeline);
-    return pipeline;
-  }
-
-  private void validateRelationships(Pipeline pipeline) throws IOException {
+  @Override
+  public void validate(Pipeline pipeline) throws IOException {
     pipeline.setService(getService(pipeline.getService()));
     pipeline.setFullyQualifiedName(getFQN(pipeline));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), pipeline.getOwner()); // Validate owner
@@ -169,7 +157,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), pipeline.getTags()));
   }
 
-  private void storePipeline(Pipeline pipeline, boolean update) throws JsonProcessingException {
+  @Override
+  public void store(Pipeline pipeline, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = pipeline.getOwner();
     List<TagLabel> tags = pipeline.getTags();
@@ -180,13 +169,34 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.withOwner(null).withService(null).withTasks(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.pipelineDAO().update(pipeline.getId().toString(), JsonUtils.pojoToJson(pipeline));
+      dao.pipelineDAO().update(pipeline.getId(), JsonUtils.pojoToJson(pipeline));
     } else {
-      dao.pipelineDAO().insert(JsonUtils.pojoToJson(pipeline));
+      dao.pipelineDAO().insert(pipeline);
     }
 
     // Restore the relationships
     pipeline.withOwner(owner).withService(service).withTasks(tasks).withTags(tags);
+  }
+
+  @Override
+  public void storeRelationships(Pipeline pipeline) throws IOException {
+    EntityReference service = pipeline.getService();
+    dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
+            Entity.PIPELINE, Relationship.CONTAINS.ordinal());
+
+    // Add relationship from pipeline to task
+    String pipelineId = pipeline.getId().toString();
+    if (pipeline.getTasks() != null) {
+      for (EntityReference task : pipeline.getTasks()) {
+        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
+                Relationship.CONTAINS.ordinal());
+      }
+    }
+    // Add owner relationship
+    EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
+
+    // Add tag to pipeline relationship
+    applyTags(pipeline);
   }
 
   private EntityReference getService(Pipeline pipeline) throws IOException {
@@ -196,9 +206,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(id);
+      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(service.getId());
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -211,7 +220,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated);
+    validate(updated);
     PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated,
             true);
     pipelineUpdater.updateAll();
@@ -246,29 +255,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     List<String> taskIds = dao.relationshipDAO().findTo(pipelineId, Relationship.CONTAINS.ordinal(), Entity.TASK);
     List<EntityReference> tasks = new ArrayList<>();
     for (String taskId : taskIds) {
-      tasks.add(dao.taskDAO().findEntityReferenceById(taskId));
+      tasks.add(dao.taskDAO().findEntityReferenceById(UUID.fromString(taskId)));
     }
     return tasks;
-  }
-
-  private void addRelationships(Pipeline pipeline) throws IOException {
-    EntityReference service = pipeline.getService();
-    dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
-            Entity.PIPELINE, Relationship.CONTAINS.ordinal());
-
-    // Add relationship from pipeline to task
-    String pipelineId = pipeline.getId().toString();
-    if (pipeline.getTasks() != null) {
-      for (EntityReference task : pipeline.getTasks()) {
-        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
-                Relationship.CONTAINS.ordinal());
-      }
-    }
-    // Add owner relationship
-    EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
-
-    // Add tag to pipeline relationship
-    applyTags(pipeline);
   }
 
   private void updateTaskRelationships(Pipeline pipeline) {
@@ -382,7 +371,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storePipeline(updated, true);
+      PipelineRepository.this.store(updated, true);
     }
   }
 }

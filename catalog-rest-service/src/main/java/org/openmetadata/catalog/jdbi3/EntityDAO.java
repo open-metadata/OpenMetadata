@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -27,6 +28,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -95,17 +97,15 @@ public interface EntityDAO<T> {
   /**
    * Default methods that interfaces with implementation. Don't override
    */
-  default void insert(String json) {
-    insert(getTableName(), json);
+  default void insert(T entity) throws JsonProcessingException {
+    insert(getTableName(), JsonUtils.pojoToJson(entity));
   }
 
-  default void update(String id, String json) {
-    update(getTableName(), id, json);
-  }
+  default void update(UUID id, String json) { update(getTableName(), id.toString(), json); }
 
-  default T findEntityById(String id) throws IOException {
+  default T findEntityById(UUID id) throws IOException {
     Class<T> clz = getEntityClass();
-    String json = findById(getTableName(), id);
+    String json = findById(getTableName(), id.toString());
     T entity = null;
     if (json != null) {
       entity = JsonUtils.readValue(json, clz);
@@ -129,7 +129,7 @@ public interface EntityDAO<T> {
     return entity;
   }
 
-  default EntityReference findEntityReferenceById(String id) throws IOException {
+  default EntityReference findEntityReferenceById(UUID id) throws IOException {
     return getEntityReference(findEntityById(id));
   }
 
@@ -157,12 +157,12 @@ public interface EntityDAO<T> {
     return listAfter(getTableName(), getNameColumn(), databaseFQN, limit, after);
   }
 
-  default boolean exists(String id) {
-    return exists(getTableName(), id);
+  default boolean exists(UUID id) {
+    return exists(getTableName(), id.toString());
   }
 
-  default int delete(String id) {
-    int rowsDeleted = delete(getTableName(), id);
+  default int delete(UUID id) {
+    int rowsDeleted = delete(getTableName(), id.toString());
     if (rowsDeleted <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(getEntityClass().getSimpleName(), id));
     }

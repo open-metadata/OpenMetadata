@@ -16,10 +16,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
@@ -51,15 +49,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     this.dao = dao;
   }
 
-  @Transaction
-  public DashboardService create(DashboardService dashboardService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(dashboardService.getIngestionSchedule());
-    dao.dashboardServiceDAO().insert(JsonUtils.pojoToJson(dashboardService));
-    return dashboardService;
-  }
-
-  public DashboardService update(String id, String description, URI dashboardUrl, String username, String password,
+  public DashboardService update(UUID id, String description, URI dashboardUrl, String username, String password,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
@@ -72,11 +62,11 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Transaction
-  public void delete(String id) {
+  public void delete(UUID id) {
     if (dao.dashboardServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -94,6 +84,21 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new DashboardServiceList(entities);
+  }
+
+  @Override
+  public void validate(DashboardService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
+
+  @Override
+  public void store(DashboardService entity, boolean update) throws IOException {
+    dao.dashboardServiceDAO().insert(entity);
+  }
+
+  @Override
+  public void storeRelationships(DashboardService entity) throws IOException {
+
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {

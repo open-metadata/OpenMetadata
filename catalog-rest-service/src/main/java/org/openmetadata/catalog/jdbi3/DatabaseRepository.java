@@ -16,11 +16,9 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
@@ -65,29 +63,23 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Transaction
-  public Database create(Database database) throws IOException {
-    validateRelationships(database);
-    return createInternal(database);
-  }
-
-  @Transaction
-  public void delete(String id) {
-    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
+  public void delete(UUID id) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TABLE) > 0) {
       throw new IllegalArgumentException("Database is not empty");
     }
     if (dao.databaseDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
   public PutResponse<Database> createOrUpdate(Database updated) throws IOException {
-    validateRelationships(updated);
+    validate(updated);
     Database stored = JsonUtils.readValue(dao.databaseDAO().findJsonByFqn(updated.getFullyQualifiedName()),
             Database.class);
     if (stored == null) {  // Database does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
+//      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, DATABASE_UPDATE_FIELDS);
     updated.setId(stored.getId());
@@ -99,7 +91,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   @Transaction
-  public Database patch(String id, String user, JsonPatch patch) throws IOException {
+  public Database patch(UUID id, String user, JsonPatch patch) throws IOException {
     Database original = setFields(dao.databaseDAO().findEntityById(id), DATABASE_PATCH_FIELDS);
     LOG.info("Database summary in original {}", original.getUsageSummary());
     Database updated = JsonUtils.applyPatch(original, patch, Database.class);
@@ -110,25 +102,15 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return updated;
   }
 
-  public Database createInternal(Database database) throws IOException {
-    storeDatabase(database, false);
-    addRelationships(database);
-    return database;
-  }
-
-  private void validateRelationships(Database database) throws IOException {
+  @Override
+  public void validate(Database database) throws IOException {
     database.setService(getService(database.getService()));
     database.setFullyQualifiedName(getFQN(database));
     database.setOwner(EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), database.getOwner())); // Validate owner
   }
 
-  private void addRelationships(Database database) throws IOException {
-    dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
-            database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
-    setOwner(database, database.getOwner());
-  }
-
-  private void storeDatabase(Database database, boolean update) throws JsonProcessingException {
+  @Override
+  public void store(Database database, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = database.getOwner();
     EntityReference service = database.getService();
@@ -137,20 +119,27 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.withOwner(null).withService(null).withHref(null);
 
     if (update) {
-      dao.databaseDAO().update(database.getId().toString(), JsonUtils.pojoToJson(database));
+      dao.databaseDAO().update(database.getId(), JsonUtils.pojoToJson(database));
     } else {
-      dao.databaseDAO().insert(JsonUtils.pojoToJson(database));
+      dao.databaseDAO().insert(database);
     }
 
     // Restore the relationships
     database.withOwner(owner).withService(service);
   }
 
+  @Override
+  public void storeRelationships(Database database) throws IOException {
+    dao.relationshipDAO().insert(database.getService().getId().toString(), database.getId().toString(),
+            database.getService().getType(), Entity.DATABASE, Relationship.CONTAINS.ordinal());
+    EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
+  }
+
   private void patch(Database original, Database updated) throws IOException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated);
+    validate(updated);
     DatabaseUpdater databaseUpdater = new DatabaseUpdater(original, updated, true);
     databaseUpdater.updateAll();
     databaseUpdater.store();
@@ -175,7 +164,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     List<String> tableIds = dao.relationshipDAO().findTo(databaseId, Relationship.CONTAINS.ordinal(), Entity.TABLE);
     List<EntityReference> tables = new ArrayList<>();
     for (String tableId : tableIds) {
-      tables.add(dao.tableDAO().findEntityReferenceById(tableId));
+      tables.add(dao.tableDAO().findEntityReferenceById(UUID.fromString(tableId)));
     }
     return tables;
   }
@@ -206,9 +195,8 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(id);
+      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
@@ -291,7 +279,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storeDatabase(updated, true);
+      DatabaseRepository.this.store(updated, true);
     }
   }
 }

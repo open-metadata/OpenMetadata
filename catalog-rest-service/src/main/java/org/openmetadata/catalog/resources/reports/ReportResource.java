@@ -137,7 +137,7 @@ public class ReportResource {
                          @Valid Report report) throws IOException {
     report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(report, report.getService(), report.getOwner()));
+    addHref(uriInfo, dao.create(report));
     return Response.created(report.getHref()).entity(report).build();
   }
 

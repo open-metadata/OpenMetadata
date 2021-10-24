@@ -124,11 +124,11 @@ public class BotsResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         Bots bots) throws JsonProcessingException {
+                         Bots bot) throws IOException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
-    bots.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+    bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.insert(bots));
-    return Response.created(bots.getHref()).entity(bots).build();
+    addHref(uriInfo, dao.create(bot));
+    return Response.created(bot.getHref()).entity(bot).build();
   }
 }

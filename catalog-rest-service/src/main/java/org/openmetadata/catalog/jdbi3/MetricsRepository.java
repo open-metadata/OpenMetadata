@@ -52,14 +52,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     return (metrics.getService().getName() + "." + metrics.getName());
   }
 
-  public Metrics create(Metrics metrics) throws IOException {
-    validateRelationships(metrics);
-    return createInternal(metrics);
-  }
-
   @Transaction
   public PutResponse<Metrics> createOrUpdate(Metrics updated) throws IOException {
-    validateRelationships(updated);
+    validate(updated);
     Metrics stored = JsonUtils.readValue(dao.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()),
             Metrics.class);
     if (stored == null) {  // Metrics does not exist. Create a new one
@@ -99,11 +94,22 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     return metrics;
   }
 
-  private void validateRelationships(Metrics metrics) throws IOException {
+  @Override
+  public void validate(Metrics metrics) throws IOException {
     metrics.setFullyQualifiedName(getFQN(metrics));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), metrics.getOwner()); // Validate owner
     metrics.setService(getService(metrics.getService()));
     metrics.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), metrics.getTags()));
+  }
+
+  @Override
+  public void store(Metrics entity, boolean update) throws IOException {
+
+  }
+
+  @Override
+  public void storeRelationships(Metrics entity) throws IOException {
+
   }
 
   private void addRelationships(Metrics metrics) throws IOException {
@@ -123,9 +129,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     metrics.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.metricsDAO().update(metrics.getId().toString(), JsonUtils.pojoToJson(metrics));
+      dao.metricsDAO().update(metrics.getId(), JsonUtils.pojoToJson(metrics));
     } else {
-      dao.metricsDAO().insert(JsonUtils.pojoToJson(metrics));
+      dao.metricsDAO().insert(metrics);
     }
 
     // Restore the relationships
@@ -138,9 +144,8 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      return dao.dbServiceDAO().findEntityReferenceById(id);
+      return dao.dbServiceDAO().findEntityReferenceById(service.getId());
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }

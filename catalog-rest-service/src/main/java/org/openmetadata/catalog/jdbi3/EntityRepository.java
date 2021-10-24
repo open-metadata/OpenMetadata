@@ -1,10 +1,13 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -12,12 +15,14 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Interface used for accessing the concrete entity DAOs such as table, dashboard etc.
  * This gives a uniform access so that common boiler plate code can be reduced.
  */
 public abstract class EntityRepository<T> {
+  public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final Class<T> entityClass;
   private final EntityDAO<T> dao;
 
@@ -28,7 +33,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final T get(String id, Fields fields) throws IOException, ParseException {
-    return setFields(dao.findEntityById(id), fields);
+    return setFields(dao.findEntityById(UUID.fromString(id)), fields);
   }
 
   @Transaction
@@ -79,6 +84,15 @@ public abstract class EntityRepository<T> {
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 
+  @Transaction
+  public final T create(T entity) throws IOException {
+    validate(entity);
+    store(entity, false);
+    storeRelationships(entity);
+    LOG.info("Created entity {}", entity);
+    return entity;
+  }
+
   //  @Transaction
 //  public final int listCount(String fqnPrefix) {
 //    return dao.listCount(fqnPrefix);
@@ -93,4 +107,10 @@ public abstract class EntityRepository<T> {
 
   public abstract ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor,
                                               int total) throws GeneralSecurityException, UnsupportedEncodingException;
+
+  public abstract void validate(T entity) throws IOException;
+
+  public abstract void store(T entity, boolean update) throws IOException;
+
+  public abstract void storeRelationships(T entity) throws IOException;
 }

@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
@@ -48,18 +47,12 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Transaction
-  public Report create(Report report, EntityReference service, EntityReference owner) throws IOException {
-    getService(service);
-    return createInternal(report, service, owner);
-  }
-
-  @Transaction
   public PutResponse<Report> createOrUpdate(Report updatedReport, EntityReference service, EntityReference newOwner)
           throws IOException {
     String fqn = service.getName() + "." + updatedReport.getName();
     Report storedReport = JsonUtils.readValue(dao.reportDAO().findJsonByFqn(fqn), Report.class);
     if (storedReport == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updatedReport, service, newOwner));
+//      return new PutResponse<>(Status.CREATED, createInternal(updatedReport, service, newOwner));
     }
     // Update existing report
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), newOwner); // Validate new owner
@@ -67,7 +60,7 @@ public class ReportRepository extends EntityRepository<Report> {
       storedReport.withDescription(updatedReport.getDescription());
     }
 
-    dao.reportDAO().update(storedReport.getId().toString(), JsonUtils.pojoToJson(storedReport));
+    dao.reportDAO().update(storedReport.getId(), JsonUtils.pojoToJson(storedReport));
 
     // Update owner relationship
     setFields(storedReport, REPORT_UPDATE_FIELDS); // First get the ownership information
@@ -100,16 +93,27 @@ public class ReportRepository extends EntityRepository<Report> {
     return new ReportList(entities);
   }
 
-  private Report createInternal(Report report, EntityReference service, EntityReference owner) throws IOException {
-    String fqn = service.getName() + "." + report.getName();
-    report.setFullyQualifiedName(fqn);
+  @Override
+  public void validate(Report report) throws IOException {
+    // TODO clean this up
+    setService(report, report.getService());
+    setOwner(report, report.getOwner());
 
-    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), owner); // Validate owner
+//    String fqn = service.getName() + "." + report.getName();
+//    report.setFullyQualifiedName(fqn);
+//    getService(service);
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
+  }
 
-    dao.reportDAO().insert(JsonUtils.pojoToJson(report));
-    setService(report, service);
-    setOwner(report, owner);
-    return report;
+  @Override
+  public void store(Report report, boolean update) throws IOException {
+    // TODO add right checks
+    dao.reportDAO().insert(report);
+  }
+
+  @Override
+  public void storeRelationships(Report entity) throws IOException {
+    // TODO
   }
 
   private EntityReference getService(Report report) {

@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Topic;
@@ -33,8 +32,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
@@ -49,7 +46,6 @@ import java.util.UUID;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class TopicRepository extends EntityRepository<Topic> {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicRepository.class);
   private static final Fields TOPIC_UPDATE_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,tags");
   private static final Fields TOPIC_PATCH_FIELDS = new Fields(TopicResource.FIELD_LIST, "owner,service,tags");
   private final CollectionDAO dao;
@@ -64,28 +60,22 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public Topic create(Topic topic) throws IOException {
-    validateRelationships(topic);
-    return createInternal(topic);
-  }
-
-  @Transaction
-  public void delete(String id) {
-    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
+  public void delete(UUID id) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TOPIC) > 0) {
       throw new IllegalArgumentException("Topic is not empty");
     }
     if (dao.topicDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
   public PutResponse<Topic> createOrUpdate(Topic updated) throws IOException {
-    validateRelationships(updated);
+    validate(updated);
     Topic stored = JsonUtils.readValue(dao.topicDAO().findJsonByFqn(updated.getFullyQualifiedName()), Topic.class);
     if (stored == null) {  // Topic does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
+//      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, TOPIC_UPDATE_FIELDS);
     updated.setId(stored.getId());
@@ -97,7 +87,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public Topic patch(String id, String user, JsonPatch patch) throws IOException {
+  public Topic patch(UUID id, String user, JsonPatch patch) throws IOException {
     Topic original = setFields(validateTopic(id), TOPIC_PATCH_FIELDS);
     Topic updated = JsonUtils.applyPatch(original, patch, Topic.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -110,26 +100,16 @@ public class TopicRepository extends EntityRepository<Topic> {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner());
   }
 
-  public Topic createInternal(Topic topic) throws IOException {
-    storeTopic(topic, false);
-    addRelationships(topic);
-    return topic;
-  }
-
-  private void validateRelationships(Topic topic) throws IOException {
+  @Override
+  public void validate(Topic topic) throws IOException {
     topic.setFullyQualifiedName(getFQN(topic));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner()); // Validate owner
     getService(topic.getService());
     topic.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), topic.getTags()));
   }
 
-  private void addRelationships(Topic topic) throws IOException {
-    setService(topic, topic.getService());
-    setOwner(topic, topic.getOwner());
-    applyTags(topic);
-  }
-
-  private void storeTopic(Topic topic, boolean update) throws JsonProcessingException {
+  @Override
+  public void store(Topic topic, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = topic.getOwner();
     List<TagLabel> tags = topic.getTags();
@@ -139,13 +119,20 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.topicDAO().update(topic.getId().toString(), JsonUtils.pojoToJson(topic));
+      dao.topicDAO().update(topic.getId(), JsonUtils.pojoToJson(topic));
     } else {
-      dao.topicDAO().insert(JsonUtils.pojoToJson(topic));
+      dao.topicDAO().insert(topic);
     }
 
     // Restore the relationships
     topic.withOwner(owner).withService(service).withTags(tags);
+  }
+
+  @Override
+  public void storeRelationships(Topic topic) throws IOException {
+    setService(topic, topic.getService());
+    setOwner(topic, topic.getOwner());
+    applyTags(topic);
   }
 
   private void applyTags(Topic topic) throws IOException {
@@ -158,7 +145,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated);
+    validate(updated);
     TopicUpdater topicUpdater = new TopicUpdater(original, updated, true);
     topicUpdater.updateAll();
     topicUpdater.store();
@@ -174,7 +161,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     topic.setOwner(owner);
   }
 
-  private Topic validateTopic(String id) throws IOException {
+  private Topic validateTopic(UUID id) throws IOException {
     return dao.topicDAO().findEntityById(id);
   }
 
@@ -211,9 +198,8 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingService serviceInstance = dao.messagingServiceDAO().findEntityById(id);
+      MessagingService serviceInstance = dao.messagingServiceDAO().findEntityById(service.getId());
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -232,14 +218,14 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Transaction
-  public Status addFollower(String topicId, String userId) throws IOException {
+  public Status addFollower(UUID topicId, UUID userId) throws IOException {
     dao.topicDAO().findEntityById(topicId);
     return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
 
   @Transaction
-  public void deleteFollower(String topicId, String userId) {
+  public void deleteFollower(UUID topicId, UUID userId) {
     EntityUtil.validateUser(dao.userDAO(), userId);
     EntityUtil.removeFollower(dao.relationshipDAO(), topicId, userId);
   }
@@ -323,7 +309,7 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storeTopic(updated, true);
+      TopicRepository.this.store(updated, true);
     }
   }
 }

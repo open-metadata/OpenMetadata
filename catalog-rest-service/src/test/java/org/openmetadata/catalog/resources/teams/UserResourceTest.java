@@ -470,7 +470,7 @@ public class UserResourceTest extends CatalogApplicationTest {
     // User can no longer follow other entities
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId().toString()));
+    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner
   }

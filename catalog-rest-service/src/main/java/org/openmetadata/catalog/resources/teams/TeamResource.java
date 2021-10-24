@@ -63,6 +63,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -211,8 +212,9 @@ public class TeamResource {
     Team team = new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
             .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(team, ct.getUsers()));
+            .withUpdatedAt(new Date())
+            .withUsers(dao.getUsers(ct.getUsers()));
+    addHref(uriInfo, dao.create(team));
     return Response.created(team.getHref()).entity(team).build();
   }
 
@@ -236,7 +238,7 @@ public class TeamResource {
                     JsonPatch patch) throws IOException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
+    return addHref(uriInfo, dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE
@@ -251,7 +253,7 @@ public class TeamResource {
                          @Context SecurityContext securityContext,
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

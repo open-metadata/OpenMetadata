@@ -16,10 +16,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
@@ -51,15 +49,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Transaction
-  public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
-    dao.messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
-    return messagingService;
-  }
-
-  @Transaction
-  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+  public MessagingService update(UUID id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
@@ -72,11 +62,11 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Transaction
-  public void delete(String id) {
+  public void delete(UUID id) {
     if (dao.messagingServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -94,6 +84,22 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new MessagingServiceList(entities);
+  }
+
+  @Override
+  public void validate(MessagingService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
+
+  @Override
+  public void store(MessagingService entity, boolean update) throws IOException {
+    dao.messagingServiceDAO().insert(entity);
+    // TODO Other cleanup
+  }
+
+  @Override
+  public void storeRelationships(MessagingService entity) throws IOException {
+
   }
 
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {

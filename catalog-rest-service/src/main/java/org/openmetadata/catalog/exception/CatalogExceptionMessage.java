@@ -48,7 +48,7 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", StringUtils.capitalize(entity));
   }
 
-  public static String deactivatedUser(String id) {
+  public static String deactivatedUser(UUID id) {
     return String.format("User %s is deactivated", id);
   }
 

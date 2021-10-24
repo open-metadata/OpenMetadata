@@ -72,6 +72,34 @@ public class UserRepository extends EntityRepository<User> {
     return new UserList(entities, beforeCursor, afterCursor, total);
   }
 
+  @Override
+  public void validate(User entity) throws IOException {
+
+  }
+
+  @Override
+  public void store(User user, boolean update) throws IOException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    List<EntityReference> teams = user.getTeams();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    user.withTeams(null).withHref(null);
+
+    if (update) {
+      dao.userDAO().update(user.getId(), JsonUtils.pojoToJson(user));
+    } else {
+      dao.userDAO().insert(user);
+    }
+
+    // Restore the relationships
+    user.withTeams(teams);
+  }
+
+  @Override
+  public void storeRelationships(User user) throws IOException {
+    assignTeams(user, user.getTeams());
+  }
+
   @Transaction
   public User getByEmail(String email, Fields fields) throws IOException {
     User user = EntityUtil.validate(email, dao.userDAO().findByEmail(email), User.class);
@@ -79,13 +107,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User create(User user, List<UUID> teamIds) throws IOException {
-    validateRelationships(user, teamIds);
-    return createInternal(user);
-  }
-
-  @Transaction
-  public void delete(String id) throws IOException {
+  public void delete(UUID id) throws IOException {
     // Query - mark user as deactivated
     User user = markUserAsDeactivated(id);
 
@@ -93,7 +115,7 @@ public class UserRepository extends EntityRepository<User> {
     dao.relationshipDAO().deleteTo(user.getId().toString(), CONTAINS.ordinal(), "team");
 
     // Remove follows relationship to entities
-    dao.relationshipDAO().deleteFrom(id, FOLLOWS.ordinal());
+    dao.relationshipDAO().deleteFrom(id.toString(), FOLLOWS.ordinal());
   }
 
   @Transaction
@@ -107,7 +129,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRelationships(updated, teamIds);
     if (stored == null) {
-      return new RestUtil.PutResponse<>(Response.Status.CREATED, createInternal(updated));
+//      return new RestUtil.PutResponse<>(Response.Status.CREATED, createInternal(updated));
     }
     setFields(stored, USER_UPDATE_FIELDS);
     updated.setId(stored.getId());
@@ -119,7 +141,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Transaction
-  public User patch(String id, String user, JsonPatch patch) throws IOException {
+  public User patch(UUID id, String user, JsonPatch patch) throws IOException {
     User original = setFields(validateUser(id), USER_PATCH_FIELDS);
     LOG.info("SURESH original {}", JsonUtils.pojoToJson(original, true));
     LOG.info("SURESH patch {}", patch);
@@ -176,48 +198,21 @@ public class UserRepository extends EntityRepository<User> {
             dao);
   }
 
-  private User validateUser(String userId) throws IOException {
+  private User validateUser(UUID userId) throws IOException {
     return dao.userDAO().findEntityById(userId);
-  }
-
-  private User createInternal(User user) throws IOException {
-    storeUser(user, false);
-    addRelationships(user);
-    return user;
   }
 
   private void validateRelationships(User user, List<UUID> teamIds) throws IOException {
     user.setTeams(validateTeams(teamIds));
   }
 
-  private void addRelationships(User user) {
-    assignTeams(user, user.getTeams());
-  }
-
-  private void storeUser(User user, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    List<EntityReference> teams = user.getTeams();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    user.withTeams(null).withHref(null);
-
-    if (update) {
-      dao.userDAO().update(user.getId().toString(), JsonUtils.pojoToJson(user));
-    } else {
-      dao.userDAO().insert(JsonUtils.pojoToJson(user));
-    }
-
-    // Restore the relationships
-    user.withTeams(teams);
-  }
-
-  private List<EntityReference> validateTeams(List<UUID> teamIds) throws IOException {
+  public List<EntityReference> validateTeams(List<UUID> teamIds) throws IOException {
     if (teamIds == null) {
       return Collections.emptyList(); // Return empty team list
     }
     List<EntityReference> validatedTeams = new ArrayList<>();
     for (UUID teamId : teamIds) {
-      validatedTeams.add(dao.teamDAO().findEntityReferenceById(teamId.toString()));
+      validatedTeams.add(dao.teamDAO().findEntityReferenceById(teamId));
     }
     return validatedTeams;
   }
@@ -227,20 +222,20 @@ public class UserRepository extends EntityRepository<User> {
     List<String> teamIds = dao.relationshipDAO().findFrom(user.getId().toString(), CONTAINS.ordinal(), "team");
     List<EntityReference> teams = new ArrayList<>();
     for (String teamId : teamIds) {
-      teams.add(dao.teamDAO().findEntityReferenceById(teamId));
+      teams.add(dao.teamDAO().findEntityReferenceById(UUID.fromString(teamId)));
     }
     return teams;
   }
 
   private void assignTeams(User user, List<EntityReference> teams) {
     // Query - add team to the user
-    for (EntityReference team : teams) {
+    for (EntityReference team : Optional.ofNullable(teams).orElse(Collections.emptyList())) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
               "team", "user", CONTAINS.ordinal());
     }
   }
 
-  private User markUserAsDeactivated(String id) throws IOException {
+  private User markUserAsDeactivated(UUID id) throws IOException {
     User user = validateUser(id);
     if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
       // User is already deactivated
@@ -333,7 +328,7 @@ public class UserRepository extends EntityRepository<User> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storeUser(updated, true);
+      UserRepository.this.store(updated, true);
     }
   }
 }

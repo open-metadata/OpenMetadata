@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Task;
@@ -62,28 +61,22 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Transaction
-  public Task create(Task task) throws IOException {
-    validateRelationships(task);
-    return createInternal(task);
-  }
-
-  @Transaction
-  public void delete(String id) {
-    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
+  public void delete(UUID id) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.TASK) > 0) {
       throw new IllegalArgumentException("Task is not empty");
     }
     if (dao.taskDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TASK, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
   public PutResponse<Task> createOrUpdate(Task updated) throws IOException {
-    validateRelationships(updated);
+    validate(updated);
     Task stored = JsonUtils.readValue(dao.taskDAO().findJsonByFqn(updated.getFullyQualifiedName()), Task.class);
     if (stored == null) {  // Task does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
+//      return new PutResponse<>(Status.CREATED, createInternal(updated));
     }
     setFields(stored, TASK_UPDATE_FIELDS);
     updated.setId(stored.getId());
@@ -95,7 +88,7 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Transaction
-  public Task patch(String id, String user, JsonPatch patch) throws IOException {
+  public Task patch(UUID id, String user, JsonPatch patch) throws IOException {
     Task original = setFields(validateTask(id), TASK_PATCH_FIELDS);
     Task updated = JsonUtils.applyPatch(original, patch, Task.class);
     updated.withUpdatedBy(user).withUpdatedAt(new Date());
@@ -103,13 +96,8 @@ public class TaskRepository extends EntityRepository<Task> {
     return updated;
   }
 
-  public Task createInternal(Task task) throws IOException {
-    storeTask(task, false);
-    addRelationships(task);
-    return task;
-  }
-
-  private void validateRelationships(Task task) throws IOException {
+  @Override
+  public void validate(Task task) throws IOException {
     EntityReference pipelineService = getService(task.getService());
     task.setService(pipelineService);
     task.setFullyQualifiedName(getFQN(task));
@@ -118,13 +106,8 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), task.getTags()));
   }
 
-  private void addRelationships(Task task) throws IOException {
-    setService(task, task.getService());
-    setOwner(task, task.getOwner());
-    applyTags(task);
-  }
-
-  private void storeTask(Task task, boolean update) throws JsonProcessingException {
+  @Override
+  public void store(Task task, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = task.getOwner();
     List<TagLabel> tags = task.getTags();
@@ -134,15 +117,24 @@ public class TaskRepository extends EntityRepository<Task> {
     task.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
-      dao.taskDAO().update(task.getId().toString(), JsonUtils.pojoToJson(task));
+      dao.taskDAO().update(task.getId(), JsonUtils.pojoToJson(task));
     } else {
-      dao.taskDAO().insert(JsonUtils.pojoToJson(task));
+      dao.taskDAO().insert(task);
     }
 
     // Restore the relationships
     task.withOwner(owner).withService(service).withTags(tags);
   }
 
+  @Override
+  public void storeRelationships(Task task) throws IOException {
+    setService(task, task.getService());
+    setOwner(task, task.getOwner());
+    applyTags(task);
+  }
+
+  private void addRelationships(Task task) throws IOException {
+  }
 
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
@@ -154,7 +146,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-    validateRelationships(updated);
+    validate(updated);
     TaskUpdater taskUpdater = new TaskUpdater(original, updated, true);
     taskUpdater.updateAll();
     taskUpdater.store();
@@ -170,7 +162,7 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setOwner(owner);
   }
 
-  private Task validateTask(String id) throws IOException {
+  private Task validateTask(UUID id) throws IOException {
     return dao.taskDAO().findEntityById(id);
   }
 
@@ -209,9 +201,8 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(id);
+      PipelineService serviceInstance = dao.pipelineServiceDAO().findEntityById(service.getId());
       service.setDescription(serviceInstance.getDescription());
       service.setName(serviceInstance.getName());
     } else {
@@ -309,7 +300,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     public void store() throws IOException {
       updated.setVersion(getNewVersion(orig.getVersion()));
-      storeTask(updated, true);
+      TaskRepository.this.store(updated, true);
     }
   }
 }

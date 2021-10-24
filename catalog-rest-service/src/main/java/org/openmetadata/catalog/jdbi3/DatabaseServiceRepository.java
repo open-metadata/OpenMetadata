@@ -16,10 +16,8 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
@@ -51,15 +49,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     this.dao = dao;
   }
 
-  @Transaction
-  public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    dao.dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
-    return databaseService;
-  }
-
-  public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
+  public DatabaseService update(UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
     DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
@@ -70,11 +60,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Transaction
-  public void delete(String id) {
+  public void delete(UUID id) {
     if (dao.dbServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Override
@@ -90,6 +80,22 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   @Override
   public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new DatabaseServiceList(entities);
+  }
+
+  @Override
+  public void validate(DatabaseService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
+
+  @Override
+  public void store(DatabaseService entity, boolean update) throws IOException {
+    dao.dbServiceDAO().insert(entity);
+    // TODO other cleanup
+  }
+
+  @Override
+  public void storeRelationships(DatabaseService entity) throws IOException {
+    return;
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {

@@ -24,7 +24,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
@@ -43,7 +42,7 @@ public class BotsRepository extends EntityRepository<Bots>{
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
-    dao.botsDAO().insert(JsonUtils.pojoToJson(bots));
+    dao.botsDAO().insert(bots);
     return bots;
   }
 
@@ -60,6 +59,21 @@ public class BotsRepository extends EntityRepository<Bots>{
   @Override
   public ResultList<Bots> getResultList(List<Bots> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new BotsList(entities);
+  }
+
+  @Override
+  public void validate(Bots entity) throws IOException {
+    return;
+  }
+
+  @Override
+  public void store(Bots entity, boolean update) throws IOException {
+    dao.botsDAO().insert(entity);
+  }
+
+  @Override
+  public void storeRelationships(Bots entity) throws IOException {
+    return;
   }
 
   static class BotsEntityInterface implements EntityInterface<Bots> {

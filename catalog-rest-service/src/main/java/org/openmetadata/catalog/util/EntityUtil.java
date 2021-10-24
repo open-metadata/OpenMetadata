@@ -150,7 +150,7 @@ public final class EntityUtil {
     Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> addHref(uriInfo, ref));
   }
 
-  public static void validateUser(UserDAO userDAO, String userId) {
+  public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
     }
@@ -172,7 +172,7 @@ public final class EntityUtil {
     if (owner == null) {
       return null;
     }
-    String id = owner.getId().toString();
+    UUID id = owner.getId();
     if (owner.getType().equalsIgnoreCase("user")) {
       User ownerInstance = userDAO.findEntityById(id);
       owner.setName(ownerInstance.getName());
@@ -234,25 +234,25 @@ public final class EntityUtil {
 
   public static EntityReference getEntityReference(String entity, UUID id, CollectionDAO dao) throws IOException {
     if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      return dao.tableDAO().findEntityReferenceById(id.toString());
+      return dao.tableDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      return dao.databaseDAO().findEntityReferenceById(id.toString());
+      return dao.databaseDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
-      return dao.metricsDAO().findEntityReferenceById(id.toString());
+      return dao.metricsDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return dao.dashboardDAO().findEntityReferenceById(id.toString());
+      return dao.dashboardDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
-      return dao.reportDAO().findEntityReferenceById(id.toString());
+      return dao.reportDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      return dao.topicDAO().findEntityReferenceById(id.toString());
+      return dao.topicDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      return dao.chartDAO().findEntityReferenceById(id.toString());
+      return dao.chartDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      return dao.taskDAO().findEntityReferenceById(id.toString());
+      return dao.taskDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      return dao.pipelineDAO().findEntityReferenceById(id.toString());
+      return dao.pipelineDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      return dao.modelDAO().findEntityReferenceById(id.toString());
+      return dao.modelDAO().findEntityReferenceById(id);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
@@ -390,19 +390,19 @@ public final class EntityUtil {
   }
 
   public static boolean addFollower(EntityRelationshipDAO dao, UserDAO userDAO,
-                                    String followedEntityId,
-                                    String followedEntityType, String followerId, String followerEntity)
+                                    UUID followedEntityId,
+                                    String followedEntityType, UUID followerId, String followerEntity)
           throws IOException {
     User user = userDAO.findEntityById(followerId);
     if (Optional.ofNullable(user.getDeactivated()).orElse(false)) {
       throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(followerId));
     }
-    return dao.insert(followerId, followedEntityId, followerEntity, followedEntityType,
+    return dao.insert(followerId.toString(), followedEntityId.toString(), followerEntity, followedEntityType,
             Relationship.FOLLOWS.ordinal()) > 0;
   }
 
-  public static void removeFollower(EntityRelationshipDAO dao, String followedEntityId, String followerId) {
-    dao.delete(followerId, followedEntityId, Relationship.FOLLOWS.ordinal());
+  public static void removeFollower(EntityRelationshipDAO dao, UUID followedEntityId, UUID followerId) {
+    dao.delete(followerId.toString(), followedEntityId.toString(), Relationship.FOLLOWS.ordinal());
   }
 
   public static List<EntityReference> getFollowers(UUID followedEntityId, EntityRelationshipDAO entityRelationshipDAO,
@@ -412,7 +412,7 @@ public final class EntityUtil {
             Entity.USER);
     List<EntityReference> followers = new ArrayList<>();
     for (String followerId : followerIds) {
-      User user = userDAO.findEntityById(followerId);
+      User user = userDAO.findEntityById(UUID.fromString(followerId));
       followers.add(new EntityReference().withName(user.getName()).withId(user.getId()).withType("user"));
     }
     return followers;
