@@ -19,28 +19,23 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -56,7 +51,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {
-    super(Dashboard.class, dao.dashboardDAO());
+    super(Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -65,50 +60,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public String getFullyQualifiedName(Dashboard entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
-  public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor,
-                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DashboardList(entities, beforeCursor, afterCursor, total);
+  public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
+    return new DashboardEntityInterface(entity);
   }
 
   @Transaction
-  public Dashboard create(Dashboard dashboard) throws IOException {
-    validateRelationships(dashboard);
-    return createInternal(dashboard);
-  }
-
-  @Transaction
-  public PutResponse<Dashboard> createOrUpdate(Dashboard updated) throws IOException {
-    validateRelationships(updated);
-    Dashboard stored = JsonUtils.readValue(dao.dashboardDAO().findJsonByFqn(updated.getFullyQualifiedName()),
-            Dashboard.class);
-    if (stored == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, DASHBOARD_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-
-    DashboardUpdater dashboardUpdater = new DashboardUpdater(stored, updated, false);
-    dashboardUpdater.updateAll();
-    dashboardUpdater.store();
-    return new PutResponse<>(Response.Status.OK, updated);
-  }
-
-  @Transaction
-  public Dashboard patch(String id, String user, JsonPatch patch) throws IOException {
-    Dashboard original = setFields(validateDashboard(id), DASHBOARD_PATCH_FIELDS);
-    Dashboard updated = JsonUtils.applyPatch(original, patch, Dashboard.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
-  }
-
-  @Transaction
-  public Status addFollower(String dashboardId, String userId) throws IOException {
+  public Status addFollower(UUID dashboardId, UUID userId) throws IOException {
     dao.dashboardDAO().findEntityById(dashboardId);
     return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), dashboardId, Entity.DASHBOARD, userId,
             Entity.USER) ?
@@ -116,20 +73,20 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Transaction
-  public void deleteFollower(String dashboardId, String userId) {
+  public void deleteFollower(UUID dashboardId, UUID userId) {
     EntityUtil.validateUser(dao.userDAO(), userId);
     EntityUtil.removeFollower(dao.relationshipDAO(), dashboardId, userId);
   }
 
   @Transaction
-  public void delete(String id) {
-    if (dao.relationshipDAO().findToCount(id, Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
+  public void delete(UUID id) {
+    if (dao.relationshipDAO().findToCount(id.toString(), Relationship.CONTAINS.ordinal(), Entity.DASHBOARD) > 0) {
       throw new IllegalArgumentException("Dashboard is not empty");
     }
     if (dao.dashboardDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DASHBOARD, id));
     }
-    dao.relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
   @Transaction
@@ -143,11 +100,18 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
     dashboard.setService(fields.contains("service") ? getService(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
-    dashboard.setCharts(fields.contains("charts") ? EntityUtil.toEntityReference(getCharts(dashboard)) : null);
+    dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
     dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);
     dashboard.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             dashboard.getId()) : null);
     return dashboard;
+  }
+
+  @Override
+  public void restorePatchAttributes(Dashboard original, Dashboard updated) throws IOException, ParseException {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withId(original.getId()).withFullyQualifiedName(original.getFullyQualifiedName())
+            .withName(original.getName()).withService(original.getService()).withId(original.getId());
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -155,57 +119,77 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
 
-  private Dashboard createInternal(Dashboard dashboard)
-          throws IOException {
-    storeDashboard(dashboard, false);
-    addRelationships(dashboard);
-    return dashboard;
-  }
-
   private EntityReference getService(Dashboard dashboard) throws IOException {
-    return dashboard == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), dashboard.getId()));
+    EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
+    return getService(ref);
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
-    String id = service.getId().toString();
     if (service.getType().equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardService serviceInstance = dao.dashboardServiceDAO().findEntityById(id);
-      service.setDescription(serviceInstance.getDescription());
-      service.setName(serviceInstance.getName());
+      return dao.dashboardServiceDAO().findEntityReferenceById(service.getId());
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the dashboard", service.getType()));
     }
-    return service;
   }
 
   public void setService(Dashboard dashboard, EntityReference service) throws IOException {
     if (service != null && dashboard != null) {
       // TODO remove this
-      getService(service); // Populate service details
       dao.relationshipDAO().insert(service.getId().toString(), dashboard.getId().toString(), service.getType(),
               Entity.DASHBOARD, Relationship.CONTAINS.ordinal());
       dashboard.setService(service);
     }
   }
 
-  private void patch(Dashboard original, Dashboard updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withId(original.getId()).withFullyQualifiedName(original.getFullyQualifiedName())
-            .withName(original.getName()).withService(original.getService()).withId(original.getId());
-    validateRelationships(updated);
-    DashboardUpdater DashboardUpdater = new DashboardUpdater(original, updated, true);
-    DashboardUpdater.updateAll();
-    DashboardUpdater.store();
-  }
-
-  private void validateRelationships(Dashboard dashboard)
-          throws IOException {
-    EntityReference dashboardService = getService(dashboard.getService());
-    dashboard.setService(dashboardService);
+  @Override
+  public void validate(Dashboard dashboard) throws IOException {
+    dashboard.setService(getService(dashboard.getService()));
     dashboard.setFullyQualifiedName(getFQN(dashboard));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), dashboard.getOwner()); // Validate owner
-    getService(dashboard.getService());
     dashboard.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), dashboard.getTags()));
+  }
+
+  @Override
+  public void store(Dashboard dashboard, boolean update) throws JsonProcessingException {
+    // Relationships and fields such as href are derived and not stored as part of json
+    EntityReference owner = dashboard.getOwner();
+    List<TagLabel> tags = dashboard.getTags();
+
+    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
+    dashboard.withOwner(null).withHref(null).withTags(null);
+
+    if (update) {
+      dao.dashboardDAO().update(dashboard.getId(), JsonUtils.pojoToJson(dashboard));
+    } else {
+      dao.dashboardDAO().insert(dashboard);
+    }
+
+    // Restore the relationships
+    dashboard.withOwner(owner).withTags(tags);
+  }
+
+  @Override
+  public void storeRelationships(Dashboard dashboard) throws IOException {
+    setService(dashboard, dashboard.getService());
+
+    // Add relationship from dashboard to chart
+    String dashboardId = dashboard.getId().toString();
+    if (dashboard.getCharts() != null) {
+      for (EntityReference chart : dashboard.getCharts()) {
+        dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
+                Relationship.CONTAINS.ordinal());
+      }
+    }
+    // Add owner relationship
+    EntityUtil.setOwner(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
+
+    // Add tag to dashboard relationship
+    applyTags(dashboard);
+  }
+
+  @Override
+  public EntityUpdater getUpdater(Dashboard original, Dashboard updated, boolean patchOperation) throws IOException {
+    return new DashboardUpdater(original, updated, patchOperation);
   }
 
   private EntityReference getOwner(Dashboard dashboard) throws IOException {
@@ -229,112 +213,112 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
             dao.userDAO());
   }
 
-  private List<Chart> getCharts(Dashboard dashboard) throws IOException {
+  private List<EntityReference> getCharts(Dashboard dashboard) throws IOException {
     if (dashboard == null) {
       return null;
     }
     String dashboardId = dashboard.getId().toString();
     List<String> chartIds = dao.relationshipDAO().findTo(dashboardId, Relationship.CONTAINS.ordinal(), Entity.CHART);
-    List<Chart> charts = new ArrayList<>();
+    List<EntityReference> charts = new ArrayList<>();
     for (String chartId : chartIds) {
-      String json = dao.chartDAO().findJsonById(chartId);
-      Chart chart = JsonUtils.readValue(json, Chart.class);
-      charts.add(chart);
+      charts.add(dao.chartDAO().findEntityReferenceById(UUID.fromString(chartId)));
     }
     return charts.isEmpty() ? null : charts;
   }
 
-  private void addRelationships(Dashboard dashboard) throws IOException {
-    setService(dashboard, dashboard.getService());
+  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) {
+    String dashboardId = updated.getId().toString();
+
+    // Remove all charts associated with this dashboard
+    dao.relationshipDAO().deleteFrom(dashboardId, Relationship.CONTAINS.ordinal(), "chart");
 
     // Add relationship from dashboard to chart
-    String dashboardId = dashboard.getId().toString();
-    if (dashboard.getCharts() != null) {
-      for (EntityReference chart : dashboard.getCharts()) {
+    if (updated.getCharts() != null) {
+      for (EntityReference chart : updated.getCharts()) {
         dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
                 Relationship.CONTAINS.ordinal());
       }
     }
-    // Add owner relationship
-    EntityUtil.setOwner(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD, dashboard.getOwner());
-
-    // Add tag to dashboard relationship
-    applyTags(dashboard);
-  }
-
-  private Dashboard validateDashboard(String id) throws IOException {
-    return dao.dashboardDAO().findEntityById(id);
-  }
-
-  private void storeDashboard(Dashboard dashboard, boolean update) throws JsonProcessingException {
-    // Relationships and fields such as href are derived and not stored as part of json
-    EntityReference owner = dashboard.getOwner();
-    List<TagLabel> tags = dashboard.getTags();
-
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    dashboard.withOwner(null).withHref(null).withTags(null);
-
-    if (update) {
-      dao.dashboardDAO().update(dashboard.getId().toString(), JsonUtils.pojoToJson(dashboard));
-    } else {
-      dao.dashboardDAO().insert(JsonUtils.pojoToJson(dashboard));
-    }
-
-    // Restore the relationships
-    dashboard.withOwner(owner).withTags(tags);
+    List<UUID> origChartIds = EntityUtil.getIDList(original.getCharts());
+    List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getCharts());
+    updater.recordChange("charts", origChartIds, updatedChartIds);
   }
 
 
-  static class DashboardEntityInterface implements EntityInterface {
-    private final Dashboard dashboard;
+  public static class DashboardEntityInterface implements EntityInterface<Dashboard> {
+    private final Dashboard entity;
 
-    DashboardEntityInterface(Dashboard dashboard) {
-      this.dashboard = dashboard;
+    public DashboardEntityInterface(Dashboard entity) {
+      this.entity = entity;
     }
 
     @Override
     public UUID getId() {
-      return dashboard.getId();
+      return entity.getId();
     }
 
     @Override
     public String getDescription() {
-      return dashboard.getDescription();
+      return entity.getDescription();
     }
 
     @Override
     public String getDisplayName() {
-      return dashboard.getDisplayName();
+      return entity.getDisplayName();
     }
 
     @Override
     public EntityReference getOwner() {
-      return dashboard.getOwner();
+      return entity.getOwner();
     }
 
     @Override
     public String getFullyQualifiedName() {
-      return dashboard.getFullyQualifiedName();
+      return entity.getFullyQualifiedName();
     }
 
     @Override
     public List<TagLabel> getTags() {
-      return dashboard.getTags();
+      return entity.getTags();
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
+    }
+
+    @Override
+    public Dashboard getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id);}
+
+    @Override
     public void setDescription(String description) {
-      dashboard.setDescription(description);
+      entity.setDescription(description);
     }
 
     @Override
     public void setDisplayName(String displayName) {
-      dashboard.setDisplayName(displayName);
+      entity.setDisplayName(displayName);
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
-      dashboard.setTags(tags);
+      entity.setTags(tags);
     }
   }
 
@@ -342,19 +326,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
    * Handles entity updated from PUT and POST operation.
    */
   public class DashboardUpdater extends EntityUpdater {
-    final Dashboard orig;
-    final Dashboard updated;
-
-    public DashboardUpdater(Dashboard orig, Dashboard updated, boolean patchOperation) {
-      super(new DashboardEntityInterface(orig), new DashboardEntityInterface(updated), patchOperation,
-              dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public DashboardUpdater(Dashboard original, Dashboard updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
+    @Override
+    public void entitySpecificUpdate() throws IOException {
       updateCharts();
     }
 
@@ -365,20 +342,15 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       dao.relationshipDAO().deleteFrom(dashboardId, Relationship.CONTAINS.ordinal(), "chart");
 
       // Add relationship from dashboard to chart
-      if (updated.getCharts() != null) {
-        for (EntityReference chart : updated.getCharts()) {
+      if (updated.getEntity().getCharts() != null) {
+        for (EntityReference chart : updated.getEntity().getCharts()) {
           dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
                   Relationship.CONTAINS.ordinal());
         }
       }
-      List<UUID> origChartIds = EntityUtil.getIDList(orig.getCharts());
-      List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getCharts());
-      update("charts", origChartIds, updatedChartIds);
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      storeDashboard(updated, true);
+      List<UUID> origChartIds = EntityUtil.getIDList(original.getEntity().getCharts());
+      List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getEntity().getCharts());
+      recordChange("charts", origChartIds, updatedChartIds);
     }
   }
 }

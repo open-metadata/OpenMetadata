@@ -153,7 +153,7 @@ public class DashboardServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateDashboardService create) throws JsonProcessingException {
+                         @Valid CreateDashboardService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = new DashboardService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
@@ -186,7 +186,7 @@ public class DashboardServiceResource {
                          @Valid UpdateDashboardService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getDashboardUrl(), update.getUsername(),
+            dao.update(UUID.fromString(id), update.getDescription(), update.getDashboardUrl(), update.getUsername(),
                     update.getPassword(), update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
@@ -206,7 +206,7 @@ public class DashboardServiceResource {
                          @Parameter(description = "Id of the dashboard service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

@@ -24,8 +24,25 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO.TagLabelMapper;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
+import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
+import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
+import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
+import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
+import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
@@ -115,6 +132,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Dashboard entity) {
+      return new DashboardEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface DashboardServiceDAO extends EntityDAO<DashboardService> {
@@ -127,8 +149,10 @@ public interface CollectionDAO {
     @Override
     default Class<DashboardService> getEntityClass() { return DashboardService.class; }
 
-    @SqlQuery("SELECT json FROM dashboard_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @Override
+    default EntityReference getEntityReference(DashboardService entity) {
+      return new DashboardServiceEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface DatabaseDAO extends EntityDAO<Database> {
@@ -142,6 +166,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Database entity) {
+      return new DatabaseEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface DatabaseServiceDAO extends EntityDAO<DatabaseService> {
@@ -153,6 +182,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "name"; }
+
+    @Override
+    default EntityReference getEntityReference(DatabaseService entity) {
+      return new DatabaseServiceEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface EntityExtensionDAO {
@@ -304,8 +338,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
-    @SqlQuery("SELECT json FROM bot_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @Override
+    default EntityReference getEntityReference(Bots entity) {
+      return new BotsEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface ChartDAO extends EntityDAO<Chart>{
@@ -317,6 +353,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Chart entity) {
+      return new ChartEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface MessagingServiceDAO extends EntityDAO<MessagingService> {
@@ -329,8 +370,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "name"; }
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @Override
+    default EntityReference getEntityReference(MessagingService entity) {
+      return new MessagingServiceEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface MetricsDAO extends EntityDAO<Metrics> {
@@ -343,8 +386,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
-    @SqlQuery("SELECT json FROM metric_entity")
-    List<String> list();
+    @Override
+    default EntityReference getEntityReference(Metrics entity) {
+      return new MetricsEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface ModelDAO extends EntityDAO<Model>{
@@ -356,6 +401,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Model entity) {
+      return new ModelEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface PipelineDAO extends EntityDAO<Pipeline> {
@@ -367,6 +417,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Pipeline entity) {
+      return new PipelineEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {
@@ -379,8 +434,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "name"; }
 
-    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+    @Override
+    default EntityReference getEntityReference(PipelineService entity) {
+      return new PipelineServiceEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface ReportDAO extends EntityDAO<Report> {
@@ -393,8 +450,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
 
-    @SqlQuery("SELECT json FROM report_entity")
-    List<String> list();
+    @Override
+    default EntityReference getEntityReference(Report entity) {
+      return new ReportEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface TableDAO extends EntityDAO<Table> {
@@ -408,6 +467,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Table entity) {
+      return new TableEntityInterface(entity).getEntityReference();
+    }
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -475,6 +539,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Task entity) {
+      return new TaskEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface TeamDAO extends EntityDAO<Team> {
@@ -486,6 +555,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "name"; }
+
+    @Override
+    default EntityReference getEntityReference(Team entity) {
+      return new TeamEntityInterface(entity).getEntityReference();
+    }
   }
 
   interface TopicDAO extends EntityDAO<Topic> {
@@ -497,6 +571,11 @@ public interface CollectionDAO {
 
     @Override
     default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Topic entity) {
+      return new TopicEntityInterface(entity).getEntityReference();
+    }
   }
 
   @RegisterRowMapper(UsageDetailsMapper.class)
@@ -580,8 +659,10 @@ public interface CollectionDAO {
     @Override
     default String getNameColumn() { return "name"; }
 
-    @SqlQuery("SELECT json FROM user_entity")
-    List<String> list();
+    @Override
+    default EntityReference getEntityReference(User entity) {
+      return new UserEntityInterface(entity).getEntityReference();
+    }
 
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);

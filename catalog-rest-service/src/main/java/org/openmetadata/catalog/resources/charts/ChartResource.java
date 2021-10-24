@@ -29,6 +29,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -80,7 +81,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
   private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -217,7 +217,7 @@ public class ChartResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateChart create) throws IOException {
+                         @Valid CreateChart create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -252,8 +252,8 @@ public class ChartResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Chart chart = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(chart));
-    chart = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+            new ChartEntityInterface(chart).getEntityReference());
+    chart = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, chart);
   }
 
@@ -267,7 +267,7 @@ public class ChartResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateChart create) throws IOException {
+                                 @Valid CreateChart create) throws IOException, ParseException {
 
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -299,7 +299,7 @@ public class ChartResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
+    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Chart chart = addHref(uriInfo, dao.get(id, fields));
     return Response.status(status).entity(chart).build();
   }
@@ -317,7 +317,7 @@ public class ChartResource {
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     return addHref(uriInfo, dao.get(id, fields));
   }
 
@@ -331,7 +331,7 @@ public class ChartResource {
                   @ApiResponse(responseCode = "404", description = "Chart for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

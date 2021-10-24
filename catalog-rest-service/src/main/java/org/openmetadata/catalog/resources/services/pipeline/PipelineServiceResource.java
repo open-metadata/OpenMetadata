@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -154,7 +153,7 @@ public class PipelineServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreatePipelineService create) throws JsonProcessingException {
+                         @Valid CreatePipelineService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = new PipelineService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
@@ -184,7 +183,8 @@ public class PipelineServiceResource {
                          @Valid UpdatePipelineService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getPipelineUrl(), update.getIngestionSchedule()));
+            dao.update(UUID.fromString(id), update.getDescription(), update.getPipelineUrl(),
+                    update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
 
@@ -203,7 +203,7 @@ public class PipelineServiceResource {
                          @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

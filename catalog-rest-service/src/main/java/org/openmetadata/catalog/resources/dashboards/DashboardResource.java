@@ -221,7 +221,7 @@ public class DashboardResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDashboard create) throws IOException {
+                         @Valid CreateDashboard create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -255,7 +255,7 @@ public class DashboardResource {
     Dashboard dashboard = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(dashboard));
-    dashboard = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    dashboard = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, dashboard);
   }
 
@@ -270,7 +270,7 @@ public class DashboardResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateDashboard create) throws IOException {
+                                 @Valid CreateDashboard create) throws IOException, ParseException {
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
@@ -300,7 +300,7 @@ public class DashboardResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
+    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Dashboard dashboard = dao.get(id, fields);
     return Response.status(status).entity(dashboard).build();
   }
@@ -318,7 +318,7 @@ public class DashboardResource {
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     Dashboard dashboard = dao.get(id, fields);
     return addHref(uriInfo, dashboard);
   }
@@ -332,7 +332,7 @@ public class DashboardResource {
                   @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

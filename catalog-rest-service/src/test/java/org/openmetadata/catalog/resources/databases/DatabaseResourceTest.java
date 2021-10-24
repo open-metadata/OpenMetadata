@@ -32,12 +32,12 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -91,20 +91,19 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
     DatabaseService service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    SNOWFLAKE_REFERENCE = EntityUtil.getEntityReference(service);
+    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    REDSHIFT_REFERENCE = EntityUtil.getEntityReference(service);
+    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    BIGQUERY_REFERENCE = EntityUtil.getEntityReference(service);
+    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    MYSQL_REFERENCE = EntityUtil.getEntityReference(service);
-
+    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
   }
 
   @Test

@@ -32,6 +32,8 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
@@ -39,7 +41,6 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -70,7 +71,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
@@ -104,19 +104,19 @@ public class DashboardResourceTest extends CatalogApplicationTest {
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
 
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
     SUPERSET_INVALID_SERVICE_REFERENCE = new EntityReference().withName("invalid_superset_service")
             .withId(SUPERSET_REFERENCE.getId())
             .withType("DashboardService1");
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker);
     service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    LOOKER_REFERENCE = EntityUtil.getEntityReference(service);
+    LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
     CHART_REFERENCES = new ArrayList<>();
     for (int i=0; i < 3; i++) {
       CreateChart createChart = ChartResourceTest.create(test, i).withService(SUPERSET_REFERENCE);
       Chart chart = ChartResourceTest.createChart(createChart, adminAuthHeaders());
-      CHART_REFERENCES.add(EntityUtil.getEntityReference(chart));
+      CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
     }
 
   }

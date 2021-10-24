@@ -46,18 +46,14 @@ public class UsageRepository {
 
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
-            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.dashboardDAO(),
-            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -65,17 +61,13 @@ public class UsageRepository {
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    getEntityReference(entityType, UUID.fromString(id), dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(),
-            dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(),
-            dao.modelDAO(), dao.pipelineDAO());
+    getEntityReference(entityType, UUID.fromString(id), dao);
     addUsage(entityType, id, usage);
   }
 
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, dao.tableDAO(),
-            dao.databaseDAO(), dao.metricsDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
-            dao.dashboardDAO(), dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, dao);
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }

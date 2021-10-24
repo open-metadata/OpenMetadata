@@ -32,12 +32,12 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -100,12 +100,12 @@ public class TaskResourceTest extends CatalogApplicationTest {
     CreatePipelineService createService = new CreatePipelineService().withName("airflow")
             .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));
     PipelineService service = createService(createService, adminAuthHeaders());
-    AIRFLOW_REFERENCE = EntityUtil.getEntityReference(service);
+    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(service).getEntityReference();
 
     createService.withName("prefect").withServiceType(PipelineServiceType.Prefect)
             .withPipelineUrl(new URI("http://localhost:0"));
     service = createService(createService, adminAuthHeaders());
-    PREFECT_REFERENCE = EntityUtil.getEntityReference(service);
+    PREFECT_REFERENCE = new PipelineServiceEntityInterface(service).getEntityReference();
   }
 
   @Test

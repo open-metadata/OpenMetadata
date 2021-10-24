@@ -213,7 +213,7 @@ public class TopicResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTopic create) throws IOException {
+                         @Valid CreateTopic create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
@@ -254,7 +254,7 @@ public class TopicResource {
     Topic topic = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(topic));
-    topic = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    topic = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, topic);
   }
 
@@ -268,7 +268,7 @@ public class TopicResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTopic create) throws IOException {
+                                 @Valid CreateTopic create) throws IOException, ParseException {
 
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
@@ -305,7 +305,7 @@ public class TopicResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
+    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Topic table = dao.get(id, fields);
     return Response.status(status).entity(table).build();
   }
@@ -323,7 +323,7 @@ public class TopicResource {
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     Topic topic = dao.get(id, fields);
     return addHref(uriInfo, topic);
   }
@@ -338,7 +338,7 @@ public class TopicResource {
                   @ApiResponse(responseCode = "404", description = "Topic for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }
