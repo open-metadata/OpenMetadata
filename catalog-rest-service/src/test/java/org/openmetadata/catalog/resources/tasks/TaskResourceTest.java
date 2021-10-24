@@ -520,7 +520,7 @@ public class TaskResourceTest extends CatalogApplicationTest {
     task = byName ? getTaskByName(task.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getTask(task.getId(), fields, adminAuthHeaders());
     assertNotNull(task.getOwner());
-    assertNull(task.getService());
+    assertNotNull(task.getService()); // We always return the service
 
     // .../tasks?fields=owner,service
     fields = "owner,service";
