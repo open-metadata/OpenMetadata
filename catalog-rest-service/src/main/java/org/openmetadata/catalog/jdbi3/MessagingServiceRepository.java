@@ -35,6 +35,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,7 +45,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   private final CollectionDAO dao;
 
   public MessagingServiceRepository(CollectionDAO dao) {
-    super(MessagingService.class, dao.messagingServiceDAO());
+    super(MessagingService.class, dao.messagingServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -80,10 +81,21 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
+  public void restorePatchAttributes(MessagingService original, MessagingService updated) throws IOException,
+          ParseException {
+
+  }
+
+  @Override
   public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor,
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new MessagingServiceList(entities);
+  }
+
+  @Override
+  public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
+    return new MessagingServiceEntityInterface(entity);
   }
 
   @Override
@@ -98,8 +110,12 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public void storeRelationships(MessagingService entity) throws IOException {
+  public void storeRelationships(MessagingService entity) throws IOException { }
 
+  @Override
+  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation)
+          throws IOException {
+    return null;
   }
 
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
@@ -125,8 +141,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
-    public EntityReference getOwner() { return null;
-    }
+    public EntityReference getOwner() { return null; }
 
     @Override
     public String getFullyQualifiedName() { return entity.getName(); }
@@ -135,10 +150,19 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.MESSAGING_SERVICE);
     }
+
+    @Override
+    public MessagingService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -149,6 +173,15 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
     }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

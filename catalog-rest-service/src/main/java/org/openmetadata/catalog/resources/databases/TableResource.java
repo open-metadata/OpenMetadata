@@ -252,9 +252,10 @@ public class TableResource {
             .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withOwner(create.getOwner())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(new Date())
+            .withDatabase(new EntityReference().withId(create.getDatabase()));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getDatabase());
+    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table));
     table = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(table).build();
   }

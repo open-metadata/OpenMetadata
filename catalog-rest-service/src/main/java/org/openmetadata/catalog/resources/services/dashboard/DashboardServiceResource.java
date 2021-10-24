@@ -153,7 +153,7 @@ public class DashboardServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateDashboardService create) throws IOException {
+                         @Valid CreateDashboardService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DashboardService service = new DashboardService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())

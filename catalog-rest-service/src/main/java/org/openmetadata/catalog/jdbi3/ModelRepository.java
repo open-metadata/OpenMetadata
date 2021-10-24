@@ -25,20 +25,18 @@ import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -54,38 +52,13 @@ public class ModelRepository extends EntityRepository<Model> {
   private final CollectionDAO dao;
 
   public ModelRepository(CollectionDAO dao) {
-    super(Model.class, dao.modelDAO());
+    super(Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
 
   public static String getFQN(Model model) {
     return (model.getName());
-  }
-
-  @Transaction
-  public PutResponse<Model> createOrUpdate(Model updated) throws IOException {
-    validate(updated);
-    Model stored = JsonUtils.readValue(dao.modelDAO().findJsonByFqn(updated.getFullyQualifiedName()), Model.class);
-    if (stored == null) {
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, MODEL_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-
-    ModelUpdater modelUpdater = new ModelUpdater(stored, updated, false);
-    modelUpdater.updateAll();
-    modelUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
-  }
-
-  @Transaction
-  public Model patch(UUID id, String user, JsonPatch patch) throws IOException {
-    Model original = setFields(validateModel(id), MODEL_PATCH_FIELDS);
-    Model updated = JsonUtils.applyPatch(original, patch, Model.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Transaction
@@ -136,9 +109,19 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   @Override
+  public void restorePatchAttributes(Model original, Model updated) throws IOException, ParseException {
+
+  }
+
+  @Override
   public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new ModelList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Model> getEntityInterface(Model entity) {
+    return new ModelEntityInterface(entity);
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -184,14 +167,9 @@ public class ModelRepository extends EntityRepository<Model> {
     applyTags(model);
   }
 
-  private void patch(Model original, Model updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withId(original.getId());
-    validate(updated);
-    ModelRepository.ModelUpdater modelUpdater = new ModelRepository.ModelUpdater(original, updated, true);
-    modelUpdater.updateAll();
-    modelUpdater.store();
+  @Override
+  public EntityUpdater getUpdater(Model original, Model updated, boolean patchOperation) throws IOException {
+    return new ModelUpdater(original, updated, patchOperation);
   }
 
   private EntityReference getOwner(Model model) throws IOException {
@@ -239,10 +217,6 @@ public class ModelRepository extends EntityRepository<Model> {
     return model == null ? null : EntityUtil.getFollowers(model.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
-  private Model validateModel(UUID id) throws IOException {
-    return dao.modelDAO().findEntityById(id);
-  }
-
   static class ModelEntityInterface implements EntityInterface<Model> {
     private final Model entity;
 
@@ -281,10 +255,19 @@ public class ModelRepository extends EntityRepository<Model> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.MODEL);
     }
+
+    @Override
+    public Model getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -297,6 +280,15 @@ public class ModelRepository extends EntityRepository<Model> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -306,42 +298,30 @@ public class ModelRepository extends EntityRepository<Model> {
    * Handles entity updated from PUT and POST operation.
    */
   public class ModelUpdater extends EntityUpdater {
-    final Model orig;
-    final Model updated;
-
-    public ModelUpdater(Model orig, Model updated, boolean patchOperation) {
-      super(new ModelRepository.ModelEntityInterface(orig), new ModelRepository.ModelEntityInterface(updated),
-              patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public ModelUpdater(Model original, Model updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-      updateAlgorithm();
-      updateDashboard();
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateAlgorithm(original.getEntity(), updated.getEntity());
+      updateDashboard(original.getEntity(), updated.getEntity());
     }
 
-    private void updateAlgorithm() {
-      update("algorithm", orig.getAlgorithm(), updated.getAlgorithm());
+    private void updateAlgorithm(Model origModel, Model updatedModel) {
+      recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
     }
 
-    private void updateDashboard() {
+    private void updateDashboard(Model origModel, Model updatedModel) {
       // Remove existing dashboards
-      removeDashboard(orig);
+      removeDashboard(origModel);
 
-      EntityReference origOwner = orig.getDashboard();
-      EntityReference updatedOwner = updated.getDashboard();
-      if (update("owner", origOwner == null ? null : origOwner.getId(),
+      EntityReference origOwner = origModel.getDashboard();
+      EntityReference updatedOwner = updatedModel.getDashboard();
+      if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
               updatedOwner == null ? null : updatedOwner.getId())) {
-        setDashboard(updated, updated.getDashboard());
+        setDashboard(updatedModel, updatedModel.getDashboard());
       }
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      ModelRepository.this.store(updated, true);
     }
   }
 }

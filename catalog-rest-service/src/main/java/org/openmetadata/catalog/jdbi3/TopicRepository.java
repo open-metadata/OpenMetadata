@@ -26,18 +26,16 @@ import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -55,7 +53,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(Topic.class, dao.topicDAO());
+    super(Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS, TOPIC_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -68,31 +66,6 @@ public class TopicRepository extends EntityRepository<Topic> {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TOPIC, id));
     }
     dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
-  public PutResponse<Topic> createOrUpdate(Topic updated) throws IOException {
-    validate(updated);
-    Topic stored = JsonUtils.readValue(dao.topicDAO().findJsonByFqn(updated.getFullyQualifiedName()), Topic.class);
-    if (stored == null) {  // Topic does not exist. Create a new one
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, TOPIC_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-
-    TopicUpdater topicUpdater = new TopicUpdater(stored, updated, false);
-    topicUpdater.updateAll();
-    topicUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
-  }
-
-  @Transaction
-  public Topic patch(UUID id, String user, JsonPatch patch) throws IOException {
-    Topic original = setFields(validateTopic(id), TOPIC_PATCH_FIELDS);
-    Topic updated = JsonUtils.applyPatch(original, patch, Topic.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Transaction
@@ -135,20 +108,15 @@ public class TopicRepository extends EntityRepository<Topic> {
     applyTags(topic);
   }
 
+  @Override
+  public EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) throws IOException {
+    return new TopicUpdater(original, updated, patchOperation);
+  }
+
   private void applyTags(Topic topic) throws IOException {
     // Add topic level tags by adding tag to topic relationship
     EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
     topic.setTags(getTags(topic.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private void patch(Topic original, Topic updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
-    validate(updated);
-    TopicUpdater topicUpdater = new TopicUpdater(original, updated, true);
-    topicUpdater.updateAll();
-    topicUpdater.store();
   }
 
   public EntityReference getOwner(Topic topic) throws IOException {
@@ -159,10 +127,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   private void setOwner(Topic topic, EntityReference owner) {
     EntityUtil.setOwner(dao.relationshipDAO(), topic.getId(), Entity.TOPIC, owner);
     topic.setOwner(owner);
-  }
-
-  private Topic validateTopic(UUID id) throws IOException {
-    return dao.topicDAO().findEntityById(id);
   }
 
   @Override
@@ -180,8 +144,18 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
+  public void restorePatchAttributes(Topic original, Topic updated) throws IOException, ParseException {
+
+  }
+
+  @Override
   public ResultList<Topic> getResultList(List<Topic> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new TopicList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Topic> getEntityInterface(Topic entity) {
+    return new TopicEntityInterface(entity);
   }
 
   private List<EntityReference> getFollowers(Topic topic) throws IOException {
@@ -268,9 +242,19 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TOPIC);
+    }
+
+    @Override
+    public Topic getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id);
     }
 
     @Override
@@ -284,6 +268,15 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -293,23 +286,13 @@ public class TopicRepository extends EntityRepository<Topic> {
    * Handles entity updated from PUT and POST operation.
    */
   public class TopicUpdater extends EntityUpdater {
-    final Topic orig;
-    final Topic updated;
-
-    public TopicUpdater(Topic orig, Topic updated, boolean patchOperation) {
-      super(new TopicEntityInterface(orig), new TopicEntityInterface(updated), patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public TopicUpdater(Topic original, Topic updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      TopicRepository.this.store(updated, true);
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // No specific update for Topic
     }
   }
 }

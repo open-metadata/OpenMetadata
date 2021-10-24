@@ -110,7 +110,7 @@ public class BotsResource {
   public Bots get(@Context UriInfo uriInfo,
                   @Context SecurityContext securityContext,
                   @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, new Fields(null, null)));
+    return addHref(uriInfo, dao.get(id, Fields.EMPTY_FIELDS));
   }
 
   @POST
@@ -124,7 +124,7 @@ public class BotsResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         Bots bot) throws IOException {
+                         Bots bot) throws IOException, ParseException {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());

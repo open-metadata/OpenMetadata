@@ -419,6 +419,7 @@ public final class EntityUtil {
   }
 
   public static class Fields {
+    public static final Fields EMPTY_FIELDS = new Fields(null, null);
     private final List<String> fieldList;
 
     public Fields(List<String> validFields, String fieldsParam) {

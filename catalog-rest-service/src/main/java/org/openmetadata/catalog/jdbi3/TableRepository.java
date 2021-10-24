@@ -35,18 +35,15 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -80,7 +77,7 @@ public class TableRepository extends EntityRepository<Table> {
   private final CollectionDAO dao;
 
   public TableRepository(CollectionDAO dao) {
-    super(Table.class, dao.tableDAO());
+    super(Table.class, dao.tableDAO(), dao, TABLE_PATCH_FIELDS, TABLE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -108,9 +105,21 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public void restorePatchAttributes(Table original, Table updated) throws IOException, ParseException {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withDatabase(original.getDatabase()).withId(original.getId());
+  }
+
+  @Override
   public ResultList<Table> getResultList(List<Table> entities, String beforeCursor, String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new TableList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Table> getEntityInterface(Table entity) {
+    return new TableEntityInterface(entity);
   }
 
   public static String getFQN(Table table) {
@@ -118,36 +127,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table patch(UUID id, String user, JsonPatch patch) throws IOException, ParseException {
-    Table original = setFields(dao.tableDAO().findEntityById(id), TABLE_PATCH_FIELDS);
-    Table updated = JsonUtils.applyPatch(original, patch, Table.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
-  }
-
-  @Transaction
   public void delete(UUID id) {
     dao.tableDAO().delete(id);
     dao.relationshipDAO().deleteAll(id.toString()); // Remove all relationships
-  }
-
-  @Transaction
-  public PutResponse<Table> createOrUpdate(Table updated, UUID databaseId) throws IOException, ParseException {
-    validateRelationships(updated, databaseId);
-    Table stored = JsonUtils.readValue(dao.tableDAO().findJsonByFqn(updated.getFullyQualifiedName()),
-            Table.class);
-    if (stored == null) {
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, TABLE_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-    validate(updated);
-
-    TableUpdater tableUpdater = new TableUpdater(stored, updated, false);
-    tableUpdater.updateAll();
-    tableUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
   }
 
   @Transaction
@@ -234,14 +216,6 @@ public class TableRepository extends EntityRepository<Table> {
     return EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), table.getOwner());
   }
 
-  private void validateRelationships(Table table, UUID databaseId) throws IOException {
-    // Validate database
-    EntityReference database = dao.databaseDAO().findEntityReferenceById(databaseId);
-    table.setDatabase(database);
-    // Validate and set other relationships
-    validate(table);
-  }
-
   private void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(c -> {
       String columnFqn = parentFQN + "." + c.getName();
@@ -323,6 +297,11 @@ public class TableRepository extends EntityRepository<Table> {
     applyTags(table);
   }
 
+  @Override
+  public EntityUpdater getUpdater(Table original, Table updated, boolean patchOperation) throws IOException {
+    return new TableUpdater(original, updated, patchOperation);
+  }
+
   List<Column> cloneWithoutTags(List<Column> columns) {
     if (columns == null || columns.isEmpty()) {
       return columns;
@@ -362,22 +341,6 @@ public class TableRepository extends EntityRepository<Table> {
     EntityUtil.applyTags(dao.tagDAO(), table.getTags(), table.getFullyQualifiedName());
     table.setTags(getTags(table.getFullyQualifiedName())); // Update tag to handle additional derived tags
     applyTags(table.getColumns());
-  }
-
-  /**
-   * Update the backend database
-   */
-  private void patch(Table original, Table updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withDatabase(original.getDatabase()).withId(original.getId());
-
-    // TODO checking database is unnecessary as it has not changed
-    validate(updated);
-
-    TableUpdater tableUpdater = new TableUpdater(original, updated, true);
-    tableUpdater.updateAll();
-    tableUpdater.store();
   }
 
   private EntityReference getDatabase(UUID tableId) throws IOException {
@@ -622,10 +585,19 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TABLE);
     }
+
+    @Override
+    public Table getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -638,6 +610,15 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -647,20 +628,29 @@ public class TableRepository extends EntityRepository<Table> {
    * Handles entity updated from PUT and POST operation.
    */
   public class TableUpdater extends EntityUpdater {
-    final Table orig;
-    final Table updated;
-
-    public TableUpdater(Table orig, Table updated, boolean patchOperation) {
-      super(new TableEntityInterface(orig), new TableEntityInterface(updated), patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public TableUpdater(Table original, Table updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-      updateConstraints();
-      updateColumns(orig.getColumns(), updated.getColumns());
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateConstraints(original.getEntity(), updated.getEntity());
+      updateColumns(original.getEntity().getColumns(), updated.getEntity().getColumns());
+    }
+
+    private void updateConstraints(Table origTable, Table updatedTable) {
+      List<TableConstraint> origConstraints = origTable.getTableConstraints();
+      List<TableConstraint> updatedConstraints = updatedTable.getTableConstraints();
+      if (origConstraints != null) {
+        origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+        origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      }
+      if (updatedConstraints != null) {
+        updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+        updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+      }
+
+      recordChange("tableConstraints", origConstraints, updatedConstraints);
     }
 
     private void updateColumns(List<Column> origColumns, List<Column> updatedColumns) throws IOException {
@@ -712,28 +702,13 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      update("column:" + origColumn.getFullyQualifiedName() + ":description", origColumn.getDescription(),
+      recordChange("column:" + origColumn.getFullyQualifiedName() + ":description", origColumn.getDescription(),
               updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
-      update("column:" + orig.getFullyQualifiedName() + ":description", origColumn.getConstraint(),
+      recordChange("column:" + original.getEntity().getFullyQualifiedName() + ":description", origColumn.getConstraint(),
               updatedColumn.getConstraint());
-    }
-
-    private void updateConstraints() {
-      List<TableConstraint> origConstraints = orig.getTableConstraints();
-      List<TableConstraint> updatedConstraints = updated.getTableConstraints();
-      if (origConstraints != null) {
-        origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
-        origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      }
-      if (updatedConstraints != null) {
-        updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
-        updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      }
-
-      update("tableConstraints", origConstraints, updatedConstraints);
     }
 
     private void updateColumnTags(Column origColumn, Column updatedColumn) throws IOException {
@@ -742,15 +717,10 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setTags(EntityUtil.mergeTags(updatedColumn.getTags(), origColumn.getTags()));
       }
 
-      update("column:" + origColumn.getFullyQualifiedName() + ":tags",
+      recordChange("column:" + origColumn.getFullyQualifiedName() + ":tags",
               origColumn.getTags() == null ? 0 : origColumn.getTags().size(),
               updatedColumn.getTags() == null ? 0 : updatedColumn.getTags().size());
       EntityUtil.applyTags(dao.tagDAO(), updatedColumn.getTags(), updatedColumn.getFullyQualifiedName());
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      TableRepository.this.store(updated, true);
     }
   }
 }

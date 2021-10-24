@@ -35,6 +35,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   private final CollectionDAO dao;
 
   public PipelineServiceRepository(CollectionDAO dao) {
-    super(PipelineService.class, dao.pipelineServiceDAO());
+    super(PipelineService.class, dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -81,10 +82,21 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) throws IOException,
+          ParseException {
+
+  }
+
+  @Override
   public ResultList<PipelineService> getResultList(List<PipelineService> entities, String beforeCursor,
                                                    String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new PipelineServiceList(entities);
+  }
+
+  @Override
+  public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
+    return new PipelineServiceEntityInterface(entity);
   }
 
   @Override
@@ -100,6 +112,11 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   @Override
   public void storeRelationships(PipelineService entity) throws IOException {
 
+  }
+
+  @Override
+  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
+    return null;
   }
 
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
@@ -125,8 +142,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
-    public EntityReference getOwner() { return null;
-    }
+    public EntityReference getOwner() { return null; }
 
     @Override
     public String getFullyQualifiedName() { return entity.getName(); }
@@ -135,10 +151,19 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.PIPELINE_SERVICE);
     }
+
+    @Override
+    public PipelineService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -149,6 +174,15 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
     }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

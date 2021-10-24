@@ -135,7 +135,7 @@ public class MetricsResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid Metrics metrics) throws IOException {
+                         @Valid Metrics metrics) throws IOException, ParseException {
     metrics.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName()).withUpdatedAt(new Date());
     addHref(uriInfo, dao.create(metrics));
     return Response.created(metrics.getHref()).entity(metrics).build();
@@ -152,7 +152,7 @@ public class MetricsResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid Metrics metrics) throws IOException {
+                                 @Valid Metrics metrics) throws IOException, ParseException {
     metrics.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
     PutResponse<Metrics> response = dao.createOrUpdate(metrics);

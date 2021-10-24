@@ -154,7 +154,7 @@ public class MessagingServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateMessagingService create) throws IOException {
+                         @Valid CreateMessagingService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = new MessagingService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())

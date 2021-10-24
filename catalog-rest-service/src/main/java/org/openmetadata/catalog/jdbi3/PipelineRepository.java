@@ -26,18 +26,16 @@ import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineLis
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -53,39 +51,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
-    super(Pipeline.class, dao.pipelineDAO());
+    super(Pipeline.class, dao.pipelineDAO(), dao, PIPELINE_PATCH_FIELDS, PIPELINE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
-
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
-  }
-
-  @Transaction
-  public PutResponse<Pipeline> createOrUpdate(Pipeline updated) throws IOException {
-    validate(updated);
-    Pipeline stored = JsonUtils.readValue(dao.pipelineDAO().findJsonByFqn(updated.getFullyQualifiedName()),
-            Pipeline.class);
-    if (stored == null) {
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, PIPELINE_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-
-    PipelineUpdater pipelineUpdater = new PipelineUpdater(stored, updated, false);
-    pipelineUpdater.updateAll();
-    pipelineUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
-  }
-
-  @Transaction
-  public Pipeline patch(UUID id, String user, JsonPatch patch) throws IOException {
-    Pipeline original = setFields(dao.pipelineDAO().findEntityById(id), PIPELINE_PATCH_FIELDS);
-    Pipeline updated = JsonUtils.applyPatch(original, patch, Pipeline.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Transaction
@@ -138,9 +109,21 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
+  public void restorePatchAttributes(Pipeline original, Pipeline updated) throws IOException, ParseException {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+  }
+
+  @Override
   public ResultList<Pipeline> getResultList(List<Pipeline> entities, String beforeCursor, String afterCursor,
                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new PipelineList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Pipeline> getEntityInterface(Pipeline entity) {
+    return new PipelineEntityInterface(entity);
   }
 
   private List<TagLabel> getTags(String fqn) {
@@ -199,6 +182,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     applyTags(pipeline);
   }
 
+  @Override
+  public EntityUpdater getUpdater(Pipeline original, Pipeline updated, boolean patchOperation) throws IOException {
+    return new PipelineUpdater(original, updated, patchOperation);
+  }
+
   private EntityReference getService(Pipeline pipeline) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(),
             Entity.PIPELINE_SERVICE);
@@ -214,17 +202,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the pipeline", service.getType()));
     }
     return service;
-  }
-
-  private void patch(Pipeline original, Pipeline updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
-    validate(updated);
-    PipelineRepository.PipelineUpdater pipelineUpdater = new PipelineRepository.PipelineUpdater(original, updated,
-            true);
-    pipelineUpdater.updateAll();
-    pipelineUpdater.store();
   }
 
   private EntityReference getOwner(Pipeline pipeline) throws IOException {
@@ -312,10 +289,19 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.PIPELINE);
     }
+
+    @Override
+    public Pipeline getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -328,6 +314,15 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -337,41 +332,30 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
    * Handles entity updated from PUT and POST operation.
    */
   public class PipelineUpdater extends EntityUpdater {
-    final Pipeline orig;
-    final Pipeline updated;
-
-    public PipelineUpdater(Pipeline orig, Pipeline updated, boolean patchOperation) {
-      super(new PipelineRepository.PipelineEntityInterface(orig),
-              new PipelineRepository.PipelineEntityInterface(updated), patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public PipelineUpdater(Pipeline original, Pipeline updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-      updateTasks();
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateTasks(original.getEntity(), updated.getEntity());
     }
 
-    private void updateTasks() {
+    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
       // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a
       // pipeline
       // in the next task run we may have to update. To take care of this we will merge the tasks
-      if (updated.getTasks() == null) {
-        updated.setTasks(orig.getTasks());
+      if (updatedPipeline.getTasks() == null) {
+        updatedPipeline.setTasks(origPipeline.getTasks());
       } else {
-        updated.getTasks().addAll(orig.getTasks()); // TODO remove duplicates
+        updatedPipeline.getTasks().addAll(origPipeline.getTasks()); // TODO remove duplicates
       }
 
       // Add relationship from pipeline to task
-      updateTaskRelationships(updated);
-      update("tasks", EntityUtil.getIDList(updated.getTasks()), EntityUtil.getIDList(orig.getTasks()));
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      PipelineRepository.this.store(updated, true);
+      updateTaskRelationships(updatedPipeline);
+      recordChange("tasks", EntityUtil.getIDList(updatedPipeline.getTasks()),
+              EntityUtil.getIDList(origPipeline.getTasks()));
     }
   }
 }

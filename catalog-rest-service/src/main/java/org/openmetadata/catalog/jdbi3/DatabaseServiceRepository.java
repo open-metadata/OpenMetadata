@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseService.class, dao.dbServiceDAO());
+    super(DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -78,8 +79,21 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
+  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) throws IOException,
+          ParseException {
+
+  }
+
+  @Override
+  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor,
+                                                   String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
     return new DatabaseServiceList(entities);
+  }
+
+  @Override
+  public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
+    return new DatabaseServiceEntityInterface(entity);
   }
 
   @Override
@@ -95,7 +109,11 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   @Override
   public void storeRelationships(DatabaseService entity) throws IOException {
-    return;
+  }
+
+  @Override
+  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) throws IOException {
+    return null;
   }
 
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
@@ -106,9 +124,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
-    public UUID getId() {
-      return entity.getId();
-    }
+    public UUID getId() { return entity.getId(); }
 
     @Override
     public String getDescription() {
@@ -130,10 +146,19 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DATABASE_SERVICE);
     }
+
+    @Override
+    public DatabaseService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -144,6 +169,15 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
     }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

@@ -26,16 +26,15 @@ import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -50,17 +49,8 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(Team.class, dao.teamDAO());
+    super(Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
-  }
-
-  @Transaction
-  public Team patch(UUID teamId, String user, JsonPatch patch) throws IOException {
-    Team original = setFields(dao.teamDAO().findEntityById(teamId), TEAM_PATCH_FIELDS);
-    Team updated = JsonUtils.applyPatch(original, patch, Team.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Transaction
@@ -73,16 +63,6 @@ public class TeamRepository extends EntityRepository<Team> {
     // Query 2 - Remove all relationship from and to this team
     // TODO make this UUID based
     dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-
-  private void patch(Team original, Team updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withName(original.getName()).withId(original.getId());
-    validateUsers(updated.getUsers());
-    TeamRepository.TeamUpdater teamUpdater = new TeamRepository.TeamUpdater(original, updated, true);
-    teamUpdater.updateAll();
-    teamUpdater.store();
   }
 
   // TODO clean this up
@@ -122,9 +102,20 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
+  public void restorePatchAttributes(Team original, Team updated) throws IOException, ParseException {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withName(original.getName()).withId(original.getId());
+  }
+
+  @Override
   public ResultList<Team> getResultList(List<Team> entities, String beforeCursor, String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new TeamList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Team> getEntityInterface(Team entity) {
+    return new TeamEntityInterface(entity);
   }
 
   @Override
@@ -156,6 +147,11 @@ public class TeamRepository extends EntityRepository<Team> {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(), "team", "user",
               Relationship.CONTAINS.ordinal());
     }
+  }
+
+  @Override
+  public EntityUpdater getUpdater(Team original, Team updated, boolean patchOperation) throws IOException {
+    return new TeamUpdater(original, updated, patchOperation);
   }
 
   private List<EntityReference> getUsers(String id) throws IOException {
@@ -204,10 +200,19 @@ public class TeamRepository extends EntityRepository<Team> {
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TEAM);
     }
+
+    @Override
+    public Team getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) { entity.setDescription(description); }
@@ -218,6 +223,15 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) { }
   }
 
@@ -225,40 +239,28 @@ public class TeamRepository extends EntityRepository<Team> {
    * Handles entity updated from PUT and POST operation.
    */
   public class TeamUpdater extends EntityUpdater {
-    final Team orig;
-    final Team updated;
-
-    public TeamUpdater(Team orig, Team updated, boolean patchOperation) {
-      super(new TeamRepository.TeamEntityInterface(orig), new TeamRepository.TeamEntityInterface(updated),
-              patchOperation, dao.relationshipDAO(), null);
-      this.orig = orig;
-      this.updated = updated;
+    public TeamUpdater(Team original, Team updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
+    @Override
+    public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
-      if (updated.getDeleted() != orig.getDeleted()) {
+      if (updated.getEntity().getDeleted() != original.getEntity().getDeleted()) {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
       }
-      super.updateAll();
-      updateUsers();
+      updateUsers(original.getEntity(), updated.getEntity());
     }
 
-    public void updateUsers() throws IOException {
-      // TODO cleanup
+    private void updateUsers(Team origTeam, Team updatedTeam) {
       // Remove users from original and add users from updated
-      dao.relationshipDAO().deleteFrom(orig.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
+      dao.relationshipDAO().deleteFrom(origTeam.getId().toString(), Relationship.CONTAINS.ordinal(), "user");
 
-      for (EntityReference user : Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList())) {
-        dao.relationshipDAO().insert(updated.getId().toString(), user.getId().toString(),
+      for (EntityReference user : Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList())) {
+        dao.relationshipDAO().insert(updatedTeam.getId().toString(), user.getId().toString(),
                 "team", "user", Relationship.CONTAINS.ordinal());
       }
-      update("users", orig.getUsers(), updated.getUsers());
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      TeamRepository.this.store(updated, true);
+      recordChange("users", origTeam.getUsers(), updatedTeam.getUsers());
     }
   }
 }

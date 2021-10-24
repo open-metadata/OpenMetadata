@@ -215,7 +215,7 @@ public class ModelResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateModel create) throws IOException {
+                         @Valid CreateModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Model model = new Model().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -266,7 +266,7 @@ public class ModelResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateModel create) throws IOException {
+                                 @Valid CreateModel create) throws IOException, ParseException {
     Model model = new Model().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription())

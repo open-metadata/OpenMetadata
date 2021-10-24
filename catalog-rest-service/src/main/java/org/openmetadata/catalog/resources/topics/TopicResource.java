@@ -213,7 +213,7 @@ public class TopicResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTopic create) throws IOException {
+                         @Valid CreateTopic create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
@@ -268,7 +268,7 @@ public class TopicResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTopic create) throws IOException {
+                                 @Valid CreateTopic create) throws IOException, ParseException {
 
     Topic topic =
             new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())

@@ -217,7 +217,7 @@ public class ChartResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateChart create) throws IOException {
+                         @Valid CreateChart create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -267,7 +267,7 @@ public class ChartResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateChart create) throws IOException {
+                                 @Valid CreateChart create) throws IOException, ParseException {
 
     Chart chart =
             new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())

@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -154,7 +153,7 @@ public class PipelineServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreatePipelineService create) throws IOException {
+                         @Valid CreatePipelineService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = new PipelineService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())

@@ -221,7 +221,7 @@ public class DashboardResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDashboard create) throws IOException {
+                         @Valid CreateDashboard create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -270,7 +270,7 @@ public class DashboardResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateDashboard create) throws IOException {
+                                 @Valid CreateDashboard create) throws IOException, ParseException {
     Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())

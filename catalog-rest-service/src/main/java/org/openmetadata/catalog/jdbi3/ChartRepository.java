@@ -26,18 +26,16 @@ import org.openmetadata.catalog.resources.charts.ChartResource;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -50,7 +48,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(Chart.class, dao.chartDAO());
+    super(Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -67,30 +65,6 @@ public class ChartRepository extends EntityRepository<Chart> {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.CHART, id));
     }
     dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
-  public PutResponse<Chart> createOrUpdate(Chart updated) throws IOException {
-    validate(updated);
-    Chart stored = JsonUtils.readValue(dao.chartDAO().findJsonByFqn(updated.getFullyQualifiedName()), Chart.class);
-    if (stored == null) {  // Chart does not exist. Create a new one
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, CHART_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-    ChartUpdater chartUpdater = new ChartUpdater(stored, updated, false);
-    chartUpdater.updateAll();
-    chartUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
-  }
-
-  @Transaction
-  public Chart patch(UUID id, String user, JsonPatch patch) throws IOException {
-    Chart original = setFields(validateChart(id), CHART_PATCH_FIELDS);
-    Chart updated = JsonUtils.applyPatch(original, patch, Chart.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Override
@@ -130,20 +104,16 @@ public class ChartRepository extends EntityRepository<Chart> {
     applyTags(chart);
   }
 
+  @Override
+  public EntityUpdater getUpdater(Chart original, Chart updated, boolean patchOperation) throws IOException {
+    return new ChartUpdater(original, updated, patchOperation);
+  }
+
+
   private void applyTags(Chart chart) throws IOException {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
     chart.setTags(getTags(chart.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private void patch(Chart original, Chart updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
-    validate(updated);
-    ChartUpdater chartUpdater = new ChartUpdater(original, updated, true);
-    chartUpdater.updateAll();
-    chartUpdater.store();
   }
 
   public EntityReference getOwner(Chart chart) throws IOException {
@@ -155,10 +125,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     EntityUtil.setOwner(dao.relationshipDAO(), chart.getId(), Entity.CHART, owner);
     // TODO not required
     chart.setOwner(owner);
-  }
-
-  private Chart validateChart(UUID id) throws IOException {
-    return dao.chartDAO().findEntityById(id);
   }
 
   @Override
@@ -176,9 +142,21 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
+  public void restorePatchAttributes(Chart original, Chart updated) throws IOException, ParseException {
+    // Patch can't make changes to following fields. Ignore the changes
+    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
+            .withService(original.getService()).withId(original.getId());
+  }
+
+  @Override
   public ResultList<Chart> getResultList(List<Chart> entities, String beforeCursor, String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Chart> getEntityInterface(Chart entity) {
+    return new ChartEntityInterface(entity);
   }
 
   private List<EntityReference> getFollowers(Chart chart) throws IOException {
@@ -207,7 +185,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Transaction
   public Status addFollower(UUID chartId, UUID userId) throws IOException {
-    dao.chartDAO().findEntityById(userId);
+    dao.chartDAO().findEntityById(chartId);
     return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), chartId, Entity.CHART, userId, Entity.USER) ?
             Status.CREATED : Status.OK;
   }
@@ -231,9 +209,7 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
-    public String getDescription() {
-      return entity.getDescription();
-    }
+    public String getDescription() { return entity.getDescription(); }
 
     @Override
     public String getDisplayName() {
@@ -256,10 +232,19 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.CHART);
     }
+
+    @Override
+    public Chart getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -272,6 +257,15 @@ public class ChartRepository extends EntityRepository<Chart> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -281,23 +275,13 @@ public class ChartRepository extends EntityRepository<Chart> {
    * Handles entity updated from PUT and POST operation.
    */
   public class ChartUpdater extends EntityUpdater {
-    final Chart orig;
-    final Chart updated;
-
-    public ChartUpdater(Chart orig, Chart updated, boolean patchOperation) {
-      super(new ChartEntityInterface(orig), new ChartEntityInterface(updated), patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public ChartUpdater(Chart original, Chart updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      ChartRepository.this.store(updated, true);
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // No special updates beyond
     }
   }
 }

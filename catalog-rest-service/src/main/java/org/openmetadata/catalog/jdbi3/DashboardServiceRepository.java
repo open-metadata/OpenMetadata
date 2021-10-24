@@ -35,6 +35,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   private final CollectionDAO dao;
 
   public DashboardServiceRepository(CollectionDAO dao) {
-    super(DashboardService.class, dao.dashboardServiceDAO());
+    super(DashboardService.class, dao.dashboardServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
@@ -80,10 +81,20 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
+  public void restorePatchAttributes(DashboardService original, DashboardService updated) throws IOException,
+          ParseException {
+  }
+
+  @Override
   public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
                                                     String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new DashboardServiceList(entities);
+  }
+
+  @Override
+  public EntityInterface<DashboardService> getEntityInterface(DashboardService entity) {
+    return new DashboardServiceEntityInterface(entity);
   }
 
   @Override
@@ -98,7 +109,12 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Override
   public void storeRelationships(DashboardService entity) throws IOException {
+  }
 
+  @Override
+  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation)
+          throws IOException {
+    return null;
   }
 
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
@@ -133,10 +149,19 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public List<TagLabel> getTags() { return null; }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD_SERVICE);
     }
+
+    @Override
+    public DashboardService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -147,6 +172,15 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     public void setDisplayName(String displayName) {
       entity.setDisplayName(displayName);
     }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

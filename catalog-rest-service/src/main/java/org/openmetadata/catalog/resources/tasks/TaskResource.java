@@ -217,7 +217,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTask create) throws IOException {
+                         @Valid CreateTask create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -271,7 +271,7 @@ public class TaskResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTask create) throws IOException {
+                                 @Valid CreateTask create) throws IOException, ParseException {
 
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())

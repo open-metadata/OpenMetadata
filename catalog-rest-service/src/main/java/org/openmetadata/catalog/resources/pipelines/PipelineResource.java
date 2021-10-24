@@ -221,7 +221,7 @@ public class PipelineResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreatePipeline create) throws IOException {
+                         @Valid CreatePipeline create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -271,7 +271,7 @@ public class PipelineResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreatePipeline create) throws IOException {
+                                 @Valid CreatePipeline create) throws IOException, ParseException {
     Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())

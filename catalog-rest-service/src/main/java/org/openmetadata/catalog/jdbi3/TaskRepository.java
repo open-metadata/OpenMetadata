@@ -26,18 +26,15 @@ import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.json.JsonPatch;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -56,7 +53,7 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   public TaskRepository(CollectionDAO dao) {
-    super(Task.class, dao.taskDAO());
+    super(Task.class, dao.taskDAO(), dao, TASK_PATCH_FIELDS, TASK_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -69,31 +66,6 @@ public class TaskRepository extends EntityRepository<Task> {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.TASK, id));
     }
     dao.relationshipDAO().deleteAll(id.toString());
-  }
-
-  @Transaction
-  public PutResponse<Task> createOrUpdate(Task updated) throws IOException {
-    validate(updated);
-    Task stored = JsonUtils.readValue(dao.taskDAO().findJsonByFqn(updated.getFullyQualifiedName()), Task.class);
-    if (stored == null) {  // Task does not exist. Create a new one
-//      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, TASK_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-
-    TaskUpdater taskUpdater = new TaskUpdater(stored, updated, false);
-    taskUpdater.updateAll();
-    taskUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
-  }
-
-  @Transaction
-  public Task patch(UUID id, String user, JsonPatch patch) throws IOException {
-    Task original = setFields(validateTask(id), TASK_PATCH_FIELDS);
-    Task updated = JsonUtils.applyPatch(original, patch, Task.class);
-    updated.withUpdatedBy(user).withUpdatedAt(new Date());
-    patch(original, updated);
-    return updated;
   }
 
   @Override
@@ -133,23 +105,15 @@ public class TaskRepository extends EntityRepository<Task> {
     applyTags(task);
   }
 
-  private void addRelationships(Task task) throws IOException {
+  @Override
+  public EntityUpdater getUpdater(Task original, Task updated, boolean patchOperation) throws IOException {
+    return new TaskUpdater(original, updated, patchOperation);
   }
 
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
     EntityUtil.applyTags(dao.tagDAO(), task.getTags(), task.getFullyQualifiedName());
     task.setTags(getTags(task.getFullyQualifiedName())); // Update tag to handle additional derived tags
-  }
-
-  private void patch(Task original, Task updated) throws IOException {
-    // Patch can't make changes to following fields. Ignore the changes
-    updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
-            .withService(original.getService()).withId(original.getId());
-    validate(updated);
-    TaskUpdater taskUpdater = new TaskUpdater(original, updated, true);
-    taskUpdater.updateAll();
-    taskUpdater.store();
   }
 
   public EntityReference getOwner(Task task) throws IOException {
@@ -160,10 +124,6 @@ public class TaskRepository extends EntityRepository<Task> {
   private void setOwner(Task task, EntityReference owner) {
     EntityUtil.setOwner(dao.relationshipDAO(), task.getId(), Entity.TASK, owner);
     task.setOwner(owner);
-  }
-
-  private Task validateTask(UUID id) throws IOException {
-    return dao.taskDAO().findEntityById(id);
   }
 
   @Override
@@ -185,9 +145,19 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
+  public void restorePatchAttributes(Task original, Task updated) throws IOException, ParseException {
+
+  }
+
+  @Override
   public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total)
           throws GeneralSecurityException, UnsupportedEncodingException {
     return new TaskList(entities, beforeCursor, afterCursor, total);
+  }
+
+  @Override
+  public EntityInterface<Task> getEntityInterface(Task entity) {
+    return new TaskEntityInterface(entity);
   }
 
 
@@ -258,10 +228,19 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TASK);
     }
+
+    @Override
+    public Task getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -274,6 +253,15 @@ public class TaskRepository extends EntityRepository<Task> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -283,24 +271,13 @@ public class TaskRepository extends EntityRepository<Task> {
    * Handles entity updated from PUT and POST operation.
    */
   public class TaskUpdater extends EntityUpdater {
-    final Task orig;
-    final Task updated;
-
-    public TaskUpdater(Task orig, Task updated, boolean patchOperation) {
-      super(new TaskRepository.TaskEntityInterface(orig), new TaskRepository.TaskEntityInterface(updated),
-              patchOperation, dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public TaskUpdater(Task original, Task updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      TaskRepository.this.store(updated, true);
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // No specific updates for tasks
     }
   }
 }

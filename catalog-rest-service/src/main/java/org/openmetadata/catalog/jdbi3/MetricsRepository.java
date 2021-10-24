@@ -16,8 +16,6 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
@@ -25,17 +23,16 @@ import org.openmetadata.catalog.resources.metrics.MetricsResource.MetricsList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUpdater;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,28 +41,12 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   private final CollectionDAO dao;
 
   public MetricsRepository(CollectionDAO dao) {
-    super(Metrics.class, dao.metricsDAO());
+    super(Metrics.class, dao.metricsDAO(), dao, Fields.EMPTY_FIELDS, METRICS_UPDATE_FIELDS);
     this.dao = dao;
   }
 
   public static String getFQN(Metrics metrics) {
     return (metrics.getService().getName() + "." + metrics.getName());
-  }
-
-  @Transaction
-  public PutResponse<Metrics> createOrUpdate(Metrics updated) throws IOException {
-    validate(updated);
-    Metrics stored = JsonUtils.readValue(dao.metricsDAO().findJsonByFqn(updated.getFullyQualifiedName()),
-            Metrics.class);
-    if (stored == null) {  // Metrics does not exist. Create a new one
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
-    }
-    setFields(stored, METRICS_UPDATE_FIELDS);
-    updated.setId(stored.getId());
-    MetricsUpdater metricsUpdater = new MetricsUpdater(stored, updated, false);
-    metricsUpdater.updateAll();
-    metricsUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
   }
 
   @Override
@@ -83,15 +64,18 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
+  public void restorePatchAttributes(Metrics original, Metrics updated) throws IOException, ParseException {
+  }
+
+  @Override
   public ResultList<Metrics> getResultList(List<Metrics> entities, String beforeCursor, String afterCursor,
                                            int total) throws GeneralSecurityException, UnsupportedEncodingException {
     return new MetricsList(entities);
   }
 
-  private Metrics createInternal(Metrics metrics) throws IOException {
-    storeMetrics(metrics, false);
-    addRelationships(metrics);
-    return metrics;
+  @Override
+  public EntityInterface<Metrics> getEntityInterface(Metrics entity) {
+    return new MetricsEntityInterface(entity);
   }
 
   @Override
@@ -103,23 +87,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public void store(Metrics entity, boolean update) throws IOException {
-
-  }
-
-  @Override
-  public void storeRelationships(Metrics entity) throws IOException {
-
-  }
-
-  private void addRelationships(Metrics metrics) throws IOException {
-    dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
-            metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
-    setOwner(metrics, metrics.getOwner());
-    applyTags(metrics);
-  }
-
-  private void storeMetrics(Metrics metrics, boolean update) throws JsonProcessingException {
+  public void store(Metrics metrics, boolean update) throws IOException {
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference owner = metrics.getOwner();
     List<TagLabel> tags = metrics.getTags();
@@ -136,6 +104,19 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
     // Restore the relationships
     metrics.withOwner(owner).withService(service).withTags(tags);
+  }
+
+  @Override
+  public void storeRelationships(Metrics metrics) throws IOException {
+    dao.relationshipDAO().insert(metrics.getService().getId().toString(), metrics.getId().toString(),
+            metrics.getService().getType(), Entity.METRICS, Relationship.CONTAINS.ordinal());
+    setOwner(metrics, metrics.getOwner());
+    applyTags(metrics);
+  }
+
+  @Override
+  public EntityUpdater getUpdater(Metrics original, Metrics updated, boolean patchOperation) throws IOException {
+    return null;
   }
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics Id
@@ -205,9 +186,22 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     public List<TagLabel> getTags() { return entity.getTags(); }
 
     @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.METRICS);
+    }
+
+    @Override
+    public Metrics getEntity() {
+      return null;
+    }
+
+    @Override
+    public void setId(UUID id) {
+
     }
 
     @Override
@@ -221,33 +215,31 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
   }
 
   /**
-   * Handles entity updated from PUT and POST operation.
+   * Handles entity updates from PUT and POST operation.
    */
   public class MetricsUpdater extends EntityUpdater {
-    final Metrics orig;
-    final Metrics updated;
-
-    public MetricsUpdater(Metrics orig, Metrics updated, boolean patchOperation) {
-      super(new MetricsEntityInterface(orig), new MetricsEntityInterface(updated), patchOperation,
-              dao.relationshipDAO(),
-              dao.tagDAO());
-      this.orig = orig;
-      this.updated = updated;
+    public MetricsUpdater(Metrics original, Metrics updated, boolean patchOperation) {
+      super(original, updated, patchOperation);
     }
 
-    public void updateAll() throws IOException {
-      super.updateAll();
-    }
-
-    public void store() throws IOException {
-      updated.setVersion(getNewVersion(orig.getVersion()));
-      storeMetrics(updated, true);
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      // No entity specific update
     }
   }
 }
