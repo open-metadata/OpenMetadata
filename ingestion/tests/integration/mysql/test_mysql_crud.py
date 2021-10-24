@@ -79,7 +79,7 @@ def catalog_service(docker_ip, docker_services):
     port = docker_services.port_for("db", 3306)
     print("Mysql is running on port {}".format(port))
     url = "http://localhost:8585"
-    time.sleep(20)
+    time.sleep(30)
     docker_services.wait_until_responsive(
         timeout=30.0, pause=0.5, check=lambda: is_responsive(url)
     )
@@ -95,15 +95,13 @@ def test_check_tables(catalog_service):
     )
     client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
-    # if len(databases) > 0:
-    #     assert create_delete_table(client)
-    # else:
-    #     assert create_delete_database(client)
     assert create_delete_database(client)
 
 def test_read_schema():
     url = "mysql+pymysql://catalog_user:catalog_password@localhost:3307"
-    engine = create_engine(url)
+    # pool_recycle to avoid the occasional "Lost connection to MySQL server during query" error
+    # when host machine is slow
+    engine = create_engine(url, pool_recycle=1)
     inspector = inspect(engine)
     schemas = []
     for schema in inspector.get_schema_names():
