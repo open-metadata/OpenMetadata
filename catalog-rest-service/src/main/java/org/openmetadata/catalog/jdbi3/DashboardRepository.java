@@ -23,6 +23,7 @@ import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -286,6 +287,12 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
@@ -308,13 +315,16 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
-
-    @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {

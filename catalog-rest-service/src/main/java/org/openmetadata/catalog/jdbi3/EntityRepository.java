@@ -2,6 +2,8 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -22,6 +24,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -31,6 +34,7 @@ import java.util.UUID;
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final Class<T> entityClass;
+  private final String entityName;
   private final EntityDAO<T> dao;
   private final CollectionDAO daoCollection;
   private final Fields patchFields;
@@ -58,6 +62,7 @@ public abstract class EntityRepository<T> {
     this.daoCollection = collectionDAO;
     this.patchFields = patchFields;
     this.putFields = putFields;
+    this.entityName = entityClass.getSimpleName().toLowerCase(Locale.ROOT);
   }
 
   @Transaction
@@ -141,8 +146,7 @@ public abstract class EntityRepository<T> {
     T original = setFields(dao.findEntityById(id), patchFields);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
-    updatedEntity.setUpdatedBy(user);
-    updatedEntity.setUpdatedAt(new Date());
+    updatedEntity.setUpdateDetails(user, new Date());
 
     validate(updated);
     restorePatchAttributes(original, updated);
@@ -176,9 +180,7 @@ public abstract class EntityRepository<T> {
     protected final EntityInterface<T> original;
     protected final EntityInterface<T> updated;
     protected final boolean patchOperation;
-    protected final List<String> fieldsUpdated = new ArrayList<>();
-    protected final List<String> fieldsAdded = new ArrayList<>();
-    protected final List<String> fieldsDeleted = new ArrayList<>();
+    protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
 
     public EntityUpdater(T original, T updated, boolean patchOperation) {
@@ -244,7 +246,7 @@ public abstract class EntityRepository<T> {
     }
 
 
-    public final Double getNewVersion(Double oldVersion) {
+    public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
         newVersion = Math.round((oldVersion + 1.0) * 10.0)/10.0;
@@ -252,8 +254,17 @@ public abstract class EntityRepository<T> {
         newVersion = Math.round((oldVersion + 0.1) * 10.0)/10.0;
       }
       LOG.info("{}->{} - Fields added {}, updated {}, deleted {}",
-              oldVersion, newVersion, fieldsAdded, fieldsUpdated, fieldsDeleted);
-      return newVersion;
+              oldVersion, newVersion, changeDescription.getFieldsAdded(), changeDescription.getFieldsUpdated(),
+              changeDescription.getFieldsDeleted());
+      changeDescription.withPreviousVersion(oldVersion);
+      updated.setChangeDescription(newVersion, changeDescription);
+      return !newVersion.equals(oldVersion);
+    }
+
+    private boolean fieldsChanged() {
+      return !changeDescription.getFieldsAdded().isEmpty() ||
+              !changeDescription.getFieldsUpdated().isEmpty() ||
+              !changeDescription.getFieldsDeleted().isEmpty();
     }
 
     public final boolean recordChange(String field, Object orig, Object updated) {
@@ -261,20 +272,27 @@ public abstract class EntityRepository<T> {
         return false;
       }
       if (orig == null) {
-        fieldsAdded.add(field);
+        changeDescription.getFieldsAdded().add(field);
         return true;
       } else if (updated == null) {
-        fieldsDeleted.add(field);
+        changeDescription.getFieldsDeleted().add(field);
         return true;
       } else if (!orig.equals(updated)) {
-        fieldsUpdated.add(field);
+        changeDescription.getFieldsUpdated().add(field);
         return true;
       }
       return false;
     }
 
     public final void store() throws IOException {
-      updated.setVersion(getNewVersion(original.getVersion()));
+      if (updateVersion(original.getVersion())) {
+        // Store the old version
+        List<Object> versions = new ArrayList<>();
+        versions.add(original.getEntity());
+        EntityHistory history = new EntityHistory().withEntityType(entityName).withVersions(versions);
+        System.out.println(JsonUtils.pojoToJson(history, true));
+      }
+      // TODO clean up entity name
       EntityRepository.this.store(updated.getEntity(), true);
     }
   }

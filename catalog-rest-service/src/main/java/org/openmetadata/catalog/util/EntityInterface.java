@@ -1,5 +1,6 @@
 package org.openmetadata.catalog.util;
 
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
@@ -19,6 +20,8 @@ public interface EntityInterface<T> {
   String getFullyQualifiedName();
   List<TagLabel> getTags();
   Double getVersion();
+  String getUpdatedBy();
+  Date getUpdatedAt();
 
   EntityReference getEntityReference();
   T getEntity();
@@ -27,7 +30,6 @@ public interface EntityInterface<T> {
   void setDescription(String description);
   void setTags(List<TagLabel> tags);
   void setDisplayName(String displayName);
-  void setVersion(Double version);
-  void setUpdatedBy(String user);
-  void setUpdatedAt(Date date);
+  void setUpdateDetails(String updatedBy, Date updatedAt);
+  void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
 }

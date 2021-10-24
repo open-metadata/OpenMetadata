@@ -22,7 +22,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.databases.TableResource;
-import org.openmetadata.catalog.resources.databases.TableResource.TableList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnJoin;
 import org.openmetadata.catalog.type.ColumnProfile;
@@ -39,15 +39,12 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -577,6 +574,12 @@ public class TableRepository extends EntityRepository<Table> {
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TABLE);
@@ -599,13 +602,16 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
-
-    @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {
@@ -654,7 +660,7 @@ public class TableRepository extends EntityRepository<Table> {
                 .findAny()
                 .orElse(null);
         if (stored == null) {
-          fieldsAdded.add("column:" + updated.getFullyQualifiedName());
+          changeDescription.getFieldsAdded().add(getColumnField(updated));
           EntityUtil.applyTags(dao.tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
           continue;
         }
@@ -678,7 +684,7 @@ public class TableRepository extends EntityRepository<Table> {
                 .findAny()
                 .orElse(null);
         if (updated == null) {
-          fieldsDeleted.add("column:" + stored.getFullyQualifiedName());
+          changeDescription.getFieldsDeleted().add(getColumnField(stored));
           majorVersionChange = true;
         }
       }
@@ -691,13 +697,13 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setDescription(origColumn.getDescription());
         return;
       }
-      recordChange("column:" + origColumn.getFullyQualifiedName() + ":description", origColumn.getDescription(),
-              updatedColumn.getDescription());
+      recordChange(getColumnField(origColumn, "description"),
+              origColumn.getDescription(), updatedColumn.getDescription());
     }
 
     private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
-      recordChange("column:" + original.getEntity().getFullyQualifiedName() + ":description", origColumn.getConstraint(),
-              updatedColumn.getConstraint());
+      recordChange(getColumnField(origColumn, "constraint"),
+                      origColumn.getConstraint(), updatedColumn.getConstraint());
     }
 
     private void updateColumnTags(Column origColumn, Column updatedColumn) throws IOException {
@@ -706,10 +712,21 @@ public class TableRepository extends EntityRepository<Table> {
         updatedColumn.setTags(EntityUtil.mergeTags(updatedColumn.getTags(), origColumn.getTags()));
       }
 
-      recordChange("column:" + origColumn.getFullyQualifiedName() + ":tags",
+      recordChange(getColumnField(origColumn, "tags"),
               origColumn.getTags() == null ? 0 : origColumn.getTags().size(),
               updatedColumn.getTags() == null ? 0 : updatedColumn.getTags().size());
       EntityUtil.applyTags(dao.tagDAO(), updatedColumn.getTags(), updatedColumn.getFullyQualifiedName());
+    }
+
+    private String getColumnField(Column column) {
+      return getColumnField(column, null);
+    }
+
+    private String getColumnField(Column column, String columnField) {
+      // Remove table FQN from column FQN to get the local name
+      String localColumnName = column.getFullyQualifiedName()
+              .replaceFirst("^" + original.getEntity().getFullyQualifiedName() + ".", "");
+      return "column:" + localColumnName + ":" + (columnField == null ? "" : columnField);
     }
   }
 }
