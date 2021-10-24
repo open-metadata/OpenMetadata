@@ -296,9 +296,9 @@ public final class TestUtils {
     if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
     } else if (updateType == UpdateType.MINOR_UPDATE) {
-      assertEquals(previousVersion + 0.1, newVersion); // Minor version change
+      assertEquals(Math.round((previousVersion + 0.1) * 10.0)/10.0, newVersion); // Minor version change
     } else if (updateType == UpdateType.MAJOR_UPDATE) {
-      assertEquals(previousVersion + 1.0, newVersion); // Minor version change
+      assertEquals(Math.round((previousVersion + 1.0) * 10.0)/10.0, newVersion); // Major version change
     }
   }
 }
