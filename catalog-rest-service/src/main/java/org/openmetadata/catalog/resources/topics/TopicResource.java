@@ -136,7 +136,7 @@ public class TopicResource {
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") Optional<String> fieldsParam,
+                        @QueryParam("fields") String fieldsParam,
                                 @Parameter(description = "Filter topics by service name",
                                 schema = @Schema(type = "string", example = "kafkaWestCoast"))
                         @QueryParam("service") String serviceParam,
@@ -151,8 +151,7 @@ public class TopicResource {
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Topic> topics;
     if (before != null) { // Reverse paging
@@ -178,9 +177,8 @@ public class TopicResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
 
