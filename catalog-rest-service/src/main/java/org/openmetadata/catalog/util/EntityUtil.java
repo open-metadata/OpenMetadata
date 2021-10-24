@@ -91,6 +91,7 @@ import java.util.stream.Stream;
 
 public final class EntityUtil {
   private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
+  public static final String serviceField = "service";
 
   private EntityUtil() {
 

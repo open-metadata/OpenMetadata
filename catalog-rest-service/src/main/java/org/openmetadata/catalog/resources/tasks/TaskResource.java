@@ -80,7 +80,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tasks")
 public class TaskResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
   private static final String TASK_COLLECTION_PATH = "v1/tasks/";
   private final TaskRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -139,7 +138,7 @@ public class TaskResource {
                                @Context SecurityContext securityContext,
                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam,
+                        @QueryParam("fields") Optional<String> fieldsParam,
                                @Parameter(description = "Filter tasks by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
@@ -154,7 +153,8 @@ public class TaskResource {
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Task> tasks;
     if (before != null) { // Reverse paging
@@ -181,7 +181,7 @@ public class TaskResource {
                   @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
                   @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -201,7 +201,7 @@ public class TaskResource {
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);

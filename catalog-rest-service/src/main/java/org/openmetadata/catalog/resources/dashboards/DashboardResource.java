@@ -140,7 +140,7 @@ public class DashboardResource {
                                       @Context SecurityContext securityContext,
                                       @Parameter(description = "Fields requested in the returned resource",
                                               schema = @Schema(type = "string", example = FIELDS))
-                                      @QueryParam("fields") String fieldsParam,
+                                      @QueryParam("fields") Optional<String> fieldsParam,
                                       @Parameter(description = "Filter dashboards by service name",
                                               schema = @Schema(type = "string", example = "superset"))
                                       @QueryParam("service") String serviceParam,
@@ -158,7 +158,8 @@ public class DashboardResource {
                                       @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
@@ -186,7 +187,7 @@ public class DashboardResource {
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -206,7 +207,7 @@ public class DashboardResource {
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Dashboard dashboard = dao.getByName(fqn, fields);
     return addHref(uriInfo, dashboard);

@@ -80,7 +80,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResource.class);
   private static final String CHART_COLLECTION_PATH = "v1/charts/";
   private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -140,7 +139,7 @@ public class ChartResource {
                                 @Context SecurityContext securityContext,
                                 @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") String fieldsParam,
+                        @QueryParam("fields") Optional<String> fieldsParam,
                                 @Parameter(description = "Filter charts by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
@@ -155,7 +154,8 @@ public class ChartResource {
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Chart> charts;
     if (before != null) { // Reverse paging
@@ -182,7 +182,7 @@ public class ChartResource {
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -202,7 +202,7 @@ public class ChartResource {
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Chart chart = dao.getByName(fqn, fields);
     addHref(uriInfo, chart);

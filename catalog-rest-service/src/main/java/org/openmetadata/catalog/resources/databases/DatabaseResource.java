@@ -80,7 +80,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
 public class DatabaseResource {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseResource.class);
   private static final String DATABASE_COLLECTION_PATH = "v1/databases/";
   private final DatabaseRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -139,7 +138,7 @@ public class DatabaseResource {
                                    @Context SecurityContext securityContext,
                                    @Parameter(description = "Fields requested in the returned resource",
                                    schema = @Schema(type = "string", example = FIELDS))
-                           @QueryParam("fields") String fieldsParam,
+                           @QueryParam("fields") Optional<String> fieldsParam,
                                    @Parameter(description = "Filter databases by service name",
                                    schema = @Schema(type = "string", example = "snowflakeWestCoast"))
                            @QueryParam("service") String serviceParam,
@@ -155,7 +154,8 @@ public class DatabaseResource {
                            @QueryParam("after") String after
         ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    Fields fields = new Fields(FIELD_LIST, fieldsParam);
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
+    Fields fields = new Fields(FIELD_LIST, getFields);
 
     ResultList<Database> databases;
 
@@ -186,7 +186,7 @@ public class DatabaseResource {
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Database database = dao.get(id, fields);
     addHref(uriInfo, database);
@@ -208,7 +208,7 @@ public class DatabaseResource {
                             @Parameter(description = "Fields requested in the returned resource",
                                         schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse("service");
+    String getFields = fieldsParam.orElse(EntityUtil.serviceField);
     Fields fields = new Fields(FIELD_LIST, getFields);
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);
