@@ -37,4 +37,9 @@
             <class name="org.openmetadata.catalog.selenium.pages.pipelineService.PipelineServiceTestPage"/>
         </classes>
     </test>
+    <test name="datasetPageTests">
+        <classes>
+            <class name="org.openmetadata.catalog.selenium.pages.tableDetails.TableDetailsPageTest"/>
+        </classes>
+    </test>
 </suite>
