@@ -97,11 +97,6 @@ public class ReportRepository extends EntityRepository<Report> {
     // TODO
   }
 
-  @Override
-  public EntityUpdater getUpdater(Report original, Report updated, boolean patchOperation) throws IOException {
-    return null;
-  }
-
   private EntityReference getService(Report report) {
     return report == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), report.getId()));
   }

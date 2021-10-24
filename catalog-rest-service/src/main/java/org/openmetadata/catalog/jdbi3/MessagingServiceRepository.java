@@ -112,12 +112,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   @Override
   public void storeRelationships(MessagingService entity) throws IOException { }
 
-  @Override
-  public EntityUpdater getUpdater(MessagingService original, MessagingService updated, boolean patchOperation)
-          throws IOException {
-    return null;
-  }
-
   public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
     private final MessagingService entity;
 

@@ -36,6 +36,25 @@ public abstract class EntityRepository<T> {
   private final Fields patchFields;
   private final Fields putFields;
 
+  /**
+   * Entity related operations that should be implemented or overridden by entities
+   */
+  public abstract String getFullyQualifiedName(T entity);
+  public abstract ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor,
+                                              int total) throws GeneralSecurityException, UnsupportedEncodingException;
+  public abstract EntityInterface<T> getEntityInterface(T entity);
+
+  public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
+  public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
+
+  public abstract void validate(T entity) throws IOException;
+  public abstract void store(T entity, boolean update) throws IOException;
+  public abstract void storeRelationships(T entity) throws IOException;
+
+  public EntityUpdater getUpdater(T original, T updated, boolean patchOperation) throws IOException {
+    return new EntityUpdater(original, updated, patchOperation);
+  }
+
   EntityRepository(Class<T> entityClass, EntityDAO<T> entityDAO, CollectionDAO collectionDAO,
                    Fields patchFields, Fields putFields) {
     this.entityClass = entityClass;
@@ -129,8 +148,8 @@ public abstract class EntityRepository<T> {
     updatedEntity.setUpdatedBy(user);
     updatedEntity.setUpdatedAt(new Date());
 
-    restorePatchAttributes(original, updated);
     validate(updated);
+    restorePatchAttributes(original, updated);
     EntityUpdater entityUpdater = getUpdater(original, updated, true);
     entityUpdater.update();
     entityUpdater.store();
@@ -144,25 +163,11 @@ public abstract class EntityRepository<T> {
     return entity;
   }
 
-  // TODO clean up all the exceptions and check if they are really thrown
   /**
-   * Entity related operations
+   * Class that performs PUT and PATCH UPDATE operation. Override {@code entitySpecificUpdate()} to add
+   * additional entity specific fields to be updated.
    */
-  public abstract String getFullyQualifiedName(T entity);
-  public abstract ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor,
-                                              int total) throws GeneralSecurityException, UnsupportedEncodingException;
-  public abstract EntityInterface<T> getEntityInterface(T entity);
-
-  public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
-  public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
-
-  public abstract void validate(T entity) throws IOException;
-  public abstract void store(T entity, boolean update) throws IOException;
-  public abstract void storeRelationships(T entity) throws IOException;
-  public abstract EntityUpdater getUpdater(T original, T updated, boolean patchOperation) throws IOException;
-
-  // TODO better name
-  public abstract class EntityUpdater {
+  public class EntityUpdater {
     protected final EntityInterface<T> original;
     protected final EntityInterface<T> updated;
     protected final boolean patchOperation;
@@ -184,6 +189,10 @@ public abstract class EntityRepository<T> {
       updateOwner();
       updateTags();
       entitySpecificUpdate();
+    }
+
+    public void entitySpecificUpdate() throws IOException {
+      // Default implementation. Override this to add any entity specific field updates
     }
 
     private void updateDescription() {
@@ -229,7 +238,6 @@ public abstract class EntityRepository<T> {
       EntityUtil.applyTags(daoCollection.tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
     }
 
-    public abstract void entitySpecificUpdate() throws IOException;
 
     public final Double getNewVersion(Double oldVersion) {
       Double newVersion = oldVersion;

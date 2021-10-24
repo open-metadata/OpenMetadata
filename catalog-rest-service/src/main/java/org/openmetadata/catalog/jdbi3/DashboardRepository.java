@@ -341,6 +341,11 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       super(original, updated, patchOperation);
     }
 
+    @Override
+    public void entitySpecificUpdate() throws IOException {
+      updateCharts();
+    }
+
     private void updateCharts() {
       String dashboardId = updated.getId().toString();
 
@@ -357,11 +362,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       List<UUID> origChartIds = EntityUtil.getIDList(original.getEntity().getCharts());
       List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getEntity().getCharts());
       recordChange("charts", origChartIds, updatedChartIds);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      updateCharts();
     }
   }
 }

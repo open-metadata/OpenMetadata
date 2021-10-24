@@ -100,15 +100,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
     EntityUtil.setOwner(dao.relationshipDAO(), database.getId(), Entity.DATABASE, database.getOwner());
   }
 
-  @Override
-  public EntityUpdater getUpdater(Database original, Database updated, boolean patchOperation) throws IOException {
-    return new DatabaseUpdater(original, updated, patchOperation);
-  }
-
   public EntityReference getOwner(Database database) throws IOException {
     return database != null ? EntityUtil.populateOwner(database.getId(), dao.relationshipDAO(), dao.userDAO(),
-            dao.teamDAO())
-            : null;
+            dao.teamDAO()) : null;
   }
 
   private List<EntityReference> getTables(Database database) throws IOException {
@@ -240,19 +234,5 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
     @Override
     public void setTags(List<TagLabel> tags) { }
-  }
-
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
-  public class DatabaseUpdater extends EntityUpdater {
-    public DatabaseUpdater(Database original, Database updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // Nothing special to do
-    }
   }
 }

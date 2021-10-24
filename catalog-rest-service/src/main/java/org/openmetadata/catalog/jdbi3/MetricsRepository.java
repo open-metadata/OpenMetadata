@@ -114,11 +114,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     applyTags(metrics);
   }
 
-  @Override
-  public EntityUpdater getUpdater(Metrics original, Metrics updated, boolean patchOperation) throws IOException {
-    return null;
-  }
-
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics Id
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
     return getService(ref);
@@ -226,20 +221,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
-    }
-  }
-
-  /**
-   * Handles entity updates from PUT and POST operation.
-   */
-  public class MetricsUpdater extends EntityUpdater {
-    public MetricsUpdater(Metrics original, Metrics updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // No entity specific update
     }
   }
 }

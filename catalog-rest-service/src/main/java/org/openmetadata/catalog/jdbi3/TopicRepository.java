@@ -108,11 +108,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     applyTags(topic);
   }
 
-  @Override
-  public EntityUpdater getUpdater(Topic original, Topic updated, boolean patchOperation) throws IOException {
-    return new TopicUpdater(original, updated, patchOperation);
-  }
-
   private void applyTags(Topic topic) throws IOException {
     // Add topic level tags by adding tag to topic relationship
     EntityUtil.applyTags(dao.tagDAO(), topic.getTags(), topic.getFullyQualifiedName());
@@ -279,20 +274,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
-    }
-  }
-
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
-  public class TopicUpdater extends EntityUpdater {
-    public TopicUpdater(Topic original, Topic updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // No specific update for Topic
     }
   }
 }

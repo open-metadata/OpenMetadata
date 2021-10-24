@@ -81,11 +81,6 @@ public class BotsRepository extends EntityRepository<Bots>{
   @Override
   public void storeRelationships(Bots entity) throws IOException { }
 
-  @Override
-  public EntityUpdater getUpdater(Bots original, Bots updated, boolean patchOperation) throws IOException {
-    return null;
-  }
-
   static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;
 

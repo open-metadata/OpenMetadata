@@ -114,11 +114,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
   }
 
-  @Override
-  public EntityUpdater getUpdater(PipelineService original, PipelineService updated, boolean patchOperation) throws IOException {
-    return null;
-  }
-
   public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
     private final PipelineService entity;
 

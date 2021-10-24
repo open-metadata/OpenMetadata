@@ -104,12 +104,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     applyTags(chart);
   }
 
-  @Override
-  public EntityUpdater getUpdater(Chart original, Chart updated, boolean patchOperation) throws IOException {
-    return new ChartUpdater(original, updated, patchOperation);
-  }
-
-
   private void applyTags(Chart chart) throws IOException {
     // Add chart level tags by adding tag to chart relationship
     EntityUtil.applyTags(dao.tagDAO(), chart.getTags(), chart.getFullyQualifiedName());
@@ -268,20 +262,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
-    }
-  }
-
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
-  public class ChartUpdater extends EntityUpdater {
-    public ChartUpdater(Chart original, Chart updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // No special updates beyond
     }
   }
 }

@@ -111,11 +111,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public void storeRelationships(DatabaseService entity) throws IOException {
   }
 
-  @Override
-  public EntityUpdater getUpdater(DatabaseService original, DatabaseService updated, boolean patchOperation) throws IOException {
-    return null;
-  }
-
   public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
     private final DatabaseService entity;
 

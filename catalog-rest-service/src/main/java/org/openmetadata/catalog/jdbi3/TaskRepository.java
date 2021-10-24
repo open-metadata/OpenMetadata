@@ -105,11 +105,6 @@ public class TaskRepository extends EntityRepository<Task> {
     applyTags(task);
   }
 
-  @Override
-  public EntityUpdater getUpdater(Task original, Task updated, boolean patchOperation) throws IOException {
-    return new TaskUpdater(original, updated, patchOperation);
-  }
-
   private void applyTags(Task task) throws IOException {
     // Add task level tags by adding tag to task relationship
     EntityUtil.applyTags(dao.tagDAO(), task.getTags(), task.getFullyQualifiedName());
@@ -264,20 +259,6 @@ public class TaskRepository extends EntityRepository<Task> {
     @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
-    }
-  }
-
-  /**
-   * Handles entity updated from PUT and POST operation.
-   */
-  public class TaskUpdater extends EntityUpdater {
-    public TaskUpdater(Task original, Task updated, boolean patchOperation) {
-      super(original, updated, patchOperation);
-    }
-
-    @Override
-    public void entitySpecificUpdate() throws IOException {
-      // No specific updates for tasks
     }
   }
 }

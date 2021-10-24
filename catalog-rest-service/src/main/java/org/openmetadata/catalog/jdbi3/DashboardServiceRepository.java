@@ -111,12 +111,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public void storeRelationships(DashboardService entity) throws IOException {
   }
 
-  @Override
-  public EntityUpdater getUpdater(DashboardService original, DashboardService updated, boolean patchOperation)
-          throws IOException {
-    return null;
-  }
-
   public static class DashboardServiceEntityInterface implements EntityInterface<DashboardService> {
     private final DashboardService entity;
 
