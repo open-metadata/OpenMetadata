@@ -505,7 +505,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
-    assertNull(database.getService());
+    assertNotNull(database.getService()); // We always return the service
     assertNull(database.getTables());
 
     // .../databases?fields=owner,service
