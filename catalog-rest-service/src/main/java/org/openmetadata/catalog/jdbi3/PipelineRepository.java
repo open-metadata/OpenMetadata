@@ -92,11 +92,11 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
+    pipeline.setService(getService(pipeline));
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
     pipeline.setStartDate(pipeline.getStartDate());
     pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setOwner(fields.contains("owner") ? getOwner(pipeline) : null);
-    pipeline.setService(fields.contains("service") ? getService(pipeline) : null);
     pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
     pipeline.setTasks(fields.contains("tasks") ? getTasks(pipeline) : null);
     pipeline.setTags(fields.contains("tags") ? getTags(pipeline.getFullyQualifiedName()) : null);

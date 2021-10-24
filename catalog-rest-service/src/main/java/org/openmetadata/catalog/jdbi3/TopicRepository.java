@@ -126,8 +126,8 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
+    topic.setService(getService(topic));
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
-    topic.setService(fields.contains("service") ? getService(topic) : null);
     topic.setFollowers(fields.contains("followers") ? getFollowers(topic) : null);
     topic.setTags(fields.contains("tags") ? getTags(topic.getFullyQualifiedName()) : null);
     return topic;

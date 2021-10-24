@@ -540,7 +540,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
     topic = byName ? getTopicByName(topic.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getTopic(topic.getId(), fields, adminAuthHeaders());
     assertNotNull(topic.getOwner());
-    assertNull(topic.getService());
+    assertNotNull(topic.getService()); // We always return the service
 
     // .../topics?fields=owner,service
     fields = "owner,service";

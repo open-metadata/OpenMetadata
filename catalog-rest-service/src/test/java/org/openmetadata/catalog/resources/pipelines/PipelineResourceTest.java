@@ -575,7 +575,7 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     pipeline = byName ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getPipeline(pipeline.getId(), fields, adminAuthHeaders());
     assertNotNull(pipeline.getOwner());
-    assertNull(pipeline.getService());
+    assertNotNull(pipeline.getService()); // We always return the service
     assertNull(pipeline.getTasks());
 
     // .../Pipelines?fields=owner,service

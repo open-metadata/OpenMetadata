@@ -97,8 +97,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public Dashboard setFields(Dashboard dashboard, Fields fields) throws IOException {
     dashboard.setDisplayName(dashboard.getDisplayName());
+    dashboard.setService(getService(dashboard));
     dashboard.setOwner(fields.contains("owner") ? getOwner(dashboard) : null);
-    dashboard.setService(fields.contains("service") ? getService(dashboard) : null);
     dashboard.setFollowers(fields.contains("followers") ? getFollowers(dashboard) : null);
     dashboard.setCharts(fields.contains("charts") ? getCharts(dashboard) : null);
     dashboard.setTags(fields.contains("tags") ? getTags(dashboard.getFullyQualifiedName()) : null);

@@ -127,8 +127,8 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setTaskSQL(task.getTaskSQL());
     task.setStartDate(task.getStartDate());
     task.setEndDate(task.getEndDate());
+    task.setService(getService(task));
     task.setOwner(fields.contains("owner") ? getOwner(task) : null);
-    task.setService(fields.contains("service") ? getService(task) : null);
     task.setTags(fields.contains("tags") ? getTags(task.getFullyQualifiedName()) : null);
     task.setDownstreamTasks(fields.contains("downstreamTasks") ? task.getDownstreamTasks() : null);
     return task;

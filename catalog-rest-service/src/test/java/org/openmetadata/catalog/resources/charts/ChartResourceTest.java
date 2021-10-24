@@ -525,7 +525,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
     chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
-    assertNull(chart.getService());
+    assertNotNull(chart.getService()); // We always return the service
 
     // .../charts?fields=owner,service
     fields = "owner,service";

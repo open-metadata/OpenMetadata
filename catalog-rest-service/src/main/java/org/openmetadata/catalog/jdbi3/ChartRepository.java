@@ -123,8 +123,8 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   @Override
   public Chart setFields(Chart chart, Fields fields) throws IOException {
+    chart.setService(getService(chart));
     chart.setOwner(fields.contains("owner") ? getOwner(chart) : null);
-    chart.setService(fields.contains("service") ? getService(chart) : null);
     chart.setFollowers(fields.contains("followers") ? getFollowers(chart) : null);
     chart.setTags(fields.contains("tags") ? getTags(chart.getFullyQualifiedName()) : null);
     return chart;

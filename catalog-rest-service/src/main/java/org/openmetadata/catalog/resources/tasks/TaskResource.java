@@ -40,8 +40,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -81,7 +79,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tasks")
 public class TaskResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
   private static final String TASK_COLLECTION_PATH = "v1/tasks/";
   private final TaskRepository dao;
   private final CatalogAuthorizer authorizer;

@@ -543,7 +543,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     dashboard = byName ? getDashboardByName(dashboard.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDashboard(dashboard.getId(), fields, adminAuthHeaders());
     assertNotNull(dashboard.getOwner());
-    assertNull(dashboard.getService());
+    assertNotNull(dashboard.getService()); // We always return the service
     assertNull(dashboard.getCharts());
 
     // .../Dashboards?fields=owner,service

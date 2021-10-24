@@ -119,9 +119,9 @@ public class DatabaseRepository extends EntityRepository<Database> {
   }
 
   public Database setFields(Database database, Fields fields) throws IOException {
+    database.setService(getService(database));
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
-    database.setService(fields.contains("service") ? getService(database) : null);
     database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             database.getId()) : null);
     return database;
