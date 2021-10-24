@@ -30,6 +30,7 @@ import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -213,7 +214,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTask create) throws IOException {
+                         @Valid CreateTask create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -252,8 +253,8 @@ public class TaskResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(task));
-    task = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+            new TaskEntityInterface(task).getEntityReference());
+    task = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, task);
   }
 
@@ -267,7 +268,7 @@ public class TaskResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTask create) throws IOException {
+                                 @Valid CreateTask create) throws IOException, ParseException {
 
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -298,7 +299,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "404", description = "task for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

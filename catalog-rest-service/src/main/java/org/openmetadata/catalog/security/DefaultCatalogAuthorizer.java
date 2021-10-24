@@ -174,9 +174,9 @@ public class DefaultCatalogAuthorizer implements CatalogAuthorizer {
             .withUpdatedAt(new Date());
 
     try {
-      User addedUser = userRepository.create(user, null);
+      User addedUser = userRepository.create(user);
       LOG.debug("Added bot user entry: {}", addedUser);
-    } catch (DuplicateEntityException | IOException exception) {
+    } catch (DuplicateEntityException | IOException | ParseException exception) {
       // In HA setup the other server may have already added the user.
       LOG.debug("Caught exception: " + ExceptionUtils.getStackTrace(exception));
       LOG.debug("Bot user entry: {} already exists.", user);

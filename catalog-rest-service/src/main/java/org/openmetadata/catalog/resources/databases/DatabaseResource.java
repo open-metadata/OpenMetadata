@@ -30,6 +30,7 @@ import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -220,7 +221,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDatabase create) throws IOException {
+                         @Valid CreateDatabase create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
             .withDescription(create.getDescription()).withService(create.getService())
@@ -247,10 +248,10 @@ public class DatabaseResource {
                                                             "{op:remove, path:/a}," +
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
-                                            JsonPatch patch) throws IOException {
-      Database database = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+                                            JsonPatch patch) throws IOException, ParseException {
+      Database database = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
       SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(database));
+            new DatabaseEntityInterface(database).getEntityReference());
       return addHref(uriInfo, database);
     }
 
@@ -264,7 +265,7 @@ public class DatabaseResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateDatabase create) throws IOException {
+                                 @Valid CreateDatabase create) throws IOException, ParseException {
 
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
             .withDescription(create.getDescription()).withOwner(create.getOwner())
@@ -284,7 +285,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

@@ -151,7 +151,7 @@ public class DatabaseServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateDatabaseService create) throws JsonProcessingException {
+                         @Valid CreateDatabaseService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService databaseService = new DatabaseService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
@@ -181,7 +181,7 @@ public class DatabaseServiceResource {
                          @Valid UpdateDatabaseService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     DatabaseService databaseService = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getJdbc(), update.getIngestionSchedule()));
+            dao.update(UUID.fromString(id), update.getDescription(), update.getJdbc(), update.getIngestionSchedule()));
     return Response.ok(databaseService).build();
   }
 
@@ -200,7 +200,7 @@ public class DatabaseServiceResource {
                          @Parameter(description = "Id of the database service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

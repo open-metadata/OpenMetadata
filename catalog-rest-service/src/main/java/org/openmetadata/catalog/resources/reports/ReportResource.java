@@ -48,6 +48,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -63,11 +64,6 @@ import java.util.UUID;
 public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final ReportRepository dao;
-
-  private static List<Report> addHref(UriInfo uriInfo, List<Report> reports) {
-    reports.forEach(r -> addHref(uriInfo, r));
-    return reports;
-  }
 
   private static Report addHref(UriInfo uriInfo, Report report) {
     report.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, report.getId()));
@@ -98,12 +94,15 @@ public class ReportResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = ReportList.class)))
           })
-  public ReportList list(@Context UriInfo uriInfo,
+  public ResultList<Report> list(@Context UriInfo uriInfo,
                          @Parameter(description = "Fields requested in the returned resource",
                                  schema = @Schema(type = "string", example = FIELDS))
-                         @QueryParam("fields") String fieldsParam) throws IOException {
+                         @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
+          ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return new ReportList(addHref(uriInfo, dao.list(fields)));
+    ResultList<Report> list = dao.listAfter(fields, null, 10000, null);
+    list.getData().forEach(r -> addHref(uriInfo, r));
+    return list;
   }
 
   @GET
@@ -135,10 +134,10 @@ public class ReportResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid Report report) throws IOException {
+                         @Valid Report report) throws IOException, ParseException {
     report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(report, report.getService(), report.getOwner()));
+    addHref(uriInfo, dao.create(report));
     return Response.created(report.getHref()).entity(report).build();
   }
 
@@ -153,10 +152,10 @@ public class ReportResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid Report report) throws IOException {
+                                 @Valid Report report) throws IOException, ParseException {
     report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    PutResponse<Report> response = dao.createOrUpdate(report, report.getService(), report.getOwner());
+    PutResponse<Report> response = dao.createOrUpdate(report);
     addHref(uriInfo, report);
     return Response.status(response.getStatus()).entity(report).build();
   }

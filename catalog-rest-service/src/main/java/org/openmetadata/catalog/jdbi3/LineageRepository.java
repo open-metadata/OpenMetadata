@@ -34,16 +34,13 @@ import java.util.stream.Collectors;
 import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 
 public class LineageRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(LineageRepository.class);
   private final CollectionDAO dao;
 
   public LineageRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
   public EntityLineage get(String entityType, String id, int upstreamDepth, int downstreamDepth) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
-            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -51,9 +48,7 @@ public class LineageRepository {
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
           throws IOException {
     // TODO clean this up
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.dashboardDAO(), dao.taskDAO(),
-            dao.modelDAO(), dao.pipelineDAO());
+    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }
 
@@ -61,15 +56,11 @@ public class LineageRepository {
   public void addLineage(AddLineage addLineage) throws IOException {
     // Validate from entity
     EntityReference from = addLineage.getEdge().getFromEntity();
-    from = EntityUtil.getEntityReference(from.getType(), from.getId(), dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
-            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    from = EntityUtil.getEntityReference(from.getType(), from.getId(), dao);
 
     // Validate to entity
     EntityReference to = addLineage.getEdge().getToEntity();
-    to = EntityUtil.getEntityReference(to.getType(), to.getId(), dao.tableDAO(), dao.databaseDAO(),
-            dao.metricsDAO(), dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(),
-            dao.taskDAO(), dao.modelDAO(), dao.pipelineDAO());
+    to = EntityUtil.getEntityReference(to.getType(), to.getId(), dao);
 
     // Finally, add lineage relationship
     dao.relationshipDAO().insert(from.getId().toString(), to.getId().toString(), from.getType(), to.getType(),
@@ -89,9 +80,7 @@ public class LineageRepository {
     // Add entityReference details
     for (int i = 0; i < lineage.getNodes().size(); i++) {
       EntityReference ref = lineage.getNodes().get(i);
-      ref = getEntityReference(ref.getType(), ref.getId(), dao.tableDAO(), dao.databaseDAO(), dao.metricsDAO(),
-              dao.dashboardDAO(), dao.reportDAO(), dao.topicDAO(), dao.chartDAO(), dao.taskDAO(),
-              dao.modelDAO(), dao.pipelineDAO());
+      ref = getEntityReference(ref.getType(), ref.getId(), dao);
       lineage.getNodes().set(i, ref);
     }
     return lineage;

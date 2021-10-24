@@ -21,12 +21,13 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -405,7 +406,8 @@ public class UserResourceTest extends CatalogApplicationTest {
     Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
     Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
     Team team3 = createTeam(TeamResourceTest.create(test, 3), adminAuthHeaders());
-    List<Team> teams = Arrays.asList(team1, team2);
+    List<EntityReference> teams = Arrays.asList(new TeamEntityInterface(team1).getEntityReference(),
+            new TeamEntityInterface(team2).getEntityReference());
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
 
@@ -416,7 +418,8 @@ public class UserResourceTest extends CatalogApplicationTest {
 
     // Replace the attributes
     timezone = "Canada/Eastern";
-    teams = Arrays.asList(team1, team3); // team2 dropped and team3 is added
+    teams = Arrays.asList(new TeamEntityInterface(team1).getEntityReference(),
+            new TeamEntityInterface(team3).getEntityReference()); // team2 dropped and team3 is added
     profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
     user = patchUserAttributesAndCheck(user, "displayName1", teams, profile, timezone, true,
             false, adminAuthHeaders(), MINOR_UPDATE);
@@ -467,7 +470,7 @@ public class UserResourceTest extends CatalogApplicationTest {
     // User can no longer follow other entities
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId().toString()));
+    assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner
   }
@@ -497,7 +500,8 @@ public class UserResourceTest extends CatalogApplicationTest {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  private User patchUserAttributesAndCheck(User before, String displayName, List<Team> teams, Profile profile,
+  private User patchUserAttributesAndCheck(User before, String displayName, List<EntityReference> teams,
+                                           Profile profile,
                                            String timezone, Boolean isBot, Boolean isAdmin,
                                            Map<String, String> authHeaders, UpdateType updateType)
           throws JsonProcessingException, HttpResponseException {
@@ -507,7 +511,7 @@ public class UserResourceTest extends CatalogApplicationTest {
 
     // Update the user attributes
     before.setDisplayName(displayName);
-    before.setTeams(UserRepository.toEntityReference(teams));
+    before.setTeams(teams);
     before.setProfile(profile);
     before.setTimezone(timezone);
     before.setIsBot(isBot);
@@ -530,9 +534,9 @@ public class UserResourceTest extends CatalogApplicationTest {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     final User user = createUser(create, authHeaders);
     assertEquals(0.1, user.getVersion());
-    List<Team> expectedTeams = new ArrayList<>();
+    List<EntityReference> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
-      expectedTeams.add(new Team().withId(teamId));
+      expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
     validateUser(user, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
             create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
@@ -549,9 +553,9 @@ public class UserResourceTest extends CatalogApplicationTest {
           throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     final User updatedUser = putUser(create, expectedStatus, authHeaders);
-    List<Team> expectedTeams = new ArrayList<>();
+    List<EntityReference> expectedTeams = new ArrayList<>();
     for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
-      expectedTeams.add(new Team().withId(teamId));
+      expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
     }
     validateUser(updatedUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
             create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
@@ -581,7 +585,8 @@ public class UserResourceTest extends CatalogApplicationTest {
     return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
   }
 
-  public static void validateUser(User user, String expectedName, String expectedDisplayName, List<Team> expectedTeams,
+  public static void validateUser(User user, String expectedName, String expectedDisplayName,
+                                  List<EntityReference> expectedTeams,
                                   Profile expectedProfile, String expectedTimeZone, Boolean expectedIsBot,
                                   Boolean expectedIsAdmin, String expectedUpdatedBy) {
     assertEquals(expectedName, user.getName());
@@ -597,7 +602,7 @@ public class UserResourceTest extends CatalogApplicationTest {
       for (EntityReference team : user.getTeams()) {
         TestUtils.validateEntityReference(team);
         boolean foundTeam = false;
-        for (Team expected : expectedTeams) {
+        for (EntityReference expected : expectedTeams) {
           if (expected.getId().equals(team.getId())) {
             foundTeam = true;
             break;

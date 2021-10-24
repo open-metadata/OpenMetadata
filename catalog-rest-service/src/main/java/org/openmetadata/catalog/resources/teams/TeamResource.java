@@ -38,8 +38,6 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -75,7 +73,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
 public class TeamResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TeamResource.class);
   public static final String TEAM_COLLECTION_PATH = "/v1/teams/";
   private final TeamRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -206,13 +203,14 @@ public class TeamResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateTeam ct) throws IOException {
+                         @Valid CreateTeam ct) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
             .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(team, ct.getUsers()));
+            .withUpdatedAt(new Date())
+            .withUsers(dao.getUsers(ct.getUsers()));
+    addHref(uriInfo, dao.create(team));
     return Response.created(team.getHref()).entity(team).build();
   }
 
@@ -233,10 +231,10 @@ public class TeamResource {
                                         "{op:remove, path:/a}," +
                                         "{op:add, path: /b, value: val}" +
                                         "]")}))
-                    JsonPatch patch) throws IOException {
+                    JsonPatch patch) throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
+    return addHref(uriInfo, dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE
@@ -251,7 +249,7 @@ public class TeamResource {
                          @Context SecurityContext securityContext,
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

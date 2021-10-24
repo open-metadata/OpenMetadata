@@ -154,7 +154,7 @@ public class MessagingServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreateMessagingService create) throws JsonProcessingException {
+                         @Valid CreateMessagingService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = new MessagingService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
@@ -186,7 +186,7 @@ public class MessagingServiceResource {
                          @Valid UpdateMessagingService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MessagingService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getBrokers(), update.getSchemaRegistry(),
+            dao.update(UUID.fromString(id), update.getDescription(), update.getBrokers(), update.getSchemaRegistry(),
                     update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
@@ -206,7 +206,7 @@ public class MessagingServiceResource {
                          @Parameter(description = "Id of the messaging service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

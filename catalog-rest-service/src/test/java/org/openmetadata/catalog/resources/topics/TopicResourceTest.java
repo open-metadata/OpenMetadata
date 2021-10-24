@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -99,11 +100,11 @@ public class TopicResourceTest extends CatalogApplicationTest {
     CreateMessagingService createService = new CreateMessagingService().withName("kafka")
             .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
     MessagingService service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    KAFKA_REFERENCE = EntityUtil.getEntityReference(service);
+    KAFKA_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
 
     createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar).withBrokers(List.of("192.168.1.1:0"));
     service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    PULSAR_REFERENCE = EntityUtil.getEntityReference(service);
+    PULSAR_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
   }
 
   @Test
