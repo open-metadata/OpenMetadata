@@ -90,11 +90,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   @Override
-  public String getFullyQualifiedName(Pipeline entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Pipeline setFields(Pipeline pipeline, Fields fields) throws IOException {
     pipeline.setDisplayName(pipeline.getDisplayName());
     pipeline.setPipelineUrl(pipeline.getPipelineUrl());
@@ -113,12 +108,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-  }
-
-  @Override
-  public ResultList<Pipeline> getResultList(List<Pipeline> entities, String beforeCursor, String afterCursor,
-                                            int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new PipelineList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

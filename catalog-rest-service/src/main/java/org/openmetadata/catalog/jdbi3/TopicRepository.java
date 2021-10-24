@@ -125,11 +125,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   @Override
-  public String getFullyQualifiedName(Topic entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Topic setFields(Topic topic, Fields fields) throws IOException {
     topic.setOwner(fields.contains("owner") ? getOwner(topic) : null);
     topic.setService(fields.contains("service") ? getService(topic) : null);
@@ -141,11 +136,6 @@ public class TopicRepository extends EntityRepository<Topic> {
   @Override
   public void restorePatchAttributes(Topic original, Topic updated) throws IOException, ParseException {
 
-  }
-
-  @Override
-  public ResultList<Topic> getResultList(List<Topic> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new TopicList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

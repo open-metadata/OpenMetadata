@@ -82,11 +82,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public String getFullyQualifiedName(Table entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Table setFields(Table table, Fields fields) throws IOException, ParseException {
     table.setColumns(fields.contains("columns") ? table.getColumns() : null);
     table.setTableConstraints(fields.contains("tableConstraints") ? table.getTableConstraints() : null);
@@ -109,12 +104,6 @@ public class TableRepository extends EntityRepository<Table> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withDatabase(original.getDatabase()).withId(original.getId());
-  }
-
-  @Override
-  public ResultList<Table> getResultList(List<Table> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new TableList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

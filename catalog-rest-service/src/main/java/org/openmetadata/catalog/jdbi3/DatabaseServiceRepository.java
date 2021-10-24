@@ -69,11 +69,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   }
 
   @Override
-  public String getFullyQualifiedName(DatabaseService entity) {
-    return entity.getName();
-  }
-
-  @Override
   public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
@@ -82,13 +77,6 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
   public void restorePatchAttributes(DatabaseService original, DatabaseService updated) throws IOException,
           ParseException {
 
-  }
-
-  @Override
-  public ResultList<DatabaseService> getResultList(List<DatabaseService> entities, String beforeCursor,
-                                                   String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DatabaseServiceList(entities);
   }
 
   @Override

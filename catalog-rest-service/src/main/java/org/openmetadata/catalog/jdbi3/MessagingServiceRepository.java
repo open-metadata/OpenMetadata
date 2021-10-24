@@ -71,11 +71,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   }
 
   @Override
-  public String getFullyQualifiedName(MessagingService entity) {
-    return entity.getName();
-  }
-
-  @Override
   public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
@@ -84,13 +79,6 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public void restorePatchAttributes(MessagingService original, MessagingService updated) throws IOException,
           ParseException {
 
-  }
-
-  @Override
-  public ResultList<MessagingService> getResultList(List<MessagingService> entities, String beforeCursor,
-                                                    String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new MessagingServiceList(entities);
   }
 
   @Override

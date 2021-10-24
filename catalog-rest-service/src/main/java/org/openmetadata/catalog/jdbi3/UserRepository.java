@@ -61,15 +61,10 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
-  public ResultList<User> getResultList(List<User> entities, String beforeCursor, String afterCursor,
-                                        int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new UserList(entities, beforeCursor, afterCursor, total);
-  }
-
-  @Override
   public EntityInterface<User> getEntityInterface(User entity) {
     return new UserEntityInterface(entity);
   }
+
 
   @Override
   public void validate(User entity) throws IOException {
@@ -120,11 +115,6 @@ public class UserRepository extends EntityRepository<User> {
 
     // Remove follows relationship to entities
     dao.relationshipDAO().deleteFrom(id.toString(), FOLLOWS.ordinal());
-  }
-
-  @Override
-  public String getFullyQualifiedName(User entity) {
-    return entity.getName();
   }
 
   @Override

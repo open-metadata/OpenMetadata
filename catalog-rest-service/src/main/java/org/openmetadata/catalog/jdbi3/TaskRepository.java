@@ -122,11 +122,6 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
-  public String getFullyQualifiedName(Task entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Task setFields(Task task, Fields fields) throws IOException {
     task.setTaskUrl(task.getTaskUrl());
     task.setTaskSQL(task.getTaskSQL());
@@ -142,12 +137,6 @@ public class TaskRepository extends EntityRepository<Task> {
   @Override
   public void restorePatchAttributes(Task original, Task updated) throws IOException, ParseException {
 
-  }
-
-  @Override
-  public ResultList<Task> getResultList(List<Task> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new TaskList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

@@ -122,11 +122,6 @@ public class ChartRepository extends EntityRepository<Chart> {
   }
 
   @Override
-  public String getFullyQualifiedName(Chart entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Chart setFields(Chart chart, Fields fields) throws IOException {
     chart.setOwner(fields.contains("owner") ? getOwner(chart) : null);
     chart.setService(fields.contains("service") ? getService(chart) : null);
@@ -140,12 +135,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-  }
-
-  @Override
-  public ResultList<Chart> getResultList(List<Chart> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

@@ -118,11 +118,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     return tables;
   }
 
-  @Override
-  public String getFullyQualifiedName(Database entity) {
-    return entity.getFullyQualifiedName();
-  }
-
   public Database setFields(Database database, Fields fields) throws IOException {
     database.setOwner(fields.contains("owner") ? getOwner(database) : null);
     database.setTables(fields.contains("tables") ? getTables(database) : null);
@@ -137,12 +132,6 @@ public class DatabaseRepository extends EntityRepository<Database> {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withFullyQualifiedName(original.getFullyQualifiedName()).withName(original.getName())
             .withService(original.getService()).withId(original.getId());
-  }
-
-  @Override
-  public ResultList<Database> getResultList(List<Database> entities, String beforeCursor, String afterCursor,
-                                            int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DatabaseList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

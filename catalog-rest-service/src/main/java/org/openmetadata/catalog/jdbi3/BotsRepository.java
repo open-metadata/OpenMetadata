@@ -48,22 +48,12 @@ public class BotsRepository extends EntityRepository<Bots>{
   }
 
   @Override
-  public String getFullyQualifiedName(Bots entity) {
-    return entity.getName();
-  }
-
-  @Override
   public Bots setFields(Bots entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
 
   @Override
   public void restorePatchAttributes(Bots original, Bots update) throws IOException, ParseException { }
-
-  @Override
-  public ResultList<Bots> getResultList(List<Bots> entities, String beforeCursor, String afterCursor, int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new BotsList(entities);
-  }
 
   @Override
   public EntityInterface<Bots> getEntityInterface(Bots entity) {

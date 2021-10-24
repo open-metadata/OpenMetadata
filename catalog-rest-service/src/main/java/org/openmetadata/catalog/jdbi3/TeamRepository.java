@@ -87,11 +87,6 @@ public class TeamRepository extends EntityRepository<Team> {
   }
 
   @Override
-  public String getFullyQualifiedName(Team entity) {
-    return entity.getName();
-  }
-
-  @Override
   public Team setFields(Team team, Fields fields) throws IOException {
     if (!fields.contains("profile")) {
       team.setProfile(null);
@@ -105,12 +100,6 @@ public class TeamRepository extends EntityRepository<Team> {
   public void restorePatchAttributes(Team original, Team updated) throws IOException, ParseException {
     // Patch can't make changes to following fields. Ignore the changes
     updated.withName(original.getName()).withId(original.getId());
-  }
-
-  @Override
-  public ResultList<Team> getResultList(List<Team> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new TeamList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

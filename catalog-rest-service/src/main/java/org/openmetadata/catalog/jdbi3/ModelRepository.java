@@ -92,11 +92,6 @@ public class ModelRepository extends EntityRepository<Model> {
   }
 
   @Override
-  public String getFullyQualifiedName(Model entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Model setFields(Model model, Fields fields) throws IOException {
     model.setDisplayName(model.getDisplayName());
     model.setOwner(fields.contains("owner") ? getOwner(model) : null);
@@ -111,12 +106,6 @@ public class ModelRepository extends EntityRepository<Model> {
   @Override
   public void restorePatchAttributes(Model original, Model updated) throws IOException, ParseException {
 
-  }
-
-  @Override
-  public ResultList<Model> getResultList(List<Model> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new ModelList(entities, beforeCursor, afterCursor, total);
   }
 
   @Override

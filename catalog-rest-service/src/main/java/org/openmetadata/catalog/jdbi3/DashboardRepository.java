@@ -60,17 +60,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   }
 
   @Override
-  public String getFullyQualifiedName(Dashboard entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
-  public ResultList<Dashboard> getResultList(List<Dashboard> entities, String beforeCursor, String afterCursor,
-                                             int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DashboardList(entities, beforeCursor, afterCursor, total);
-  }
-
-  @Override
   public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
     return new DashboardEntityInterface(entity);
   }

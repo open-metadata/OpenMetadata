@@ -39,14 +39,10 @@ public abstract class EntityRepository<T> {
   /**
    * Entity related operations that should be implemented or overridden by entities
    */
-  public abstract String getFullyQualifiedName(T entity);
-  public abstract ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor,
-                                              int total) throws GeneralSecurityException, UnsupportedEncodingException;
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
   public abstract T setFields(T entity, Fields fields) throws IOException, ParseException;
   public abstract void restorePatchAttributes(T original, T updated) throws IOException, ParseException;
-
   public abstract void validate(T entity) throws IOException;
   public abstract void store(T entity, boolean update) throws IOException;
   public abstract void storeRelationships(T entity) throws IOException;
@@ -154,6 +150,15 @@ public abstract class EntityRepository<T> {
     entityUpdater.update();
     entityUpdater.store();
     return updated;
+  }
+
+  public final String getFullyQualifiedName(T entity) {
+    return getEntityInterface(entity).getFullyQualifiedName();
+  }
+
+  public final ResultList<T> getResultList(List<T> entities, String beforeCursor, String afterCursor, int total)
+          throws GeneralSecurityException, UnsupportedEncodingException {
+    return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
   private T createInternal(T entity) throws IOException {

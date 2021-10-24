@@ -72,11 +72,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   }
 
   @Override
-  public String getFullyQualifiedName(PipelineService entity) {
-    return entity.getName();
-  }
-
-  @Override
   public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
@@ -85,13 +80,6 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   public void restorePatchAttributes(PipelineService original, PipelineService updated) throws IOException,
           ParseException {
 
-  }
-
-  @Override
-  public ResultList<PipelineService> getResultList(List<PipelineService> entities, String beforeCursor,
-                                                   String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new PipelineServiceList(entities);
   }
 
   @Override

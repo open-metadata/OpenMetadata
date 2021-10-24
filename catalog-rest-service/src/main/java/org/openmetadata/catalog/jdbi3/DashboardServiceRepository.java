@@ -71,11 +71,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   }
 
   @Override
-  public String getFullyQualifiedName(DashboardService entity) {
-    return entity.getName();
-  }
-
-  @Override
   public DashboardService setFields(DashboardService entity, Fields fields) throws IOException, ParseException {
     return entity;
   }
@@ -83,13 +78,6 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   @Override
   public void restorePatchAttributes(DashboardService original, DashboardService updated) throws IOException,
           ParseException {
-  }
-
-  @Override
-  public ResultList<DashboardService> getResultList(List<DashboardService> entities, String beforeCursor,
-                                                    String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new DashboardServiceList(entities);
   }
 
   @Override

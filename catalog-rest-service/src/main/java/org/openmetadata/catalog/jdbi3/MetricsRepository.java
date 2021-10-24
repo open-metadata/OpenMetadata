@@ -50,11 +50,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
   }
 
   @Override
-  public String getFullyQualifiedName(Metrics entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Metrics setFields(Metrics metrics, Fields fields) throws IOException {
     metrics.setOwner(fields.contains("owner") ? getOwner(metrics) : null);
     metrics.setService(fields.contains("service") ? getService(metrics) : null);
@@ -65,12 +60,6 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   @Override
   public void restorePatchAttributes(Metrics original, Metrics updated) throws IOException, ParseException {
-  }
-
-  @Override
-  public ResultList<Metrics> getResultList(List<Metrics> entities, String beforeCursor, String afterCursor,
-                                           int total) throws GeneralSecurityException, UnsupportedEncodingException {
-    return new MetricsList(entities);
   }
 
   @Override

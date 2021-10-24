@@ -45,11 +45,6 @@ public class ReportRepository extends EntityRepository<Report> {
   }
 
   @Override
-  public String getFullyQualifiedName(Report entity) {
-    return entity.getFullyQualifiedName();
-  }
-
-  @Override
   public Report setFields(Report report, Fields fields) throws IOException {
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setService(fields.contains("service") ? getService(report) : null);
@@ -61,12 +56,6 @@ public class ReportRepository extends EntityRepository<Report> {
   @Override
   public void restorePatchAttributes(Report original, Report updated) throws IOException, ParseException {
 
-  }
-
-  @Override
-  public ResultList<Report> getResultList(List<Report> entities, String beforeCursor, String afterCursor, int total)
-          throws GeneralSecurityException, UnsupportedEncodingException {
-    return new ReportList(entities);
   }
 
   @Override
