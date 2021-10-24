@@ -247,9 +247,9 @@ public abstract class EntityRepository<T> {
     public final Double getNewVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
-        newVersion = oldVersion + 1.0;
+        newVersion = Math.round((oldVersion + 1.0) * 10.0)/10.0;
       } else if (!fieldsUpdated.isEmpty() || !fieldsAdded.isEmpty() || !fieldsDeleted.isEmpty()) {
-        newVersion = oldVersion + 0.1;
+        newVersion = Math.round((oldVersion + 0.1) * 10.0)/10.0;
       }
       LOG.info("{}->{} - Fields added {}, updated {}, deleted {}",
               oldVersion, newVersion, fieldsAdded, fieldsUpdated, fieldsDeleted);
