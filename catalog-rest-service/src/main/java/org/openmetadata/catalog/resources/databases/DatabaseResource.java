@@ -136,7 +136,7 @@ public class DatabaseResource {
                                    @Context SecurityContext securityContext,
                                    @Parameter(description = "Fields requested in the returned resource",
                                    schema = @Schema(type = "string", example = FIELDS))
-                           @QueryParam("fields") Optional<String> fieldsParam,
+                           @QueryParam("fields") String fieldsParam,
                                    @Parameter(description = "Filter databases by service name",
                                    schema = @Schema(type = "string", example = "snowflakeWestCoast"))
                            @QueryParam("service") String serviceParam,
@@ -152,8 +152,7 @@ public class DatabaseResource {
                            @QueryParam("after") String after
         ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Database> databases;
 
@@ -183,9 +182,8 @@ public class DatabaseResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.get(id, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
@@ -205,9 +203,8 @@ public class DatabaseResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                         schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();

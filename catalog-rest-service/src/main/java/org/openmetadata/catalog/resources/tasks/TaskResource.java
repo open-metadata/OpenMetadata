@@ -136,7 +136,7 @@ public class TaskResource {
                                @Context SecurityContext securityContext,
                                @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
-                        @QueryParam("fields") Optional<String> fieldsParam,
+                        @QueryParam("fields") String fieldsParam,
                                @Parameter(description = "Filter tasks by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
@@ -151,8 +151,7 @@ public class TaskResource {
                         @QueryParam("after") String after
   ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
     ResultList<Task> tasks;
     if (before != null) { // Reverse paging
@@ -178,9 +177,8 @@ public class TaskResource {
                   @Context SecurityContext securityContext,
                   @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
 
@@ -198,9 +196,8 @@ public class TaskResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);
     return Response.ok(task).build();

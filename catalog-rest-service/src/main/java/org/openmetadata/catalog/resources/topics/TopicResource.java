@@ -198,9 +198,8 @@ public class TopicResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") Optional<String> fieldsParam) throws IOException, ParseException {
-    String getFields = fieldsParam.orElse(EntityUtil.SERVICE_FIELD);
-    Fields fields = new Fields(FIELD_LIST, getFields);
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Topic topic = dao.getByName(fqn, fields);
     addHref(uriInfo, topic);
     return Response.ok(topic).build();
