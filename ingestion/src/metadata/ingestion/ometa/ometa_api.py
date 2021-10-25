@@ -295,16 +295,11 @@ class OMeta(Generic[T, C]):
         """
 
         suffix = self.get_suffix(entity)
+        url_limit = f"?limit={limit}"
+        url_after = f"&after={after}" if after else ""
+        url_fields = f"&fields={fields}" if fields else ""
 
-        if fields is None:
-            resp = self.client.get(suffix)
-        else:
-            if after is not None:
-                resp = self.client.get(
-                    f"{suffix}?fields={fields}&after={after}&limit={limit}"
-                )
-            else:
-                resp = self.client.get(f"{suffix}?fields={fields}&limit={limit}")
+        resp = self.client.get(f"{suffix}{url_limit}{url_after}{url_fields}")
 
         if self._use_raw_data:
             return resp
