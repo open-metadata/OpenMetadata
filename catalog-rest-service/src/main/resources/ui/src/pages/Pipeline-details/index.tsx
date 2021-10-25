@@ -467,7 +467,7 @@ const MyPipelinePage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="tw-px-4 w-full">
+        <div className="tw-px-4 tw-w-full">
           <EntityPageInfo
             isTagEditable
             entityName={displayName}
@@ -491,10 +491,10 @@ const MyPipelinePage = () => {
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw--mx-4 tw-p-4">
+            <div className="tw-bg-white tw--mx-4 tw-p-4 tw-h-screen">
               {activeTab === 1 && (
                 <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
