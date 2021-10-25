@@ -270,7 +270,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
   }, [entityLineage]);
 
   return (
-    <div className="tw-w-full tw-h-screen">
+    <div className="tw-w-full tw-h-full">
       {(entityLineage?.downstreamEdges ?? []).length > 0 ||
       (entityLineage.upstreamEdges ?? []).length ? (
         <ReactFlowProvider>
