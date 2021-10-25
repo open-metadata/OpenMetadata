@@ -66,8 +66,12 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
             return (
               <Fragment key={colIndex}>
                 <tbody className="tableBody">
-                  <tr className={classNames('tableBody-row')}>
-                    <td className="tw-relative tableBody-cell">
+                  <tr
+                    className={classNames('tableBody-row')}
+                    data-testid="tableBody-row">
+                    <td
+                      className="tw-relative tableBody-cell"
+                      data-testid="tableBody-cell">
                       <span
                         className="tw-mr-2 tw-cursor-pointer"
                         onClick={() =>
@@ -91,7 +95,9 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                       </span>
                       {col.name}
                     </td>
-                    <td className="tw-relative tableBody-cell profiler-graph">
+                    <td
+                      className="tw-relative tableBody-cell profiler-graph"
+                      data-testid="profiler-graph">
                       <TableProfilerGraph
                         data={
                           col.data
