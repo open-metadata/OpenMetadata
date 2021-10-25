@@ -52,8 +52,8 @@ logger = logging.getLogger(__name__)
 class ElasticSearchConfig(ConfigModel):
     es_host: str
     es_port: int = 9200
-    es_username: str
-    es_password: str
+    es_username: Optional[str] = None
+    es_password: Optional[str] = None
     index_tables: Optional[bool] = True
     index_topics: Optional[bool] = True
     index_dashboards: Optional[bool] = True
