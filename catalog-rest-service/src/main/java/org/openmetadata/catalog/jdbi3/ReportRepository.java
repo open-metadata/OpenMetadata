@@ -16,115 +16,78 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
-import org.openmetadata.catalog.jdbi3.TeamRepository.TeamDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository.UsageDAO;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserDAO;
+import org.openmetadata.catalog.resources.reports.ReportResource;
+import org.openmetadata.catalog.resources.reports.ReportResource.ReportList;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
+import org.openmetadata.catalog.util.ResultList;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
-public abstract class ReportRepository {
+public class ReportRepository extends EntityRepository<Report> {
   private static final Fields REPORT_UPDATE_FIELDS = new Fields(ReportResource.FIELD_LIST, "owner,service");
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract ReportDAO reportDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @CreateSqlObject
-  abstract UserDAO userDAO();
-
-  @CreateSqlObject
-  abstract TeamDAO teamDAO();
-
-  @CreateSqlObject
-  abstract UsageDAO usageDAO();
-
-  @Transaction
-  public Report create(Report report, EntityReference service, EntityReference owner) throws IOException {
-    getService(service);
-    return createInternal(report, service, owner);
+  public ReportRepository(CollectionDAO dao) {
+    super(Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS, REPORT_UPDATE_FIELDS);
+    this.dao = dao;
   }
 
-  @Transaction
-  public PutResponse<Report> createOrUpdate(Report updatedReport, EntityReference service, EntityReference newOwner)
-          throws IOException {
-    String fqn = service.getName() + "." + updatedReport.getName();
-    Report storedReport = JsonUtils.readValue(reportDAO().findByFQN(fqn), Report.class);
-    if (storedReport == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updatedReport, service, newOwner));
-    }
-    // Update existing report
-    EntityUtil.populateOwner(userDAO(), teamDAO(), newOwner); // Validate new owner
-    if (storedReport.getDescription() == null || storedReport.getDescription().isEmpty()) {
-      storedReport.withDescription(updatedReport.getDescription());
-    }
-
-    reportDAO().update(storedReport.getId().toString(), JsonUtils.pojoToJson(storedReport));
-
-    // Update owner relationship
-    setFields(storedReport, REPORT_UPDATE_FIELDS); // First get the ownership information
-    updateOwner(storedReport, storedReport.getOwner(), newOwner);
-
-    // Service can't be changed in update since service name is part of FQN and
-    // change to a different service will result in a different FQN and creation of a new database under the new service
-    storedReport.setService(service);
-
-    return new PutResponse<>(Response.Status.OK, storedReport);
-  }
-
-  public Report get(String id, Fields fields) throws IOException {
-    return setFields(EntityUtil.validate(id, reportDAO().findById(id), Report.class), fields);
-  }
-
-  public List<Report> list(Fields fields) throws IOException {
-    List<String> jsonList = reportDAO().list();
-    List<Report> reportList = new ArrayList<>();
-    for (String json : jsonList) {
-      reportList.add(setFields(JsonUtils.readValue(json, Report.class), fields));
-    }
-    return reportList;
-  }
-
-  private Report setFields(Report report, Fields fields) throws IOException {
+  @Override
+  public Report setFields(Report report, Fields fields) throws IOException {
     report.setOwner(fields.contains("owner") ? getOwner(report) : null);
     report.setService(fields.contains("service") ? getService(report) : null);
-    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(usageDAO(), report.getId()) :
-            null);
+    report.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
+            report.getId()) : null);
     return report;
   }
 
-  private Report createInternal(Report report, EntityReference service, EntityReference owner) throws IOException {
-    String fqn = service.getName() + "." + report.getName();
-    report.setFullyQualifiedName(fqn);
+  @Override
+  public void restorePatchAttributes(Report original, Report updated) throws IOException, ParseException {
 
-    EntityUtil.populateOwner(userDAO(), teamDAO(), owner); // Validate owner
+  }
 
-    reportDAO().insert(JsonUtils.pojoToJson(report));
-    setService(report, service);
-    setOwner(report, owner);
-    return report;
+  @Override
+  public EntityInterface<Report> getEntityInterface(Report entity) {
+    return new ReportEntityInterface(entity);
+  }
+
+  @Override
+  public void validate(Report report) throws IOException {
+    // TODO clean this up
+    setService(report, report.getService());
+    setOwner(report, report.getOwner());
+
+//    String fqn = service.getName() + "." + report.getName();
+//    report.setFullyQualifiedName(fqn);
+//    getService(service);
+    EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
+  }
+
+  @Override
+  public void store(Report report, boolean update) throws IOException {
+    // TODO add right checks
+    dao.reportDAO().insert(report);
+  }
+
+  @Override
+  public void storeRelationships(Report entity) throws IOException {
+    // TODO
   }
 
   private EntityReference getService(Report report) {
-    return report == null ? null : getService(EntityUtil.getService(relationshipDAO(), report.getId()));
+    return report == null ? null : getService(EntityUtil.getService(dao.relationshipDAO(), report.getId()));
   }
 
   private EntityReference getService(EntityReference service) {
@@ -135,43 +98,92 @@ public abstract class ReportRepository {
   public void setService(Report report, EntityReference service) {
     if (service != null && report != null) {
       getService(service); // Populate service details
-      relationshipDAO().insert(service.getId().toString(), report.getId().toString(), service.getType(),
+      dao.relationshipDAO().insert(service.getId().toString(), report.getId().toString(), service.getType(),
               Entity.REPORT, Relationship.CONTAINS.ordinal());
       report.setService(service);
     }
   }
 
   private EntityReference getOwner(Report report) throws IOException {
-    return report == null ? null : EntityUtil.populateOwner(report.getId(), relationshipDAO(), userDAO(), teamDAO());
+    return report == null ? null : EntityUtil.populateOwner(report.getId(), dao.relationshipDAO(), dao.userDAO(),
+            dao.teamDAO());
   }
 
   public void setOwner(Report report, EntityReference owner) {
-    EntityUtil.setOwner(relationshipDAO(), report.getId(), Entity.REPORT, owner);
+    EntityUtil.setOwner(dao.relationshipDAO(), report.getId(), Entity.REPORT, owner);
     report.setOwner(owner);
   }
 
-  private void updateOwner(Report report, EntityReference origOwner, EntityReference newOwner) {
-    EntityUtil.updateOwner(relationshipDAO(), origOwner, newOwner, report.getId(), Entity.REPORT);
-    report.setOwner(newOwner);
-  }
+  public static class ReportEntityInterface implements EntityInterface<Report> {
+    private final Report entity;
 
-  public interface ReportDAO {
-    @SqlUpdate("INSERT INTO report_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+    ReportEntityInterface(Report entity) {
+      this.entity = entity;
+    }
 
-    @SqlUpdate("UPDATE report_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
 
-    @SqlQuery("SELECT json FROM report_entity WHERE id = :id")
-    String findById(@Bind("name") String id);
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
 
-    @SqlQuery("SELECT json FROM report_entity WHERE fullyQualifiedName = :name")
-    String findByFQN(@Bind("name") String name);
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
 
-    @SqlQuery("SELECT json FROM report_entity")
-    List<String> list();
+    @Override
+    public EntityReference getOwner() {
+      return entity.getOwner();
+    }
 
-    @SqlQuery("SELECT EXISTS (SELECT * FROM report_entity where id = :id)")
-    boolean exists(@Bind("id") String id);
+    @Override
+    public String getFullyQualifiedName() {
+      return entity.getFullyQualifiedName();
+    }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.REPORT);
+    }
+
+    @Override
+    public Report getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

@@ -16,9 +16,9 @@
 
 package org.openmetadata.catalog.events;
 
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.util.ParallelStreamUtil;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,13 +41,13 @@ public class EventFilter implements ContainerResponseFilter {
   private final ForkJoinPool forkJoinPool;
   private final List<EventHandler> eventHandlers;
 
-  public EventFilter(CatalogApplicationConfig config, DBI jdbi) {
+  public EventFilter(CatalogApplicationConfig config, Jdbi jdbi) {
     this.forkJoinPool = new ForkJoinPool(FORK_JOIN_POOL_PARALLELISM);
     this.eventHandlers = new ArrayList<>();
     registerEventHandlers(config, jdbi);
   }
 
-  private void registerEventHandlers(CatalogApplicationConfig config, DBI jdbi) {
+  private void registerEventHandlers(CatalogApplicationConfig config, Jdbi jdbi) {
     try {
       Set<String> eventHandlerClassNames = config.getEventHandlerConfiguration().getEventHandlerClassNames();
       for (String eventHandlerClassName : eventHandlerClassNames) {

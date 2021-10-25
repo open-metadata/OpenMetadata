@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -38,7 +39,6 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
@@ -80,7 +80,7 @@ import java.util.UUID;
 @Api(value = "Tables collection", tags = "Tables collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tables", repositoryClass = "org.openmetadata.catalog.jdbi3.TableRepository")
+@Collection(name = "tables")
 public class TableResource {
   private static final Logger LOG = LoggerFactory.getLogger(TableResource.class);
   private static final String TABLE_COLLECTION_PATH = "v1/tables/";
@@ -102,9 +102,9 @@ public class TableResource {
   }
 
   @Inject
-  public TableResource(TableRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "TableRepository must not be null");
-    this.dao = dao;
+  public TableResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
+    this.dao = new TableRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -228,8 +228,9 @@ public class TableResource {
             .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withOwner(create.getOwner())
-            .withUpdatedAt(new Date());
-    table = addHref(uriInfo, dao.create(validateNewTable(table), create.getDatabase()));
+            .withUpdatedAt(new Date())
+            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    table = addHref(uriInfo, dao.create(validateNewTable(table)));
     return Response.created(table.getHref()).entity(table).build();
   }
 
@@ -251,9 +252,10 @@ public class TableResource {
             .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withOwner(create.getOwner())
-            .withUpdatedAt(new Date());
+            .withUpdatedAt(new Date())
+            .withDatabase(new EntityReference().withId(create.getDatabase()));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table), create.getDatabase());
+    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table));
     table = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(table).build();
   }
@@ -279,7 +281,7 @@ public class TableResource {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Table table = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    table = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    table = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, table);
   }
 
@@ -296,7 +298,7 @@ public class TableResource {
                          @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 
@@ -316,7 +318,7 @@ public class TableResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Status status = dao.addFollower(id, userId);
+    Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Table table = dao.get(id, fields);
     return Response.status(status).entity(table).build();
   }
@@ -338,7 +340,7 @@ public class TableResource {
                            @PathParam("id") String id, TableJoins joins) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "joins");
-    dao.addJoins(id, joins);
+    dao.addJoins(UUID.fromString(id), joins);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }
@@ -353,7 +355,7 @@ public class TableResource {
                                 @PathParam("id") String id, TableData tableData) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "sampleData");
-    dao.addSampleData(id, tableData);
+    dao.addSampleData(UUID.fromString(id), tableData);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }
@@ -368,7 +370,7 @@ public class TableResource {
                              @PathParam("id") String id, TableProfile tableProfile) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "tableProfile");
-    dao.addTableProfileData(id, tableProfile);
+    dao.addTableProfileData(UUID.fromString(id), tableProfile);
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }
@@ -386,7 +388,7 @@ public class TableResource {
                                          schema = @Schema(type = "string"))
                                  @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     Table table = dao.get(id, fields);
     return addHref(uriInfo, table);
   }

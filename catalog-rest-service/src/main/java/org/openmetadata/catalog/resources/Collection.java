@@ -25,6 +25,4 @@ import java.lang.annotation.Target;
 @Target(value = ElementType.TYPE)
 public @interface Collection {
   String name();
-
-  String repositoryClass() default "";
 }

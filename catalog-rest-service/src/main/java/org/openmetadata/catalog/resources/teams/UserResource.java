@@ -29,7 +29,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.teams.CreateUser;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.UserRepository;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -76,7 +78,7 @@ import java.util.UUID;
 @Api(value = "User collection", tags = "User collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "users", repositoryClass = "org.openmetadata.catalog.jdbi3.UserRepository")
+@Collection(name = "users")
 public class UserResource {
   public static final Logger LOG = LoggerFactory.getLogger(UserResource.class);
   public static final String USER_COLLECTION_PATH = "v1/users/";
@@ -96,9 +98,9 @@ public class UserResource {
   }
 
   @Inject
-  public UserResource(UserRepository dao, CatalogAuthorizer authorizer) {
+  public UserResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "UserRepository must not be null");
-    this.dao = dao;
+    this.dao = new UserRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -149,9 +151,9 @@ public class UserResource {
 
     ResultList<User> users;
     if (before != null) { // Reverse paging
-      users = dao.listBefore(fields, limitParam, before);
+      users = dao.listBefore(fields, null, limitParam, before);
     } else { // Forward paging or first page
-      users = dao.listAfter(fields, limitParam, after);
+      users = dao.listAfter(fields, null, limitParam, after);
     }
     Optional.ofNullable(users.getData()).orElse(Collections.emptyList()).forEach(u -> addHref(uriInfo, u));
     return users;
@@ -171,7 +173,7 @@ public class UserResource {
   public User get(@Context UriInfo uriInfo, @Context SecurityContext securityContext, @PathParam("id") String id,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     User user = dao.get(id, fields);
     return addHref(uriInfo, user);
@@ -192,7 +194,7 @@ public class UserResource {
                       @PathParam("name") String name,
                   @Parameter(description = "Fields requested in the returned resource",
                           schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     User user = dao.getByName(name, fields);
     return addHref(uriInfo, user);
@@ -212,7 +214,7 @@ public class UserResource {
   public User getCurrentLoggedInUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                                      @Parameter(description = "Fields requested in the returned resource",
                                              schema = @Schema(type = "string", example = FIELDS))
-                                     @QueryParam("fields") String fieldsParam) throws IOException {
+                                     @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     String currentUserName = securityContext.getUserPrincipal().getName();
     User user = dao.getByName(currentUserName, fields);
@@ -229,7 +231,7 @@ public class UserResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createUser(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                             @Valid CreateUser create) throws IOException {
+                             @Valid CreateUser create) throws IOException, ParseException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
@@ -237,8 +239,9 @@ public class UserResource {
             .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
             .withProfile(create.getProfile()).withTimezone(create.getTimezone())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(user, create.getTeams()));
+            .withUpdatedAt(new Date())
+            .withTeams(dao.validateTeams(create.getTeams()));
+    addHref(uriInfo, dao.create(user));
     return Response.created(user.getHref()).entity(user).build();
   }
 
@@ -253,7 +256,7 @@ public class UserResource {
           })
   public Response createOrUpdateUser(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
-                                     @Valid CreateUser create) throws IOException {
+                                     @Valid CreateUser create) throws IOException, ParseException {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
@@ -263,7 +266,8 @@ public class UserResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(user));
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+            new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
     user = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(user).build();
@@ -284,11 +288,11 @@ public class UserResource {
                                             "{op:remove, path:/a}," +
                                             "{op:add, path: /b, value: val}" +
                                             "]")}))
-                            JsonPatch patch) throws IOException {
-    User user = dao.get(id);
+                            JsonPatch patch) throws IOException, ParseException {
+    User user = dao.get(id, new Fields(FIELD_LIST, null));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(user));
-    return addHref(uriInfo, dao.patch(id, securityContext.getUserPrincipal().getName(), patch));
+            new UserEntityInterface(user).getEntityReference());
+    return addHref(uriInfo, dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE
@@ -303,7 +307,7 @@ public class UserResource {
   public Response delete(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @PathParam("id") String id) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

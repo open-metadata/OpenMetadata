@@ -49,7 +49,7 @@ const getDataLabel = (v = '', separator = '.') => {
   const length = v.split(separator).length;
 
   return (
-    <p className="tw-break-words description-text">
+    <p className="tw-break-words description-text" data-testid="lineage-entity">
       {v.split(separator)[length - 1]}
     </p>
   );

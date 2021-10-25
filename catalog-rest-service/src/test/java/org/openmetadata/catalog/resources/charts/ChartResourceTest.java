@@ -31,6 +31,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
@@ -91,8 +92,6 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
-
-
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
@@ -104,12 +103,12 @@ public class ChartResourceTest extends CatalogApplicationTest {
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));
     DashboardService service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    SUPERSET_REFERENCE = EntityUtil.getEntityReference(service);
+    SUPERSET_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
 
     createService.withName("looker").withServiceType(DashboardServiceType.Looker)
             .withDashboardUrl(new URI("http://localhost:0"));
     service = DashboardServiceResourceTest.createService(createService, adminAuthHeaders());
-    LOOKER_REFERENCE = EntityUtil.getEntityReference(service);
+    LOOKER_REFERENCE = new DashboardServiceEntityInterface(service).getEntityReference();
   }
 
   @Test
@@ -526,7 +525,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
     chart = byName ? getChartByName(chart.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
-    assertNull(chart.getService());
+    assertNotNull(chart.getService()); // We always return the service
 
     // .../charts?fields=owner,service
     fields = "owner,service";

@@ -17,6 +17,12 @@
 package org.openmetadata.catalog.resources.search;
 
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.elasticsearch.client.RestClientBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.suggest.Suggest;
 import org.elasticsearch.search.suggest.SuggestBuilder;
@@ -66,9 +72,16 @@ public class SearchResource {
   private static final Logger LOG = LoggerFactory.getLogger(SearchResource.class);
 
   public SearchResource(ElasticSearchConfiguration esConfig) {
-    this.client = new RestHighLevelClient(
-            RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"))
-    );
+    RestClientBuilder restClientBuilder = RestClient.builder(new HttpHost(esConfig.getHost(), esConfig.getPort(), "http"));
+    if(StringUtils.isNotEmpty(esConfig.getUsername())){
+      CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+      credentialsProvider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
+      restClientBuilder.setHttpClientConfigCallback(httpAsyncClientBuilder -> {
+        httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+        return  httpAsyncClientBuilder;
+      });
+    }
+    this.client = new RestHighLevelClient(restClientBuilder);
   }
 
   @GET

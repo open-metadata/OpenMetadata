@@ -19,6 +19,7 @@ package org.openmetadata.catalog.resources.databases;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -31,12 +32,12 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -90,20 +91,19 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
     DatabaseService service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    SNOWFLAKE_REFERENCE = EntityUtil.getEntityReference(service);
+    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    REDSHIFT_REFERENCE = EntityUtil.getEntityReference(service);
+    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    BIGQUERY_REFERENCE = EntityUtil.getEntityReference(service);
+    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
 
     createService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
     service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    MYSQL_REFERENCE = EntityUtil.getEntityReference(service);
-
+    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
   }
 
   @Test
@@ -239,6 +239,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
+  @Order(1)
   @Test
   public void get_databaseListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
     // Create a large number of databases
@@ -504,7 +505,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database = byName ? getDatabaseByName(database.getFullyQualifiedName(), fields, adminAuthHeaders()) :
             getDatabase(database.getId(), fields, adminAuthHeaders());
     assertNotNull(database.getOwner());
-    assertNull(database.getService());
+    assertNotNull(database.getService()); // We always return the service
     assertNull(database.getTables());
 
     // .../databases?fields=owner,service

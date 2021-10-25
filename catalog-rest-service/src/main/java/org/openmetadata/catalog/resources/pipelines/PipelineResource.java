@@ -28,6 +28,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreatePipeline;
 import org.openmetadata.catalog.entity.data.Pipeline;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -62,6 +63,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -74,7 +76,7 @@ import java.util.UUID;
 @Api(value = "Pipelines collection", tags = "Pipelines collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "pipelines", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineRepository")
+@Collection(name = "pipelines")
 public class PipelineResource {
   public static final String PIPELINE_COLLECTION_PATH = "v1/pipelines/";
   private final PipelineRepository dao;
@@ -101,9 +103,9 @@ public class PipelineResource {
   }
 
   @Inject
-  public PipelineResource(PipelineRepository dao, CatalogAuthorizer authorizer) {
+  public PipelineResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineRepository must not be null");
-    this.dao = dao;
+    this.dao = new PipelineRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -134,7 +136,7 @@ public class PipelineResource {
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = PipelineList.class)))
           })
-  public PipelineList list(@Context UriInfo uriInfo,
+  public ResultList<Pipeline> list(@Context UriInfo uriInfo,
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
@@ -154,11 +156,11 @@ public class PipelineResource {
                             @Parameter(description = "Returns list of pipelines after this cursor",
                                     schema = @Schema(type = "string"))
                             @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    PipelineList pipelines;
+    ResultList<Pipeline> pipelines;
     if (before != null) { // Reverse paging
       pipelines = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
@@ -183,7 +185,7 @@ public class PipelineResource {
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
                                schema = @Schema(type = "string", example = FIELDS))
-                       @QueryParam("fields") String fieldsParam) throws IOException {
+                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -202,7 +204,7 @@ public class PipelineResource {
                              @Context SecurityContext securityContext,
                              @Parameter(description = "Fields requested in the returned resource",
                                      schema = @Schema(type = "string", example = FIELDS))
-                             @QueryParam("fields") String fieldsParam) throws IOException {
+                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Pipeline pipeline = dao.getByName(fqn, fields);
     return addHref(uriInfo, pipeline);
@@ -219,7 +221,7 @@ public class PipelineResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreatePipeline create) throws IOException {
+                         @Valid CreatePipeline create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
@@ -249,12 +251,12 @@ public class PipelineResource {
                                                              "{op:remove, path:/a}," +
                                                              "{op:add, path: /b, value: val}" +
                                                              "]")}))
-                                             JsonPatch patch) throws IOException {
+                                             JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Pipeline pipeline = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(pipeline));
-    pipeline = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+    pipeline = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, pipeline);
   }
 
@@ -269,7 +271,7 @@ public class PipelineResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreatePipeline create) throws IOException {
+                                 @Valid CreatePipeline create) throws IOException, ParseException {
     Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
@@ -298,9 +300,9 @@ public class PipelineResource {
                               @PathParam("id") String id,
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
-                                      String userId) throws IOException {
+                                      String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(id, userId);
+    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
     Pipeline pipeline = dao.get(id, fields);
     return Response.status(status).entity(pipeline).build();
   }
@@ -316,9 +318,9 @@ public class PipelineResource {
                                   @PathParam("id") String id,
                                   @Parameter(description = "Id of the user being removed as follower",
                                           schema = @Schema(type = "string"))
-                                  @PathParam("userId") String userId) throws IOException {
+                                  @PathParam("userId") String userId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(id, userId);
+    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
     Pipeline pipeline = dao.get(id, fields);
     return addHref(uriInfo, pipeline);
   }
@@ -332,7 +334,7 @@ public class PipelineResource {
                   @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

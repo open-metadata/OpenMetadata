@@ -17,6 +17,8 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.resources.tags.TagResource;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagCategory;
@@ -24,14 +26,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.skife.jdbi.v2.StatementContext;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.skife.jdbi.v2.sqlobject.customizers.RegisterMapper;
-import org.skife.jdbi.v2.tweak.ResultSetMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,18 +37,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class TagRepository {
+public class TagRepository {
   public static final Logger LOG = LoggerFactory.getLogger(TagRepository.class);
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract TagDAO tagDAO();
+  public TagRepository(CollectionDAO dao) { this.dao = dao; }
+
 
   /**
    * Initialize a category one time when the service comes up for the first time
    */
   @Transaction
   public void initCategory(TagCategory category) throws JsonProcessingException {
-    String json = tagDAO().findCategory(category.getName());
+    String json = dao.tagDAO().findCategory(category.getName());
     if (json == null) {
       TagResource.LOG.info("Tag category {} is not initialized", category.getName());
       createCategoryInternal(category);
@@ -76,24 +71,24 @@ public abstract class TagRepository {
   @Transaction
   public Tag createPrimaryTag(String category, Tag tag) throws IOException {
     // Validate category
-    EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
+    EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
     return createTagInternal(category, tag);
   }
 
   @Transaction
   public Tag createSecondaryTag(String category, String primaryTag, Tag tag) throws IOException {
     // Validate category
-    EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
+    EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
 
     String primaryTagFQN = category + "." + primaryTag;
-    EntityUtil.validate(primaryTag, tagDAO().findTag(primaryTagFQN), Tag.class);
+    EntityUtil.validate(primaryTag, dao.tagDAO().findTag(primaryTagFQN), Tag.class);
 
     return createTagInternal(primaryTagFQN, tag);
   }
 
   @Transaction
   public List<TagCategory> listCategories(Fields fields) throws IOException {
-    List<String> jsons = tagDAO().listCategories();
+    List<String> jsons = dao.tagDAO().listCategories();
     List<TagCategory> list = new ArrayList<>();
     for (String json : jsons) {
       TagCategory category = JsonUtils.readValue(json, TagCategory.class);
@@ -104,7 +99,8 @@ public abstract class TagRepository {
 
   @Transaction
   public TagCategory getCategory(String categoryName, Fields fields) throws IOException {
-    TagCategory category = EntityUtil.validate(categoryName, tagDAO().findCategory(categoryName), TagCategory.class);
+    TagCategory category = EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName),
+            TagCategory.class);
     category = setFields(category, fields);
     return populateCategoryTags(category, fields);
   }
@@ -112,17 +108,17 @@ public abstract class TagRepository {
   @Transaction
   public Tag getTag(String category, String fqn, Fields fields) throws IOException {
     // Validate category
-    EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
+    EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
 
     // Get tags that match <category>.<tagName>
-    Tag tag = setFields(EntityUtil.validate(fqn, tagDAO().findTag(fqn), Tag.class), fields);
+    Tag tag = setFields(EntityUtil.validate(fqn, dao.tagDAO().findTag(fqn), Tag.class), fields);
     return populateChildrenTags(tag, fields);
   }
 
   @Transaction
   public TagCategory updateCategory(String category, TagCategory updated) throws IOException {
     // Validate category
-    TagCategory original = EntityUtil.validate(category, tagDAO().findCategory(category), TagCategory.class);
+    TagCategory original = EntityUtil.validate(category, dao.tagDAO().findCategory(category), TagCategory.class);
     if (!original.getName().equals(updated.getName())) {
       // Category name changed - update tag names starting from category and all the children tags
       LOG.info("Tag category name changed from {} to {}", original.getName(), updated.getName());
@@ -131,7 +127,7 @@ public abstract class TagRepository {
     }
     original.setDescription(updated.getDescription());
     original.setCategoryType(updated.getCategoryType());
-    tagDAO().updateCategory(category, JsonUtils.pojoToJson(original));
+    dao.tagDAO().updateCategory(category, JsonUtils.pojoToJson(original));
 
     // Populate response fields
     return populateCategoryTags(original, null);
@@ -140,7 +136,7 @@ public abstract class TagRepository {
   @Transaction
   public Tag updatePrimaryTag(String categoryName, String primaryTag, Tag updated) throws IOException {
     // Validate categoryName
-    EntityUtil.validate(categoryName, tagDAO().findCategory(categoryName), TagCategory.class);
+    EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     return updateTag(categoryName, primaryTag, updated);
   }
 
@@ -148,7 +144,7 @@ public abstract class TagRepository {
   public Tag updateSecondaryTag(String categoryName, String primaryTag, String secondaryTag, Tag updated)
           throws IOException {
     // Validate categoryName
-    EntityUtil.validate(categoryName, tagDAO().findCategory(categoryName), TagCategory.class);
+    EntityUtil.validate(categoryName, dao.tagDAO().findCategory(categoryName), TagCategory.class);
     String fqnPrefix = categoryName + "." + primaryTag;
     return updateTag(fqnPrefix, secondaryTag, updated);
   }
@@ -156,7 +152,7 @@ public abstract class TagRepository {
   private Tag updateTag(String fqnPrefix, String tagName, Tag updated) throws IOException {
     // Validate tag that needs to be updated exists
     String originalFQN = fqnPrefix + "." + tagName;
-    Tag original = EntityUtil.validate(originalFQN, tagDAO().findTag(originalFQN), Tag.class);
+    Tag original = EntityUtil.validate(originalFQN, dao.tagDAO().findTag(originalFQN), Tag.class);
 
     if (!original.getName().equals(updated.getName())) {
       // Tag name changed
@@ -166,7 +162,7 @@ public abstract class TagRepository {
       original.withName(updated.getName()).withFullyQualifiedName(updatedFQN);
     }
     original.withDescription(updated.getDescription()).withAssociatedTags(updated.getAssociatedTags());
-    tagDAO().updateTag(originalFQN, JsonUtils.pojoToJson(original));
+    dao.tagDAO().updateTag(originalFQN, JsonUtils.pojoToJson(original));
 
     // Populate children
     return populateChildrenTags(original, null);
@@ -183,7 +179,7 @@ public abstract class TagRepository {
    */
   private void updateChildrenTagNames(String prefix, String newPrefix) throws IOException {
     // Update the fully qualified names of all the primary and secondary tags
-    List<String> groupJsons = tagDAO().listChildrenTags(prefix);
+    List<String> groupJsons = dao.tagDAO().listChildrenTags(prefix);
 
     for (String json : groupJsons) {
       Tag tag = JsonUtils.readValue(json, Tag.class);
@@ -191,7 +187,7 @@ public abstract class TagRepository {
       String newFQN = oldFQN.replace(prefix, newPrefix);
       LOG.info("Replacing tag fqn from {} to {}", oldFQN, newFQN);
       tag.setFullyQualifiedName(oldFQN.replace(prefix, newPrefix));
-      tagDAO().updateTag(oldFQN, JsonUtils.pojoToJson(tag));
+      dao.tagDAO().updateTag(oldFQN, JsonUtils.pojoToJson(tag));
       updateChildrenTagNames(oldFQN, newFQN);
     }
   }
@@ -199,7 +195,7 @@ public abstract class TagRepository {
   private TagCategory createCategoryInternal(TagCategory category) throws JsonProcessingException {
     List<Tag> primaryTags = category.getChildren();
     category.setChildren(null); // Children are not stored as json and are constructed on the fly
-    tagDAO().insertCategory(JsonUtils.pojoToJson(category));
+    dao.tagDAO().insertCategory(JsonUtils.pojoToJson(category));
     LOG.info("Create a new tag category {}", category.getName());
     return category.withChildren(primaryTags);
   }
@@ -209,7 +205,7 @@ public abstract class TagRepository {
     List<Tag> tags = tag.getChildren();
     tag.setChildren(null); // Children of tag group are not stored as json but constructed on the fly
     tag.setFullyQualifiedName(parentFQN + "." + tag.getName());
-    tagDAO().insertTag(JsonUtils.pojoToJson(tag));
+    dao.tagDAO().insertTag(JsonUtils.pojoToJson(tag));
     tag.setChildren(tags);
     TagResource.LOG.info("Added tag {}", tag.getFullyQualifiedName());
 
@@ -218,7 +214,7 @@ public abstract class TagRepository {
       children.setChildren(null); // No children allowed for the leaf tag
       children.setFullyQualifiedName(children.getFullyQualifiedName() + "." + children.getName());
       TagResource.LOG.info("Added tag {}", children.getFullyQualifiedName());
-      tagDAO().insertTag(JsonUtils.pojoToJson(children));
+      dao.tagDAO().insertTag(JsonUtils.pojoToJson(children));
     }
     return tag;
   }
@@ -226,7 +222,7 @@ public abstract class TagRepository {
   // Populate TagCategory with children details
   private TagCategory populateCategoryTags(TagCategory category, Fields fields) throws IOException {
     // Get tags under that match category prefix
-    List<String> groupJsons = tagDAO().listChildrenTags(category.getName());
+    List<String> groupJsons = dao.tagDAO().listChildrenTags(category.getName());
 
     List<Tag> tagList = new ArrayList<>();
     for (String json : groupJsons) {
@@ -238,7 +234,7 @@ public abstract class TagRepository {
 
   // Populate the children tags for a given tag
   private Tag populateChildrenTags(Tag tag, Fields fields) throws IOException {
-    List<String> tagJsons = tagDAO().listChildrenTags(tag.getFullyQualifiedName());
+    List<String> tagJsons = dao.tagDAO().listChildrenTags(tag.getFullyQualifiedName());
 
     // Get tags under the given tag
     List<Tag> tagList = new ArrayList<>();
@@ -264,70 +260,16 @@ public abstract class TagRepository {
   }
 
   private Integer getUsageCount(TagCategory category) {
-    return tagDAO().getTagCount(category.getName());
+    return dao.tagDAO().getTagCount(category.getName());
   }
 
   private Integer getUsageCount(Tag tag) {
-    return tagDAO().getTagCount(tag.getFullyQualifiedName());
+    return dao.tagDAO().getTagCount(tag.getFullyQualifiedName());
   }
 
-  /**
-   * Tag categories are stored as JSON in {@code tag_category} table. All the attributes are stored as JSON
-   * document except href, usageCount and children tags which are constructed on the fly as needed.
-   *
-   * Tags are stored as JSON in {@code tag} table. All the attributes of tags are stored as JSON document except
-   * href, usageCount and children tags which are constructed on the fly as needed.
-   */
-  @RegisterMapper(TagLabelMapper.class)
-  public interface TagDAO {
-    @SqlUpdate("INSERT INTO tag_category (json) VALUES (:json)")
-    void insertCategory(@Bind("json") String json);
-
-    @SqlUpdate("INSERT INTO tag(json) VALUES (:json)")
-    void insertTag(@Bind("json") String json);
-
-    @SqlUpdate("UPDATE tag_category SET  json = :json where name = :name")
-    void updateCategory(@Bind("name") String name, @Bind("json") String json);
-
-    @SqlUpdate("UPDATE tag SET  json = :json where fullyQualifiedName = :fqn")
-    void updateTag(@Bind("fqn") String fqn, @Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM tag_category ORDER BY name")
-    List<String> listCategories();
-
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName LIKE CONCAT(:fqnPrefix, '.%') ORDER BY fullyQualifiedName")
-    List<String> listChildrenTags(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlQuery("SELECT json FROM tag_category WHERE name = :name")
-    String findCategory(@Bind("name") String name);
-
-    @SqlQuery("SELECT EXISTS (SELECT * FROM tag WHERE fullyQualifiedName = :fqn)")
-    boolean tagExists(@Bind("fqn") String fqn);
-
-    @SqlQuery("SELECT json FROM tag WHERE fullyQualifiedName = :fqn")
-    String findTag(@Bind("fqn") String fqn);
-
-    @SqlUpdate("INSERT IGNORE INTO tag_usage (tagFQN, targetFQN, labelType, state) VALUES (:tagFQN, :targetFQN, " +
-            ":labelType, :state)")
-    void applyTag(@Bind("tagFQN") String tagFQN, @Bind("targetFQN") String targetFQN,
-                  @Bind("labelType") int labelType, @Bind("state") int state);
-
-    @SqlQuery("SELECT tagFQN, labelType, state FROM tag_usage WHERE targetFQN = :targetFQN ORDER BY tagFQN")
-    List<TagLabel> getTags(@Bind("targetFQN") String targetFQN);
-
-    @SqlQuery("SELECT COUNT(*) FROM tag_usage WHERE tagFQN LIKE CONCAT(:fqnPrefix, '%')")
-    int getTagCount(@Bind("fqnPrefix") String fqnPrefix);
-
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN = :targetFQN")
-    void deleteTags(@Bind("targetFQN") String targetFQN);
-
-    @SqlUpdate("DELETE FROM tag_usage where targetFQN LIKE CONCAT(:fqnPrefix, '%')")
-    void deleteTagsByPrefix(@Bind("fqnPrefix") String fqnPrefix);
-  }
-
-  public static class TagLabelMapper implements ResultSetMapper<TagLabel> {
+  public static class TagLabelMapper implements RowMapper<TagLabel> {
     @Override
-    public TagLabel map(int i, ResultSet r, StatementContext statementContext) throws SQLException {
+    public TagLabel map(ResultSet r, org.jdbi.v3.core.statement.StatementContext ctx) throws SQLException {
       return new TagLabel().withLabelType(TagLabel.LabelType.values()[r.getInt("labelType")])
               .withState(TagLabel.State.values()[r.getInt("state")])
               .withTagFQN(r.getString("tagFQN"));

@@ -17,43 +17,126 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
-import org.openmetadata.catalog.util.EntityUtil;
-import org.openmetadata.catalog.util.JsonUtils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
+import org.openmetadata.catalog.resources.bots.BotsResource.BotsList;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
-public abstract class BotsRepository {
-  @CreateSqlObject
-  abstract BotsDAO botsDAO();
+public class BotsRepository extends EntityRepository<Bots>{
+  private final CollectionDAO dao;
+
+  public BotsRepository(CollectionDAO dao) {
+    super(Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
     bots.setHref(null);
-    botsDAO().insert(JsonUtils.pojoToJson(bots));
+    dao.botsDAO().insert(bots);
     return bots;
   }
 
-  public Bots findByName(String name) throws IOException {
-    return EntityUtil.validate(name, botsDAO().findByName(name), Bots.class);
+  @Override
+  public Bots setFields(Bots entity, Fields fields) throws IOException, ParseException {
+    return entity;
   }
 
-  public List<Bots> list(String name) throws IOException {
-    return JsonUtils.readObjects(botsDAO().list(name), Bots.class);
+  @Override
+  public void restorePatchAttributes(Bots original, Bots update) throws IOException, ParseException { }
+
+  @Override
+  public EntityInterface<Bots> getEntityInterface(Bots entity) {
+    return new BotsEntityInterface(entity);
   }
 
-  public interface BotsDAO {
-    @SqlUpdate("INSERT INTO bot_entity(json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  @Override
+  public void validate(Bots entity) throws IOException { }
 
-    @SqlQuery("SELECT json FROM bot_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
+  @Override
+  public void store(Bots entity, boolean update) throws IOException {
+    dao.botsDAO().insert(entity);
+  }
 
-    @SqlQuery("SELECT json FROM bot_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+  @Override
+  public void storeRelationships(Bots entity) throws IOException { }
+
+  static class BotsEntityInterface implements EntityInterface<Bots> {
+    private final Bots entity;
+
+    BotsEntityInterface(Bots entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.BOTS);
+    }
+
+    @Override
+    public Bots getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

@@ -27,6 +27,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntitiesEdge;
@@ -46,7 +47,6 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -125,8 +125,8 @@ public class LineageResourceTest extends CatalogApplicationTest {
   }
 
   public void addEdge(Table from, Table to) throws HttpResponseException {
-    EntitiesEdge edge = new EntitiesEdge().withFromEntity(getEntityReference(from))
-            .withToEntity(getEntityReference(to));
+    EntitiesEdge edge = new EntitiesEdge().withFromEntity(new TableEntityInterface(from).getEntityReference())
+            .withToEntity(new TableEntityInterface(to).getEntityReference());
     AddLineage addLineage = new AddLineage().withEdge(edge);
     addLineageAndCheck(addLineage, adminAuthHeaders());
   }

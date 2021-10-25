@@ -38,6 +38,7 @@ const Description = ({
             isOwner={hasEditAccess}>
             <button
               className="focus:tw-outline-none"
+              data-testid="edit-description"
               onClick={onDescriptionEdit}>
               <SVGIcons alt="edit" icon="icon-edit" title="Edit" width="12px" />
             </button>

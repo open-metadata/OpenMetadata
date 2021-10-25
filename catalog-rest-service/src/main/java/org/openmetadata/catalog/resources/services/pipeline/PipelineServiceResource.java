@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.services.pipeline;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +26,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.UpdatePipelineService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
@@ -51,6 +51,8 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,7 +62,7 @@ import java.util.UUID;
 @Api(value = "Pipeline service collection", tags = "Services -> Pipeline service collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "pipelineServices", repositoryClass = "org.openmetadata.catalog.jdbi3.PipelineServiceRepository")
+@Collection(name = "pipelineServices")
 public class PipelineServiceResource {
   private final PipelineServiceRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -81,14 +83,14 @@ public class PipelineServiceResource {
   }
 
   @Inject
-  public PipelineServiceResource(PipelineServiceRepository dao, CatalogAuthorizer authorizer) {
+  public PipelineServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "PipelineServiceRepository must not be null");
-    this.dao = dao;
+    this.dao = new PipelineServiceRepository(dao);
     this.authorizer = authorizer;
   }
 
-  static class PipelineServiceList extends ResultList<PipelineService> {
-    PipelineServiceList(List<PipelineService> data) {
+  public static class PipelineServiceList extends ResultList<PipelineService> {
+    public PipelineServiceList(List<PipelineService> data) {
       super(data);
     }
   }
@@ -101,8 +103,11 @@ public class PipelineServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = PipelineServiceList.class)))
           })
-  public PipelineServiceList list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException {
-    return new PipelineServiceList(addHref(uriInfo, dao.list(name)));
+  public ResultList<PipelineService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException,
+          GeneralSecurityException, ParseException {
+    ResultList<PipelineService> list = dao.listAfter(null, null, 10000, null);
+    list.getData().forEach(p -> addHref(uriInfo, p));
+    return list;
   }
 
   @GET
@@ -117,8 +122,8 @@ public class PipelineServiceResource {
           })
   public  PipelineService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("id") String id) throws IOException {
-    return addHref(uriInfo, dao.get(id));
+                             @PathParam("id") String id) throws IOException, ParseException {
+    return addHref(uriInfo, dao.get(id, null));
   }
 
   @GET
@@ -133,8 +138,8 @@ public class PipelineServiceResource {
           })
   public PipelineService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
-                             @PathParam("name") String name) throws IOException {
-    return addHref(uriInfo, dao.getByName(name));
+                             @PathParam("name") String name) throws IOException, ParseException {
+    return addHref(uriInfo, dao.getByName(name, null));
   }
 
   @POST
@@ -148,7 +153,7 @@ public class PipelineServiceResource {
           })
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
-                         @Valid CreatePipelineService create) throws JsonProcessingException {
+                         @Valid CreatePipelineService create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = new PipelineService().withId(UUID.randomUUID())
             .withName(create.getName()).withDescription(create.getDescription())
@@ -178,7 +183,8 @@ public class PipelineServiceResource {
                          @Valid UpdatePipelineService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     PipelineService service = addHref(uriInfo,
-            dao.update(id, update.getDescription(), update.getPipelineUrl(), update.getIngestionSchedule()));
+            dao.update(UUID.fromString(id), update.getDescription(), update.getPipelineUrl(),
+                    update.getIngestionSchedule()));
     return Response.ok(service).build();
   }
 
@@ -197,7 +203,7 @@ public class PipelineServiceResource {
                          @Parameter(description = "Id of the pipeline service", schema = @Schema(type = "string"))
                          @PathParam("id") String id) {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }
