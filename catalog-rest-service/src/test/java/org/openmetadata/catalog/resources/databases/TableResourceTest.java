@@ -36,6 +36,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -55,6 +56,7 @@ import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -113,7 +115,7 @@ import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TableResourceTest extends CatalogApplicationTest {
+public class TableResourceTest extends EntityTestHelper<Table> {
   private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
@@ -1525,5 +1527,30 @@ public class TableResourceTest extends CatalogApplicationTest {
       assertNotNull(storedProfile);
       assertEquals(tableProfile, storedProfile);
     }
+  }
+
+  @Override
+  public Table createEntity(Object createRequest, Map<String, String> authHeaders) {
+    return null;
+  }
+
+  @Override
+  public Table getEntity(UUID id, Map<String, String> authHeaders) {
+    return null;
+  }
+
+  @Override
+  public Table validateEntity(Table entity, Object createRequest) {
+    return null;
+  }
+
+  @Override
+  public EntityInterface<Table> getEntityInterface(Table entity) {
+    return null;
+  }
+
+  @Override
+  public Table validateCommonFields(Table entity) {
+    return null;
   }
 }

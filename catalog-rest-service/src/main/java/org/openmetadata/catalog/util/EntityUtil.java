@@ -447,4 +447,18 @@ public final class EntityUtil {
     return refList.stream().sorted(Comparator.comparing(EntityReference::getId)).map(EntityReference::getId)
             .collect(Collectors.toList());
   }
+
+  public static String getVersionExtension(String entityName, Double version) {
+    return String.format("%s.%s.%s", entityName, "version", version.toString());
+  }
+
+  public static String getVersionExtensionPrefix(String entityName) {
+    return String.format("%s.%s", entityName, "version");
+  }
+
+  public static Double getVersion(String extension) {
+    String[] s = extension.split("\\.");
+    String versionString = s[2] + "." + s[3];
+    return Double.valueOf(versionString);
+  }
 }

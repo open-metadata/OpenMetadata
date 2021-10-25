@@ -2,6 +2,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
@@ -22,6 +23,7 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -119,6 +121,26 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public T getVersion(String id, String version) throws IOException {
+    String extension = EntityUtil.getVersionExtension(entityName, Double.valueOf(version));
+    String json = daoCollection.entityExtensionDAO().getEntityVersion(id, extension);
+    return JsonUtils.readValue(json, entityClass);
+  }
+
+  @Transaction
+  public EntityHistory listVersions(String id) throws IOException, ParseException {
+    T latest = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityName);
+    List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
+    oldVersions.sort(Comparator.comparing(EntityVersionPair::getVersion).reversed());
+
+    final List<Object> allVersions = new ArrayList<>();
+    allVersions.add(JsonUtils.pojoToJson(latest));
+    oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
+    return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
+  }
+
+  @Transaction
   public final T create(T entity) throws IOException, ParseException {
     validate(entity);
     return createInternal(entity);
@@ -170,6 +192,12 @@ public abstract class EntityRepository<T> {
     storeRelationships(entity);
     LOG.info("Created entity {}", entity);
     return entity;
+  }
+
+  /**
+   * Class that provides functionality related to entity versioning
+   */
+  public static class EntityVersionHelper {
   }
 
   /**
@@ -284,15 +312,21 @@ public abstract class EntityRepository<T> {
       return false;
     }
 
-    public final void store() throws IOException {
+    private void storeOldVersion() throws IOException {
+      // TODO move this into a single palce
+      String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
+      daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
+              JsonUtils.pojoToJson(original.getEntity()));
+    }
+
+    public final void store() throws IOException, ParseException {
       if (updateVersion(original.getVersion())) {
         // Store the old version
         List<Object> versions = new ArrayList<>();
         versions.add(original.getEntity());
         EntityHistory history = new EntityHistory().withEntityType(entityName).withVersions(versions);
-        System.out.println(JsonUtils.pojoToJson(history, true));
+        storeOldVersion();
       }
-      // TODO clean up entity name
       EntityRepository.this.store(updated.getEntity(), true);
     }
   }

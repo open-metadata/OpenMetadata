@@ -47,11 +47,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.util.EntityUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -197,6 +200,41 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @RegisterRowMapper(EntityVersionMapper.class)
+    @SqlQuery("SELECT extension, json FROM entity_extension WHERE id = :id AND extension " +
+            "LIKE CONCAT (:extensionPrefix, '.%')")
+    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extension") String extensionPrefix);
+
+    @RegisterRowMapper(EntityVersionMapper.class)
+    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
+    String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
+  }
+
+  class EntityVersionPair {
+    private Double version;
+    private String entityJson;
+
+    public Double getVersion() {
+      return version;
+    }
+
+    public String getEntityJson() {
+      return entityJson;
+    }
+
+    public EntityVersionPair(Double version, String json) {
+      this.version = version;
+      this.entityJson = json;
+    }
+  }
+
+  class EntityVersionMapper implements RowMapper<EntityVersionPair> {
+    @Override
+    public EntityVersionPair map(ResultSet rs, StatementContext ctx) throws SQLException {
+      Double version = EntityUtil.getVersion(rs.getString("extension"));
+      return new EntityVersionPair(version, rs.getString("json"));
+    }
   }
 
   interface EntityRelationshipDAO {
