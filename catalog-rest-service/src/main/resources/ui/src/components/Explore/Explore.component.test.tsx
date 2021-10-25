@@ -19,8 +19,8 @@ import { findAllByTestId, findByTestId, render } from '@testing-library/react';
 import { SearchResponse } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
+import { mockResponse } from './exlore.mock';
 import Explore from './Explore.component';
-import { mockResponse } from './index.mock';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
