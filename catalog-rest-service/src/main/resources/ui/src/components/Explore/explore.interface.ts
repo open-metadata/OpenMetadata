@@ -15,6 +15,8 @@
   * limitations under the License.
 */
 
+import { SearchResponse } from 'Models';
+
 export type Params = {
   searchQuery: string;
   tab: string;
@@ -34,3 +36,41 @@ export type Team = {
   description: string;
   href: string;
 };
+
+export type ExploreSearchData = {
+  resSearchResults: SearchResponse;
+  resAggServiceType: SearchResponse;
+  resAggTier: SearchResponse;
+  resAggTag: SearchResponse;
+};
+
+export interface FetchData {
+  queryString: string;
+  from: number;
+  size: number;
+  filters: string;
+  sortField: string;
+  sortOrder: string;
+  searchIndex: string;
+}
+
+export interface ExploreProps {
+  tabCounts: {
+    table: number;
+    topic: number;
+    dashboard: number;
+    pipeline: number;
+  };
+  searchText: string;
+  tab: string;
+  error: string;
+  isLoading: boolean;
+  searchQuery: string;
+  handleSearchText: (text: string) => void;
+  updateTableCount: (count: number) => void;
+  updateTopicCount: (count: number) => void;
+  updateDashboardCount: (count: number) => void;
+  updatePipelineCount: (count: number) => void;
+  fetchData: (value: FetchData[]) => void;
+  searchResult: ExploreSearchData | undefined;
+}
