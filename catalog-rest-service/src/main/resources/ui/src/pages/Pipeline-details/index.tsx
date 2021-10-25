@@ -491,7 +491,7 @@ const MyPipelinePage = () => {
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw--mx-4 tw-p-4 tw-h-screen">
+            <div className="tw-bg-white tw--mx-4 tw-p-4 ">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full">
