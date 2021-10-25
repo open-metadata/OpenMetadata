@@ -4,12 +4,14 @@ OpenMetadata high-level API Database test
 import uuid
 from unittest import TestCase
 
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
+from metadata.generated.schema.api.data.createDashboard import (
+    CreateDashboardEntityRequest,
+)
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceEntityRequest,
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
-from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.services.dashboardService import (
     DashboardService,
     DashboardServiceType,
@@ -19,7 +21,7 @@ from metadata.ingestion.ometa.ometa_api import OMeta
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
-class OMetaChartTest(TestCase):
+class OMetaDashboardTest(TestCase):
     """
     Run this integration test with the local API available
     Install the ingestion package before running the tests
@@ -52,14 +54,14 @@ class OMetaChartTest(TestCase):
             entity=CreateDashboardServiceEntityRequest, data=cls.service
         )
 
-        cls.entity = Chart(
+        cls.entity = Dashboard(
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
             fullyQualifiedName="test-service.test",
         )
 
-        cls.create = CreateChartEntityRequest(
+        cls.create = CreateDashboardEntityRequest(
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
         )
@@ -70,7 +72,9 @@ class OMetaChartTest(TestCase):
         Clean up
         """
         _id = str(
-            cls.metadata.get_by_name(entity=Chart, fqdn="test-service.test").id.__root__
+            cls.metadata.get_by_name(
+                entity=Dashboard, fqdn="test-service.test"
+            ).id.__root__
         )
 
         service_id = str(
@@ -79,16 +83,16 @@ class OMetaChartTest(TestCase):
             ).id.__root__
         )
 
-        cls.metadata.delete(entity=Chart, entity_id=_id)
+        cls.metadata.delete(entity=Dashboard, entity_id=_id)
         cls.metadata.delete(entity=DashboardService, entity_id=service_id)
 
     def test_create(self):
         """
-        We can create a Chart and we receive it back as Entity
+        We can create a Dashboard and we receive it back as Entity
         """
 
         res = self.metadata.create_or_update(
-            entity=CreateChartEntityRequest, data=self.create
+            entity=CreateDashboardEntityRequest, data=self.create
         )
 
         self.assertEqual(res.name, self.create.name)
@@ -101,14 +105,14 @@ class OMetaChartTest(TestCase):
         """
 
         res_create = self.metadata.create_or_update(
-            entity=CreateChartEntityRequest, data=self.create
+            entity=CreateDashboardEntityRequest, data=self.create
         )
 
         updated = self.entity.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = Chart(**updated)
+        updated_entity = Dashboard(**updated)
 
-        res = self.metadata.create_or_update(entity=Chart, data=updated_entity)
+        res = self.metadata.create_or_update(entity=Dashboard, data=updated_entity)
 
         # Same ID, updated algorithm
         self.assertEqual(res.service.id, updated_entity.service.id)
@@ -117,40 +121,42 @@ class OMetaChartTest(TestCase):
 
     def test_get_name(self):
         """
-        We can fetch a Chart by name and get it back as Entity
+        We can fetch a Dashboard by name and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Chart, data=self.entity)
+        self.metadata.create_or_update(entity=Dashboard, data=self.entity)
 
         res = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
         )
         self.assertEqual(res.name, self.entity.name)
 
     def test_get_id(self):
         """
-        We can fetch a Chart by ID and get it back as Entity
+        We can fetch a Dashboard by ID and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Chart, data=self.entity)
+        self.metadata.create_or_update(entity=Dashboard, data=self.entity)
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
-        res = self.metadata.get_by_id(entity=Chart, entity_id=str(res_name.id.__root__))
+        res = self.metadata.get_by_id(
+            entity=Dashboard, entity_id=str(res_name.id.__root__)
+        )
 
         self.assertEqual(res_name.id, res.id)
 
     def test_list(self):
         """
-        We can list all our Charts
+        We can list all our Dashboards
         """
 
-        self.metadata.create_or_update(entity=Chart, data=self.entity)
+        self.metadata.create_or_update(entity=Dashboard, data=self.entity)
 
-        res = self.metadata.list_entities(entity=Chart, limit=100)
+        res = self.metadata.list_entities(entity=Dashboard, limit=100)
 
         # Fetch our test Database. We have already inserted it, so we should find it
         data = next(
@@ -160,25 +166,25 @@ class OMetaChartTest(TestCase):
 
     def test_delete(self):
         """
-        We can delete a Chart by ID
+        We can delete a Dashboard by ID
         """
 
-        self.metadata.create_or_update(entity=Chart, data=self.entity)
+        self.metadata.create_or_update(entity=Dashboard, data=self.entity)
 
         # Find by name
         res_name = self.metadata.get_by_name(
-            entity=Chart, fqdn=self.entity.fullyQualifiedName
+            entity=Dashboard, fqdn=self.entity.fullyQualifiedName
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=Chart, entity_id=str(res_name.id.__root__)
+            entity=Dashboard, entity_id=str(res_name.id.__root__)
         )
 
         # Delete
-        self.metadata.delete(entity=Chart, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=Dashboard, entity_id=str(res_id.id.__root__))
 
         # Then we should not find it
-        res = self.metadata.list_entities(entity=Chart)
+        res = self.metadata.list_entities(entity=Dashboard)
         assert not next(
             iter(ent for ent in res.entities if ent.name == self.entity.name), None
         )
