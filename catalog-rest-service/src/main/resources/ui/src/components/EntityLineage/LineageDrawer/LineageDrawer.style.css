@@ -1,0 +1,29 @@
+.side-drawer {
+  height: 100%;
+  background: white;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 325px;
+  z-index: 200;
+  margin-right: -16px;
+  overflow-y: auto;
+  padding: 16px;
+  transform: translateX(100%);
+  border-left: 1px solid #d9ceee;
+  transition: transform 0.3s ease-out;
+}
+
+.backdrop {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(48, 46, 54, 0.6);
+  z-index: 100;
+  top: 0;
+  right: 0;
+}
+
+.side-drawer.open {
+  transform: translateX(0);
+}
