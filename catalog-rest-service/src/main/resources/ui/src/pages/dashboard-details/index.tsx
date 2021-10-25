@@ -453,7 +453,7 @@ const MyDashBoardPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="tw-px-4 w-full">
+        <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
             entityName={displayName}
@@ -470,17 +470,18 @@ const MyDashBoardPage = () => {
             tier={tier || ''}
             titleLinks={slashedDashboardName}
           />
-          <div className="tw-block tw-mt-1">
+          <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
+              className="tw-flex-initial"
               setActiveTab={setActiveTab}
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw--mx-4 tw-p-4">
+            <div className="tw-bg-white tw-flex-grow">
               {activeTab === 1 && (
                 <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
@@ -608,12 +609,14 @@ const MyDashBoardPage = () => {
                 </>
               )}
               {activeTab === 2 && (
-                <ManageTab
-                  currentTier={tier}
-                  currentUser={owner?.id}
-                  hasEditAccess={hasEditAccess()}
-                  onSave={onSettingsUpdate}
-                />
+                <div className="tw-mt-4">
+                  <ManageTab
+                    currentTier={tier}
+                    currentUser={owner?.id}
+                    hasEditAccess={hasEditAccess()}
+                    onSave={onSettingsUpdate}
+                  />
+                </div>
               )}
             </div>
           </div>

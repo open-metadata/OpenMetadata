@@ -349,7 +349,7 @@ const MyTopicDetailPage = () => {
       {isLoading ? (
         <Loader />
       ) : (
-        <div className="tw-px-4 w-full">
+        <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
             entityName={name}
@@ -379,17 +379,18 @@ const MyTopicDetailPage = () => {
             tier={tier ?? ''}
             titleLinks={slashedTopicName}
           />
-          <div className="tw-block tw-mt-1">
+          <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
+              className="tw-flex-initial"
               setActiveTab={setActiveTab}
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw--mx-4 tw-p-4 tw-min-h-tab">
+            <div className="tw-bg-white tw-flex-grow">
               {activeTab === 1 && (
                 <>
-                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+                  <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
@@ -408,16 +409,20 @@ const MyTopicDetailPage = () => {
                   </div>
                 </>
               )}
-              {activeTab === 3 && (
-                <ManageTab
-                  currentTier={tier}
-                  currentUser={owner?.id}
-                  hasEditAccess={hasEditAccess()}
-                  onSave={onSettingsUpdate}
-                />
-              )}
               {activeTab === 2 && (
-                <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                <div className="tw-mt-4">
+                  <SchemaEditor value={JSON.stringify(getConfigObject())} />
+                </div>
+              )}
+              {activeTab === 3 && (
+                <div className="tw-mt-4">
+                  <ManageTab
+                    currentTier={tier}
+                    currentUser={owner?.id}
+                    hasEditAccess={hasEditAccess()}
+                    onSave={onSettingsUpdate}
+                  />
+                </div>
               )}
             </div>
           </div>
