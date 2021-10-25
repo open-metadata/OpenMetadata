@@ -36,7 +36,6 @@ import { getCurrentUserId } from '../../utils/CommonUtils';
 import {
   getAllServices,
   getEntityCountByService,
-  getTotalEntityCountByService,
 } from '../../utils/ServiceUtils';
 
 const MyDataPage: React.FC = (): React.ReactElement => {
@@ -186,9 +185,6 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             <PageContainer>
               <div className="container-fluid" data-testid="fluid-container">
                 <MyDataHeader
-                  countAssets={getTotalEntityCountByService(
-                    aggregations?.['sterms#Service']?.buckets as Bucket[]
-                  )}
                   countServices={countServices}
                   entityCounts={getEntityCountByService(
                     aggregations?.['sterms#Service']?.buckets as Bucket[]

@@ -16,99 +16,156 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource.MessagingServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
+public class MessagingServiceRepository extends EntityRepository<MessagingService> {
+  private final CollectionDAO dao;
 
-public abstract class MessagingServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(MessagingServiceRepository.class);
-
-  @CreateSqlObject
-  abstract MessagingServiceDAO messagingServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @Transaction
-  public List<MessagingService> list(String name) throws IOException {
-    return JsonUtils.readObjects(messagingServiceDAO().list(name), MessagingService.class);
+  public MessagingServiceRepository(CollectionDAO dao) {
+    super(MessagingService.class, dao.messagingServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    this.dao = dao;
   }
 
   @Transaction
-  public MessagingService get(String id) throws IOException {
-    return EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
-  }
-
-  @Transaction
-  public MessagingService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, messagingServiceDAO().findByName(name), MessagingService.class);
-  }
-
-  @Transaction
-  public MessagingService create(MessagingService messagingService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(messagingService.getIngestionSchedule());
-    messagingServiceDAO().insert(JsonUtils.pojoToJson(messagingService));
-    return messagingService;
-  }
-
-  @Transaction
-  public MessagingService update(String id, String description, List<String> brokers, URI schemaRegistry,
+  public MessagingService update(UUID id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    MessagingService dbService = EntityUtil.validate(id, messagingServiceDAO().findById(id), MessagingService.class);
+    MessagingService dbService = dao.messagingServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withSchemaRegistry(schemaRegistry).withBrokers(brokers);
-    messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dao.messagingServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
-  public void delete(String id) {
-    if (messagingServiceDAO().delete(id) <= 0) {
+  public void delete(UUID id) {
+    if (dao.messagingServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.MESSAGING_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
-  public interface MessagingServiceDAO {
-    @SqlUpdate("INSERT INTO messaging_service_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  @Override
+  public MessagingService setFields(MessagingService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
 
-    @SqlUpdate("UPDATE messaging_service_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  public void restorePatchAttributes(MessagingService original, MessagingService updated) throws IOException,
+          ParseException {
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
+  }
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
+  @Override
+  public EntityInterface<MessagingService> getEntityInterface(MessagingService entity) {
+    return new MessagingServiceEntityInterface(entity);
+  }
 
-    @SqlQuery("SELECT json FROM messaging_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+  @Override
+  public void validate(MessagingService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
 
-    @SqlUpdate("DELETE FROM messaging_service_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+  @Override
+  public void store(MessagingService entity, boolean update) throws IOException {
+    dao.messagingServiceDAO().insert(entity);
+    // TODO Other cleanup
+  }
+
+  @Override
+  public void storeRelationships(MessagingService entity) throws IOException { }
+
+  public static class MessagingServiceEntityInterface implements EntityInterface<MessagingService> {
+    private final MessagingService entity;
+
+    public MessagingServiceEntityInterface(MessagingService entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.MESSAGING_SERVICE);
+    }
+
+    @Override
+    public MessagingService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

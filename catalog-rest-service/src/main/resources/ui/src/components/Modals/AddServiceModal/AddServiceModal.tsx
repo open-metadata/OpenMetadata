@@ -846,6 +846,7 @@ export const AddServiceModal: FunctionComponent<Props> = ({
         </label>
         <input
           className="tw-form-inputs tw-px-3 tw-py-1"
+          data-testid="pipeline-url"
           id="pipeline-url"
           name="pipeline-url"
           placeholder="http(s)://hostname:port"

@@ -36,7 +36,6 @@ import java.util.stream.Collectors;
 public class ConstraintViolationExceptionMapper implements ExceptionMapper<ConstraintViolationException> {
   @Override
   public Response toResponse(ConstraintViolationException exception) {
-    System.out.println(exception.getMessage());
     Set<ConstraintViolation<?>> constraintViolations = exception.getConstraintViolations();
     List<String> errorMessages = constraintViolations.stream()
             .map(constraintViolation -> {

@@ -27,7 +27,7 @@ from faker import Faker
 from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createTopic import CreateTopic
+from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createDashboardService import (
     CreateDashboardServiceEntityRequest,
@@ -435,12 +435,12 @@ class SampleDataSource(Source):
             self.status.scanned("table", table_metadata.name.__root__)
             yield table_and_db
 
-    def ingest_topics(self) -> Iterable[CreateTopic]:
+    def ingest_topics(self) -> Iterable[CreateTopicEntityRequest]:
         for topic in self.topics["topics"]:
             topic["service"] = EntityReference(
                 id=self.kafka_service.id, type="messagingService"
             )
-            create_topic = CreateTopic(**topic)
+            create_topic = CreateTopicEntityRequest(**topic)
             self.status.scanned("topic", create_topic.name.__root__)
             yield create_topic
 

@@ -16,8 +16,8 @@
 
 package org.openmetadata.catalog.security;
 
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.type.EntityReference;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ public class NoopAuthorizer implements CatalogAuthorizer {
 
 
   @Override
-  public void init(AuthorizerConfiguration config, DBI jdbi) {
+  public void init(AuthorizerConfiguration config, Jdbi jdbi) {
   }
 
   @Override

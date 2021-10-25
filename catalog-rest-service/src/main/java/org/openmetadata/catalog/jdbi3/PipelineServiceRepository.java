@@ -16,101 +16,158 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource.PipelineServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class PipelineServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(PipelineServiceRepository.class);
+public class PipelineServiceRepository extends EntityRepository<PipelineService> {
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract PipelineServiceDAO pipelineServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @Transaction
-  public List<PipelineService> list(String name) throws IOException {
-    return JsonUtils.readObjects(pipelineServiceDAO().list(name), PipelineService.class);
+  public PipelineServiceRepository(CollectionDAO dao) {
+    super(PipelineService.class, dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    this.dao = dao;
   }
 
   @Transaction
-  public PipelineService get(String id) throws IOException {
-    return EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
-  }
-
-  @Transaction
-  public PipelineService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, pipelineServiceDAO().findByName(name), PipelineService.class);
-  }
-
-  @Transaction
-  public PipelineService create(PipelineService pipelineService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(pipelineService.getIngestionSchedule());
-    pipelineServiceDAO().insert(JsonUtils.pojoToJson(pipelineService));
-    return pipelineService;
-  }
-
-  @Transaction
-  public PipelineService update(String id, String description, URI url,
+  public PipelineService update(UUID id, String description, URI url,
                                  Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    PipelineService pipelineService = EntityUtil.validate(id, pipelineServiceDAO().findById(id), PipelineService.class);
+    PipelineService pipelineService = dao.pipelineServiceDAO().findEntityById(id);
     // Update fields
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withPipelineUrl(url);
-    pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
+    dao.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
     return pipelineService;
   }
 
   @Transaction
-  public void delete(String id) {
-    if (pipelineServiceDAO().delete(id) <= 0) {
+  public void delete(UUID id) {
+    if (dao.pipelineServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.PIPELINE_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
+  @Override
+  public PipelineService setFields(PipelineService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
 
+  @Override
+  public void restorePatchAttributes(PipelineService original, PipelineService updated) throws IOException,
+          ParseException {
 
-  public interface PipelineServiceDAO {
-    @SqlUpdate("INSERT INTO pipeline_service_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  }
 
-    @SqlUpdate("UPDATE pipeline_service_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  public EntityInterface<PipelineService> getEntityInterface(PipelineService entity) {
+    return new PipelineServiceEntityInterface(entity);
+  }
 
-    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
+  @Override
+  public void validate(PipelineService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
 
-    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
+  @Override
+  public void store(PipelineService entity, boolean update) throws IOException {
+    dao.pipelineServiceDAO().insert(entity);
+  }
 
-    @SqlQuery("SELECT json FROM pipeline_service_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+  @Override
+  public void storeRelationships(PipelineService entity) throws IOException {
 
-    @SqlUpdate("DELETE FROM pipeline_service_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+  }
+
+  public static class PipelineServiceEntityInterface implements EntityInterface<PipelineService> {
+    private final PipelineService entity;
+
+    public PipelineServiceEntityInterface(PipelineService entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() {
+      return entity.getId();
+    }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.PIPELINE_SERVICE);
+    }
+
+    @Override
+    public PipelineService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

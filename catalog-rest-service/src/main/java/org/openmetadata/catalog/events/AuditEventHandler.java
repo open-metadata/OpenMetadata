@@ -16,12 +16,12 @@
 
 package org.openmetadata.catalog.events;
 
+import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.jdbi3.AuditLogRepository;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ public class AuditEventHandler implements  EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
   private AuditLogRepository auditLogRepository;
 
-  public void init(CatalogApplicationConfig config, DBI jdbi) {
+  public void init(CatalogApplicationConfig config, Jdbi jdbi) {
     this.auditLogRepository = jdbi.onDemand(AuditLogRepository.class);
   }
 
@@ -47,8 +47,10 @@ public class AuditEventHandler implements  EventHandler {
       Date nowAsISO = new Date();
 
       try {
-        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
-                responseContext.getEntity().getClass());
+        EntityReference entityReference = null;
+        // TODO fix this
+//        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
+//                responseContext.getEntity().getClass());
         if (entityReference != null) {
           AuditLog auditLog = new AuditLog()
                   .withPath(path)

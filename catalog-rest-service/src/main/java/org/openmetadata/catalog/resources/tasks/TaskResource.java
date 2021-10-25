@@ -28,7 +28,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.entity.data.Task;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -38,8 +40,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -64,6 +64,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -76,9 +77,8 @@ import java.util.UUID;
 @Api(value = "tasks data asset collection", tags = "Task data asset collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "tasks", repositoryClass = "org.openmetadata.catalog.jdbi3.TaskRepository")
+@Collection(name = "tasks")
 public class TaskResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TaskResource.class);
   private static final String TASK_COLLECTION_PATH = "v1/tasks/";
   private final TaskRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -101,9 +101,9 @@ public class TaskResource {
   }
 
   @Inject
-  public TaskResource(TaskRepository dao, CatalogAuthorizer authorizer) {
+  public TaskResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "TaskRepository must not be null");
-    this.dao = dao;
+    this.dao = new TaskRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -124,7 +124,6 @@ public class TaskResource {
           .split(","));
 
   @GET
-  @Valid
   @Operation(summary = "List tasks", tags = "tasks",
           description = "Get a list of tasks, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
@@ -134,30 +133,28 @@ public class TaskResource {
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = TaskList.class)))
           })
-  public TaskList list(@Context UriInfo uriInfo,
-                        @Context SecurityContext securityContext,
-                        @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Task> list(@Context UriInfo uriInfo,
+                               @Context SecurityContext securityContext,
+                               @Parameter(description = "Fields requested in the returned resource",
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam,
-                        @Parameter(description = "Filter tasks by service name",
+                               @Parameter(description = "Filter tasks by service name",
                                 schema = @Schema(type = "string", example = "superset"))
                         @QueryParam("service") String serviceParam,
-                        @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
+                               @Parameter(description = "Limit the number tasks returned. (1 to 1000000, default = 10)")
                         @DefaultValue("10")
-                        @Min(1)
-                        @Max(1000000)
-                        @QueryParam("limit") int limitParam,
-                        @Parameter(description = "Returns list of tasks before this cursor",
+                               @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
+                               @Parameter(description = "Returns list of tasks before this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("before") String before,
-                        @Parameter(description = "Returns list of tasks after this cursor",
+                               @Parameter(description = "Returns list of tasks after this cursor",
                                 schema = @Schema(type = "string"))
                         @QueryParam("after") String after
-  ) throws IOException, GeneralSecurityException {
+  ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    TaskList tasks;
+    ResultList<Task> tasks;
     if (before != null) { // Reverse paging
       tasks = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
@@ -181,7 +178,7 @@ public class TaskResource {
                   @Context SecurityContext securityContext,
                   @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                  @QueryParam("fields") String fieldsParam) throws IOException {
+                  @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     return addHref(uriInfo, dao.get(id, fields));
   }
@@ -200,7 +197,7 @@ public class TaskResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);
@@ -217,7 +214,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateTask create) throws IOException {
+                         @Valid CreateTask create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -252,12 +249,12 @@ public class TaskResource {
                                                          "{op:remove, path:/a}," +
                                                          "{op:add, path: /b, value: val}" +
                                                          "]")}))
-                                         JsonPatch patch) throws IOException {
+                                         JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
     Task task = dao.get(id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(task));
-    task = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+            new TaskEntityInterface(task).getEntityReference());
+    task = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, task);
   }
 
@@ -271,7 +268,7 @@ public class TaskResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateTask create) throws IOException {
+                                 @Valid CreateTask create) throws IOException, ParseException {
 
     Task task =
             new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
@@ -302,7 +299,7 @@ public class TaskResource {
                   @ApiResponse(responseCode = "404", description = "task for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

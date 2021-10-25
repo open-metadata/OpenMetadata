@@ -163,7 +163,9 @@ const EntityPageInfo = ({
                 position="bottom"
                 theme="light"
                 trigger="click">
-                <span className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline">
+                <span
+                  className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
+                  data-testid="getFollowerDetail">
                   {followers}
                 </span>
               </PopOver>

@@ -70,3 +70,9 @@ docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" docker.elas
 ```text
 metadata ingest -c ./pipelines/metadata_to_es.json
 ```
+
+## Generated sources
+
+We are using `datamodel-codegen` to get some `pydantic` classes inside the `generated` module from the JSON Schemas defining the API and Entities.
+
+This tool bases the class name on the `title` of the JSON Schema (vs. Java POJO, which uses the file name). Note that this convention is important for us, as having a standardized approach in creating the titles helps us create generic code capable of tackling multiple Type Variables.

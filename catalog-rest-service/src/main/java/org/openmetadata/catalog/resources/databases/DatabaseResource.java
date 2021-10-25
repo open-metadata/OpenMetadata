@@ -28,7 +28,9 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -38,8 +40,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -64,6 +64,7 @@ import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
@@ -76,9 +77,8 @@ import java.util.UUID;
 @Api(value = "Databases collection", tags = "Databases collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "databases", repositoryClass = "org.openmetadata.catalog.jdbi3.DatabaseRepository")
+@Collection(name = "databases")
 public class DatabaseResource {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseResource.class);
   private static final String DATABASE_COLLECTION_PATH = "v1/databases/";
   private final DatabaseRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -105,9 +105,9 @@ public class DatabaseResource {
   }
 
   @Inject
-  public DatabaseResource(DatabaseRepository dao, CatalogAuthorizer authorizer) {
-    Objects.requireNonNull(dao, "DatabaseRepository must not be null");
-    this.dao = dao;
+  public DatabaseResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "CollectionDAO must not be null");
+    this.dao = new DatabaseRepository(dao);
     this.authorizer = authorizer;
   }
 
@@ -124,7 +124,6 @@ public class DatabaseResource {
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
   @GET
-  @Valid
   @Operation(summary = "List databases", tags = "databases",
           description = "Get a list of databases, optionally filtered by `service` it belongs to. Use `fields` " +
                   "parameter to get only necessary fields. Use cursor-based pagination to limit the number " +
@@ -134,31 +133,29 @@ public class DatabaseResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = DatabaseList.class)))
           })
-  public DatabaseList list(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Parameter(description = "Fields requested in the returned resource",
+  public ResultList<Database> list(@Context UriInfo uriInfo,
+                                   @Context SecurityContext securityContext,
+                                   @Parameter(description = "Fields requested in the returned resource",
                                    schema = @Schema(type = "string", example = FIELDS))
                            @QueryParam("fields") String fieldsParam,
-                           @Parameter(description = "Filter databases by service name",
+                                   @Parameter(description = "Filter databases by service name",
                                    schema = @Schema(type = "string", example = "snowflakeWestCoast"))
                            @QueryParam("service") String serviceParam,
-                           @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
+                                   @Parameter(description = "Limit the number tables returned. (1 to 1000000, default = 10) ",
                                    schema = @Schema(type = "string", example = "snowflakeWestCoast.financeDB"))
                            @DefaultValue("10")
-                           @Min(1)
-                           @Max(1000000)
-                           @QueryParam("limit") int limitParam,
-                           @Parameter(description = "Returns list of tables before this cursor",
+                                   @QueryParam("limit") @Min(1) @Max(1000000) int limitParam,
+                                   @Parameter(description = "Returns list of tables before this cursor",
                                    schema = @Schema(type = "string"))
                            @QueryParam("before") String before,
-                           @Parameter(description = "Returns list of tables after this cursor",
+                                   @Parameter(description = "Returns list of tables after this cursor",
                                    schema = @Schema(type = "string"))
                            @QueryParam("after") String after
-        ) throws IOException, GeneralSecurityException {
+        ) throws IOException, GeneralSecurityException, ParseException {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    DatabaseList databases;
+    ResultList<Database> databases;
 
     // For calculating cursors, ask for one extra entry beyond limit. If the extra entry exists, then in forward
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
@@ -186,7 +183,7 @@ public class DatabaseResource {
                       @Context SecurityContext securityContext,
                       @Parameter(description = "Fields requested in the returned resource",
                               schema = @Schema(type = "string", example = FIELDS))
-                      @QueryParam("fields") String fieldsParam) throws IOException {
+                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.get(id, fields);
     addHref(uriInfo, database);
@@ -207,7 +204,7 @@ public class DatabaseResource {
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                         schema = @Schema(type = "string", example = FIELDS))
-                            @QueryParam("fields") String fieldsParam) throws IOException {
+                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);
@@ -224,7 +221,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateDatabase create) throws IOException {
+                         @Valid CreateDatabase create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
             .withDescription(create.getDescription()).withService(create.getService())
@@ -251,10 +248,10 @@ public class DatabaseResource {
                                                             "{op:remove, path:/a}," +
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
-                                            JsonPatch patch) throws IOException {
-      Database database = dao.patch(id, securityContext.getUserPrincipal().getName(), patch);
+                                            JsonPatch patch) throws IOException, ParseException {
+      Database database = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
       SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            EntityUtil.getEntityReference(database));
+            new DatabaseEntityInterface(database).getEntityReference());
       return addHref(uriInfo, database);
     }
 
@@ -268,7 +265,7 @@ public class DatabaseResource {
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateDatabase create) throws IOException {
+                                 @Valid CreateDatabase create) throws IOException, ParseException {
 
     Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
             .withDescription(create.getDescription()).withOwner(create.getOwner())
@@ -288,7 +285,7 @@ public class DatabaseResource {
                   @ApiResponse(responseCode = "404", description = "Database for instance {id} is not found")
           })
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
-    dao.delete(id);
+    dao.delete(UUID.fromString(id));
     return Response.ok().build();
   }
 }

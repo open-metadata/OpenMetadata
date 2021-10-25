@@ -44,7 +44,6 @@ public class ConfigResource {
       this.catalogApplicationConfig = catalogApplicationConfig;
   }
 
-
   @GET
   @Path(("/auth"))
   @Operation(summary = "Get auth configuration", tags = "general",

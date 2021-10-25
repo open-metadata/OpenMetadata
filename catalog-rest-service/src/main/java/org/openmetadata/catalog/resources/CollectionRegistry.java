@@ -18,12 +18,13 @@ package org.openmetadata.catalog.resources;
 
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
 import org.openmetadata.catalog.type.CollectionInfo;
 import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.reflections.Reflections;
-import org.skife.jdbi.v2.DBI;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,14 +54,12 @@ public final class CollectionRegistry {
 
   public static class CollectionDetails {
     private final String resourceClass;
-    private final String repoClass;
     private final CollectionDescriptor cd;
     private final List<CollectionDescriptor> childCollections = new ArrayList<>();
 
-    CollectionDetails(CollectionDescriptor cd, String resourceClass, String repoClass) {
+    CollectionDetails(CollectionDescriptor cd, String resourceClass) {
       this.cd = cd;
       this.resourceClass = resourceClass;
-      this.repoClass = repoClass;
     }
 
     public void addChildCollection(CollectionDetails child) {
@@ -142,14 +141,14 @@ public final class CollectionRegistry {
   /**
    * Register resources from CollectionRegistry
    */
-  public void registerResources(DBI jdbi, Environment environment, CatalogAuthorizer authorizer) {
+  public void registerResources(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
-      String repositoryClass = details.repoClass;
       try {
-        Object resource = createResource(jdbi, resourceClass, repositoryClass, authorizer);
+        CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
+        Object resource = createResource(daoObject, resourceClass, authorizer);
         environment.jersey().register(resource);
         LOG.info("Registering {}", resourceClass);
       } catch (Exception ex) {
@@ -160,11 +159,10 @@ public final class CollectionRegistry {
 
   /** Get collection details based on annotations in Resource classes */
   private static CollectionDetails getCollection(Class<?> cl) {
-    String href, doc, name, repoClass;
+    String href, doc, name;
     href = null;
     doc = null;
     name = null;
-    repoClass = null;
     for (Annotation a : cl.getAnnotations()) {
       if (a instanceof Path) {
         // Use @Path annotation to compile href
@@ -175,13 +173,11 @@ public final class CollectionRegistry {
       } else if (a instanceof Collection) {
         // Use @Collection annotation to get initialization information for the class
         name = ((Collection) a).name();
-        repoClass = ((Collection) a).repositoryClass();
-        repoClass = repoClass.isEmpty() ? null : repoClass;
       }
     }
     CollectionDescriptor cd = new CollectionDescriptor();
     cd.setCollection(new CollectionInfo().withName(name).withDocumentation(doc).withHref(URI.create(href)));
-    return new CollectionDetails(cd, cl.getCanonicalName(), repoClass);
+    return new CollectionDetails(cd, cl.getCanonicalName());
   }
 
   /** Compile a list of REST collection based on Resource classes marked with {@code Collection} annotation */
@@ -199,21 +195,19 @@ public final class CollectionRegistry {
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
-  private static Object createResource(DBI jdbi, String resourceClass, String repositoryClass,
-                                       CatalogAuthorizer authorizer) throws
+  private static Object createResource(CollectionDAO daoObject, String resourceClass, CatalogAuthorizer authorizer) throws
           ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
     Class<?> clz = Class.forName(resourceClass);
 
     // Create the resource identified by resourceClass
-    if (repositoryClass != null) {
-      Class<?> repositoryClz = Class.forName(repositoryClass);
-      final Object daoObject = jdbi.onDemand(repositoryClz);
-      LOG.info("Creating resource {} with repository {}", resourceClass, repositoryClass);
-      resource = clz.getDeclaredConstructor(repositoryClz, CatalogAuthorizer.class).newInstance(daoObject, authorizer);
-    } else {
-      LOG.info("Creating resource {} without repository", resourceClass);
+    try {
+      LOG.info("Creating resource {}", resourceClass);
+      resource = clz.getDeclaredConstructor(CollectionDAO.class, CatalogAuthorizer.class).newInstance(daoObject,
+              authorizer);
+    } catch(NoSuchMethodException ex) {
+      LOG.info("Creating resource {} with default constructor", resourceClass);
       resource = Class.forName(resourceClass).getConstructor().newInstance();
     }
 

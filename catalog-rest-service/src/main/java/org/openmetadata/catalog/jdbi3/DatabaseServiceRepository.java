@@ -16,96 +16,153 @@
 
 package org.openmetadata.catalog.jdbi3;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource.DatabaseServiceList;
+import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.type.Schedule;
+import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.Utils;
-import org.skife.jdbi.v2.sqlobject.Bind;
-import org.skife.jdbi.v2.sqlobject.CreateSqlObject;
-import org.skife.jdbi.v2.sqlobject.SqlQuery;
-import org.skife.jdbi.v2.sqlobject.SqlUpdate;
-import org.skife.jdbi.v2.sqlobject.Transaction;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 
-public abstract class DatabaseServiceRepository {
-  private static final Logger LOG = LoggerFactory.getLogger(DatabaseServiceRepository.class);
+public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
+  private final CollectionDAO dao;
 
-  @CreateSqlObject
-  abstract DatabaseServiceDAO dbServiceDAO();
-
-  @CreateSqlObject
-  abstract EntityRelationshipDAO relationshipDAO();
-
-  @Transaction
-  public List<DatabaseService> list(String name) throws IOException {
-    return JsonUtils.readObjects(dbServiceDAO().list(name), DatabaseService.class);
+  public DatabaseServiceRepository(CollectionDAO dao) {
+    super(DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    this.dao = dao;
   }
 
-  @Transaction
-  public DatabaseService get(String id) throws IOException {
-    return EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
-  }
-
-  @Transaction
-  public DatabaseService getByName(String name) throws IOException {
-    return EntityUtil.validate(name, dbServiceDAO().findByName(name), DatabaseService.class);
-  }
-
-  @Transaction
-  public DatabaseService create(DatabaseService databaseService) throws JsonProcessingException {
-    // Validate fields
-    Utils.validateIngestionSchedule(databaseService.getIngestionSchedule());
-    dbServiceDAO().insert(JsonUtils.pojoToJson(databaseService));
-    return databaseService;
-  }
-
-  public DatabaseService update(String id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
+  public DatabaseService update(UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     Utils.validateIngestionSchedule(ingestionSchedule);
-    DatabaseService dbService = EntityUtil.validate(id, dbServiceDAO().findById(id), DatabaseService.class);
+    DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
-    dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
+    dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
     return dbService;
   }
 
   @Transaction
-  public void delete(String id) {
-    if (dbServiceDAO().delete(id) <= 0) {
+  public void delete(UUID id) {
+    if (dao.dbServiceDAO().delete(id) <= 0) {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE_SERVICE, id));
     }
-    relationshipDAO().deleteAll(id);
+    dao.relationshipDAO().deleteAll(id.toString());
   }
 
-  public interface DatabaseServiceDAO {
-    @SqlUpdate("INSERT INTO dbservice_entity (json) VALUES (:json)")
-    void insert(@Bind("json") String json);
+  @Override
+  public DatabaseService setFields(DatabaseService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
 
-    @SqlUpdate("UPDATE dbservice_entity SET  json = :json where id = :id")
-    void update(@Bind("id") String id, @Bind("json") String json);
+  @Override
+  public void restorePatchAttributes(DatabaseService original, DatabaseService updated) throws IOException,
+          ParseException {
 
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE id = :id")
-    String findById(@Bind("id") String id);
+  }
 
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE name = :name")
-    String findByName(@Bind("name") String name);
+  @Override
+  public EntityInterface<DatabaseService> getEntityInterface(DatabaseService entity) {
+    return new DatabaseServiceEntityInterface(entity);
+  }
 
-    @SqlQuery("SELECT json FROM dbservice_entity WHERE (name = :name OR :name is NULL)")
-    List<String> list(@Bind("name") String name);
+  @Override
+  public void validate(DatabaseService entity) throws IOException {
+    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+  }
 
-    @SqlUpdate("DELETE FROM dbservice_entity WHERE id = :id")
-    int delete(@Bind("id") String id);
+  @Override
+  public void store(DatabaseService entity, boolean update) throws IOException {
+    dao.dbServiceDAO().insert(entity);
+    // TODO other cleanup
+  }
+
+  @Override
+  public void storeRelationships(DatabaseService entity) throws IOException {
+  }
+
+  public static class DatabaseServiceEntityInterface implements EntityInterface<DatabaseService> {
+    private final DatabaseService entity;
+
+    public DatabaseServiceEntityInterface(DatabaseService entity) {
+      this.entity = entity;
+    }
+
+    @Override
+    public UUID getId() { return entity.getId(); }
+
+    @Override
+    public String getDescription() {
+      return entity.getDescription();
+    }
+
+    @Override
+    public String getDisplayName() {
+      return entity.getDisplayName();
+    }
+
+    @Override
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
+              .withDisplayName(getDisplayName()).withType(Entity.DATABASE_SERVICE);
+    }
+
+    @Override
+    public DatabaseService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setVersion(Double version) { entity.setVersion(version); }
+
+    @Override
+    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+
+    @Override
+    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
   }
 }

@@ -36,6 +36,7 @@ const FilterContainer: FunctionComponent<FilterContainerProp> = ({
         })}
         data-testid="checkbox"
         disabled={isDisabled}
+        id={name}
         type="checkbox"
         onChange={() => {
           onSelect(!isSelected, name, type);

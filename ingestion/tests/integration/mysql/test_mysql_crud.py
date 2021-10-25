@@ -14,7 +14,6 @@
 #  limitations under the License.
 
 import time
-from metadata.ingestion.ometa.client import REST
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
@@ -26,6 +25,8 @@ import requests
 from requests.exceptions import ConnectionError
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
+
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 
 
 def is_responsive(url):
@@ -39,8 +40,8 @@ def is_responsive(url):
 
 def create_delete_table(client):
     databases = client.list_databases()
-    columns = [Column(name="id", columnDataType="INT"),
-               Column(name="name", columnDataType="VARCHAR")]
+    columns = [Column(name="id", dataType="INT", dataLength=1),
+               Column(name="name", dataType="VARCHAR", dataLength=1)]
     table = CreateTableEntityRequest(
         name="test1", columns=columns, database=databases[0].id)
     created_table = client.create_or_update_table(table)
@@ -57,7 +58,7 @@ def create_delete_table(client):
 def create_delete_database(client):
     data = {'jdbc': {'connectionUrl': 'mysql://localhost/catalog_db', 'driverClass': 'jdbc'},
             'name': 'temp_local_mysql',
-            'serviceType': 'MYSQL',
+            'serviceType': 'MySQL',
             'description': 'local mysql env'}
     create_mysql_service = CreateDatabaseServiceEntityRequest(**data)
     mysql_service = client.create_database_service(create_mysql_service)
@@ -78,25 +79,29 @@ def catalog_service(docker_ip, docker_services):
     port = docker_services.port_for("db", 3306)
     print("Mysql is running on port {}".format(port))
     url = "http://localhost:8585"
-    time.sleep(420)
+    time.sleep(30)
     docker_services.wait_until_responsive(
-        timeout=60.0, pause=0.5, check=lambda: is_responsive(url)
+        timeout=30.0, pause=0.5, check=lambda: is_responsive(url)
     )
     return url
 
 
 def test_check_tables(catalog_service):
-    client = REST(catalog_service + "/api", 'test', 'test')
+    metadata_config = MetadataServerConfig.parse_obj(
+        {
+            "api_endpoint": catalog_service + "/api",
+            "auth_provider_type": "no-auth"
+        }
+    )
+    client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
-    if len(databases) > 0:
-        assert create_delete_table(client)
-    else:
-        assert create_delete_database(client)
-
+    assert create_delete_database(client)
 
 def test_read_schema():
     url = "mysql+pymysql://catalog_user:catalog_password@localhost:3307"
-    engine = create_engine(url)
+    # pool_recycle to avoid the occasional "Lost connection to MySQL server during query" error
+    # when host machine is slow
+    engine = create_engine(url, pool_recycle=1)
     inspector = inspect(engine)
     schemas = []
     for schema in inspector.get_schema_names():
