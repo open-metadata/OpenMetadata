@@ -1,3 +1,4 @@
+import classNames from 'classnames';
 import React from 'react';
 import { TITLE_FOR_NON_OWNER_ACTION } from '../../../constants/constants';
 import SVGIcons from '../../../utils/SvgUtils';
@@ -17,14 +18,15 @@ type Props = {
   activeTab: number;
   setActiveTab: (value: number) => void;
   tabs: Array<Tab>;
+  className?: string;
 };
-const TabsPane = ({ activeTab, setActiveTab, tabs }: Props) => {
+const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
   const getTabClasses = (tab: number, activeTab: number) => {
     return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
   };
 
   return (
-    <div className="tw-bg-transparent tw--mx-4">
+    <div className={classNames('tw-bg-transparent tw--mx-4', className)}>
       <nav
         className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4"
         id="tabs">
