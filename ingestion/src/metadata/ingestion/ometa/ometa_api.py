@@ -279,8 +279,8 @@ class OMeta(Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    def get_by_name(self, entity: Type[T], name: str) -> Type[T]:
-        resp = self.client.get(f"{self.get_suffix(entity)}/name/{name}")
+    def get_by_name(self, entity: Type[T], fqdn: str) -> Type[T]:
+        resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
         return entity(**resp)
 
     def get_by_id(self, entity: Type[T], entity_id: str) -> Type[T]:
