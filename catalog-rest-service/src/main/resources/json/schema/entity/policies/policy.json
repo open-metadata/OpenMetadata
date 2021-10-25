@@ -53,7 +53,7 @@
       "$ref": "../../type/entityReference.json"
     },
     "policyUrl": {
-      "description": "Link to a well documented definition of this Policy.",
+      "description": "Link to a well documented definition with business justification for this Policy.",
       "type": "string",
       "format": "uri"
     },
@@ -67,6 +67,18 @@
     "enabled": {
       "description": "Is the policy enabled",
       "type": "boolean"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
     }
   },
   "required": [
