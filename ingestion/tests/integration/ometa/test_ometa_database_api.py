@@ -45,32 +45,46 @@ class OMetaDatabaseTest(TestCase):
         jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
     )
 
-    def setUp(self) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
         """
         Prepare ingredients
         """
-        self.service_entity = self.metadata.create_or_update(
-            entity=CreateDatabaseServiceEntityRequest, data=self.service
+        cls.service_entity = cls.metadata.create_or_update(
+            entity=CreateDatabaseServiceEntityRequest, data=cls.service
         )
 
-        self.entity = Database(
+        cls.entity = Database(
             id=uuid.uuid4(),
             name="test-db",
-            service=EntityReference(id=self.service_entity.id, type="databaseService"),
+            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
             fullyQualifiedName="test-service.test-db",
         )
-        self.create = CreateDatabaseEntityRequest(
+
+        cls.create = CreateDatabaseEntityRequest(
             name="test-db",
-            service=EntityReference(id=self.service_entity.id, type="databaseService"),
+            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
-        self.service_entity_id = str(self.service_entity.id.__root__)
-
-    def tearDown(self) -> None:
+    @classmethod
+    def tearDownClass(cls) -> None:
         """
         Clean up
         """
-        self.metadata.delete(entity=DatabaseService, entity_id=self.service_entity_id)
+        db_id = str(
+            cls.metadata.get_by_name(
+                entity=Database, fqdn="test-service.test-db"
+            ).id.__root__
+        )
+
+        service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqdn="test-service"
+            ).id.__root__
+        )
+
+        cls.metadata.delete(entity=Database, entity_id=db_id)
+        cls.metadata.delete(entity=DatabaseService, entity_id=service_id)
 
     def test_create(self):
         """
@@ -171,7 +185,6 @@ class OMetaDatabaseTest(TestCase):
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Database)
-        print(res)
         assert not next(
             iter(ent for ent in res.entities if ent.name == self.entity.name), None
         )
