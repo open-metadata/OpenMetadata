@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
@@ -121,8 +137,10 @@ public class DashboardDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(dashboardName);
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         Thread.sleep(waitTime);
-        actions.moveToElement(webDriver.findElement(By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
-        webDriver.findElement(By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span")).click();
+        actions.moveToElement(webDriver.findElement(
+                By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
+        webDriver.findElement(
+                By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='associatedTagName']")));
         webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']")).click();
         for (int i = 0; i <=1; i++){
@@ -195,8 +213,8 @@ public class DashboardDetailsPageTest {
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save']")));
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
         for (int i = 1; i <= 3; i++) { //check topics in service
-            wait.until(ExpectedConditions.elementToBeClickable
-                    (By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")));
+            wait.until(ExpectedConditions.elementToBeClickable(
+                    By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")));
             webDriver.findElement(
                     By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")).click(); // dashboards
             Thread.sleep(waitTime);
