@@ -14,7 +14,7 @@ from math import ceil, floor
 from typing import List
 
 from openmetadata.common.database import Database
-from openmetadata.profiler.metric import Metric
+from openmetadata.common.metric import Metric
 from openmetadata.profiler.profiler_metadata import (
     Column,
     ColumnProfileResult,
@@ -24,7 +24,6 @@ from openmetadata.profiler.profiler_metadata import (
     TableProfileResult,
     get_group_by_cte,
     get_group_by_cte_numeric_value_expression,
-    get_order_by_cte_value_expression,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,13 +35,11 @@ class Profiler:
         database: Database,
         table_name: str,
         excluded_columns: List[str] = [],
-        variables: dict = None,
         profile_time: str = None,
     ):
         self.database = database
         self.table = Table(name=table_name)
         self.excluded_columns = excluded_columns
-        self.variables = variables
         self.time = profile_time
         self.qualified_table_name = self.database.qualify_table_name(table_name)
         self.scan_reference = None
@@ -59,8 +56,8 @@ class Profiler:
         self.start_time = datetime.now()
 
         try:
-            self._query_table_metadata()
-            self._query_aggregations()
+            self._table_metadata()
+            self._profile_aggregations()
             self._query_group_by_value()
             self._query_histograms()
             logger.debug(
@@ -74,7 +71,7 @@ class Profiler:
 
         return self.profiler_result
 
-    def _query_table_metadata(self):
+    def _table_metadata(self):
         sql = self.database.table_metadata_query(self.table.name)
         columns = self.database.sql_fetchall(sql)
         self.queries_executed += 1
@@ -105,12 +102,12 @@ class Profiler:
         logger.debug(str(len(self.columns)) + " columns:")
         self.profiler_result.table_result.col_count = len(self.columns)
 
-    def _query_aggregations(self):
+    def _profile_aggregations(self):
         measurements: List[MetricMeasurement] = []
         fields: List[str] = []
 
         # Compute Row Count
-        fields.append(self.database.sql_expr_count_all())
+        fields.append(self.database.sql_exprs.count_all_expr)
         measurements.append(MetricMeasurement(name=Metric.ROW_COUNT, col_name="table"))
         column_metric_indices = {}
 
@@ -119,77 +116,74 @@ class Profiler:
                 metric_indices = {}
                 column_metric_indices[column.name.lower()] = metric_indices
                 column_name = column.name
-                column_profile_result = ColumnProfileResult(
-                    name=column_name, data_type=column.data_type
-                )
                 qualified_column_name = self.database.qualify_column_name(column_name)
 
                 ## values_count
                 metric_indices["non_missing"] = len(measurements)
-                fields.append(self.database.sql_expr_count(qualified_column_name))
+                fields.append(self.database.sql_exprs.count(qualified_column_name))
                 measurements.append(
                     MetricMeasurement(name=Metric.VALUES_COUNT, col_name=column_name)
                 )
 
                 # Valid Count
-                fields.append(self.database.sql_expr_count(qualified_column_name))
+                fields.append(self.database.sql_exprs.count(qualified_column_name))
                 measurements.append(
                     MetricMeasurement(name=Metric.VALID_COUNT, col_name=column_name)
                 )
                 if column.logical_type == "text":
-                    length_expr = self.database.sql_expr_length(qualified_column_name)
-                    fields.append(self.database.sql_expr_avg(length_expr))
+                    length_expr = self.database.sql_exprs.length(qualified_column_name)
+                    fields.append(self.database.sql_exprs.avg(length_expr))
                     measurements.append(
                         MetricMeasurement(name=Metric.AVG_LENGTH, col_name=column_name)
                     )
 
                     # Min Length
-                    fields.append(self.database.sql_expr_min(length_expr))
+                    fields.append(self.database.sql_exprs.min(length_expr))
                     measurements.append(
                         MetricMeasurement(name=Metric.MIN_LENGTH, col_name=column_name)
                     )
 
                     # Max Length
-                    fields.append(self.database.sql_expr_max(length_expr))
+                    fields.append(self.database.sql_exprs.max(length_expr))
                     measurements.append(
                         MetricMeasurement(name=Metric.MAX_LENGTH, col_name=column_name)
                     )
 
                 if column.logical_type == "number":
                     # Min
-                    fields.append(self.database.sql_expr_min(qualified_column_name))
+                    fields.append(self.database.sql_exprs.min(qualified_column_name))
                     measurements.append(
                         MetricMeasurement(name=Metric.MIN, col_name=column_name)
                     )
 
                     # Max
-                    fields.append(self.database.sql_expr_max(qualified_column_name))
+                    fields.append(self.database.sql_exprs.max(qualified_column_name))
                     measurements.append(
                         MetricMeasurement(name=Metric.MAX, col_name=column_name)
                     )
 
                     # AVG
-                    fields.append(self.database.sql_expr_avg(qualified_column_name))
+                    fields.append(self.database.sql_exprs.avg(qualified_column_name))
                     measurements.append(
                         MetricMeasurement(name=Metric.AVG, col_name=column_name)
                     )
 
                     # SUM
-                    fields.append(self.database.sql_expr_sum(qualified_column_name))
+                    fields.append(self.database.sql_exprs.sum(qualified_column_name))
                     measurements.append(
                         MetricMeasurement(name=Metric.SUM, col_name=column_name)
                     )
 
                     # VARIANCE
                     fields.append(
-                        self.database.sql_expr_variance(qualified_column_name)
+                        self.database.sql_exprs.variance(qualified_column_name)
                     )
                     measurements.append(
                         MetricMeasurement(name=Metric.VARIANCE, col_name=column_name)
                     )
 
                     # STDDEV
-                    fields.append(self.database.sql_expr_stddev(qualified_column_name))
+                    fields.append(self.database.sql_exprs.stddev(qualified_column_name))
                     measurements.append(
                         MetricMeasurement(name=Metric.STDDEV, col_name=column_name)
                     )

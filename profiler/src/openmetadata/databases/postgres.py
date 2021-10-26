@@ -12,6 +12,7 @@ import logging
 from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
+    SQLExpressions,
     register_custom_type,
 )
 
@@ -25,7 +26,14 @@ class PostgresConnectionConfig(SQLConnectionConfig):
         return super().get_connection_url()
 
 
+class PostgresSQLExpressions(SQLExpressions):
+    regex_like_pattern_expr: str = "{} ~* '{}'"
+
+
 class Postgres(DatabaseCommon):
+    config: PostgresConnectionConfig = None
+    sql_exprs: PostgresSQLExpressions = PostgresSQLExpressions()
+
     def __init__(self, config):
         super().__init__(config)
         self.config = config
@@ -48,25 +56,9 @@ class Postgres(DatabaseCommon):
         return sql
 
     def qualify_table_name(self, table_name: str) -> str:
-        if self.schema:
-            return f'"{self.schema}"."{table_name}"'
+        if self.config.db_schema:
+            return f'"{self.config.db_schema}"."{table_name}"'
         return f'"{table_name}"'
 
     def qualify_column_name(self, column_name: str):
         return f'"{column_name}"'
-
-    def sql_expr_regexp_like(self, expr: str, pattern: str):
-        return f"{expr} ~* '{self.qualify_regex(pattern)}'"
-
-    def sql_expr_cast_text_to_number(self, quoted_column_name, validity_format):
-        if validity_format == "number_whole":
-            return f"CAST({quoted_column_name} AS {self.data_type_decimal})"
-        not_number_pattern = self.qualify_regex(r"[^-\d\.\,]")
-        comma_pattern = self.qualify_regex(r"\,")
-        return (
-            f"CAST(REGEXP_REPLACE(REGEXP_REPLACE({quoted_column_name}, '{not_number_pattern}', '', 'g'), "
-            f"'{comma_pattern}', '.', 'g') AS {self.data_type_decimal})"
-        )
-
-    def get_type_name(self, column_description):
-        return Postgres.type_names_by_type_code.get(str(column_description[1]))

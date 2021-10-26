@@ -17,6 +17,7 @@ from numbers import Number
 from typing import List, Optional
 from urllib.parse import quote_plus
 
+from pydantic import BaseModel
 from sqlalchemy import create_engine
 
 from openmetadata.common.config import ConfigModel, IncludeFilterPattern
@@ -101,105 +102,34 @@ def register_custom_type(
         raise Exception(f"Unsupported {type_category}")
 
 
-class DatabaseCommon(Database):
-    data_type_varchar_255 = "VARCHAR(255)"
-    data_type_integer = "INTEGER"
-    data_type_bigint = "BIGINT"
-    data_type_decimal = "REAL"
-    data_type_date = "DATE"
-
-    def __init__(self, config: SQLConnectionConfig):
-        self.config = config
-        self.sql_config = self.config
-        self.connection_string = self.sql_config.get_connection_url()
-        self.engine = create_engine(self.connection_string, **self.sql_config.options)
-        self.connection = self.engine.raw_connection()
-
-    @classmethod
-    def create(cls, config_dict: dict):
-        pass
+class SQLExpressions(BaseModel):
+    count_all_expr: str = "COUNT(*)"
+    count_expr: str = "COUNT({})"
+    distinct_expr: str = "DISTINCT({})"
+    min_expr: str = "MIN({})"
+    max_expr: str = "MAX({})"
+    length_expr: str = "LENGTH({})"
+    avg_expr: str = "AVG({})"
+    sum_expr: str = "SUM({})"
+    variance_expr: str = "VARIANCE({})"
+    stddev_expr: str = "STDDEV({})"
+    limit_expr: str = "LIMIT {}"
+    count_conditional_expr: str = "COUNT(CASE WHEN {} THEN 1 END)"
+    conditional_expr: str = "CASE WHEN {} THEN {} END"
+    equal_expr: str = "{}  == {}"
+    less_than_expr: str = "{} < {}"
+    less_than_or_equal_expr: str = "{} <= {}"
+    greater_than_expr: str = "{} > {}"
+    greater_than_or_equal_expr: str = "{} >= {}"
+    var_in_expr: str = "{} in {}"
+    regex_like_pattern_expr: str = "REGEXP_LIKE({}, '{}')"
+    contains_expr: str = "{} LIKE '%{}%'"
+    starts_with_expr: str = "{} LIKE '%{}'"
+    ends_with_expr: str = "{} LIKE '{}%'"
 
     @staticmethod
     def escape_metacharacters(value: str):
         return re.sub(r"(\\.)", r"\\\1", value)
-
-    def table_metadata_query(self, table_name: str) -> str:
-        pass
-
-    def is_text(self, column_type: str):
-        return column_type.upper() in _text_types
-
-    def is_number(self, column_type: str):
-        return column_type.upper() in _numeric_types
-
-    def is_time(self, column_type: str):
-        return column_type.upper() in _time_types
-
-    def sql_expr_count_all(self) -> str:
-        return "COUNT(*)"
-
-    def sql_expr_count_conditional(self, condition: str):
-        return f"COUNT(CASE WHEN {condition} THEN 1 END)"
-
-    def sql_expr_conditional(self, condition: str, expr: str):
-        return f"CASE WHEN {condition} THEN {expr} END"
-
-    def sql_expr_count(self, expr):
-        return f"COUNT({expr})"
-
-    def sql_expr_distinct(self, expr):
-        return f"DISTINCT({expr})"
-
-    def sql_expr_min(self, expr):
-        return f"MIN({expr})"
-
-    def sql_expr_length(self, expr):
-        return f"LENGTH({expr})"
-
-    def sql_expr_max(self, expr: str):
-        return f"MAX({expr})"
-
-    def sql_expr_avg(self, expr: str):
-        return f"AVG({expr})"
-
-    def sql_expr_sum(self, expr: str):
-        return f"SUM({expr})"
-
-    def sql_expr_variance(self, expr: str):
-        return f"VARIANCE({expr})"
-
-    def sql_expr_stddev(self, expr: str):
-        return f"STDDEV({expr})"
-
-    def sql_expr_regexp_like(self, expr: str, pattern: str):
-        return f"REGEXP_LIKE({expr}, '{self.qualify_regex(pattern)}')"
-
-    def sql_expr_limit(self, count):
-        return f"LIMIT {count}"
-
-    def sql_select_with_limit(self, table_name, count):
-        return f"SELECT * FROM {table_name} LIMIT {count}"
-
-    def sql_expr_list(self, column: Column, values: List[str]) -> str:
-        if self.is_text(column.data_type):
-            sql_values = [self.literal_string(value) for value in values]
-        elif self.is_number(column.data_type):
-            sql_values = [self.literal_number(value) for value in values]
-        else:
-            raise RuntimeError(
-                f"Couldn't format list {str(values)} for column {str(column)}"
-            )
-        return "(" + ",".join(sql_values) + ")"
-
-    def sql_expr_cast_text_to_number(self, quoted_column_name, validity_format):
-        if validity_format == "number_whole":
-            return f"CAST({quoted_column_name} AS {self.data_type_decimal})"
-        not_number_pattern = self.qualify_regex(r"[^-[0-9]\.\,]")
-        comma_pattern = self.qualify_regex(r"\\,")
-        return (
-            f"CAST(REGEXP_REPLACE(REGEXP_REPLACE({quoted_column_name}, '{not_number_pattern}', ''), "
-            f"'{comma_pattern}', '.') AS {self.data_type_decimal})"
-        )
 
     def literal_number(self, value: Number):
         if value is None:
@@ -216,8 +146,77 @@ class DatabaseCommon(Database):
             return None
         return "(" + (",".join([self.literal(e) for e in l])) + ")"
 
-    def literal_date(self, date: date):
-        date_string = date.strftime("%Y-%m-%d")
+    def count(self, expr: str):
+        return self.count_expr.format(expr)
+
+    def distinct(self, expr: str):
+        return self.distinct_expr.format(expr)
+
+    def min(self, expr: str):
+        return self.min_expr.format(expr)
+
+    def max(self, expr: str):
+        return self.max_expr.format(expr)
+
+    def length(self, expr: str):
+        return self.length_expr.format(expr)
+
+    def avg(self, expr: str):
+        return self.avg_expr.format(expr)
+
+    def sum(self, expr: str):
+        return self.sum_expr.format(expr)
+
+    def variance(self, expr: str):
+        return self.variance_expr.format(expr)
+
+    def stddev(self, expr: str):
+        return self.stddev_expr.format(expr)
+
+    def limit(self, expr: str):
+        return self.limit_expr.format(expr)
+
+    def regex_like(self, expr: str, pattern: str):
+        return self.regex_like_pattern_expr.format(expr, pattern)
+
+    def equal(self, left: str, right: str):
+        if right == "null":
+            return f"{left} IS NULL"
+        else:
+            return self.equal_expr.format(right, left)
+
+    def less_than(self, left, right):
+        return self.less_than_expr.format(left, right)
+
+    def less_than_or_equal(self, left, right):
+        return self.less_than_or_equal_expr.format(left, right)
+
+    def greater_than(self, left, right):
+        return self.greater_than_expr.format(left, right)
+
+    def greater_than_or_equal(self, left, right):
+        return self.greater_than_or_equal_expr.format(left, right)
+
+    def var_in(self, left, right):
+        return self.var_in_expr.format(left, right)
+
+    def contains(self, value, substring):
+        return self.contains_expr.format(value, substring)
+
+    def starts_with(self, value, substring):
+        return self.starts_with_expr.format(value, substring)
+
+    def ends_with(self, value, substring):
+        return self.ends_with_expr.format(value, substring)
+
+    def count_conditional(self, condition: str):
+        return self.count_conditional_expr.format(condition)
+
+    def conditional(self, condition: str, expr: str):
+        return self.conditional_expr.format(condition, expr)
+
+    def literal_date_expr(self, date_expr: date):
+        date_string = date_expr.strftime("%Y-%m-%d")
         return f"DATE '{date_string}'"
 
     def literal(self, o: object):
@@ -229,200 +228,103 @@ class DatabaseCommon(Database):
             return self.literal_list(o)
         raise RuntimeError(f"Cannot convert type {type(o)} to a SQL literal: {o}")
 
+    def list_expr(self, column: Column, values: List[str]) -> str:
+        if column.is_text():
+            sql_values = [self.literal_string(value) for value in values]
+        elif column.is_number():
+            sql_values = [self.literal_number(value) for value in values]
+        else:
+            raise RuntimeError(
+                f"Couldn't format list {str(values)} for column {str(column)}"
+            )
+        return "(" + ",".join(sql_values) + ")"
+
+
+class DatabaseCommon(Database):
+    data_type_varchar_255 = "VARCHAR(255)"
+    data_type_integer = "INTEGER"
+    data_type_bigint = "BIGINT"
+    data_type_decimal = "REAL"
+    data_type_date = "DATE"
+    config: SQLConnectionConfig = None
+    sql_exprs: SQLExpressions = SQLExpressions()
+
+    def __init__(self, config: SQLConnectionConfig):
+        self.config = config
+        self.connection_string = self.config.get_connection_url()
+        self.engine = create_engine(self.connection_string, **self.config.options)
+        self.connection = self.engine.raw_connection()
+
+    @classmethod
+    def create(cls, config_dict: dict):
+        pass
+
+    def table_metadata_query(self, table_name: str) -> str:
+        pass
+
     def qualify_table_name(self, table_name: str) -> str:
         return table_name
 
     def qualify_column_name(self, column_name: str):
         return column_name
 
-    def qualify_writable_table_name(self, table_name: str) -> str:
-        return table_name
+    def is_text(self, column_type: str):
+        return column_type.upper() in _text_types
 
-    def qualify_regex(self, regex):
-        return regex
+    def is_number(self, column_type: str):
+        return column_type.upper() in _numeric_types
 
-    def qualify_string(self, value: str):
-        return value
+    def is_time(self, column_type: str):
+        return column_type.upper() in _time_types
 
-    def sql_declare_string_column(self, column_name):
-        return f"{column_name} {self.data_type_varchar_255}"
+    def sql_fetchone(self, sql: str) -> tuple:
+        """
+        Only returns the tuple obtained by cursor.fetchone()
+        """
+        return sql_fetchone_description(self.connection, sql)[0]
 
-    def sql_declare_integer_column(self, column_name):
-        return f"{column_name} {self.data_type_integer}"
+    def sql_fetchone_description(self, sql: str) -> tuple:
+        """
+        Returns a tuple with 2 elements:
+        1) the tuple obtained by cursor.fetchone()
+        2) the cursor.description
+        """
+        cursor = self.connection.cursor()
+        try:
+            logger.debug(f"Executing SQL query: \n{sql}")
+            start = datetime.now()
+            cursor.execute(sql)
+            row_tuple = cursor.fetchone()
+            description = cursor.description
+            delta = datetime.now() - start
+            logger.debug(f"SQL took {str(delta)}")
+            return row_tuple, description
+        finally:
+            cursor.close()
 
-    def sql_declare_decimal_column(self, column_name):
-        return f"{column_name} {self.data_type_decimal}"
+    def sql_fetchall(self, sql: str) -> List[tuple]:
+        """
+        Only returns the tuples obtained by cursor.fetchall()
+        """
+        return sql_fetchall_description(self.connection, sql)[0]
 
-    def sql_declare_big_integer_column(self, column_name):
-        return f"{column_name} {self.data_type_bigint}"
-
-    def sql_expression(self, expression_dict: dict, **kwargs):
-        if expression_dict is None:
-            return None
-        type = expression_dict["type"]
-        if type == "number":
-            sql = self.literal_number(expression_dict["value"])
-        elif type == "string":
-            sql = self.literal_string(expression_dict["value"])
-        elif type == "time":
-            if expression_dict["scanTime"]:
-                sql = self.literal(kwargs["scan_time"])
-            else:
-                raise RuntimeError(
-                    'Unsupported time comparison! Only "scanTime" is supported'
-                )
-        elif type == "columnValue":
-            sql = expression_dict["columnName"]
-        elif type == "collection":
-            # collection of string or number literals
-            value = expression_dict["value"]
-            sql = self.literal_list(value)
-        elif type == "equals":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_equal(left, right)
-        elif type == "lessThan":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_less_than(left, right)
-        elif type == "lessThanOrEqual":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_less_than_or_equal(left, right)
-        elif type == "greaterThan":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_greater_than(left, right)
-        elif type == "greaterThanOrEqual":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_greater_than_or_equal(left, right)
-        elif type == "between":
-            clauses = []
-            value = self.sql_expression(expression_dict["value"], **kwargs)
-            gte = self.literal_number(expression_dict.get("gte"))
-            gt = self.literal_number(expression_dict.get("gt"))
-            lte = self.literal_number(expression_dict.get("lte"))
-            lt = self.literal_number(expression_dict.get("lt"))
-            if gte:
-                clauses.append(self.sql_expr_less_than_or_equal(gte, value))
-            elif gt:
-                clauses.append(self.sql_expr_less_than(gt, value))
-            if lte:
-                clauses.append(self.sql_expr_less_than_or_equal(value, lte))
-            elif lt:
-                clauses.append(self.sql_expr_less_than(value, lt))
-            sql = " AND ".join(clauses)
-        elif type == "in":
-            left = self.sql_expression(expression_dict["left"], **kwargs)
-            right = self.sql_expression(expression_dict["right"], **kwargs)
-            sql = self.sql_expr_in(left, right)
-        elif type == "contains":
-            value = self.sql_expression(expression_dict["left"], **kwargs)
-            substring = self.escape_metacharacters(expression_dict["right"]["value"])
-            sql = self.sql_expr_contains(value, substring)
-        elif type == "startsWith":
-            value = self.sql_expression(expression_dict["left"], **kwargs)
-            substring = self.escape_metacharacters(expression_dict["right"]["value"])
-            sql = self.sql_expr_starts_with(value, substring)
-        elif type == "endsWith":
-            value = self.sql_expression(expression_dict["left"], **kwargs)
-            substring = self.escape_metacharacters(expression_dict["right"]["value"])
-            sql = self.sql_expr_ends_with(value, substring)
-        elif type == "not":
-            sql = (
-                "NOT ("
-                + self.sql_expression(expression_dict["expression"], **kwargs)
-                + ")"
-            )
-        elif type == "and":
-            sql = (
-                "("
-                + (
-                    ") AND (".join(
-                        [
-                            self.sql_expression(e, **kwargs)
-                            for e in expression_dict["andExpressions"]
-                        ]
-                    )
-                )
-                + ")"
-            )
-        elif type == "or":
-            sql = (
-                "("
-                + (
-                    ") OR (".join(
-                        [
-                            self.sql_expression(e, **kwargs)
-                            for e in expression_dict["orExpressions"]
-                        ]
-                    )
-                )
-                + ")"
-            )
-        elif type == "null":
-            sql = "null"
-        else:
-            raise RuntimeError(f"Unsupported expression type: {type}")
-        return sql
-
-    def sql_expr_equal(self, left, right):
-        if right == "null":
-            return f"{left} IS NULL"
-        else:
-            return f"{left} = {right}"
-
-    def sql_expr_less_than(self, left, right):
-        return f"{left} < {right}"
-
-    def sql_expr_less_than_or_equal(self, left, right):
-        return f"{left} <= {right}"
-
-    def sql_expr_greater_than(self, left, right):
-        return f"{left} > {right}"
-
-    def sql_expr_greater_than_or_equal(self, left, right):
-        return f"{left} >= {right}"
-
-    def sql_expr_in(self, left, right):
-        return f"{left} IN {right}"
-
-    def sql_expr_contains(self, value, substring):
-        return value + " LIKE '%" + substring + "%'"
-
-    def sql_expr_starts_with(self, value, substring):
-        return value + " LIKE '" + substring + "%'"
-
-    def sql_expr_ends_with(self, value, substring):
-        return value + " LIKE '%" + substring + "'"
-
-    def get_type_name(self, column_description):
-        return str(column_description[1])
-
-    def is_connection_error(self, exception):
-        return False
-
-    def is_authentication_error(self, exception):
-        return False
-
-    def sql_fetchone(self, sql) -> tuple:
-        return sql_fetchone(self.connection, sql)
-
-    def sql_fetchone_description(self, sql) -> tuple:
-        return sql_fetchone_description(self.connection, sql)
-
-    def sql_fetchall(self, sql) -> List[tuple]:
-        return sql_fetchall(self.connection, sql)
-
-    def sql_fetchall_description(self, sql) -> tuple:
-        return sql_fetchall_description(self.connection, sql)
-
-    def sql_columns_metadata(self, table_name: str) -> List[tuple]:
-        return []
-
-    def validate_connection(self):
-        pass
+    def sql_fetchall_description(self, sql: str) -> tuple:
+        """
+        Returns a tuple with 2 elements:
+        1) the tuples obtained by cursor.fetchall()
+        2) the cursor.description
+        """
+        cursor = self.cursor()
+        try:
+            logger.debug(f"Executing SQL query: \n{sql}")
+            start = datetime.now()
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            delta = datetime.now() - start
+            logger.debug(f"SQL took {str(delta)}")
+            return rows, cursor.description
+        finally:
+            cursor.close()
 
     def close(self):
         if self.connection:

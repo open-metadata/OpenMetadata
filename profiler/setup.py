@@ -49,7 +49,6 @@ base_requirements = {
     "GeoAlchemy2",
     "psycopg2-binary>=2.8.5, <3.0",
     "openmetadata-sqlalchemy-redshift==0.2.1",
-    "boto3>=1.15.18, <2.0",
 }
 
 plugins: Dict[str, Set[str]] = {

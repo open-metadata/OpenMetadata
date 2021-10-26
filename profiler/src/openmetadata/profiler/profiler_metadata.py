@@ -87,7 +87,6 @@ class MetricMeasurement(BaseModel):
     name: str
     col_name: str
     value: object = None
-    group_values: Optional[List[GroupValue]] = None
 
     class Config:
         arbitrary_types_allowed = True

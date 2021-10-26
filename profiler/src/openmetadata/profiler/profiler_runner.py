@@ -75,7 +75,6 @@ class ProfilerRunner:
             profiler = Profiler(
                 database=self.database,
                 table_name=self.table_name,
-                variables=self.variables,
                 profile_time=self.time,
             )
             profile_result: ProfileResult = profiler.execute()

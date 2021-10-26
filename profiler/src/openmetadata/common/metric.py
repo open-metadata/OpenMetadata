@@ -11,7 +11,6 @@
 
 class Metric:
     ROW_COUNT = "row_count"
-    SCHEMA = "schema"
     AVG = "avg"
     AVG_LENGTH = "avg_length"
     DISTINCT = "distinct"
@@ -21,10 +20,8 @@ class Metric:
     INVALID_COUNT = "invalid_count"
     INVALID_PERCENTAGE = "invalid_percentage"
     MAX = "max"
-    MAXS = "maxs"
     MAX_LENGTH = "max_length"
     MIN = "min"
-    MINS = "mins"
     MIN_LENGTH = "min_length"
     MISSING_COUNT = "missing_count"
     MISSING_PERCENTAGE = "missing_percentage"
@@ -40,7 +37,6 @@ class Metric:
 
     METRIC_TYPES = [
         ROW_COUNT,
-        SCHEMA,
         AVG,
         AVG_LENGTH,
         DISTINCT,
@@ -50,10 +46,8 @@ class Metric:
         INVALID_COUNT,
         INVALID_PERCENTAGE,
         MAX,
-        MAXS,
         MAX_LENGTH,
         MIN,
-        MINS,
         MIN_LENGTH,
         MISSING_COUNT,
         MISSING_PERCENTAGE,
@@ -67,47 +61,3 @@ class Metric:
         VALUES_PERCENTAGE,
         VARIANCE,
     ]
-
-    METRIC_GROUP_ALL = "all"
-    METRIC_GROUP_DUPLICATES = "duplicates"
-    METRIC_GROUP_LENGTH = "length"
-    METRIC_GROUP_MISSING = "missing"
-    METRIC_GROUP_PROFILING = "profiling"
-    METRIC_GROUP_STATISTICS = "statistics"
-    METRIC_GROUP_VALIDITY = "validity"
-
-    METRIC_GROUPS = {
-        METRIC_GROUP_DUPLICATES: [DISTINCT, DUPLICATE_COUNT, UNIQUENESS, UNIQUE_COUNT],
-        METRIC_GROUP_LENGTH: [AVG_LENGTH, MAX_LENGTH, MIN_LENGTH],
-        METRIC_GROUP_MISSING: [
-            MISSING_COUNT,
-            MISSING_PERCENTAGE,
-            VALUES_COUNT,
-            VALUES_PERCENTAGE,
-        ],
-        METRIC_GROUP_PROFILING: [FREQUENT_VALUES, HISTOGRAM, MAXS, MINS],
-        METRIC_GROUP_STATISTICS: [AVG, SUM, MAX, MIN, STDDEV, VARIANCE],
-        METRIC_GROUP_VALIDITY: [
-            INVALID_COUNT,
-            INVALID_PERCENTAGE,
-            VALID_COUNT,
-            VALID_PERCENTAGE,
-        ],
-    }
-
-    # One or more metrics in these groups are calculated in python rather than in SQL
-    # e.g. missing_count = row_count - values_count etc.
-    DERIVED_METRIC_GROUPS = {
-        METRIC_GROUP_MISSING: [
-            MISSING_COUNT,
-            MISSING_PERCENTAGE,
-            VALUES_COUNT,
-            VALUES_PERCENTAGE,
-        ],
-        METRIC_GROUP_VALIDITY: [
-            INVALID_COUNT,
-            INVALID_PERCENTAGE,
-            VALID_COUNT,
-            VALID_PERCENTAGE,
-        ],
-    }

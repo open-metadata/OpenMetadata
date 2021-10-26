@@ -13,6 +13,7 @@ from openmetadata.common.database import SupportedDataType
 from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
+    SQLExpressions,
     register_custom_type,
 )
 
@@ -75,7 +76,16 @@ class RedshiftConnectionConfig(SQLConnectionConfig):
         return super().get_connection_url()
 
 
+class RedshiftSQLExpressions(SQLExpressions):
+    avg_expr = "AVG({})"
+    sum_expr = "SUM({})"
+    regex_like_pattern_expr: str = "{} ~* '{}'"
+
+
 class Redshift(DatabaseCommon):
+    config: RedshiftConnectionConfig = None
+    sql_exprs: RedshiftSQLExpressions = RedshiftSQLExpressions()
+
     def __init__(self, config):
         super().__init__(config)
         self.config = config
@@ -84,15 +94,6 @@ class Redshift(DatabaseCommon):
     def create(cls, config_dict):
         config = RedshiftConnectionConfig.parse_obj(config_dict)
         return cls(config)
-
-    def qualify_regex(self, regex):
-        return self.escape_metacharacters(regex)
-
-    def sql_expr_avg(self, expr: str):
-        return f"AVG({expr})"
-
-    def sql_expr_sum(self, expr: str):
-        return f"SUM({expr})"
 
     def table_metadata_query(self, table_name: str) -> str:
         sql = (
@@ -105,13 +106,3 @@ class Redshift(DatabaseCommon):
         if self.config.db_schema:
             sql += f" \n  AND table_schema = '{self.config.db_schema}'"
         return sql
-
-    def sql_expr_cast_text_to_number(self, quoted_column_name, validity_format):
-        if validity_format == "number_whole":
-            return f"CAST({quoted_column_name} AS {self.data_type_decimal})"
-        not_number_pattern = self.qualify_regex(r"[^-\d\.\,]")
-        comma_pattern = self.qualify_regex(r"\,")
-        return (
-            f"CAST(REGEXP_REPLACE(REGEXP_REPLACE({quoted_column_name}, '{not_number_pattern}', ''), "
-            f"'{comma_pattern}', '.') AS {self.data_type_decimal})"
-        )
