@@ -17,17 +17,35 @@ import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
 import Loader from '../../Loader/Loader';
 import Tags from '../../tags/tags';
 import { SelectedNode } from '../EntityLineage.interface';
+import { LineageDrawerProps } from './LineageDrawer.interface';
 import './LineageDrawer.style.css';
 
-const getHeaderLabel = (v = '', type: string, separator = '.') => {
+const getHeaderLabel = (
+  v = '',
+  type: string,
+  isMainNode: boolean,
+  separator = '.'
+) => {
   const length = v.split(separator).length;
 
   return (
-    <span
-      className="tw-break-words description-text tw-self-center link-text tw-font-normal"
-      data-testid="lineage-entity">
-      <Link to={getEntityLink(type, v)}>{v.split(separator)[length - 1]}</Link>
-    </span>
+    <>
+      {isMainNode ? (
+        <span
+          className="tw-break-words description-text tw-self-center tw-font-normal"
+          data-testid="lineage-entity">
+          {v.split(separator)[length - 1]}
+        </span>
+      ) : (
+        <span
+          className="tw-break-words description-text tw-self-center link-text tw-font-normal"
+          data-testid="lineage-entity">
+          <Link to={getEntityLink(type, v)}>
+            {v.split(separator)[length - 1]}
+          </Link>
+        </span>
+      )}
+    </>
   );
 };
 
@@ -35,11 +53,8 @@ const LineageDrawer = ({
   show,
   onCancel,
   selectedNode,
-}: {
-  show: boolean;
-  onCancel: (value: boolean) => void;
-  selectedNode: SelectedNode;
-}) => {
+  isMainNode = false,
+}: LineageDrawerProps) => {
   const showToast = useToastContext();
   const [entityDetail, setEntityDetail] = useState<
     Partial<Table> & Partial<Pipeline> & Partial<Dashboard> & Partial<Topic>
@@ -139,7 +154,7 @@ const LineageDrawer = ({
       <header className="tw-flex tw-justify-between">
         <p className="tw-flex">
           <span className="tw-mr-2">{getEntityIcon(selectedNode.type)}</span>
-          {getHeaderLabel(selectedNode.name, selectedNode.type)}
+          {getHeaderLabel(selectedNode.name, selectedNode.type, isMainNode)}
         </p>
         <div className="tw-flex">
           <svg

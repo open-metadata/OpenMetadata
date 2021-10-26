@@ -359,6 +359,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
         )}
       </div>
       <LineageDrawer
+        isMainNode={selectedNode.name === entityLineage.entity.name}
         selectedNode={selectedNode}
         show={isDrawerOpen}
         onCancel={drawerHandler}
