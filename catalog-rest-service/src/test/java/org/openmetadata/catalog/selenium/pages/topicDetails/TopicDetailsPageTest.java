@@ -143,6 +143,32 @@ public class TopicDetailsPageTest {
     }
 
     @Test(priority = 7)
+    public void checkManage() throws InterruptedException {
+        openExplorePage();
+        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
+        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[last()]")));
+        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[last()]")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//button[@data-testid='tab'])[3]"))); // Manage
+        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[3]")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='owner-dropdown']"))); // Owner
+        webDriver.findElement(By.cssSelector("[data-testid='owner-dropdown']")).click(); // Owner
+        wait.until(ExpectedConditions.elementToBeClickable(
+                webDriver.findElement(By.cssSelector("[data-testid='searchInputText']"))));
+        webDriver.findElement(By.cssSelector("[data-testid='searchInputText']")).sendKeys("Cloud");
+        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Select User/Team
+        webDriver.findElement(By.cssSelector("[data-testid='card-list']")).click(); // Select Tier
+        webDriver.findElement(By.cssSelector("[data-testid='saveManageTab']")).click(); // Save
+        webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
+        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click(); // Topics
+        wait.until(ExpectedConditions.elementToBeClickable(
+                By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']")));
+        webDriver.findElement(By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']")).click();
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='table-link']")));
+        webDriver.findElement(By.cssSelector("[data-testid='table-link']")).click();
+    }
+
+    @Test(priority = 8)
     public void checkBreadCrumb() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
