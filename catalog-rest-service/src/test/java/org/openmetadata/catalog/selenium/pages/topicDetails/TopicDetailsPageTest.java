@@ -157,15 +157,14 @@ public class TopicDetailsPageTest {
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save']")));
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
         for (int i = 1; i <= 3; i++) { //check topics in service
-            wait.until(ExpectedConditions.elementToBeClickable
-                    (By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")));
+            wait.until(ExpectedConditions.elementToBeClickable(
+                    By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")));
             webDriver.findElement(
                     By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")).click(); // topics
             Thread.sleep(waitTime);
             webDriver.navigate().back();
         }
     }
-
 
     @AfterMethod
     public void closeTabs() {
