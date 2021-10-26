@@ -270,7 +270,9 @@ class OMeta(Generic[T, C]):
         if is_create:
             entity_class = self.get_entity_from_create(entity)
         else:
-            raise InvalidEntityException(f"PUT operations need a CrateEntity, not {entity}")
+            raise InvalidEntityException(
+                f"PUT operations need a CrateEntity, not {entity}"
+            )
 
         # Prepare the request method
         if is_service and is_create:

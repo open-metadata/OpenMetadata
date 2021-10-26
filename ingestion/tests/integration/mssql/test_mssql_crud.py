@@ -13,21 +13,26 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from metadata.ingestion.ometa.client import REST
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
+import time
+
 import pytest
 import requests
-import time
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
+from metadata.generated.schema.api.data.createDatabase import (
+    CreateDatabaseEntityRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
+from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import REST
 
-headers = {'Content-type': 'application/json'}
-url = 'http://localhost:8585/api/v1/'
+headers = {"Content-type": "application/json"}
+url = "http://localhost:8585/api/v1/"
 
 
 def is_responsive(url):
@@ -61,32 +66,42 @@ def mssql_service(docker_ip, docker_services):
 
 def create_delete_table(client):
     databases = client.list_databases()
-    columns = [Column(name="id", columnDataType="INT"),
-               Column(name="name", columnDataType="VARCHAR")]
+    columns = [
+        Column(name="id", columnDataType="INT"),
+        Column(name="name", columnDataType="VARCHAR"),
+    ]
     table = CreateTableEntityRequest(
-        name="test1", columns=columns, database=databases[0].id)
+        name="test1", columns=columns, database=databases[0].id
+    )
     created_table = client.create_or_update_table(table)
-    if(table.name.__root__ == created_table.name.__root__):
+    if table.name.__root__ == created_table.name.__root__:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 1
     else:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 0
 
 
 def create_delete_database(client):
-    data = {'jdbc': {'connectionUrl': 'mssql://localhost/catalog_test', 'driverClass': 'jdbc'},
-            'name': 'temp_local_mssql',
-            'serviceType': 'MSSQL',
-            'description': 'local mssql env'}
+    data = {
+        "jdbc": {
+            "connectionUrl": "mssql://localhost/catalog_test",
+            "driverClass": "jdbc",
+        },
+        "name": "temp_local_mssql",
+        "serviceType": "MSSQL",
+        "description": "local mssql env",
+    }
     create_mssql_service = CreateDatabaseServiceEntityRequest(**data)
     mssql_service = client.create_database_service(create_mssql_service)
     create_database_request = CreateDatabaseEntityRequest(
-        name="dwh", service=EntityReference(id=mssql_service.id, type="databaseService"))
-    created_database = client.create_database(
-        create_database_request)
+        name="dwh", service=EntityReference(id=mssql_service.id, type="databaseService")
+    )
+    created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)
     print(resp)
     client.delete_database(created_database.id.__root__)
@@ -95,7 +110,7 @@ def create_delete_database(client):
 
 
 def test_check_tables(mssql_service):
-    client = REST("{}/api".format(mssql_service), 'test', 'test')
+    client = REST("{}/api".format(mssql_service), "test", "test")
     databases = client.list_databases()
     if len(databases) > 0:
         assert create_delete_table(client)

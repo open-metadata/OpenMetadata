@@ -39,9 +39,7 @@ class OMetaModelTest(TestCase):
         We can create a Model and we receive it back as Entity
         """
 
-        res = self.metadata.create_or_update(
-            data=self.create
-        )
+        res = self.metadata.create_or_update(data=self.create)
 
         self.assertEqual(res.name, self.create.name)
         self.assertEqual(res.algorithm, self.create.algorithm)
@@ -52,9 +50,7 @@ class OMetaModelTest(TestCase):
         Updating it properly changes its properties
         """
 
-        res_create = self.metadata.create_or_update(
-            data=self.create
-        )
+        res_create = self.metadata.create_or_update(data=self.create)
 
         updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
