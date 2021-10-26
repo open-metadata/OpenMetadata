@@ -272,20 +272,6 @@ class GenerateFakeSampleData:
             colData.append(row)
         return {"columns": colList, "rows": colData}
 
-    @staticmethod
-    def generate_team(self):
-        return random.choice(
-            [
-                "Data Platform",
-                "Cloud Infra",
-                "Payments",
-                "Legal",
-                "Customer Support",
-                "Finance",
-                "Marketplace",
-            ]
-        )
-
 
 class SampleDataSource(Source):
     def __init__(

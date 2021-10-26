@@ -312,7 +312,7 @@ class MetadataRestSink(Sink):
     def _bootstrap_entities(self):
         team_response = self.api_client.get(self.api_team)
         for team in team_response["data"]:
-            self.team_entities[team["displayName"]] = team["id"]
+            self.team_entities[team["name"]] = team["id"]
 
     def _create_team(self, record: MetadataUser) -> None:
         team_name = record.team_name
