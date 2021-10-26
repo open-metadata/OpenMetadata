@@ -324,6 +324,16 @@ declare module 'Models' {
     rows: Array<Array<string>>;
   };
 
+  export type SearchDataFunctionType = {
+    queryString: string;
+    from: number;
+    size?: number;
+    filters: string;
+    sortField: string;
+    sortOrder: string;
+    searchIndex: string;
+  };
+
   // topic interface start
   export interface Topic {
     cleanupPolicies: string[];

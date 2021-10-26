@@ -318,7 +318,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
   return (
     <PageContainer>
-      <div className="tw-px-4 w-full">
+      <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
         <EntityPageInfo
           entityName={entityName}
           extraInfo={extraInfo}
@@ -331,16 +331,17 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           titleLinks={slashedTableName}
         />
 
-        <div className="tw-block tw-mt-1">
+        <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
           <TabsPane
             activeTab={activeTab}
+            className="tw-flex-initial"
             setActiveTab={setActiveTabHandler}
             tabs={tabs}
           />
 
-          <div className="tw-bg-white tw--mx-4 tw-p-4">
+          <div className="tw-bg-white tw-flex-grow">
             {activeTab === 1 && (
-              <div className="tw-grid tw-grid-cols-4 tw-gap-4 w-full">
+              <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4 ">
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
@@ -376,19 +377,27 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
               </div>
             )}
             {activeTab === 2 && (
-              <TableProfiler
-                columns={columns.map((col) => col.name)}
-                tableProfiles={tableProfile}
-              />
+              <div className="tw-mt-4">
+                <TableProfiler
+                  columns={columns.map((col) => col.name)}
+                  tableProfiles={tableProfile}
+                />
+              </div>
             )}
-            {activeTab === 3 && <Entitylineage entityLineage={entityLineage} />}
+            {activeTab === 3 && (
+              <div className="tw-h-full">
+                <Entitylineage entityLineage={entityLineage} />
+              </div>
+            )}
             {activeTab === 4 && (
-              <ManageTab
-                currentTier={tier}
-                currentUser={owner?.id}
-                hasEditAccess={hasEditAccess()}
-                onSave={onSettingsUpdate}
-              />
+              <div className="tw-mt-4">
+                <ManageTab
+                  currentTier={tier}
+                  currentUser={owner?.id}
+                  hasEditAccess={hasEditAccess()}
+                  onSave={onSettingsUpdate}
+                />
+              </div>
             )}
           </div>
         </div>

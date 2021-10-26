@@ -15,54 +15,50 @@
   * limitations under the License.
 */
 
-import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { observer } from 'mobx-react';
-import { Bucket, FormatedTableData, SearchResponse, Sterm } from 'Models';
+import { Bucket, FormatedTableData, Sterm } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
-import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
-import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
-import PageContainer from '../../components/containers/PageContainer';
-import Loader from '../../components/Loader/Loader';
-import MyDataHeader from '../../components/my-data/MyDataHeader';
-import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
-import SearchedData from '../../components/searched-data/SearchedData';
-import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
-import useToastContext from '../../hooks/useToastContext';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import {
-  getAllServices,
-  getEntityCountByService,
-} from '../../utils/ServiceUtils';
+import { getEntityCountByService } from '../../utils/ServiceUtils';
+import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
+import PageContainer from '../containers/PageContainer';
+import Loader from '../Loader/Loader';
+import MyDataHeader from '../my-data/MyDataHeader';
+import RecentlyViewed from '../recently-viewed/RecentlyViewed';
+import SearchedData from '../searched-data/SearchedData';
+import { MyDataProps } from './MyData.interface';
 
-const MyDataPage: React.FC = (): React.ReactElement => {
-  const showToast = useToastContext();
+const MyData: React.FC<MyDataProps> = ({
+  countServices,
+  userDetails,
+  searchResult,
+  fetchData,
+  error,
+}: MyDataProps): React.ReactElement => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
-  const [error, setError] = useState<string>('');
   const [filter, setFilter] = useState<string>('');
   const [aggregations, setAggregations] = useState<Record<string, Sterm>>();
   const [searchIndex] = useState<string>(
     'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index'
   );
-  const [countServices, setCountServices] = useState<number>(0);
   const isMounted = useRef<boolean>(false);
+  const setAssetCount = useRef<boolean>(true);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
   };
 
   const getFilters = (): string => {
-    if (filter === 'owner' && AppState.userDetails.teams) {
-      const userTeams = !isEmpty(AppState.userDetails)
-        ? AppState.userDetails.teams.map((team) => `${filter}:${team.id}`)
+    if (filter === 'owner' && userDetails.teams) {
+      const userTeams = !isEmpty(userDetails)
+        ? userDetails.teams.map((team) => `${filter}:${team.id}`)
         : [];
       const ownerIds = [...userTeams, `${filter}:${getCurrentUserId()}`];
 
@@ -72,45 +68,28 @@ const MyDataPage: React.FC = (): React.ReactElement => {
     return `${filter}:${getCurrentUserId()}`;
   };
 
-  const fetchTableData = (setAssetCount = false) => {
+  const fetchTableData = () => {
     if (!isEntityLoading) {
       setIsLoading(true);
     }
-    searchData(
-      '',
-      currentPage,
-      PAGE_SIZE,
-      filter ? getFilters() : '',
-      '',
-      '',
-      searchIndex
-    )
-      .then((res: SearchResponse) => {
-        const hits = res.data.hits.hits;
-        if (hits.length > 0) {
-          setTotalNumberOfValues(res.data.hits.total.value);
-          setData(formatDataResponse(hits));
-          if (setAssetCount) {
-            setAggregations(res.data.aggregations);
-          }
-          setIsLoading(false);
-          setIsEntityLoading(false);
-        } else {
-          setData([]);
-          setTotalNumberOfValues(0);
-          setIsLoading(false);
-          setIsEntityLoading(false);
-        }
-      })
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
-        setIsLoading(false);
-        setIsEntityLoading(false);
-      });
+
+    fetchData({
+      queryString: '',
+      from: currentPage,
+      filters: filter ? getFilters() : '',
+      sortField: '',
+      sortOrder: '',
+      searchIndex: searchIndex,
+    });
+  };
+
+  const handleTabChange = (tab: number, filter: string) => {
+    if (currentTab !== tab) {
+      setIsEntityLoading(true);
+      setCurrentTab(tab);
+      setFilter(filter);
+      setCurrentPage(1);
+    }
   };
 
   const getTabs = () => {
@@ -121,36 +100,21 @@ const MyDataPage: React.FC = (): React.ReactElement => {
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
             data-testid="tab"
             id="recentlyViewedTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(1);
-              setFilter('');
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(1, '')}>
             Recently Viewed
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
             data-testid="tab"
             id="myDataTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(2);
-              setFilter(Ownership.OWNER);
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(2, Ownership.OWNER)}>
             My Data
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
             data-testid="tab"
             id="followingTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(3);
-              setFilter(Ownership.FOLLOWERS);
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(3, Ownership.FOLLOWERS)}>
             Following
           </button>
         </nav>
@@ -163,14 +127,36 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
-    fetchTableData(!isMounted.current);
+    setAssetCount.current = !isMounted.current;
+    fetchTableData();
   }, [currentPage, filter]);
 
   useEffect(() => {
+    if (searchResult) {
+      const hits = searchResult.data.hits.hits;
+      if (hits.length > 0) {
+        setTotalNumberOfValues(searchResult.data.hits.total.value);
+        setData(formatDataResponse(hits));
+        if (setAssetCount.current) {
+          setAggregations(searchResult.data.aggregations);
+          setAssetCount.current = false;
+        }
+        setIsLoading(false);
+        setIsEntityLoading(false);
+      } else {
+        setData([]);
+        setTotalNumberOfValues(0);
+        setIsLoading(false);
+        setIsEntityLoading(false);
+      }
+    } else {
+      setIsLoading(false);
+      setIsEntityLoading(false);
+    }
+  }, [searchResult]);
+
+  useEffect(() => {
     isMounted.current = true;
-    getAllServices()
-      .then((res) => setCountServices(res.length))
-      .catch(() => setCountServices(0));
   }, []);
 
   return (
@@ -212,4 +198,4 @@ const MyDataPage: React.FC = (): React.ReactElement => {
   );
 };
 
-export default observer(MyDataPage);
+export default MyData;

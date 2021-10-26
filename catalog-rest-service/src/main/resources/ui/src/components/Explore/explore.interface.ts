@@ -15,22 +15,37 @@
   * limitations under the License.
 */
 
-export type Params = {
+import { SearchDataFunctionType, SearchResponse } from 'Models';
+
+export type UrlParams = {
   searchQuery: string;
   tab: string;
 };
 
-export type Service = {
-  collection: {
-    name: string;
-    documentation: string;
-    href: string;
+export type ExploreSearchData = {
+  resSearchResults: SearchResponse;
+  resAggServiceType: SearchResponse;
+  resAggTier: SearchResponse;
+  resAggTag: SearchResponse;
+};
+
+export interface ExploreProps {
+  tabCounts: {
+    table: number;
+    topic: number;
+    dashboard: number;
+    pipeline: number;
   };
-};
-export type Team = {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string;
-  href: string;
-};
+  searchText: string;
+  tab: string;
+  error: string;
+  isLoading: boolean;
+  searchQuery: string;
+  handleSearchText: (text: string) => void;
+  updateTableCount: (count: number) => void;
+  updateTopicCount: (count: number) => void;
+  updateDashboardCount: (count: number) => void;
+  updatePipelineCount: (count: number) => void;
+  fetchData: (value: SearchDataFunctionType[]) => void;
+  searchResult: ExploreSearchData | undefined;
+}

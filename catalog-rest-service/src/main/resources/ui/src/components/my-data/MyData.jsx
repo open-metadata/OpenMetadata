@@ -19,7 +19,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { getDatasetDetailsPath } from '../../constants/constants';
-import { dummyData } from '../../pages/my-data/index.mock';
+import { dummyData } from '../MyData/MyData.mock';
 import Description from './Description';
 import QueryDetails from './QueryDetails';
 

@@ -70,10 +70,13 @@ class TableUsageCount(BaseModel):
 class QueryParserData(BaseModel):
     tables: List[str]
     tables_aliases: Dict[str, str]
-    columns: Dict[str, List[str]]
+    columns: Dict[str, List[object]]
     date: str
     database: str
     sql: str
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class TableUsageRequest(BaseModel):
