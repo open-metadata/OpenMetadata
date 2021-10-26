@@ -16,21 +16,16 @@
 */
 
 import { findAllByTestId, findByTestId, render } from '@testing-library/react';
+import { SearchResponse } from 'Models';
 import React from 'react';
 import { MemoryRouter } from 'react-router';
-import ExplorePage from './index';
-import { mockResponse } from './index.mock';
+import { mockResponse } from './exlore.mock';
+import Explore from './Explore.component';
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
   useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
 }));
 
-jest.mock('../../axiosAPIs/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockResponse })),
-}));
 jest.mock('../../utils/FilterUtils', () => ({
   getFilterString: jest.fn().mockImplementation(() => 'user.address'),
 }));
@@ -45,15 +40,47 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
-jest.mock('../../hooks/useToastContext', () => {
-  return () => jest.fn();
-});
+const handleSearchText = jest.fn();
+const updateTableCount = jest.fn();
+const updateTopicCount = jest.fn();
+const updateDashboardCount = jest.fn();
+const updatePipelineCount = jest.fn();
+const fetchData = jest.fn();
 
-describe('Test Explore page', () => {
+const mockSearchResult = {
+  resSearchResults: mockResponse as unknown as SearchResponse,
+  resAggServiceType: mockResponse as unknown as SearchResponse,
+  resAggTier: mockResponse as unknown as SearchResponse,
+  resAggTag: mockResponse as unknown as SearchResponse,
+};
+
+describe('Test Explore component', () => {
   it('Component should render', async () => {
-    const { container } = render(<ExplorePage />, {
-      wrapper: MemoryRouter,
-    });
+    const { container } = render(
+      <Explore
+        error=""
+        fetchData={fetchData}
+        handleSearchText={handleSearchText}
+        isLoading={false}
+        searchQuery=""
+        searchResult={mockSearchResult}
+        searchText=""
+        tab=""
+        tabCounts={{
+          table: 15,
+          topic: 2,
+          dashboard: 8,
+          pipeline: 5,
+        }}
+        updateDashboardCount={updateDashboardCount}
+        updatePipelineCount={updatePipelineCount}
+        updateTableCount={updateTableCount}
+        updateTopicCount={updateTopicCount}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
     const pageContainer = await findByTestId(container, 'fluid-container');
     const searchData = await findByTestId(container, 'search-data');
     const wrappedContent = await findByTestId(container, 'wrapped-content');

@@ -15,20 +15,17 @@
   * limitations under the License.
 */
 
-import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import {
   AggregationType,
-  Bucket,
   FilterObject,
   FormatedTableData,
   SearchResponse,
 } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import AppState from '../../AppState';
-import { searchData } from '../../axiosAPIs/miscAPI';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -36,7 +33,6 @@ import PageContainer from '../../components/containers/PageContainer';
 import DropDownList from '../../components/dropdown/DropDownList';
 import SearchedData from '../../components/searched-data/SearchedData';
 import {
-  ERROR500,
   getExplorePathWithSearch,
   PAGE_SIZE,
   tableSortingFields,
@@ -44,16 +40,14 @@ import {
 } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
-import useToastContext from '../../hooks/useToastContext';
 import { getAggregationList } from '../../utils/AggregationUtils';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
-import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
-import { Params } from './explore.interface';
+import { ExploreProps } from './explore.interface';
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {
   const arrSearchQuery = urlSearchQuery
@@ -125,36 +119,43 @@ const getCurrentIndex = (tab: string) => {
   return currentIndex;
 };
 
-const ExplorePage: React.FC = (): React.ReactElement => {
+const Explore: React.FC<ExploreProps> = ({
+  tabCounts,
+  searchText,
+  tab,
+  searchQuery,
+  searchResult,
+  error,
+  isLoading,
+  handleSearchText,
+  fetchData,
+  updateTableCount,
+  updateTopicCount,
+  updateDashboardCount,
+  updatePipelineCount,
+}: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
   const filterObject: FilterObject = {
     ...{ tags: [], service: [], tier: [] },
     ...getQueryParam(location.search),
   };
-  const showToast = useToastContext();
-  const { searchQuery, tab } = useParams<Params>();
-  const [searchText, setSearchText] = useState<string>(searchQuery || '');
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [filters, setFilters] = useState<FilterObject>(filterObject);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
   const [aggregations, setAggregations] = useState<Array<AggregationType>>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTag, setSearchTag] = useState<string>(location.search);
-  const [error, setError] = useState<string>('');
+
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
   const [sortField, setSortField] = useState<string>('');
   const [sortOrder, setSortOrder] = useState<string>('desc');
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
-  const [tableCount, setTableCount] = useState<number>(0);
-  const [topicCount, setTopicCount] = useState<number>(0);
-  const [dashboardCount, setDashboardCount] = useState<number>(0);
-  const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const isMounting = useRef(true);
+  const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
 
   const handleSelectedFilter = (
@@ -238,19 +239,19 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const setCount = (count = 0) => {
     switch (searchIndex) {
       case SearchIndex.TABLE:
-        setTableCount(count);
+        updateTableCount(count);
 
         break;
       case SearchIndex.DASHBOARD:
-        setDashboardCount(count);
+        updateDashboardCount(count);
 
         break;
       case SearchIndex.TOPIC:
-        setTopicCount(count);
+        updateTopicCount(count);
 
         break;
       case SearchIndex.PIPELINE:
-        setPipelineCount(count);
+        updatePipelineCount(count);
 
         break;
       default:
@@ -258,176 +259,47 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     }
   };
 
-  const fetchCounts = () => {
-    const emptyValue = '';
-    const tableCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TABLE
-    );
-    const topicCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TOPIC
-    );
-    const dashboardCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.DASHBOARD
-    );
-    const pipelineCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.PIPELINE
-    );
-    Promise.allSettled([
-      tableCount,
-      topicCount,
-      dashboardCount,
-      pipelineCount,
-    ]).then(
-      ([
-        table,
-        topic,
-        dashboard,
-        pipeline,
-      ]: PromiseSettledResult<SearchResponse>[]) => {
-        setTableCount(
-          table.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                table.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setTopicCount(
-          topic.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                topic.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setDashboardCount(
-          dashboard.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                dashboard.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setPipelineCount(
-          pipeline.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                pipeline.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-      }
-    );
-  };
+  const fetchTableData = () => {
+    const fetchParams = [
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: PAGE_SIZE,
+        filters: getFilterString(filters),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: 0,
+        filters: getFilterString(filters, ['service']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: 0,
+        filters: getFilterString(filters, ['tier']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+      {
+        queryString: searchText,
+        from: currentPage,
+        size: 0,
+        filters: getFilterString(filters, ['tags']),
+        sortField: sortField,
+        sortOrder: sortOrder,
+        searchIndex: searchIndex,
+      },
+    ];
 
-  const fetchTableData = (forceSetAgg: boolean) => {
-    setIsLoading(true);
-
-    const searchResults = searchData(
-      searchText,
-      currentPage,
-      PAGE_SIZE,
-      getFilterString(filters),
-      sortField,
-      sortOrder,
-      searchIndex
-    );
-    const serviceTypeAgg = searchData(
-      searchText,
-      currentPage,
-      0,
-      getFilterString(filters, ['service']),
-      sortField,
-      sortOrder,
-      searchIndex
-    );
-    const tierAgg = searchData(
-      searchText,
-      currentPage,
-      0,
-      getFilterString(filters, ['tier']),
-      sortField,
-      sortOrder,
-      searchIndex
-    );
-    const tagAgg = searchData(
-      searchText,
-      currentPage,
-      0,
-      getFilterString(filters, ['tags']),
-      sortField,
-      sortOrder,
-      searchIndex
-    );
-
-    Promise.all([searchResults, serviceTypeAgg, tierAgg, tagAgg])
-      .then(
-        ([
-          resSearchResults,
-          resAggServiceType,
-          resAggTier,
-          resAggTag,
-        ]: Array<SearchResponse>) => {
-          updateSearchResults(resSearchResults);
-          setCount(resSearchResults.data.hits.total.value);
-          if (forceSetAgg) {
-            setAggregations(
-              resSearchResults.data.hits.hits.length > 0
-                ? getAggregationList(resSearchResults.data.aggregations)
-                : []
-            );
-          } else {
-            const aggServiceType = getAggregationList(
-              resAggServiceType.data.aggregations,
-              'service'
-            );
-            const aggTier = getAggregationList(
-              resAggTier.data.aggregations,
-              'tier'
-            );
-            const aggTag = getAggregationList(
-              resAggTag.data.aggregations,
-              'tags'
-            );
-
-            updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
-          }
-          setIsLoading(false);
-        }
-      )
-      .catch((err: AxiosError) => {
-        setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
-
-        setIsLoading(false);
-      });
+    fetchData(fetchParams);
   };
 
   const getFacetedFilter = () => {
@@ -515,13 +387,13 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   const getTabCount = (index: string) => {
     switch (index) {
       case SearchIndex.TABLE:
-        return getCountBadge(tableCount);
+        return getCountBadge(tabCounts.table);
       case SearchIndex.TOPIC:
-        return getCountBadge(topicCount);
+        return getCountBadge(tabCounts.topic);
       case SearchIndex.DASHBOARD:
-        return getCountBadge(dashboardCount);
+        return getCountBadge(tabCounts.dashboard);
       case SearchIndex.PIPELINE:
-        return getCountBadge(pipelineCount);
+        return getCountBadge(tabCounts.pipeline);
       default:
         return getCountBadge();
     }
@@ -543,23 +415,23 @@ const ExplorePage: React.FC = (): React.ReactElement => {
       <div className="tw-mb-3 tw--mt-4">
         <nav className="tw-flex tw-flex-row tw-gh-tabs-container tw-px-4 tw-justify-between">
           <div>
-            {tabsInfo.map((tab, index) => (
+            {tabsInfo.map((tabDetail, index) => (
               <button
                 className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(
-                  tab.tab
+                  tabDetail.tab
                 )}`}
                 data-testid="tab"
                 key={index}
                 onClick={() => {
-                  onTabChange(tab.tab);
+                  onTabChange(tabDetail.tab);
                 }}>
                 <SVGIcons
                   alt="icon"
                   className="tw-h-4 tw-w-4 tw-mr-2"
-                  icon={tab.icon}
+                  icon={tabDetail.icon}
                 />
-                {tab.label}
-                {getTabCount(tab.index)}
+                {tabDetail.label}
+                {getTabCount(tabDetail.index)}
               </button>
             ))}
           </div>
@@ -570,7 +442,7 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   };
 
   useEffect(() => {
-    setSearchText(searchQuery || '');
+    handleSearchText(searchQuery || '');
     setCurrentPage(1);
   }, [searchQuery]);
 
@@ -579,7 +451,6 @@ const ExplorePage: React.FC = (): React.ReactElement => {
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
     setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
     setSortOrder('desc');
-    setError('');
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
@@ -592,18 +463,47 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   }, [searchText, filters]);
 
   useEffect(() => {
-    fetchTableData(true);
+    forceSetAgg.current = true;
+    fetchTableData();
   }, [searchText, searchIndex]);
 
   useEffect(() => {
-    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      fetchTableData(false);
+    if (searchResult) {
+      updateSearchResults(searchResult.resSearchResults);
+      setCount(searchResult.resSearchResults.data.hits.total.value);
+      if (forceSetAgg.current) {
+        setAggregations(
+          searchResult.resSearchResults.data.hits.hits.length > 0
+            ? getAggregationList(
+                searchResult.resSearchResults.data.aggregations
+              )
+            : []
+        );
+      } else {
+        const aggServiceType = getAggregationList(
+          searchResult.resAggServiceType.data.aggregations,
+          'service'
+        );
+        const aggTier = getAggregationList(
+          searchResult.resAggTier.data.aggregations,
+          'tier'
+        );
+        const aggTag = getAggregationList(
+          searchResult.resAggTag.data.aggregations,
+          'tags'
+        );
+
+        updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
+      }
     }
-  }, [currentPage, filters, sortField, sortOrder]);
+  }, [searchResult]);
 
   useEffect(() => {
-    fetchCounts();
-  }, [searchText]);
+    if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
+      forceSetAgg.current = false;
+      fetchTableData();
+    }
+  }, [currentPage, filters, sortField, sortOrder]);
 
   // alwyas Keep this useEffect at the end...
   useEffect(() => {
@@ -647,4 +547,4 @@ const ExplorePage: React.FC = (): React.ReactElement => {
   );
 };
 
-export default ExplorePage;
+export default Explore;
