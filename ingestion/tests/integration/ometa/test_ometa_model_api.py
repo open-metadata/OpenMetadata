@@ -22,7 +22,6 @@ class OMetaModelTest(TestCase):
     metadata = OMeta(server_config)
 
     user = metadata.create_or_update(
-        entity=CreateUserEntityRequest,
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
@@ -41,7 +40,7 @@ class OMetaModelTest(TestCase):
         """
 
         res = self.metadata.create_or_update(
-            entity=CreateModelEntityRequest, data=self.create
+            data=self.create
         )
 
         self.assertEqual(res.name, self.create.name)
@@ -54,14 +53,14 @@ class OMetaModelTest(TestCase):
         """
 
         res_create = self.metadata.create_or_update(
-            entity=CreateModelEntityRequest, data=self.create
+            data=self.create
         )
 
-        updated = self.entity.dict(exclude_unset=True)
+        updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = Model(**updated)
+        updated_entity = CreateModelEntityRequest(**updated)
 
-        res = self.metadata.create_or_update(entity=Model, data=updated_entity)
+        res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
         self.assertEqual(res.algorithm, updated_entity.algorithm)
@@ -73,7 +72,7 @@ class OMetaModelTest(TestCase):
         We can fetch a model by name and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
             entity=Model, fqdn=self.entity.fullyQualifiedName
@@ -85,7 +84,7 @@ class OMetaModelTest(TestCase):
         We can fetch a model by ID and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
@@ -101,7 +100,7 @@ class OMetaModelTest(TestCase):
         We can list all our models
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.list_entities(entity=Model)
 
@@ -116,7 +115,7 @@ class OMetaModelTest(TestCase):
         We can delete a model by ID
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # Find by name
         res_name = self.metadata.get_by_name(
