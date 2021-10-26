@@ -17,12 +17,12 @@ import csv
 import json
 import logging
 import os
+import random
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Union
 
-import pandas as pd
 from faker import Faker
 from pydantic import ValidationError
 
@@ -56,6 +56,7 @@ from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -218,71 +219,6 @@ class SampleTableMetadataGenerator:
             data[c] = []
         return data
 
-    def generate_sample_table(self):
-        keys = [
-            "database",
-            "cluster",
-            "schema",
-            "name",
-            "description",
-            "tags",
-            "is_view",
-            "description_source",
-        ]
-        data = self.get_empty_dict_with_cols(keys)
-
-        for tname in self.table_to_df_dict.keys():
-            data["database"].append("hive")
-            data["cluster"].append("gold")
-            data["schema"].append("gdw")
-            data["name"].append(tname)
-            data["description"].append("this is the table to hold data on " + tname)
-            data["tags"].append("pii")
-            data["is_view"].append("false")
-            data["description_source"].append("")
-        sample_table = pd.DataFrame(data)
-        table_dict = {}
-        for index, row in sample_table.iterrows():
-            table_dict[row["name"]] = row
-        return table_dict
-
-    def generate_sample_col(self):
-        # name, description, col_type, sort_order, database, cluster, schema, table_name
-        # col1, "col1 description", "string", 1, hive, gold, test_schema, test_table1
-        keys = [
-            "name",
-            "description",
-            "col_type",
-            "sort_order",
-            "database",
-            "cluster",
-            "schema",
-            "table_name",
-        ]
-
-        data = self.get_empty_dict_with_cols(keys)
-
-        for (tname, df) in self.table_to_df_dict.items():
-            tschema = self.table_to_schema_map[tname].get_schema()
-            for col in df.columns:
-                data["name"].append(col)
-                for c in tschema:
-                    if c[COLUMN_NAME] is col:
-                        data["description"].append(c[COL_DESCRIPTION])
-                        data["col_type"].append(c[DATA_TYPE])
-                        break
-                data["sort_order"].append(1)
-                data["cluster"].append("gold")
-                data["database"].append("hive")
-                data["schema"].append("dwh")
-                data["table_name"].append(tname)
-        pd_rows = pd.DataFrame(data)
-        row_dict = []
-        for index, row in pd_rows.iterrows():
-            row_dict.append(row)
-        sorted_row_dict = sorted(row_dict, key=get_table_key)
-        return sorted_row_dict
-
 
 class GenerateFakeSampleData:
     def __init__(self) -> None:
@@ -334,6 +270,20 @@ class GenerateFakeSampleData:
                 row.append(value)
             colData.append(row)
         return {"columns": colList, "rows": colData}
+
+    @staticmethod
+    def generate_team(self):
+        return random.choice(
+            [
+                "Data Platform",
+                "Cloud Infra",
+                "Payments",
+                "Legal",
+                "Customer Support",
+                "Finance",
+                "Marketplace",
+            ]
+        )
 
 
 class SampleDataSource(Source):
@@ -393,6 +343,9 @@ class SampleDataSource(Source):
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
         )
+        self.users = json.load(
+            open(self.config.sample_data_folder + "/users/users.json", "r")
+        )
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
@@ -414,6 +367,7 @@ class SampleDataSource(Source):
         yield from self.ingest_tasks()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
+        yield from self.ingest_users()
         yield from self.ingest_models()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
@@ -560,8 +514,25 @@ class SampleDataSource(Source):
                 algorithm=model["algorithm"],
                 dashboard=EntityReference(id=dashboard_id, type="dashboard"),
             )
-
             yield model_ev
+
+    def ingest_users(self) -> Iterable[User]:
+        try:
+            for user in self.users["users"]:
+                user_metadata = User(
+                    email=user["email"],
+                    first_name=user["displayName"].split(" ")[0],
+                    last_name=user["displayName"].split(" ")[1],
+                    name=user["displayName"],
+                    updated_at=user["updatedAt"],
+                    github_username=user["name"],
+                    team_name=user["teams"],
+                    is_active=True,
+                    do_not_update_empty_attribute=0,
+                )
+                yield user_metadata
+        except Exception as err:
+            logger.error(err)
 
     def close(self):
         pass

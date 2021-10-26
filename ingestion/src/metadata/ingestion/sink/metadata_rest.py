@@ -42,11 +42,11 @@ from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
-    TableProfiles,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,6 +87,11 @@ class MetadataRestSink(Sink):
         self.wrote_something = False
         self.charts_dict = {}
         self.client = OpenMetadataAPIClient(self.metadata_config)
+        self.api_client = self.client.client
+        self.api_team = "/teams"
+        self.api_users = "/users"
+        self.team_entities = {}
+        self._bootstrap_entities()
 
     @classmethod
     def create(
@@ -111,6 +116,8 @@ class MetadataRestSink(Sink):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
+        elif isinstance(record, User):
+            self.write_users(record)
         elif isinstance(record, Model):
             self.write_model(record)
         else:
@@ -301,6 +308,38 @@ class MetadataRestSink(Sink):
             logger.error(f"Failed to ingest Model {model.name}")
             logger.error(err)
             self.status.failure(f"Model: {model.name}")
+
+    def _bootstrap_entities(self):
+        team_response = self.api_client.get(self.api_team)
+        for team in team_response["data"]:
+            self.team_entities[team["displayName"]] = team["id"]
+
+    def _create_team(self, record: MetadataUser) -> None:
+        team_name = record.team_name
+        metadata_team = MetadataTeam(team_name, "Team Name")
+        try:
+            r = self.api_client.post(self.api_team, data=metadata_team.to_json())
+            instance_id = r["id"]
+            self.team_entities[team_name] = instance_id
+        except APIError:
+            pass
+
+    def write_users(self, record: User):
+        if record.team_name not in self.team_entities:
+            self._create_team(record)
+        teams = [self.team_entities[record.team_name]]
+        metadata_user = MetadataUser(
+            name=record.github_username,
+            display_name=record.name,
+            email=record.email,
+            teams=teams,
+        )
+        try:
+            self.api_client.put(self.api_users, data=metadata_user.to_json())
+            self.status.records_written(record.github_username)
+            logger.info("Sink: {}".format(record.github_username))
+        except APIError:
+            pass
 
     def get_status(self):
         return self.status
