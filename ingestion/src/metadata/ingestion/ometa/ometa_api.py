@@ -327,3 +327,6 @@ class OpenMetadata(Generic[T, C]):
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+
+    def close(self):
+        self.client.close()
