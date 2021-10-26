@@ -17,7 +17,7 @@
 
 import { getAllByTestId, getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { descriptionData } from '../LandingPage/MyData.component.mock';
+import { descriptionData } from '../MyData/MyData.component.mock';
 import Description from './Description';
 
 describe('Test Description Component', () => {

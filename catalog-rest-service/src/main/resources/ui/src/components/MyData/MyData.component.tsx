@@ -18,16 +18,16 @@
 import { isEmpty } from 'lodash';
 import { Bucket, FormatedTableData, Sterm } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
-import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
-import PageContainer from '../../components/containers/PageContainer';
-import Loader from '../../components/Loader/Loader';
-import MyDataHeader from '../../components/my-data/MyDataHeader';
-import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
-import SearchedData from '../../components/searched-data/SearchedData';
 import { Ownership } from '../../enums/mydata.enum';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import { getEntityCountByService } from '../../utils/ServiceUtils';
+import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
+import PageContainer from '../containers/PageContainer';
+import Loader from '../Loader/Loader';
+import MyDataHeader from '../my-data/MyDataHeader';
+import RecentlyViewed from '../recently-viewed/RecentlyViewed';
+import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.component.interface';
 
 const MyData: React.FC<MyDataProps> = ({
