@@ -1,5 +1,5 @@
 import logging
-from typing import Generic, List, Type, TypeVar, Union, get_args
+from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
@@ -284,13 +284,33 @@ class OpenMetadata(Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    def get_by_name(self, entity: Type[T], fqdn: str) -> T:
-        resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
-        return entity(**resp)
+    def get_by_name(self, entity: Type[T], fqdn: str) -> Optional[T]:
+        """
+        Return entity by name or None
+        """
 
-    def get_by_id(self, entity: Type[T], entity_id: str) -> T:
-        resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
-        return entity(**resp)
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
+            return entity(**resp)
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for FQDN {fqdn}"
+            )
+            return None
+
+    def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
+        """
+        Return entity by ID or None
+        """
+
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
+            return entity(**resp)
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for ID {entity_id}"
+            )
+            return None
 
     def list_entities(
         self, entity: Type[T], fields: str = None, after: str = None, limit: int = 1000
