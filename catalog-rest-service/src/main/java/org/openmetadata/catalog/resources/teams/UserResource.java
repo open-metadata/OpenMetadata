@@ -265,7 +265,7 @@ public class UserResource {
             .withProfile(create.getProfile()).withTimezone(create.getTimezone())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-
+    addHref(uriInfo, dao.create(user, create.getTeams()));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);

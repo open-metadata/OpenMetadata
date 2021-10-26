@@ -17,6 +17,7 @@ import csv
 import json
 import logging
 import os
+import random
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass, field
@@ -55,6 +56,7 @@ from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -269,6 +271,20 @@ class GenerateFakeSampleData:
             colData.append(row)
         return {"columns": colList, "rows": colData}
 
+    @staticmethod
+    def generate_team(self):
+        return random.choice(
+            [
+                "Data Platform",
+                "Cloud Infra",
+                "Payments",
+                "Legal",
+                "Customer Support",
+                "Finance",
+                "Marketplace",
+            ]
+        )
+
 
 class SampleDataSource(Source):
     def __init__(
@@ -327,6 +343,9 @@ class SampleDataSource(Source):
         self.lineage = json.load(
             open(self.config.sample_data_folder + "/lineage/lineage.json", "r")
         )
+        self.users = json.load(
+            open(self.config.sample_data_folder + "/users/users.json", "r")
+        )
         self.models = json.load(
             open(self.config.sample_data_folder + "/models/models.json", "r")
         )
@@ -348,6 +367,7 @@ class SampleDataSource(Source):
         yield from self.ingest_tasks()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
+        yield from self.ingest_users()
         yield from self.ingest_models()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
@@ -494,8 +514,25 @@ class SampleDataSource(Source):
                 algorithm=model["algorithm"],
                 dashboard=EntityReference(id=dashboard_id, type="dashboard"),
             )
-
             yield model_ev
+
+    def ingest_users(self) -> Iterable[User]:
+        try:
+            for user in self.users["users"]:
+                user_metadata = User(
+                    email=user["email"],
+                    first_name=user["displayName"].split(" ")[0],
+                    last_name=user["displayName"].split(" ")[1],
+                    name=user["displayName"],
+                    updated_at=user["updatedAt"],
+                    github_username=user["name"],
+                    team_name=user["teams"],
+                    is_active=True,
+                    do_not_update_empty_attribute=0,
+                )
+                yield user_metadata
+        except Exception as err:
+            logger.error(err)
 
     def close(self):
         pass
