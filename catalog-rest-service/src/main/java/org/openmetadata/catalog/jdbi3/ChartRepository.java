@@ -33,6 +33,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -222,6 +223,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.CHART);
@@ -253,6 +259,11 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
     }
 
     @Override

@@ -31,27 +31,30 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
+import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -81,7 +84,7 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
-public class ChartResourceTest extends CatalogApplicationTest {
+public class ChartResourceTest extends EntityTestHelper<Chart> {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -91,6 +94,10 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public static EntityReference LOOKER_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
+
+  public ChartResourceTest() {
+    super(Chart.class);
+  }
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
@@ -131,22 +138,22 @@ public class ChartResourceTest extends CatalogApplicationTest {
     // Create team with different optional fields
     CreateChart create = create(test).withService(new EntityReference().
             withId(SUPERSET_REFERENCE.getId()).withType(SUPERSET_REFERENCE.getType()));
-    createAndCheckChart(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getChartName(test, 1)).withDescription("description");
-    Chart chart = createAndCheckChart(create, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(create, adminAuthHeaders());
     String expectedFQN = SUPERSET_REFERENCE.getName() + "." + chart.getName();
     assertEquals(expectedFQN, chart.getFullyQualifiedName());
   }
 
   @Test
   public void post_chartWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckChart(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
   public void post_chartWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckChart(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
@@ -191,7 +198,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
     // Create chart for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckChart(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List charts by filtering on service name and ensure right charts are returned in the response
       ChartList list = listCharts("service", service.getName(), adminAuthHeaders());
@@ -287,19 +294,20 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void put_chartUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a chart with POST
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    Chart chart = createAndCheckChart(request, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update chart two times successfully with PUT requests
-    chart = updateAndCheckChart(chart, request, OK, adminAuthHeaders(), NO_CHANGE);
-    updateAndCheckChart(chart, request, OK, adminAuthHeaders(), NO_CHANGE);
+    ChangeDescription change = getChangeDescription(chart.getVersion());
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
   }
 
   @Test
   public void put_chartCreate_200(TestInfo test) throws HttpResponseException {
     // Create a new chart with PUT
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckChart(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), NO_CHANGE);
+    updateAndCheckEntity(request.withName(test.getDisplayName()).withDescription(null), CREATED,
+            adminAuthHeaders(), UpdateType.CREATED, null);
   }
 
   @Test
@@ -307,22 +315,29 @@ public class ChartResourceTest extends CatalogApplicationTest {
     // Create a new chart with PUT
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
     // Create chart as admin
-    Chart chart = createAndCheckChart(request, adminAuthHeaders());
-    // Update chart as user owner
-    chart = updateAndCheckChart(chart, request.withDescription("new1"), OK, authHeaders(USER1.getEmail()),
-            MINOR_UPDATE);
+    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
+
+    // Update chart as user owner changing description from null
+    ChangeDescription change = getChangeDescription(chart.getVersion())
+            .withFieldsAdded(Collections.singletonList("description"));
+    chart = updateAndCheckEntity(request.withDescription("new1"), OK, authHeaders(USER1.getEmail()),
+            MINOR_UPDATE, change);
+
     // Update chart ownership as owner
-    updateAndCheckChart(chart, request.withOwner(TEAM_OWNER1), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
+    change = getChangeDescription(chart.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
+    updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
   @Test
   public void put_chartNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
-    Chart chart = createAndCheckChart(request, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update null description with a new description
-    chart = updateAndCheckChart(chart, request.withDescription("newDescription").withDisplayName("newChart")
-            , OK, adminAuthHeaders(), MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(chart.getVersion())
+            .withFieldsAdded(Arrays.asList("description", "displayName"));
+    chart = updateAndCheckEntity(request.withDescription("newDescription").withDisplayName("newChart")
+            , OK, adminAuthHeaders(), MINOR_UPDATE, change);
     assertEquals("newChart", chart.getDisplayName());
   }
 
@@ -330,16 +345,18 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void put_chartEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create chart with empty description
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Chart chart = createAndCheckChart(request, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update empty description with a new description
-    updateAndCheckChart(chart, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(chart.getVersion())
+            .withFieldsUpdated(Collections.singletonList("description"));
+    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
   public void put_chartNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("description");
-    createAndCheckChart(request, adminAuthHeaders());
+    createAndCheckEntity(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
     Chart chart = updateChart(request.withDescription("newDescription"), OK, adminAuthHeaders());
@@ -349,13 +366,20 @@ public class ChartResourceTest extends CatalogApplicationTest {
   @Test
   public void put_chartUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Chart chart = createAndCheckChart(request, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
 
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    chart = updateAndCheckChart(chart, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
+    // Add TEAM_OWNER1 as owner
+    ChangeDescription change = getChangeDescription(chart.getVersion())
+            .withFieldsAdded(Collections.singletonList("owner"));
+    chart = updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    // Change owner from TEAM_OWNER1 to USER_OWNER1
+    change = getChangeDescription(chart.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
+    chart = updateAndCheckEntity(request.withOwner(USER_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove ownership
-    updateAndCheckChart(chart, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
+    change = getChangeDescription(chart.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
+    updateAndCheckEntity(request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -368,7 +392,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void get_chartWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
-    Chart chart = createAndCheckChart(create, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(chart, false);
   }
 
@@ -376,7 +400,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void get_chartByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateChart create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE);
-    Chart chart = createAndCheckChart(create, adminAuthHeaders());
+    Chart chart = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(chart, true);
   }
 
@@ -392,23 +416,35 @@ public class ChartResourceTest extends CatalogApplicationTest {
     chart = getChart(chart.getId(), "service,owner,tags", adminAuthHeaders());
     chart.getService().setHref(null); // href is readonly and not patchable
 
+    //
     // Add displayName, description, owner when previously they were null
-    chart = patchChartAttributesAndCheck(chart, "displayName", "description",
-            TEAM_OWNER1, chartTags, adminAuthHeaders(), MINOR_UPDATE);
+    //
+    String origJson = JsonUtils.pojoToJson(chart);
+    chart.withDescription("description").withDisplayName("displayName").withOwner(TEAM_OWNER1).withTags(chartTags);
+    ChangeDescription change = getChangeDescription(chart.getVersion())
+            .withFieldsAdded(Arrays.asList("description", "displayName", "owner", "tags"));
+    chart = patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     chart.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
     chartTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
 
+    //
     // Replace description, tier, owner
-    chart = patchChartAttributesAndCheck(chart, "displayName1", "description1",
-            USER_OWNER1, chartTags, adminAuthHeaders(), MINOR_UPDATE);
+    //
+    origJson = JsonUtils.pojoToJson(chart);
+    chart.withDescription("description1").withDisplayName("displayName1").withOwner(USER_OWNER1).withTags(chartTags);
+    change = getChangeDescription(chart.getVersion())
+            .withFieldsUpdated(Arrays.asList("description", "displayName", "owner", "tags"));
+    chart = patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     chart.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-    chartTags = List.of(TIER_1);
 
     // Remove description, tier, owner
-    patchChartAttributesAndCheck(chart, null, null, null, chartTags,
-            adminAuthHeaders(), MINOR_UPDATE);
+    origJson = JsonUtils.pojoToJson(chart);
+    chart.withDescription(null).withDisplayName(null).withOwner(null).withTags(null);
+    change = getChangeDescription(chart.getVersion())
+            .withFieldsDeleted(Arrays.asList("description", "displayName", "owner", "tags"));
+    patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -424,7 +460,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
-    Chart chart = createAndCheckChart(create(test), adminAuthHeaders());
+    Chart chart = createAndCheckEntity(create(test), adminAuthHeaders());
 
     // Add follower to the chart
     User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
@@ -444,7 +480,7 @@ public class ChartResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
-    Chart chart = createAndCheckChart(create(test), adminAuthHeaders());
+    Chart chart = createAndCheckEntity(create(test), adminAuthHeaders());
 
     // Add non existent user as follower to the chart
     assertResponse(() -> addAndCheckFollower(chart, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()),
@@ -460,50 +496,6 @@ public class ChartResourceTest extends CatalogApplicationTest {
   public void delete_nonExistentChart_404() {
     assertResponse(() -> deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
-  }
-
-  public static Chart createAndCheckChart(CreateChart create,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Chart chart = createChart(create, authHeaders);
-    validateChart(chart, chart.getDisplayName(), create.getDescription(), create.getOwner(),
-            create.getService(), create.getTags(), updatedBy);
-    assertEquals(0.1, chart.getVersion());
-    return getAndValidate(chart.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static Chart updateAndCheckChart(Chart before,
-                                          CreateChart create,
-                                          Status status,
-                                          Map<String, String> authHeaders,
-                                          UpdateType updateType) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Chart updatedChart = updateChart(create, status, authHeaders);
-    validateChart(updatedChart, create.getDisplayName(), create.getDescription(), create.getOwner(),
-            create.getService(), create.getTags(), updatedBy);
-
-    if (before == null) {
-      assertEquals(0.1, updatedChart.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedChart.getVersion(), updateType);
-    }
-    // GET the newly updated chart and validate
-    return getAndValidate(updatedChart.getId(), create, authHeaders, updatedBy);
-  }
-
-  // Make sure in GET operations the returned chart has all the required information passed during creation
-  public static Chart getAndValidate(UUID chartId, CreateChart create, Map<String, String> authHeaders,
-                                     String updatedBy) throws HttpResponseException {
-    // GET the newly created chart by ID and validate
-    Chart chart = getChart(chartId, "service,owner", authHeaders);
-    validateChart(chart, create.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
-            create.getTags(), updatedBy);
-
-    // GET the newly created chart by name and validate
-    String fqn = chart.getFullyQualifiedName();
-    chart = getChartByName(fqn, "service,owner", authHeaders);
-    return validateChart(chart, create.getDisplayName(), create.getDescription(), create.getOwner(),
-            create.getService(), create.getTags(), updatedBy);
   }
 
   public static Chart updateChart(CreateChart create,
@@ -541,76 +533,6 @@ public class ChartResourceTest extends CatalogApplicationTest {
             getChart(chart.getId(), fields, adminAuthHeaders());
     assertNotNull(chart.getOwner());
     assertNotNull(chart.getService());
-  }
-
-  private static Chart validateChart(Chart chart, String expectedDisplayName,
-                                     String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService, List<TagLabel> expectedTags,
-                                     String expectedUpdatedBy)
-          throws HttpResponseException {
-    assertNotNull(chart.getId());
-    assertNotNull(chart.getHref());
-    assertEquals(expectedDescription, chart.getDescription());
-    assertEquals(expectedDisplayName, chart.getDisplayName());
-    assertEquals(expectedUpdatedBy, chart.getUpdatedBy());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(chart.getOwner());
-      assertEquals(expectedOwner.getId(), chart.getOwner().getId());
-      assertEquals(expectedOwner.getType(), chart.getOwner().getType());
-      assertNotNull(chart.getOwner().getHref());
-    } else {
-      assertNull(chart.getOwner());
-    }
-
-    // Validate service
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(chart.getService());
-      assertEquals(expectedService.getId(), chart.getService().getId());
-      assertEquals(expectedService.getType(), chart.getService().getType());
-    }
-    TestUtils.validateTags(chart.getFullyQualifiedName(), expectedTags, chart.getTags());
-    return chart;
-  }
-
-  private Chart patchChartAttributesAndCheck(Chart before, String newDisplayName, String newDescription,
-                                             EntityReference newOwner, List<TagLabel> tags,
-                                             Map<String, String> authHeaders, UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String chartJson = JsonUtils.pojoToJson(before);
-
-    // Update the chart attributes
-    before.setDescription(newDescription);
-    before.setDisplayName(newDisplayName);
-    before.setOwner(newOwner);
-    before.setTags(tags);
-
-    // Validate information returned in patch response has the updates
-    Chart updatedChart = patchChart(chartJson, before, authHeaders);
-    validateChart(updatedChart, newDisplayName, newDescription, newOwner, null, tags, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedChart.getVersion(), updateType);
-
-    // GET the chart and Validate information returned
-    Chart getChart = getChart(before.getId(), "service,owner,tags", authHeaders);
-    validateChart(getChart, newDisplayName, newDescription, newOwner, null, tags, updatedBy);
-    return updatedChart;
-  }
-
-  private Chart patchChart(UUID chartId, String originalJson, Chart updatedChart,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String updateChartJson = JsonUtils.pojoToJson(updatedChart);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateChartJson);
-    return TestUtils.patch(getResource("charts/" + chartId), patch, Chart.class, authHeaders);
-  }
-
-  private Chart patchChart(String originalJson,
-                           Chart updatedChart,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    return patchChart(updatedChart.getId(), originalJson, updatedChart, authHeaders);
   }
 
   public static void getChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -720,5 +642,45 @@ public class ChartResourceTest extends CatalogApplicationTest {
     // GET .../users/{userId} shows user as following table
     checkUserFollowing(userId, chartId, false, authHeaders);
     return getChart;
+  }
+
+  @Override
+  public WebTarget getCollection() {
+    return getResource("charts");
+  }
+
+  @Override
+  public WebTarget getResource(UUID id) {
+    return getResource("charts/" + id);
+  }
+
+  @Override
+  public void validateCreatedEntity(Chart chart, Object request, Map<String, String> authHeaders) {
+    CreateChart createRequest = (CreateChart) request;
+    validateCommonEntityFields(getEntityInterface(chart), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    // TODO add display name
+    assertService(createRequest.getService(), chart.getService());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Chart updatedEntity, Object request, Map<String, String> authHeaders) {
+    validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Chart expected, Chart updated, Map<String, String> authHeaders) {
+  }
+
+  @Override
+  public Chart getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = target.queryParam("fields", ChartResource.FIELDS);
+    return TestUtils.get(target, Chart.class, authHeaders);
+  }
+
+  @Override
+  public EntityInterface<Chart> getEntityInterface(Chart chart) {
+    return new ChartEntityInterface(chart);
   }
 }
