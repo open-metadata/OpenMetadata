@@ -15,7 +15,7 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OMeta
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
@@ -28,7 +28,7 @@ class OMetaTaskTest(TestCase):
     service_entity_id = None
 
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
-    metadata = OMeta(server_config)
+    metadata = OpenMetadata(server_config)
 
     user = metadata.create_or_update(
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),

@@ -56,7 +56,7 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OMeta(Generic[T, C]):
+class OpenMetadata(Generic[T, C]):
     """
     Generic interface to the OpenMetadata API
 
