@@ -1510,8 +1510,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
     validateColumns(createRequest.getColumns(), createdEntity.getColumns());
     validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
-
-    // Validate table constraints
     assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
     TestUtils.validateTags(createdEntity.getFullyQualifiedName(), createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
@@ -1525,10 +1523,16 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
   @Override
   public void validatePatchedEntity(Table expected, Table patched, Map<String, String> authHeaders) throws HttpResponseException {
-    assertEquals(expected.getDescription(), patched.getDescription());
-    assertOwner(expected.getOwner(), patched.getOwner());
+    validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+
+    // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
+    validateColumns(expected.getColumns(), patched.getColumns());
+    validateDatabase(expected.getDatabase().getId(), patched.getDatabase());
+    assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
     TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
+    TestUtils.validateEntityReference(expected.getFollowers());
   }
 
   private void validateDatabase(UUID expectedDatabaseId, EntityReference database) {
