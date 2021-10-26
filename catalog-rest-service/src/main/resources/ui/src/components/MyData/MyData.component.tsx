@@ -28,7 +28,7 @@ import Loader from '../Loader/Loader';
 import MyDataHeader from '../my-data/MyDataHeader';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import SearchedData from '../searched-data/SearchedData';
-import { MyDataProps } from './MyData.component.interface';
+import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
   countServices,
