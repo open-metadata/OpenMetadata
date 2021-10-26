@@ -24,7 +24,6 @@ import Loader from '../../components/Loader/Loader';
 import MyDataHeader from '../../components/my-data/MyDataHeader';
 import RecentlyViewed from '../../components/recently-viewed/RecentlyViewed';
 import SearchedData from '../../components/searched-data/SearchedData';
-import { PAGE_SIZE } from '../../constants/constants';
 import { Ownership } from '../../enums/mydata.enum';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
@@ -77,7 +76,6 @@ const MyData: React.FC<MyDataProps> = ({
     fetchData({
       queryString: '',
       from: currentPage,
-      size: PAGE_SIZE,
       filters: filter ? getFilters() : '',
       sortField: '',
       sortOrder: '',

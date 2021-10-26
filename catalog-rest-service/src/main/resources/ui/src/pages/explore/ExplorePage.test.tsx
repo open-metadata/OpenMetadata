@@ -17,21 +17,22 @@
 
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
-import MyDataPageComponent from './ExplorePage.component';
+import ExplorePage from './ExplorePage.component';
 
-jest.mock('../../components/LandingPage/MyData.component', () => {
-  return jest.fn().mockReturnValue(<p>Mydata component</p>);
+jest.mock('react-router-dom', () => ({
+  useParams: jest.fn().mockImplementation(() => ({ searchQuery: '' })),
+}));
+
+jest.mock('../../components/Explore/Explore.component', () => {
+  return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
-describe('Test MyData page component', () => {
-  it('Component should render', async () => {
-    const { container } = render(<MyDataPageComponent />);
+describe('Test Explore page', () => {
+  it('Page Should render', async () => {
+    const { container } = render(<ExplorePage />);
 
-    const myDataPageContainer = await findByTestId(
-      container,
-      'my-data-page-conatiner'
-    );
+    const explorePage = await findByTestId(container, 'explore-page');
 
-    expect(myDataPageContainer).toBeInTheDocument();
+    expect(explorePage).toBeInTheDocument();
   });
 });

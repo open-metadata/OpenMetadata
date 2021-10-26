@@ -327,7 +327,7 @@ declare module 'Models' {
   export type SearchDataFunctionType = {
     queryString: string;
     from: number;
-    size: number;
+    size?: number;
     filters: string;
     sortField: string;
     sortOrder: string;

@@ -23,7 +23,7 @@ import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import MyData from '../../components/LandingPage/MyData.component';
 import Loader from '../../components/Loader/Loader';
-import { ERROR500 } from '../../constants/constants';
+import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
 import { getAllServices } from '../../utils/ServiceUtils';
 
@@ -38,7 +38,7 @@ const MyDataPage = () => {
     searchData(
       value.queryString,
       value.from,
-      value.size,
+      PAGE_SIZE,
       value.filters,
       value.sortField,
       value.sortOrder,
