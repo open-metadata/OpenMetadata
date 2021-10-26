@@ -41,8 +41,8 @@ class OMetaModelTest(TestCase):
 
         res = self.metadata.create_or_update(data=self.create)
 
-        self.assertEqual(res.name, self.create.name)
-        self.assertEqual(res.algorithm, self.create.algorithm)
+        self.assertEqual(res.name, self.entity.name)
+        self.assertEqual(res.algorithm, self.entity.algorithm)
         self.assertEqual(res.owner, None)
 
     def test_update(self):

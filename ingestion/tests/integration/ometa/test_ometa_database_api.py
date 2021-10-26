@@ -34,7 +34,6 @@ class OMetaDatabaseTest(TestCase):
     metadata = OMeta(server_config)
 
     user = metadata.create_or_update(
-        entity=CreateUserEntityRequest,
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
@@ -50,9 +49,7 @@ class OMetaDatabaseTest(TestCase):
         """
         Prepare ingredients
         """
-        cls.service_entity = cls.metadata.create_or_update(
-            entity=CreateDatabaseServiceEntityRequest, data=cls.service
-        )
+        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.entity = Database(
             id=uuid.uuid4(),
@@ -91,12 +88,10 @@ class OMetaDatabaseTest(TestCase):
         We can create a Database and we receive it back as Entity
         """
 
-        res = self.metadata.create_or_update(
-            entity=CreateDatabaseEntityRequest, data=self.create
-        )
+        res = self.metadata.create_or_update(data=self.create)
 
-        self.assertEqual(res.name, self.create.name)
-        self.assertEqual(res.service.id, self.create.service.id)
+        self.assertEqual(res.name, self.entity.name)
+        self.assertEqual(res.service.id, self.entity.service.id)
         self.assertEqual(res.owner, None)
 
     def test_update(self):
@@ -104,15 +99,13 @@ class OMetaDatabaseTest(TestCase):
         Updating it properly changes its properties
         """
 
-        res_create = self.metadata.create_or_update(
-            entity=CreateDatabaseEntityRequest, data=self.create
-        )
+        res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.entity.dict(exclude_unset=True)
+        updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = Database(**updated)
+        updated_entity = CreateDatabaseEntityRequest(**updated)
 
-        res = self.metadata.create_or_update(entity=Database, data=updated_entity)
+        res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
         self.assertEqual(res.service.id, updated_entity.service.id)
@@ -124,7 +117,7 @@ class OMetaDatabaseTest(TestCase):
         We can fetch a Database by name and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
             entity=Database, fqdn=self.entity.fullyQualifiedName
@@ -136,7 +129,7 @@ class OMetaDatabaseTest(TestCase):
         We can fetch a Database by ID and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
@@ -154,7 +147,7 @@ class OMetaDatabaseTest(TestCase):
         We can list all our Database
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.list_entities(entity=Database)
 
@@ -169,7 +162,7 @@ class OMetaDatabaseTest(TestCase):
         We can delete a Database by ID
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # Find by name
         res_name = self.metadata.get_by_name(
