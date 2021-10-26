@@ -1174,7 +1174,7 @@ public class TableResourceTest extends CatalogApplicationTest {
         table.getColumns().forEach(column -> assertNull(column.getTags()));
       }
     } else {
-      assertNull(table.getColumns());
+      assertNotNull(table.getColumns());
     }
     if (fields.contains("tableConstraints")) {
       assertNotNull(table.getTableConstraints());
