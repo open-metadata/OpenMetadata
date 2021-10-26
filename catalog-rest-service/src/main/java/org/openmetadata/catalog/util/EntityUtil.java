@@ -461,4 +461,16 @@ public final class EntityUtil {
     String versionString = s[2] + "." + s[3];
     return Double.valueOf(versionString);
   }
+
+  public static String getLocalColumnName(String fqn) {
+    // Return for fqn=service.database.table.c1 -> c1
+    // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
+    String localColumnName = "";
+    String[] s = fqn.split("\\.");
+    for (int i = 3; i < s.length -1 ; i++) {
+      localColumnName += s[i] + ".";
+    }
+    localColumnName += s[s.length - 1];
+    return localColumnName;
+  }
 }

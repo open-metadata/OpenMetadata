@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -540,10 +541,9 @@ public class TableRepository extends EntityRepository<Table> {
       this.entity = entity;
     }
 
+
     @Override
-    public UUID getId() {
-      return entity.getId();
-    }
+    public UUID getId() { return entity.getId(); }
 
     @Override
     public String getDescription() {
@@ -586,7 +586,17 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public URI getHref() {
+      return entity.getHref();
+    }
+
+    @Override
     public Table getEntity() { return entity; }
+
+    @Override
+    public ChangeDescription getChangeDescription() {
+      return entity.getChangeDescription();
+    }
 
     @Override
     public void setId(UUID id) { entity.setId(id); }
@@ -724,9 +734,9 @@ public class TableRepository extends EntityRepository<Table> {
 
     private String getColumnField(Column column, String columnField) {
       // Remove table FQN from column FQN to get the local name
-      String localColumnName = column.getFullyQualifiedName()
-              .replaceFirst("^" + original.getEntity().getFullyQualifiedName() + ".", "");
-      return "column:" + localColumnName + ":" + (columnField == null ? "" : columnField);
+      String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
+      System.out.println("Local name " + column.getFullyQualifiedName());
+      return "column:" + localColumnName + (columnField == null ? "" : "." + columnField);
     }
   }
 }

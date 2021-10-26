@@ -49,7 +49,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.resources.databases.TableResourceTest.createAndCheckTable;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -68,7 +67,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static void setup(TestInfo test) throws HttpResponseException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     CreateTable createTable = TableResourceTest.create(test);
-    TABLE = createAndCheckTable(createTable, adminAuthHeaders());
+    TABLE = TableResourceTest.createAndCheckTable(createTable, adminAuthHeaders());
     COLUMNS = Collections.singletonList(new Column().withName("column1").withDataType(ColumnDataType.BIGINT));
     TABLE_LINK = String.format("<#E/table/%s>", TABLE.getFullyQualifiedName());
 

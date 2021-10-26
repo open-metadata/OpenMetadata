@@ -292,6 +292,7 @@ public final class TestUtils {
     return principal == null ? null : principal.split("@")[0];
   }
 
+  // TODO remove this
   public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {
     if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
