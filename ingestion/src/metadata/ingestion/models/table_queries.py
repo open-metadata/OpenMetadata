@@ -15,10 +15,9 @@
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.table import ColumnJoins
 from metadata.ingestion.models.json_serializable import JsonSerializable
+from pydantic import BaseModel
 
 
 class TableQuery(JsonSerializable):
@@ -27,28 +26,20 @@ class TableQuery(JsonSerializable):
     def __init__(
         self,
         query: str,
-        label: str,
-        userid: int,
-        xid: int,
-        pid: int,
+        user_name: str,
         starttime: str,
         endtime: str,
         analysis_date: str,
-        duration: int,
         database: str,
         aborted: bool,
         sql: str,
     ) -> None:
         """ """
         self.query = query
-        self.label = label
-        self.userid = userid
-        self.xid = xid
-        self.pid = pid
+        self.user_name = user_name
         self.starttime = starttime
         self.endtime = endtime
         self.analysis_date = analysis_date
-        self.duration = duration
         self.database = database
         self.aborted = aborted
         self.sql = sql
