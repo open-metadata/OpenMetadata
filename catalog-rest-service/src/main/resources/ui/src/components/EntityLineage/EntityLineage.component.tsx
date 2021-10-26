@@ -111,6 +111,7 @@ const getLineageData = (
                       onSelect(true, {
                         name: node.name as string,
                         type: node.type,
+                        id: `node-${node.id}-${depth}`,
                       })
                     }>
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
@@ -170,6 +171,7 @@ const getLineageData = (
                       onSelect(true, {
                         name: node.name as string,
                         type: node.type,
+                        id: `node-${node.id}-${depth}`,
                       })
                     }>
                     <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
@@ -310,20 +312,46 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
   const [selectedNode, setSelectedNode] = useState<SelectedNode>(
     {} as SelectedNode
   );
+
   const selectNodeHandler = (state: boolean, value: SelectedNode) => {
     setIsDrawerOpen(state);
     setSelectedNode(value);
   };
-  const drawerHandler = (value: boolean) => {
-    setIsDrawerOpen(value);
-  };
   const [elements, setElements] = useState<Elements>(
     getLineageData(entityLineage, selectNodeHandler) as Elements
   );
+
+  const drawerHandler = (value: boolean) => {
+    setIsDrawerOpen(value);
+    if (!value) {
+      setElements((prevElements) => {
+        return prevElements.map((el) => {
+          if (el.id === selectedNode.id) {
+            return { ...el, className: 'leaf-node' };
+          } else {
+            return el;
+          }
+        });
+      });
+    }
+  };
+
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
   const onConnect = (params: Edge | Connection) =>
     setElements((els) => addEdge(params, els));
+
+  const onElementClick = (el: FlowElement) => {
+    setElements((prevElements) => {
+      return prevElements.map((preEl) => {
+        if (preEl.id === el.id) {
+          return { ...preEl, className: `${preEl.className} selected-node` };
+        } else {
+          return { ...preEl, className: 'leaf-node' };
+        }
+      });
+    });
+  };
 
   useEffect(() => {
     setElements(getLineageData(entityLineage, selectNodeHandler) as Elements);
@@ -340,6 +368,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
               elements={elements as Elements}
               nodesConnectable={false}
               onConnect={onConnect}
+              onElementClick={(_e, el) => onElementClick(el)}
               onElementsRemove={onElementsRemove}
               onLoad={onLoad}
               onNodeContextMenu={onNodeContextMenu}

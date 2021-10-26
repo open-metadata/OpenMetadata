@@ -221,14 +221,20 @@ const LineageDrawer = ({
                   return <Tags key={t} tag={`#${t}`} />;
                 })
               ) : (
-                <p>No Tags added</p>
+                <p className="tw-text-xs tw-text-grey-muted">No Tags added</p>
               )}
             </div>
           </section>
           <hr className="tw-mt-3 tw-border-primary-hover-lite" />
           <section className="tw-mt-1">
             <span className="tw-text-grey-muted">Description</span>
-            <div>{entityDetail.description ?? 'No description added'}</div>
+            <div>
+              {entityDetail.description ?? (
+                <p className="tw-text-xs tw-text-grey-muted">
+                  No description added
+                </p>
+              )}
+            </div>
           </section>
         </>
       )}

@@ -311,6 +311,11 @@
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
   }
+  .leaf-node.selected-node,
+  .leaf-node.selected-node:hover {
+    @apply tw-border-primary-active;
+    box-shadow: 0 0 0 0.5px #7147e8;
+  }
 
   /* react-slick */
 
