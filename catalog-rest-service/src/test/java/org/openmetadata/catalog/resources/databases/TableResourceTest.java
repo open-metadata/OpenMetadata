@@ -63,11 +63,9 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.text.ParseException;
@@ -132,6 +130,10 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
   public static EntityReference SNOWFLAKE_REFERENCE;
+
+  public TableResourceTest() {
+    super(Table.class);
+  }
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException {
@@ -290,18 +292,17 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     Table table1 = createAndCheckEntity(create1, adminAuthHeaders());
 
     // Test PUT operation
-    CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2));
-    Table table2= updateAndCheckEntity(null, create2.withName("put_complexColumnType"), Status.CREATED,
-            adminAuthHeaders(), NO_CHANGE, null);
+    CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
+    Table table2= updateAndCheckEntity(create2, Status.CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
     // Update without any change
-    updateAndCheckEntity(table2, create2.withName("put_complexColumnType"), Status.OK, adminAuthHeaders(),
-            NO_CHANGE, null);
+    ChangeDescription change = getChangeDescription(table2.getVersion());
+    updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
 
     //
     // Update the complex columns
     //
     // c1 from array<int> to array<char> - Data type change means old c1 deleted, and new c1 added
-    ChangeDescription change = getChangeDescription(table2.getVersion());
+    change = getChangeDescription(table2.getVersion());
     c1.withArrayDataType(CHAR).withTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)).withDataTypeDisplay("array<char>");
     change.getFieldsDeleted().add("column:c1");
     change.getFieldsAdded().add("column:c1");
@@ -330,7 +331,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     //   c2.b char                                     --> SAME
     //   c2.c struct<int: d>>
     //     c2.c.d int
-    updateAndCheckEntity(table2, create2.withName("put_complexColumnType"), Status.OK,
+    updateAndCheckEntity(create2.withName("put_complexColumnType"), Status.OK,
             adminAuthHeaders(), MAJOR_UPDATE, change);
 
     //
@@ -355,7 +356,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
     c2_c_d = c2_c.getChildren().get(0);
     c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
-    table1 = patchTable(tableJson, table1, adminAuthHeaders());
+    table1 = patchEntity(table1.getId(), tableJson, table1, adminAuthHeaders());
     validateColumns(Arrays.asList(c1, c2), table1.getColumns());
   }
 
@@ -409,16 +410,17 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     Table table = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update table two times successfully with PUT requests
-    updateAndCheckEntity(table, request, OK, adminAuthHeaders(), NO_CHANGE, null);
-    updateAndCheckEntity(table, request, OK, adminAuthHeaders(), NO_CHANGE, null);
+    ChangeDescription change = getChangeDescription(table.getVersion());
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
   }
 
   @Test
   public void put_tableCreate_200(TestInfo test) throws HttpResponseException {
     // Create a new table with put
     CreateTable request = create(test).withOwner(USER_OWNER1);
-    updateAndCheckEntity(null, request.withName("newName").withDescription(null), CREATED,
-            adminAuthHeaders(), NO_CHANGE, null);
+    updateAndCheckEntity(request.withName("newName").withDescription(null), CREATED,
+            adminAuthHeaders(), UpdateType.CREATED, null);
   }
 
   @Test
@@ -430,7 +432,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     // Update null description with a new description
     ChangeDescription change = getChangeDescription(table.getVersion());
     change.getFieldsAdded().add("description");
-    updateAndCheckEntity(table, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
+    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
   }
 
@@ -443,7 +445,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     // Update empty description with a new description and expect minor version update
     ChangeDescription change = getChangeDescription(table.getVersion());
     change.getFieldsAdded().add("description");
-    updateAndCheckEntity(table, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
+    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
   }
 
@@ -453,7 +455,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     Table table = createAndCheckEntity(request, adminAuthHeaders());
 
     // Updating non-empty description is ignored
-    Table updatedTable = updateTable(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    Table updatedTable = updateEntity(request.withDescription("newDescription"), OK, adminAuthHeaders());
     assertEquals("description", updatedTable.getDescription());
     assertEquals(table.getVersion(), updatedTable.getVersion()); // No version change since description remained the same
   }
@@ -467,7 +469,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
     ChangeDescription change = getChangeDescription(table.getVersion());
     change.getFieldsUpdated().add("owner");
-    Table updatedTable = updateAndCheckEntity(table, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(),
+    Table updatedTable = updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(),
             MINOR_UPDATE, change);
     checkOwnerOwns(USER_OWNER1, updatedTable.getId(), false);
     checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), true);
@@ -475,7 +477,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     // Remove ownership
     change = getChangeDescription(updatedTable.getVersion());
     change.getFieldsDeleted().add("owner");
-    updatedTable = updateAndCheckEntity(updatedTable, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE,
+    updatedTable = updateAndCheckEntity(request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
     assertNull(updatedTable.getOwner());
     checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), false);
@@ -494,23 +496,24 @@ public class TableResourceTest extends EntityTestHelper<Table> {
             .withColumns(List.of(COLUMNS.get(0).getName()));
     change.getFieldsAdded().add("tableConstraints");
     request = request.withTableConstraints(List.of(constraint));
-    Table updatedTable = updateAndCheckEntity(table, request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    Table updatedTable = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Update again with no change. Version must not change
-    updatedTable = updateAndCheckEntity(updatedTable, request, OK, adminAuthHeaders(), NO_CHANGE, null);
+    change = getChangeDescription(updatedTable.getVersion());
+    updatedTable = updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
 
     // Update the table with new constraints
     change = getChangeDescription(updatedTable.getVersion());
     constraint = constraint.withConstraintType(ConstraintType.PRIMARY_KEY);
     request = request.withTableConstraints(List.of(constraint));
     change.getFieldsUpdated().add("tableConstraints");
-    updatedTable = updateAndCheckEntity(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updatedTable = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove table constraint and ensure minor version changes
     change = getChangeDescription(updatedTable.getVersion());
     request = request.withTableConstraints(null);
     change.getFieldsDeleted().add("tableConstraints");
-    updateAndCheckEntity(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -529,7 +532,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     request.getColumns().get(1).withConstraint(ColumnConstraint.PRIMARY_KEY);
     change.getFieldsUpdated().add("column:c2.constraint");
 
-    Table updatedTable = updateAndCheckEntity(table, request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    Table updatedTable = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove column constraints and expect minor version change
     change = getChangeDescription(updatedTable.getVersion());
@@ -538,7 +541,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
     request.getColumns().get(1).withConstraint(null);
     change.getFieldsDeleted().add("column:c2.constraint");
-    updateAndCheckEntity(updatedTable, request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -574,7 +577,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     updatedColumns.add(getColumn("c1", BIGINT, null).withTags(tags));
     ChangeDescription change = getChangeDescription(table.getVersion());
     change.getFieldsUpdated().add("column:c1.tags");
-    table = updateAndCheckEntity(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
+    table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
 
     // Ensure tag usage counts are updated
@@ -589,7 +592,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     updatedColumns.add(getColumn("c2", BINARY, null).withOrdinalPosition(2)
             .withDataLength(10).withTags(tags));
     change.getFieldsAdded().add("column:c2");
-    table = updateAndCheckEntity(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
+    table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MINOR_UPDATE,
             change);
 
     // Ensure tag usage counts are updated - column c2 added both address and bank tags
@@ -603,7 +606,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     change = getChangeDescription(table.getVersion());
     updatedColumns.remove(1);
     change.getFieldsDeleted().add("column:c2");
-    table = updateAndCheckEntity(table, request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE,
+    table = updateAndCheckEntity(request.withColumns(updatedColumns), OK, adminAuthHeaders(), MAJOR_UPDATE,
             change);
     assertEquals(1, table.getColumns().size());
 
@@ -1091,30 +1094,47 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     assertNull(table.getTableType());
     assertNull(table.getTableConstraints());
 
-    // Add description, table tags, tier, owner, tableType, and tableConstraints when previously they were null
     List<TableConstraint> tableConstraints = List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE)
             .withColumns(List.of(COLUMNS.get(0).getName())));
     List<TagLabel> tableTags = singletonList(USER_ADDRESS_TAG_LABEL);
-    table = patchTableAttributesAndCheck(table, "description", TEAM_OWNER1, TableType.Regular,
-            tableConstraints, tableTags, adminAuthHeaders(), MINOR_UPDATE);
-    table.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
 
+    //
+    // Add description, table tags, tier, owner, tableType, and tableConstraints when previously they were null
+    //
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.withDescription("description").withOwner(TEAM_OWNER1).withTableType(TableType.Regular)
+            .withTableConstraints(tableConstraints).withTags(tableTags);
+    ChangeDescription change = getChangeDescription(table.getVersion())
+            .withFieldsAdded(Arrays.asList("description", "owner", "tableType", "tableConstraints", "tags"));
+    table = patchEntityAndCheck(table, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+
+    //
     // Replace description, tier, owner, tableType, tableConstraints
+    //
     tableConstraints = List.of(new TableConstraint().withConstraintType(ConstraintType.UNIQUE)
             .withColumns(List.of(COLUMNS.get(1).getName())));
     tableTags = singletonList(USER_BANK_ACCOUNT_TAG_LABEL);
-    table = patchTableAttributesAndCheck(table, "description1", USER_OWNER1, TableType.External,
-            tableConstraints, tableTags, adminAuthHeaders(), MINOR_UPDATE);
+    table.getOwner().setHref(null); // Clear hrefs
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withDescription("description1").withOwner(USER_OWNER1).withTableType(TableType.External)
+            .withTableConstraints(tableConstraints).withTags(tableTags);
+    change = getChangeDescription(table.getVersion())
+            .withFieldsUpdated(Arrays.asList("description", "owner", "tableType", "tableConstraints", "tags"));
+    table = patchEntityAndCheck(table, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
     table.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
 
     // Remove description, tier, owner, tableType, tableConstraints
-    patchTableAttributesAndCheck(table, null, null, null, null, null,
-            adminAuthHeaders(), MINOR_UPDATE);
+    table.getOwner().setHref(null); // Clear hrefs
+    originalJson = JsonUtils.pojoToJson(table);
+    table.withDescription(null).withOwner(null).withTableType(null).withTableConstraints(null).withTags(null);
+    change = getChangeDescription(table.getVersion())
+            .withFieldsDeleted(Arrays.asList("description", "owner", "tableType", "tableConstraints", "tags"));
+    patchEntityAndCheck(table, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
   public void patch_tableColumns_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create table without description, table tags, tier, owner, tableType, and tableConstraints
+    // Create table with the following columns
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", INT, USER_ADDRESS_TAG_LABEL));
     columns.add(getColumn("c2", BIGINT, USER_ADDRESS_TAG_LABEL));
@@ -1123,12 +1143,22 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     Table table = createEntity(create(test).withColumns(columns), adminAuthHeaders());
 
     // Update the column tags and description
+    ChangeDescription change = getChangeDescription(table.getVersion());
     columns.get(0).withDescription("new0")
             .withTags(List.of(USER_ADDRESS_TAG_LABEL, USER_BANK_ACCOUNT_TAG_LABEL)); // Add a tag
-    columns.get(1).withDescription("new1").withTags(List.of(USER_ADDRESS_TAG_LABEL));// No change in tag
-    columns.get(2).withDescription("new3").withTags(new ArrayList<>());              // Remove tag
+    change.getFieldsUpdated().add("column:c1.description");
+    change.getFieldsUpdated().add("column:c1.tags");
 
-    table = patchTableColumnAttributesAndCheck(table, columns, adminAuthHeaders());
+    columns.get(1).withDescription("new1").withTags(List.of(USER_ADDRESS_TAG_LABEL));// No change in tag
+    change.getFieldsUpdated().add("column:c2.description");
+
+    columns.get(2).withDescription("new3").withTags(new ArrayList<>());              // Remove tag
+    change.getFieldsUpdated().add("column:c3.description");
+    change.getFieldsDeleted().add("column:c3.tags");
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    table.setColumns(columns);
+    table = patchEntityAndCheck(table, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
     validateColumns(columns, table.getColumns());
   }
 
@@ -1165,45 +1195,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     exception = assertThrows(HttpResponseException.class, () ->
             deleteAndCheckFollower(table, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
-
-  private Table patchTableAttributesAndCheck(Table before, String description, EntityReference owner,
-                                             TableType tableType, List<TableConstraint> tableConstraints,
-                                             List<TagLabel> tags, Map<String, String> authHeaders,
-                                             UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String tableJson = JsonUtils.pojoToJson(before);
-
-    // Update the table attributes
-    before.setDescription(description);
-    before.setOwner(owner);
-    before.setTableType(tableType);
-    before.setTableConstraints(tableConstraints);
-    before.setTags(tags);
-
-    // Validate information returned in patch response has the updates
-    Table updatedTable = patchTable(tableJson, before, authHeaders);
-    validateTable(updatedTable, before.getDescription(), before.getColumns(), owner, null, tableType,
-            tableConstraints, tags, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedTable.getVersion(), updateType);
-
-    // GET the table and Validate information returned
-    Table getTable = getTable(before.getId(), "owner,tableConstraints,columns, tags", authHeaders);
-    validateTable(getTable, before.getDescription(), before.getColumns(), owner, null, tableType,
-            tableConstraints, tags, updatedBy);
-    return updatedTable;
-  }
-
-  private Table patchTableColumnAttributesAndCheck(Table table, List<Column> columns, Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String tableJson = JsonUtils.pojoToJson(table);
-
-    // Update the table attributes
-    table.setColumns(columns);
-
-    // Validate information returned in patch response has the updates
-    return patchTable(tableJson, table, authHeaders);
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
@@ -1273,40 +1264,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     assertEquals(table.getDatabase().getName(), DATABASE.getFullyQualifiedName());
   }
 
-  private static void validateTable(Table table, String expectedDescription,
-                                    List<Column> expectedColumns, EntityReference expectedOwner,
-                                    UUID expectedDatabaseId, TableType expectedTableType,
-                                    List<TableConstraint> expectedTableConstraints, List<TagLabel> expectedTags,
-                                    String expectedUpdatedByUser)
-          throws HttpResponseException {
-    assertNotNull(table.getId());
-    assertNotNull(table.getHref());
-    assertNotNull(table.getFullyQualifiedName());
-    assertEquals(expectedDescription, table.getDescription());
-    assertEquals(expectedTableType, table.getTableType());
-    assertEquals(expectedUpdatedByUser, table.getUpdatedBy());
-
-    validateColumns(expectedColumns, table.getColumns());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(table.getOwner());
-      assertEquals(expectedOwner.getId(), table.getOwner().getId());
-      assertEquals(expectedOwner.getType(), table.getOwner().getType());
-      assertNotNull(table.getOwner().getHref());
-    }
-
-    // Validate database
-    if (expectedDatabaseId != null) {
-      TestUtils.validateEntityReference(table.getDatabase());
-      assertEquals(expectedDatabaseId, table.getDatabase().getId());
-    }
-
-    // Validate table constraints
-    assertEquals(expectedTableConstraints, table.getTableConstraints());
-    TestUtils.validateTags(table.getFullyQualifiedName(), expectedTags, table.getTags());
-    TestUtils.validateEntityReference(table.getFollowers());
-  }
 
   private static void validateColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
     assertNotNull(actualColumn.getFullyQualifiedName());
@@ -1395,12 +1352,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     return createEntity(create, adminAuthHeaders());
   }
 
-  public static Table updateTable(CreateTable create, Status status, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("tables"), create, Table.class,
-            status, authHeaders);
-  }
-
   public static void putJoins(UUID tableId, TableJoins joins, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/joins");
@@ -1426,19 +1377,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     // Check to make sure database does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getTable(id, authHeaders));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.TABLE, id));
-  }
-
-  private Table patchTable(UUID tableId, String originalJson, Table updatedTable,
-                           Map<String, String> authHeaders) throws JsonProcessingException, HttpResponseException {
-    String updateTableJson = JsonUtils.pojoToJson(updatedTable);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTableJson);
-    return TestUtils.patch(CatalogApplicationTest.getResource("tables/" + tableId),
-            patch, Table.class, authHeaders);
-  }
-
-  private Table patchTable(String originalJson, Table updatedTable,
-                           Map<String, String> authHeaders) throws JsonProcessingException, HttpResponseException {
-    return patchTable(updatedTable.getId(), originalJson, updatedTable, authHeaders);
   }
 
   public static void addAndCheckFollower(Table table, UUID userId, Status status, int totalFollowerCount,
@@ -1527,10 +1465,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
     return TagResourceTest.getCategory(name, "usageCount", authHeaders).getUsageCount();
   }
 
-  public static String getTableName(TestInfo test) {
-    return String.format("table_%s", test.getDisplayName());
-  }
-
   public static String getTableName(TestInfo test, int index) {
     return String.format("table%d_%s", index, test.getDisplayName());
   }
@@ -1549,11 +1483,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Override
-  public Table createEntity(Object createRequest, Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(CatalogApplicationTest.getResource("tables"), createRequest, Table.class, authHeaders);
-  }
-
-  @Override
   public Table getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("tables/" + id);
     target = target.queryParam("fields", TableResource.FIELDS);
@@ -1561,33 +1490,45 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Override
-  public void validateCreatedEntity(Table table, Object request, Map<String, String> authHeaders)
+  public WebTarget getCollection() {
+    return CatalogApplicationTest.getResource("tables");
+  }
+
+  @Override
+  public WebTarget getResource(UUID id) {
+    return CatalogApplicationTest.getResource("tables/" + id);
+  }
+
+  @Override
+  public void validateCreatedEntity(Table createdEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
     CreateTable createRequest = (CreateTable) request;
-    validateCommonEntityFields(getEntityInterface(table), createRequest.getDescription(),
+    validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Entity specific validation
-    assertEquals(createRequest.getTableType(), table.getTableType());
-    validateColumns(createRequest.getColumns(), table.getColumns());
-    validateDatabase(createRequest.getDatabase(), table.getDatabase());
+    assertEquals(createRequest.getTableType(), createdEntity.getTableType());
+    validateColumns(createRequest.getColumns(), createdEntity.getColumns());
+    validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
 
     // Validate table constraints
-    assertEquals(createRequest.getTableConstraints(), table.getTableConstraints());
-    TestUtils.validateTags(table.getFullyQualifiedName(), createRequest.getTags(), table.getTags());
-    TestUtils.validateEntityReference(table.getFollowers());
+    assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
+    TestUtils.validateTags(createdEntity.getFullyQualifiedName(), createRequest.getTags(), createdEntity.getTags());
+    TestUtils.validateEntityReference(createdEntity.getFollowers());
   }
 
   @Override
-  public Table updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
+  public void validateUpdatedEntity(Table updated, Object request, Map<String, String> authHeaders)
           throws HttpResponseException {
-    return TestUtils.put(CatalogApplicationTest.getResource("tables"), updateRequest, Table.class,
-            status, authHeaders);
+    validateCreatedEntity(updated, request, authHeaders);
   }
 
   @Override
-  public void validateUpdatedEntity(Table updated, Object request, Map<String, String> authHeaders) throws HttpResponseException {
-    validateCreatedEntity(updated, request, authHeaders);
+  public void validatePatchedEntity(Table expected, Table patched, Map<String, String> authHeaders) throws HttpResponseException {
+    assertEquals(expected.getDescription(), patched.getDescription());
+    assertOwner(expected.getOwner(), patched.getOwner());
+    assertEquals(expected.getTableType(), patched.getTableType());
+    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
   }
 
   private void validateDatabase(UUID expectedDatabaseId, EntityReference database) {

@@ -62,9 +62,10 @@ public final class TestUtils {
   public static URI PIPELINE_URL;
 
   public enum UpdateType {
+    CREATED,      // No updated. The entity was created
     NO_CHANGE,    // PUT/PATCH made no change
     MINOR_UPDATE, // PUT/PATCH made backward compatible minor version change
-    MAJOR_UPDATE    // PUT/PATCH made backward incompatible minor version change
+    MAJOR_UPDATE  // PUT/PATCH made backward incompatible minor version change
   }
 
   static {
@@ -253,11 +254,7 @@ public final class TestUtils {
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
     updatedExpectedList.sort(Comparator.comparing(TagLabel::getTagFQN));
     actualList.sort(Comparator.comparing(TagLabel::getTagFQN));
-
-    assertEquals(updatedExpectedList.size(), actualList.size(), fqn);
-    for (int i = 0; i < actualList.size(); i++) {
-      assertEquals(updatedExpectedList.get(i), actualList.get(i));
-    }
+    assertEquals(updatedExpectedList, actualList);
   }
 
   public static Map<String, String> adminAuthHeaders() {
@@ -294,7 +291,9 @@ public final class TestUtils {
 
   // TODO remove this
   public static void validateUpdate(Double previousVersion, Double newVersion, UpdateType updateType) {
-    if (updateType == UpdateType.NO_CHANGE) {
+    if (updateType == UpdateType.CREATED) {
+      assertEquals(0.1, newVersion); // New version of entity created
+    } else if (updateType == UpdateType.NO_CHANGE) {
       assertEquals(previousVersion, newVersion); // No change in the version
     } else if (updateType == UpdateType.MINOR_UPDATE) {
       assertEquals(Math.round((previousVersion + 0.1) * 10.0)/10.0, newVersion); // Minor version change

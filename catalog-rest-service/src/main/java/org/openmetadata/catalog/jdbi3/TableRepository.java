@@ -639,8 +639,11 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     public void entitySpecificUpdate() throws IOException {
-      updateConstraints(original.getEntity(), updated.getEntity());
-      updateColumns(original.getEntity().getColumns(), updated.getEntity().getColumns());
+      Table origTable = original.getEntity();
+      Table updatedTable = updated.getEntity();
+      updateConstraints(origTable, updatedTable);
+      updateTableType(origTable, updatedTable);
+      updateColumns(origTable.getColumns(), updated.getEntity().getColumns());
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) {
@@ -656,6 +659,10 @@ public class TableRepository extends EntityRepository<Table> {
       }
 
       recordChange("tableConstraints", origConstraints, updatedConstraints);
+    }
+
+    private void updateTableType(Table origTable, Table updatedTable) {
+      recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
     }
 
     private void updateColumns(List<Column> origColumns, List<Column> updatedColumns) throws IOException {
@@ -721,10 +728,7 @@ public class TableRepository extends EntityRepository<Table> {
         // PUT operation merges tags in the request with what already exists
         updatedColumn.setTags(EntityUtil.mergeTags(updatedColumn.getTags(), origColumn.getTags()));
       }
-
-      recordChange(getColumnField(origColumn, "tags"),
-              origColumn.getTags() == null ? 0 : origColumn.getTags().size(),
-              updatedColumn.getTags() == null ? 0 : updatedColumn.getTags().size());
+      recordTagChange(getColumnField(origColumn, "tags"), origColumn.getTags(), updatedColumn.getTags());
       EntityUtil.applyTags(dao.tagDAO(), updatedColumn.getTags(), updatedColumn.getFullyQualifiedName());
     }
 

@@ -328,7 +328,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     // Add database as admin
     Database database = createAndCheckDatabase(request, adminAuthHeaders());
     // Update the table as Owner
-    updateAndCheckDatabase(database, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+    updateAndCheckDatabase(database, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test

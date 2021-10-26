@@ -308,9 +308,10 @@ public class ChartResourceTest extends CatalogApplicationTest {
     CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
     // Create chart as admin
     Chart chart = createAndCheckChart(request, adminAuthHeaders());
-    // Update chart as owner - but description to null is not updated
-    updateAndCheckChart(chart, request.withDescription(null), OK, authHeaders(USER1.getEmail()), NO_CHANGE);
-    // Update chart as owner - but description to null is not updated
+    // Update chart as user owner
+    chart = updateAndCheckChart(chart, request.withDescription("new1"), OK, authHeaders(USER1.getEmail()),
+            MINOR_UPDATE);
+    // Update chart ownership as owner
     updateAndCheckChart(chart, request.withOwner(TEAM_OWNER1), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 

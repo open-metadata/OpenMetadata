@@ -329,7 +329,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
     // Add as admin
     Topic topic = createAndCheckTopic(request, adminAuthHeaders());
     // Update the topic as Owner
-    updateAndCheckTopic(topic, request.withDescription(null), OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+    updateAndCheckTopic(topic, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test

@@ -6,6 +6,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -262,15 +263,16 @@ public abstract class EntityRepository<T> {
 
     private void updateTags() throws IOException {
       // Remove current table tags in the database. It will be added back later from the merged tag list.
+      List<TagLabel> origTags = original.getTags();
+      List<TagLabel> updatedTags = updated.getTags();
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), original.getFullyQualifiedName());
       if (!patchOperation) {
         // PUT operation merges tags in the request with what already exists
-        updated.setTags(EntityUtil.mergeTags(updated.getTags(), original.getTags()));
+        updated.setTags(EntityUtil.mergeTags(updatedTags, origTags));
       }
 
-      recordChange("tags", original.getTags() == null ? 0 : original.getTags().size(),
-              updated.getTags() == null ? 0 : updated.getTags().size());
-      EntityUtil.applyTags(daoCollection.tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
+      recordTagChange("tags", origTags, updatedTags);
+      EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, updated.getFullyQualifiedName());
     }
 
 
@@ -312,8 +314,22 @@ public abstract class EntityRepository<T> {
       return false;
     }
 
+    public final boolean recordTagChange(String field, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      if (origTags == null || origTags.isEmpty()) {
+        origTags = null;
+      } else {
+        origTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      }
+      if (updatedTags == null || updatedTags.isEmpty()) {
+        updatedTags = null;
+      } else {
+        updatedTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      }
+      return recordChange(field,origTags, updatedTags);
+    }
+
     private void storeOldVersion() throws IOException {
-      // TODO move this into a single palce
+      // TODO move this into a single place
       String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
       daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
               JsonUtils.pojoToJson(original.getEntity()));
@@ -322,12 +338,10 @@ public abstract class EntityRepository<T> {
     public final void store() throws IOException, ParseException {
       if (updateVersion(original.getVersion())) {
         // Store the old version
-        List<Object> versions = new ArrayList<>();
-        versions.add(original.getEntity());
-        EntityHistory history = new EntityHistory().withEntityType(entityName).withVersions(versions);
         storeOldVersion();
+        // Store the new version
+        EntityRepository.this.store(updated.getEntity(), true);
       }
-      EntityRepository.this.store(updated.getEntity(), true);
     }
   }
 }

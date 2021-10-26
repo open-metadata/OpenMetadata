@@ -319,8 +319,8 @@ public class TaskResourceTest extends CatalogApplicationTest {
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
     // Add task as admin
     Task task = createAndCheckTask(request, adminAuthHeaders());
-    // Update the task Owner and see if it is allowed
-    updateAndCheckTask(task, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+    // Update the task as Owner and see if it is allowed
+    updateAndCheckTask(task, request.withDescription("updated"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test
