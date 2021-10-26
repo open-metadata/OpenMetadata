@@ -38,6 +38,10 @@ import {
   tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
+import {
+  getAggrWithDefaultValue,
+  tabsInfo,
+} from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
 import { getAggregationList } from '../../utils/AggregationUtils';
@@ -46,7 +50,6 @@ import { getCountBadge } from '../../utils/CommonUtils';
 import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
-import { getAggrWithDefaultValue, tabsInfo } from './explore.constants';
 import { ExploreProps } from './explore.interface';
 
 const getQueryParam = (urlSearchQuery = ''): FilterObject => {

@@ -17,13 +17,9 @@
 
 import { lowerCase } from 'lodash';
 import { AggregationType, Bucket } from 'Models';
-import {
-  tableSortingFields,
-  tiers,
-  topicSortingFields,
-} from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
-import { Icons } from '../../utils/SvgUtils';
+import { SearchIndex } from '../enums/search.enum';
+import { Icons } from '../utils/SvgUtils';
+import { tableSortingFields, tiers, topicSortingFields } from './constants';
 
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];

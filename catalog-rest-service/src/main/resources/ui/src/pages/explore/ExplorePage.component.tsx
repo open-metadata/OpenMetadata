@@ -16,15 +16,14 @@
 */
 
 import { AxiosError } from 'axios';
-import { Bucket, SearchResponse } from 'Models';
+import { Bucket, SearchDataFunctionType, SearchResponse } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Explore from '../../components/Explore/Explore.component';
 import {
   ExploreSearchData,
-  FetchData,
-  Params,
+  UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
 import { ERROR500 } from '../../constants/constants';
@@ -36,7 +35,7 @@ const ExplorePage: FunctionComponent = () => {
   const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const { searchQuery, tab } = useParams<Params>();
+  const { searchQuery, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
   const [tableCount, setTableCount] = useState<number>(0);
   const [topicCount, setTopicCount] = useState<number>(0);
@@ -151,7 +150,7 @@ const ExplorePage: FunctionComponent = () => {
     );
   };
 
-  const fetchData = (value: FetchData[]) => {
+  const fetchData = (value: SearchDataFunctionType[]) => {
     setIsLoading(true);
     const promiseValue = value.map((d) => {
       return searchData(
