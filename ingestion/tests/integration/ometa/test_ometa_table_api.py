@@ -110,7 +110,7 @@ class OMetaTableTest(TestCase):
         res = self.metadata.create_or_update(data=self.create)
 
         self.assertEqual(res.name, self.entity.name)
-        self.assertEqual(res.database.id, self.entity.database)
+        self.assertEqual(res.database.id, self.entity.database.id)
         self.assertEqual(res.owner, None)
 
     def test_update(self):

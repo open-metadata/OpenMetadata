@@ -39,7 +39,7 @@ class OMetaDatabaseTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDatabaseServiceEntityRequest(
-        name="test-service",
+        name="test-service-db",
         serviceType=DatabaseServiceType.MySQL,
         jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
     )
@@ -55,7 +55,7 @@ class OMetaDatabaseTest(TestCase):
             id=uuid.uuid4(),
             name="test-db",
             service=EntityReference(id=cls.service_entity.id, type="databaseService"),
-            fullyQualifiedName="test-service.test-db",
+            fullyQualifiedName="test-service-db.test-db",
         )
 
         cls.create = CreateDatabaseEntityRequest(
@@ -70,13 +70,13 @@ class OMetaDatabaseTest(TestCase):
         """
         db_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service.test-db"
+                entity=Database, fqdn="test-service-db.test-db"
             ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service"
+                entity=DatabaseService, fqdn="test-service-db"
             ).id.__root__
         )
 

@@ -36,7 +36,7 @@ class OMetaTaskTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreatePipelineServiceEntityRequest(
-        name="test-service",
+        name="test-service-task",
         serviceType=PipelineServiceType.Airflow,
         pipelineUrl="https://localhost:1000",
     )
@@ -53,7 +53,7 @@ class OMetaTaskTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service.test",
+            fullyQualifiedName="test-service-task.test",
         )
 
         cls.create = CreateTaskEntityRequest(
@@ -67,12 +67,14 @@ class OMetaTaskTest(TestCase):
         Clean up
         """
         _id = str(
-            cls.metadata.get_by_name(entity=Task, fqdn="test-service.test").id.__root__
+            cls.metadata.get_by_name(
+                entity=Task, fqdn="test-service-task.test"
+            ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqdn="test-service"
+                entity=PipelineService, fqdn="test-service-task"
             ).id.__root__
         )
 

@@ -39,7 +39,7 @@ class OMetaTopicTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateMessagingServiceEntityRequest(
-        name="test-service",
+        name="test-service-topic",
         serviceType=MessagingServiceType.Kafka,
         brokers=["https://localhost:1000"],
     )
@@ -56,7 +56,7 @@ class OMetaTopicTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service.test",
+            fullyQualifiedName="test-service-topic.test",
             partitions=2,
         )
 
@@ -72,12 +72,14 @@ class OMetaTopicTest(TestCase):
         Clean up
         """
         _id = str(
-            cls.metadata.get_by_name(entity=Topic, fqdn="test-service.test").id.__root__
+            cls.metadata.get_by_name(
+                entity=Topic, fqdn="test-service-topic.test"
+            ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=MessagingService, fqdn="test-service"
+                entity=MessagingService, fqdn="test-service-topic"
             ).id.__root__
         )
 

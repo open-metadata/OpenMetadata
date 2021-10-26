@@ -38,7 +38,7 @@ class OMetaPipelineTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreatePipelineServiceEntityRequest(
-        name="test-service",
+        name="test-service-pipeline",
         serviceType=PipelineServiceType.Airflow,
         pipelineUrl="https://localhost:1000",
     )
@@ -55,7 +55,7 @@ class OMetaPipelineTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service.test",
+            fullyQualifiedName="test-service-pipeline.test",
         )
 
         cls.create = CreatePipelineEntityRequest(
@@ -70,13 +70,13 @@ class OMetaPipelineTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Pipeline, fqdn="test-service.test"
+                entity=Pipeline, fqdn="test-service-pipeline.test"
             ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqdn="test-service"
+                entity=PipelineService, fqdn="test-service-pipeline"
             ).id.__root__
         )
 

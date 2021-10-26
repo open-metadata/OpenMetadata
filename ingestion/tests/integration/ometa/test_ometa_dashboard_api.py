@@ -38,7 +38,7 @@ class OMetaDashboardTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDashboardServiceEntityRequest(
-        name="test-service",
+        name="test-service-dashboard",
         serviceType=DashboardServiceType.Superset,
         dashboardUrl="https://localhost:1000",
     )
@@ -55,7 +55,7 @@ class OMetaDashboardTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service.test",
+            fullyQualifiedName="test-service-dashboard.test",
         )
 
         cls.create = CreateDashboardEntityRequest(
@@ -70,13 +70,13 @@ class OMetaDashboardTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Dashboard, fqdn="test-service.test"
+                entity=Dashboard, fqdn="test-service-dashboard.test"
             ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DashboardService, fqdn="test-service"
+                entity=DashboardService, fqdn="test-service-dashboard"
             ).id.__root__
         )
 

@@ -36,7 +36,7 @@ class OMetaChartTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDashboardServiceEntityRequest(
-        name="test-service",
+        name="test-service-chart",
         serviceType=DashboardServiceType.Superset,
         dashboardUrl="https://localhost:1000",
     )
@@ -53,7 +53,7 @@ class OMetaChartTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             service=EntityReference(id=cls.service_entity.id, type=cls.service_type),
-            fullyQualifiedName="test-service.test",
+            fullyQualifiedName="test-service-chart.test",
         )
 
         cls.create = CreateChartEntityRequest(
@@ -67,12 +67,14 @@ class OMetaChartTest(TestCase):
         Clean up
         """
         _id = str(
-            cls.metadata.get_by_name(entity=Chart, fqdn="test-service.test").id.__root__
+            cls.metadata.get_by_name(
+                entity=Chart, fqdn="test-service-chart.test"
+            ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DashboardService, fqdn="test-service"
+                entity=DashboardService, fqdn="test-service-chart"
             ).id.__root__
         )
 
