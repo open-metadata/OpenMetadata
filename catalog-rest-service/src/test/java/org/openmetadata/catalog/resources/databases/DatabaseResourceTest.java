@@ -601,7 +601,7 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
 
     // Validate service
-    assertService(createdEntity.getService(), createdEntity.getService());
+    assertService(createRequest.getService(), createdEntity.getService());
   }
 
   @Override
@@ -611,7 +611,10 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
 
   @Override
   public void validatePatchedEntity(Database expected, Database updated, Map<String, String> authHeaders) {
-
+    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+    // Validate service
+    assertService(expected.getService(), updated.getService());
   }
 
   @Override
