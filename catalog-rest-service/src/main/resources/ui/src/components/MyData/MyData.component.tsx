@@ -83,6 +83,15 @@ const MyData: React.FC<MyDataProps> = ({
     });
   };
 
+  const handleTabChange = (tab: number, filter: string) => {
+    if (currentTab !== tab) {
+      setIsEntityLoading(true);
+      setCurrentTab(tab);
+      setFilter(filter);
+      setCurrentPage(1);
+    }
+  };
+
   const getTabs = () => {
     return (
       <div className="tw-mb-3 tw--mt-4" data-testid="tabs">
@@ -91,36 +100,21 @@ const MyData: React.FC<MyDataProps> = ({
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(1)}`}
             data-testid="tab"
             id="recentlyViewedTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(1);
-              setFilter('');
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(1, '')}>
             Recently Viewed
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(2)}`}
             data-testid="tab"
             id="myDataTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(2);
-              setFilter(Ownership.OWNER);
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(2, Ownership.OWNER)}>
             My Data
           </button>
           <button
             className={`tw-pb-2 tw-px-4 tw-gh-tabs ${getActiveTabClass(3)}`}
             data-testid="tab"
             id="followingTab"
-            onClick={() => {
-              setIsEntityLoading(true);
-              setCurrentTab(3);
-              setFilter(Ownership.FOLLOWERS);
-              setCurrentPage(1);
-            }}>
+            onClick={() => handleTabChange(3, Ownership.FOLLOWERS)}>
             Following
           </button>
         </nav>
@@ -145,6 +139,7 @@ const MyData: React.FC<MyDataProps> = ({
         setData(formatDataResponse(hits));
         if (setAssetCount.current) {
           setAggregations(searchResult.data.aggregations);
+          setAssetCount.current = false;
         }
         setIsLoading(false);
         setIsEntityLoading(false);
@@ -162,7 +157,6 @@ const MyData: React.FC<MyDataProps> = ({
 
   useEffect(() => {
     isMounted.current = true;
-    setAssetCount.current = true;
   }, []);
 
   return (
