@@ -56,6 +56,7 @@ from metadata.ingestion.api.common import Record
 from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -345,6 +346,7 @@ class SampleDataSource(Source):
         self.config = config
         self.metadata_config = metadata_config
         self.client = OpenMetadataAPIClient(metadata_config)
+        self.metadata = OpenMetadata(metadata_config)
         self.database_service_json = json.load(
             open(self.config.sample_data_folder + "/datasets/service.json", "r")
         )
@@ -533,24 +535,19 @@ class SampleDataSource(Source):
         Convert sample model data into a Model Entity
         to feed the metastore
         """
+        from metadata.generated.schema.entity.data.dashboard import Dashboard
+
         for model in self.models:
             # Fetch linked dashboard ID from name
-            dashboard_name = model["dashboard"]
-            dashboard_id = next(
-                iter(
-                    [
-                        dash["id"]
-                        for dash in self.dashboards["dashboards"]
-                        if dash["name"] == dashboard_name
-                    ]
-                ),
-                None,
-            )
+            fqdn = model["dashboard"]
+            dashboard = self.metadata.get_by_name(entity=Dashboard, fqdn=fqdn)
 
-            if not dashboard_id:
+            if not dashboard:
                 raise InvalidSampleDataException(
-                    f"Cannot find {dashboard_name} in Sample Dashboards"
+                    f"Cannot find {fqdn} in Sample Dashboards"
                 )
+
+            dashboard_id = str(dashboard.id.__root__)
 
             model_ev = Model(
                 id=uuid.uuid4(),
