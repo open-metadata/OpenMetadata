@@ -1484,7 +1484,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
   @Override
   public Table getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("tables/" + id);
+    WebTarget target = getResource(id);
     target = target.queryParam("fields", TableResource.FIELDS);
     return TestUtils.get(target, Table.class, authHeaders);
   }

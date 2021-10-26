@@ -170,4 +170,9 @@ public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
       assertNull(actual);
     }
   }
+  public static void assertService(EntityReference expected, EntityReference actual) {
+    TestUtils.validateEntityReference(actual);
+    assertEquals(expected.getId(), actual.getId());
+    assertEquals(expected.getType(), actual.getType());
+  }
 }
