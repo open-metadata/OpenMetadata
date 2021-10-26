@@ -15,26 +15,11 @@
   * limitations under the License.
 */
 
-import { SearchResponse } from 'Models';
+import { SearchDataFunctionType, SearchResponse } from 'Models';
 
-export type Params = {
+export type UrlParams = {
   searchQuery: string;
   tab: string;
-};
-
-export type Service = {
-  collection: {
-    name: string;
-    documentation: string;
-    href: string;
-  };
-};
-export type Team = {
-  id: string;
-  name: string;
-  displayName: string;
-  description: string;
-  href: string;
 };
 
 export type ExploreSearchData = {
@@ -43,16 +28,6 @@ export type ExploreSearchData = {
   resAggTier: SearchResponse;
   resAggTag: SearchResponse;
 };
-
-export interface FetchData {
-  queryString: string;
-  from: number;
-  size: number;
-  filters: string;
-  sortField: string;
-  sortOrder: string;
-  searchIndex: string;
-}
 
 export interface ExploreProps {
   tabCounts: {
@@ -71,6 +46,6 @@ export interface ExploreProps {
   updateTopicCount: (count: number) => void;
   updateDashboardCount: (count: number) => void;
   updatePipelineCount: (count: number) => void;
-  fetchData: (value: FetchData[]) => void;
+  fetchData: (value: SearchDataFunctionType[]) => void;
   searchResult: ExploreSearchData | undefined;
 }

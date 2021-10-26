@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FirstTimeUserModal } from '../../components/Modals/FirstTimeUserModal/FirstTimeUserModal';
 import { useTour } from '../../hooks/useTour';
-import MyDataPage from '../my-data';
+// import MyDataPage from '../../components/LandingPage/MyData.component';
 
 const TourPage = () => {
   const [showFirstTimeUserModal, setShowFirstTimeUserModal] = useState(true);
@@ -17,7 +17,7 @@ const TourPage = () => {
 
   return (
     <div>
-      <MyDataPage />
+      {/* <MyDataPage /> */}
       {showFirstTimeUserModal && (
         <FirstTimeUserModal
           onCancel={() => setShowFirstTimeUserModal(true)}

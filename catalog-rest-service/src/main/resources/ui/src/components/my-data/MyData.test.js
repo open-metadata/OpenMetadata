@@ -18,7 +18,7 @@
 import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { dataDetails } from '../../pages/my-data/index.mock';
+import { dataDetails } from '../MyData/MyData.mock';
 import MyData from './MyData';
 
 describe('Test MyData Component', () => {

@@ -25,7 +25,7 @@ import MyDashBoardPage from '../pages/dashboard-details';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
-import MyDataPage from '../pages/my-data';
+import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import MyPipelinePage from '../pages/Pipeline-details';
 import ReportsPage from '../pages/reports';
 import Scorecard from '../pages/scorecard';
