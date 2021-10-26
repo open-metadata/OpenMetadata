@@ -270,7 +270,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
   }, [entityLineage]);
 
   return (
-    <div className="tw-w-full" style={{ height: 500 }}>
+    <div className="tw-w-full tw-h-full">
       {(entityLineage?.downstreamEdges ?? []).length > 0 ||
       (entityLineage.upstreamEdges ?? []).length ? (
         <ReactFlowProvider>
@@ -285,7 +285,10 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
             onNodeMouseEnter={onNodeMouseEnter}
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeMouseMove={onNodeMouseMove}>
-            <Controls showInteractive={false} />
+            <Controls
+              className="tw-top-1 tw-left-1 tw-bottom-full"
+              showInteractive={false}
+            />
           </ReactFlow>
         </ReactFlowProvider>
       ) : (
