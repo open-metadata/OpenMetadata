@@ -7,6 +7,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+from enum import Enum
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
@@ -46,22 +47,28 @@ def get_order_by_cte_value_expression(
     return None
 
 
+class SupportedDataType(Enum):
+    NUMERIC = 1
+    TEXT = 2
+    TIME = 3
+
+
 class Column(BaseModel):
     """Column Metadata"""
 
     name: str
     nullable: bool = None
     data_type: str
-    logical_type: str
+    logical_type: SupportedDataType
 
     def is_text(self) -> bool:
-        return self.logical_type == "text"
+        return self.logical_type == SupportedDataType.TEXT
 
     def is_number(self) -> bool:
-        return self.logical_type == "number"
+        return self.logical_type == SupportedDataType.NUMERIC
 
     def is_time(self) -> bool:
-        return self.logical_type == "time"
+        return self.logical_type == SupportedDataType.TIME
 
 
 class Table(BaseModel):

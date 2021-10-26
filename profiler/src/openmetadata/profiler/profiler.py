@@ -20,6 +20,7 @@ from openmetadata.profiler.profiler_metadata import (
     ColumnProfileResult,
     MetricMeasurement,
     ProfileResult,
+    SupportedDataType,
     Table,
     TableProfileResult,
     get_group_by_cte,
@@ -81,11 +82,11 @@ class Profiler:
             data_type = column[1]
             nullable = "YES" == column[2].upper()
             if self.database.is_number(data_type):
-                logical_type = "number"
+                logical_type = SupportedDataType.NUMERIC
             elif self.database.is_time(data_type):
-                logical_type = "time"
+                logical_type = SupportedDataType.TIME
             elif self.database.is_text(data_type):
-                logical_type = "text"
+                logical_type = SupportedDataType.TEXT
             else:
                 logger.info(f"  {name} ({data_type}) not supported.")
                 continue
@@ -130,7 +131,7 @@ class Profiler:
                 measurements.append(
                     MetricMeasurement(name=Metric.VALID_COUNT, col_name=column_name)
                 )
-                if column.logical_type == "text":
+                if column.logical_type == SupportedDataType.TEXT:
                     length_expr = self.database.sql_exprs.length(qualified_column_name)
                     fields.append(self.database.sql_exprs.avg(length_expr))
                     measurements.append(
@@ -149,7 +150,7 @@ class Profiler:
                         MetricMeasurement(name=Metric.MAX_LENGTH, col_name=column_name)
                     )
 
-                if column.logical_type == "number":
+                if column.logical_type == SupportedDataType.NUMERIC:
                     # Min
                     fields.append(self.database.sql_exprs.min(qualified_column_name))
                     measurements.append(

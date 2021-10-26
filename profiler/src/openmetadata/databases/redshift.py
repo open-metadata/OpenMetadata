@@ -9,13 +9,13 @@
 #  limitations under the License.
 from typing import Optional
 
-from openmetadata.common.database import SupportedDataType
 from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
     SQLExpressions,
     register_custom_type,
 )
+from openmetadata.profiler.profiler_metadata import SupportedDataType
 
 register_custom_type(
     [

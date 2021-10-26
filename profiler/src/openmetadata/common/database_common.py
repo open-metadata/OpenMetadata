@@ -21,14 +21,8 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine
 
 from openmetadata.common.config import ConfigModel, IncludeFilterPattern
-from openmetadata.common.database import Database, SupportedDataType
-from openmetadata.profiler.db import (
-    sql_fetchall,
-    sql_fetchall_description,
-    sql_fetchone,
-    sql_fetchone_description,
-)
-from openmetadata.profiler.profiler_metadata import Column
+from openmetadata.common.database import Database
+from openmetadata.profiler.profiler_metadata import Column, SupportedDataType
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +275,7 @@ class DatabaseCommon(Database):
         """
         Only returns the tuple obtained by cursor.fetchone()
         """
-        return sql_fetchone_description(self.connection, sql)[0]
+        return self.sql_fetchone_description(sql)[0]
 
     def sql_fetchone_description(self, sql: str) -> tuple:
         """
@@ -306,7 +300,7 @@ class DatabaseCommon(Database):
         """
         Only returns the tuples obtained by cursor.fetchall()
         """
-        return sql_fetchall_description(self.connection, sql)[0]
+        return self.sql_fetchall_description(sql)[0]
 
     def sql_fetchall_description(self, sql: str) -> tuple:
         """
@@ -314,7 +308,7 @@ class DatabaseCommon(Database):
         1) the tuples obtained by cursor.fetchall()
         2) the cursor.description
         """
-        cursor = self.cursor()
+        cursor = self.connection.cursor()
         try:
             logger.debug(f"Executing SQL query: \n{sql}")
             start = datetime.now()

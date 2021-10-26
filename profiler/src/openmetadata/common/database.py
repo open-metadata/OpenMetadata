@@ -7,27 +7,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import re
+
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
-from numbers import Number
-from sqlite3.dbapi2 import Date
-from typing import List, Optional
-
-from openmetadata.profiler.profiler_metadata import Column
+from typing import List
 
 
 class Closeable:
     @abstractmethod
     def close(self):
         pass
-
-
-class SupportedDataType(Enum):
-    NUMERIC = 1
-    TEXT = 2
-    TIME = 3
 
 
 @dataclass
