@@ -22,7 +22,6 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource;
-import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -30,12 +29,10 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -293,6 +290,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD);
@@ -325,6 +325,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

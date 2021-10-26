@@ -21,7 +21,6 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.data.CreateDashboard;
@@ -33,7 +32,9 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
+import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
+import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
@@ -41,6 +42,7 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -78,7 +80,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class DashboardResourceTest extends CatalogApplicationTest {
+public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
   private static final Logger LOG = LoggerFactory.getLogger(DashboardResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -90,6 +92,10 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public static List<EntityReference> CHART_REFERENCES;
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+
+  public DashboardResourceTest() {
+    super(Dashboard.class);
+  }
 
 
   @BeforeAll
@@ -148,25 +154,25 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void post_validDashboards_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
     CreateDashboard create = create(test);
-    createAndCheckDashboard(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getDashboardName(test, 1)).withDescription("description");
-    createAndCheckDashboard(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
   public void post_DashboardWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDashboard(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
   public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDashboard(create(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), adminAuthHeaders());
   }
 
   @Test
   public void post_DashboardWithCharts_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDashboard(create(test).withCharts(CHART_REFERENCES), adminAuthHeaders());
+    createAndCheckEntity(create(test).withCharts(CHART_REFERENCES), adminAuthHeaders());
   }
 
   @Test
@@ -217,7 +223,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
     // Create Dashboard for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckDashboard(create(test).withService(new EntityReference().withId(service.getId())
+      createAndCheckEntity(create(test).withService(new EntityReference().withId(service.getId())
               .withType(service.getType())), adminAuthHeaders());
       // List Dashboards by filtering on service name and ensure right Dashboards are returned in the response
       DashboardList list = listDashboards("service", service.getName(), adminAuthHeaders());
@@ -315,7 +321,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void put_DashboardUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a Dashboard with POST
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update Dashboard two times successfully with PUT requests
     dashboard = updateAndCheckDashboard(dashboard, request, OK, adminAuthHeaders(), NO_CHANGE);
@@ -335,7 +341,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     // Create a new Dashboard with put
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
     // Create dashboard as admin
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
     //Update the table as Owner
     updateAndCheckDashboard(dashboard, request.withDisplayName(test.getDisplayName()).withDescription(null),
             OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
@@ -345,7 +351,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void put_DashboardNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update null description with a new description
     updateAndCheckDashboard(dashboard, request.withDisplayName("dashboard1").withDescription("newDescription"),
@@ -356,7 +362,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void put_DashboardEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update empty description with a new description
     updateAndCheckDashboard(dashboard, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
@@ -365,7 +371,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void put_DashboardNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription("description");
-    createAndCheckDashboard(request, adminAuthHeaders());
+    createAndCheckEntity(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
     Dashboard db = updateDashboard(request.withDescription("newDescription"), OK, adminAuthHeaders());
@@ -375,7 +381,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void put_DashboardUpdateOwner_200(TestInfo test) throws HttpResponseException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
     dashboard = updateAndCheckDashboard(dashboard, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(),
@@ -389,7 +395,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void put_DashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Update description, and charts
     dashboard = updateAndCheckDashboard(dashboard,
@@ -401,7 +407,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   @Test
   public void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
-    Dashboard dashboard = createAndCheckDashboard(request, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add charts
     dashboard = updateAndCheckDashboard(dashboard, request.withCharts(CHART_REFERENCES), OK, adminAuthHeaders(),
@@ -425,7 +431,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void get_DashboardWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
-    Dashboard dashboard = createAndCheckDashboard(create, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(dashboard, false);
   }
 
@@ -433,7 +439,7 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void get_DashboardByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
-    Dashboard dashboard = createAndCheckDashboard(create, adminAuthHeaders());
+    Dashboard dashboard = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(dashboard, true);
   }
 
@@ -481,15 +487,6 @@ public class DashboardResourceTest extends CatalogApplicationTest {
   public void delete_nonExistentDashboard_404() {
     assertResponse(() -> deleteDashboard(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.DASHBOARD, TestUtils.NON_EXISTENT_ENTITY));
-  }
-
-  public static Dashboard createAndCheckDashboard(CreateDashboard create,
-                                                Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Dashboard dashboard = createDashboard(create, authHeaders);
-    validateDashboard(dashboard, create.getDisplayName(), create.getDescription(), create.getOwner(),
-            create.getService(), create.getTags(), create.getCharts(), updatedBy);
-    return getAndValidate(dashboard.getId(), create, authHeaders, updatedBy);
   }
 
   public static Dashboard updateAndCheckDashboard(Dashboard before, CreateDashboard create, Status status,
@@ -596,9 +593,9 @@ public class DashboardResourceTest extends CatalogApplicationTest {
     return dashboard;
   }
 
-  private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> charts) {
-    if (charts != null) {
-      List<UUID> expectedChartReferences = charts.stream().map(EntityReference::getId).collect(Collectors.toList());
+  private static void validateDashboardCharts(Dashboard dashboard, List<EntityReference> expectedCharts) {
+    if (expectedCharts != null) {
+      List<UUID> expectedChartReferences = expectedCharts.stream().map(EntityReference::getId).collect(Collectors.toList());
       List<UUID> actualChartReferences = new ArrayList<>();
       dashboard.getCharts().forEach(chart -> {
         TestUtils.validateEntityReference(chart);
@@ -707,5 +704,46 @@ public class DashboardResourceTest extends CatalogApplicationTest {
 
   public static CreateDashboard create(TestInfo test, int index) {
     return new CreateDashboard().withName(getDashboardName(test, index)).withService(SUPERSET_REFERENCE);
+  }
+
+  @Override
+  public WebTarget getCollection() {
+    return getResource("dashboards");
+  }
+
+  @Override
+  public WebTarget getResource(UUID id) {
+    return getResource("dashboards/" + id);
+  }
+
+  @Override
+  public void validateCreatedEntity(Dashboard dashboard, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    CreateDashboard createRequest = (CreateDashboard) request;
+    validateCommonEntityFields(getEntityInterface(dashboard), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    assertService(createRequest.getService(), dashboard.getService());
+    validateDashboardCharts(dashboard, createRequest.getCharts());
+    TestUtils.validateTags(dashboard.getFullyQualifiedName(), createRequest.getTags(), dashboard.getTags());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Dashboard dashboard, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCreatedEntity(dashboard, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {
+  }
+
+  @Override
+  public Dashboard getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = target.queryParam("fields", DashboardResource.FIELDS);
+    return TestUtils.get(target, Dashboard.class, authHeaders);
+  }
+
+  @Override
+  public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
+    return new DashboardEntityInterface(entity);
   }
 }

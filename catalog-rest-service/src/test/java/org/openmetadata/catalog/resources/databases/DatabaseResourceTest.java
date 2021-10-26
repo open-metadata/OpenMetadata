@@ -438,7 +438,7 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
             .withFieldsAdded(Arrays.asList("description", "owner"));
     database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     database.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(MYSQL_REFERENCE); // Get rid of href and name returned in the response for service
+    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
 
     //
     // Replace description, tier, owner
@@ -448,7 +448,7 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
     change = getChangeDescription(database.getVersion()).withFieldsUpdated(Arrays.asList("description", "owner"));
     database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     database.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(REDSHIFT_REFERENCE); // Get rid of href and name returned in the response for service
+    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
     origJson = JsonUtils.pojoToJson(database);
