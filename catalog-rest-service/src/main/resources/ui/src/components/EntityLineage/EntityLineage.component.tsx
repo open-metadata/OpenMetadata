@@ -268,7 +268,12 @@ const getLineageData = (
         label: (
           <p
             className="tw-flex"
-            onClick={() => onSelect(false, {} as SelectedNode)}>
+            onClick={() =>
+              onSelect(true, {
+                name: mainNode.name as string,
+                type: mainNode.type,
+              })
+            }>
             <span className="tw-mr-2">{getEntityIcon(mainNode.type)}</span>
             {getDataLabel(mainNode.name as string)}
           </p>

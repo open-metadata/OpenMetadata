@@ -165,15 +165,19 @@ export const getEntityLink = (
 ) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
+    case EntityType.TOPIC:
       return getTopicDetailsPath(fullyQualifiedName);
 
     case SearchIndex.DASHBOARD:
+    case EntityType.DASHBOARD:
       return getDashboardDetailsPath(fullyQualifiedName);
 
     case SearchIndex.PIPELINE:
+    case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
+    case EntityType.TABLE:
     default:
       return getDatasetDetailsPath(fullyQualifiedName);
   }
