@@ -659,7 +659,6 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
     CreateChart createRequest = (CreateChart) request;
     validateCommonEntityFields(getEntityInterface(chart), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
-    // TODO add display name
     assertService(createRequest.getService(), chart.getService());
   }
 
@@ -669,7 +668,10 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
   }
 
   @Override
-  public void validatePatchedEntity(Chart expected, Chart updated, Map<String, String> authHeaders) {
+  public void validatePatchedEntity(Chart expected, Chart patched, Map<String, String> authHeaders) {
+    validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+    assertService(expected.getService(), patched.getService());
   }
 
   @Override
