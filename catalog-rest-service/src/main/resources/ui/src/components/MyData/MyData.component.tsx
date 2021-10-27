@@ -23,7 +23,7 @@ import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
 import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageContainer from '../containers/PageContainer';
-import MyDataHeader from '../my-data/MyDataHeader';
+import MyDataHeader from '../MyDataHeader/MyDataHeader.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.interface';

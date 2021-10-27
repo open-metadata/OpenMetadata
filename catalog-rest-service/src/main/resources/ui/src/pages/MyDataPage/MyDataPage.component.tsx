@@ -25,7 +25,10 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import { ERROR500, PAGE_SIZE } from '../../constants/constants';
-import { myDataSearchIndex } from '../../constants/Mydata.constants';
+import {
+  myDataEntityCounts,
+  myDataSearchIndex,
+} from '../../constants/Mydata.constants';
 import useToastContext from '../../hooks/useToastContext';
 import {
   getAllServices,
@@ -66,6 +69,7 @@ const MyDataPage = () => {
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
+        setEntityCounts(myDataEntityCounts);
       });
     if (fetchService) {
       getAllServices()
