@@ -271,51 +271,35 @@ class DatabaseCommon(Database):
     def is_time(self, column_type: str):
         return column_type.upper() in _time_types
 
-    def sql_fetchone(self, sql: str) -> tuple:
-        """
-        Only returns the tuple obtained by cursor.fetchone()
-        """
-        return self.sql_fetchone_description(sql)[0]
+    def execute_query(self, sql: str) -> tuple:
+        return self.execute_query_columns(sql)[0]
 
-    def sql_fetchone_description(self, sql: str) -> tuple:
-        """
-        Returns a tuple with 2 elements:
-        1) the tuple obtained by cursor.fetchone()
-        2) the cursor.description
-        """
+    def execute_query_columns(self, sql: str) -> tuple:
         cursor = self.connection.cursor()
         try:
-            logger.debug(f"Executing SQL query: \n{sql}")
+            logger.debug(f"SQL query: \n{sql}")
             start = datetime.now()
             cursor.execute(sql)
             row_tuple = cursor.fetchone()
             description = cursor.description
             delta = datetime.now() - start
-            logger.debug(f"SQL took {str(delta)}")
+            logger.debug(f"SQL duration {str(delta)}")
             return row_tuple, description
         finally:
             cursor.close()
 
-    def sql_fetchall(self, sql: str) -> List[tuple]:
-        """
-        Only returns the tuples obtained by cursor.fetchall()
-        """
-        return self.sql_fetchall_description(sql)[0]
+    def execute_query_all(self, sql: str) -> List[tuple]:
+        return self.execute_query_all_columns(sql)[0]
 
-    def sql_fetchall_description(self, sql: str) -> tuple:
-        """
-        Returns a tuple with 2 elements:
-        1) the tuples obtained by cursor.fetchall()
-        2) the cursor.description
-        """
+    def execute_query_all_columns(self, sql: str) -> tuple:
         cursor = self.connection.cursor()
         try:
-            logger.debug(f"Executing SQL query: \n{sql}")
+            logger.debug(f"SQL query: \n{sql}")
             start = datetime.now()
             cursor.execute(sql)
             rows = cursor.fetchall()
             delta = datetime.now() - start
-            logger.debug(f"SQL took {str(delta)}")
+            logger.debug(f"SQL duration {str(delta)}")
             return rows, cursor.description
         finally:
             cursor.close()
