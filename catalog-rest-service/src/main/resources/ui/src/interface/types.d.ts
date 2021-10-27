@@ -331,7 +331,14 @@ declare module 'Models' {
     filters: string;
     sortField: string;
     sortOrder: string;
-    searchIndex: string;
+    searchIndex?: string;
+  };
+
+  export type EntityCounts = {
+    tableCount: number;
+    topicCount: number;
+    dashboardCount: number;
+    pipelineCount: number;
   };
 
   // topic interface start

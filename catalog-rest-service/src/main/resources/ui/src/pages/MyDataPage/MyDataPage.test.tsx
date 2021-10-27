@@ -19,7 +19,7 @@ import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import MyDataPageComponent from './MyDataPage.component';
 
-jest.mock('../../components/LandingPage/MyData.component', () => {
+jest.mock('../../components/MyData/MyData.component', () => {
   return jest.fn().mockReturnValue(<p>Mydata component</p>);
 });
 

@@ -258,6 +258,12 @@ describe('Test MyData page', () => {
     const { container } = render(
       <MyDataPage
         countServices={0}
+        entityCounts={{
+          tableCount: 10,
+          topicCount: 5,
+          dashboardCount: 8,
+          pipelineCount: 1,
+        }}
         error=""
         fetchData={fetchData}
         searchResult={mockData as unknown as SearchResponse}

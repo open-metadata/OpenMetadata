@@ -16,8 +16,9 @@
 */
 
 import { AxiosError } from 'axios';
+import { isUndefined } from 'lodash';
 import { observer } from 'mobx-react';
-import { SearchDataFunctionType, SearchResponse } from 'Models';
+import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
@@ -25,16 +26,23 @@ import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import { ERROR500, PAGE_SIZE } from '../../constants/constants';
 import useToastContext from '../../hooks/useToastContext';
-import { getAllServices } from '../../utils/ServiceUtils';
+import {
+  getAllServices,
+  getEntityCountByService,
+} from '../../utils/ServiceUtils';
 
 const MyDataPage = () => {
   const showToast = useToastContext();
   const [error, setError] = useState<string>('');
-  const [countServices, setCountServices] = useState<number>(0);
+  const [countServices, setCountServices] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchResult, setSearchResult] = useState<SearchResponse>();
+  const [searchIndex] = useState<string>(
+    'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index'
+  );
+  const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
-  const fetchData = (value: SearchDataFunctionType) => {
+  const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
     searchData(
       value.queryString,
       value.from,
@@ -42,10 +50,17 @@ const MyDataPage = () => {
       value.filters,
       value.sortField,
       value.sortOrder,
-      value.searchIndex
+      searchIndex
     )
       .then((res: SearchResponse) => {
         setSearchResult(res);
+        if (isUndefined(entityCounts)) {
+          setEntityCounts(
+            getEntityCountByService(
+              res.data.aggregations?.['sterms#Service']?.buckets
+            )
+          );
+        }
       })
       .catch((err: AxiosError) => {
         setError(err.response?.data?.responseMessage);
@@ -54,27 +69,41 @@ const MyDataPage = () => {
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
       });
+    if (fetchService) {
+      getAllServices()
+        .then((res) => setCountServices(res.length))
+        .catch(() => setCountServices(0));
+    }
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    getAllServices()
-      .then((res) => setCountServices(res.length))
-      .catch(() => setCountServices(0));
-    setIsLoading(false);
+    fetchData(
+      {
+        queryString: '',
+        from: 1,
+        filters: '',
+        sortField: '',
+        sortOrder: '',
+        searchIndex: searchIndex,
+      },
+      isUndefined(countServices)
+    );
   }, []);
 
   return (
     <div data-testid="my-data-page-conatiner">
-      {isLoading ? (
-        <Loader />
-      ) : (
+      {countServices && entityCounts && !isLoading ? (
         <MyData
           countServices={countServices}
+          entityCounts={entityCounts}
           error={error}
           fetchData={fetchData}
           searchResult={searchResult}
           userDetails={AppState.userDetails}
         />
+      ) : (
+        <Loader />
       )}
     </div>
   );

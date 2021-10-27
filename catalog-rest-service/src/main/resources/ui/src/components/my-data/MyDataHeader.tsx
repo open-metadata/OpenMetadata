@@ -17,6 +17,7 @@
 
 import classNames from 'classnames';
 import { observer } from 'mobx-react';
+import { EntityCounts } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -24,12 +25,7 @@ import SVGIcons, { Icons } from '../../utils/SvgUtils';
 
 type Props = {
   countServices: number;
-  entityCounts: {
-    tableCount: number;
-    topicCount: number;
-    dashboardCount: number;
-    pipelineCount: number;
-  };
+  entityCounts: EntityCounts;
 };
 type Summary = {
   icon: string;
