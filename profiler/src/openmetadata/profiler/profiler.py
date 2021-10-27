@@ -74,7 +74,7 @@ class Profiler:
 
     def _table_metadata(self):
         sql = self.database.table_metadata_query(self.table.name)
-        columns = self.database.sql_fetchall(sql)
+        columns = self.database.execute_query_all(sql)
         self.queries_executed += 1
         self.table_columns = []
         for column in columns:
@@ -194,7 +194,7 @@ class Profiler:
                     "SELECT \n  " + ",\n  ".join(fields) + " \n"
                     "FROM " + self.qualified_table_name
                 )
-                query_result_tuple = self.database.sql_fetchone(sql)
+                query_result_tuple = self.database.execute_query(sql)
                 self.queries_executed += 1
 
                 for i in range(0, len(measurements)):
@@ -305,7 +305,7 @@ class Profiler:
                     f"FROM group_by_value"
                 )
 
-                query_result_tuple = self.database.sql_fetchone(sql)
+                query_result_tuple = self.database.execute_query(sql)
                 self.queries_executed += 1
 
                 distinct_count = query_result_tuple[0]
@@ -407,7 +407,7 @@ class Profiler:
                             f"FROM group_by_value"
                         )
 
-                        row = self.database.sql_fetchone(sql)
+                        row = self.database.execute_query(sql)
                         self.queries_executed += 1
 
                         # Process the histogram query

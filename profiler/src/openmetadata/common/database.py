@@ -56,17 +56,17 @@ class Database(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def sql_fetchone(self, sql) -> tuple:
+    def execute_query(self, sql) -> tuple:
         pass
 
     @abstractmethod
-    def sql_fetchone_description(self, sql) -> tuple:
+    def execute_query_columns(self, sql) -> tuple:
         pass
 
     @abstractmethod
-    def sql_fetchall(self, sql) -> List[tuple]:
+    def execute_query_all(self, sql) -> List[tuple]:
         pass
 
     @abstractmethod
-    def sql_fetchall_description(self, sql) -> tuple:
+    def execute_query_all_columns(self, sql) -> tuple:
         pass
