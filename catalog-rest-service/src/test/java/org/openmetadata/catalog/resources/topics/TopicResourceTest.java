@@ -128,11 +128,14 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void post_validTopics_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
-    CreateTopic create = create(test);
+    CreateTopic create = create(test).withService(new EntityReference().withId(KAFKA_REFERENCE.getId())
+    .withType(KAFKA_REFERENCE.getType()));
     createAndCheckTopic(create, adminAuthHeaders());
 
     create.withName(getTopicName(test, 1)).withDescription("description");
-    createAndCheckTopic(create, adminAuthHeaders());
+    Topic topic = createAndCheckTopic(create, adminAuthHeaders());
+    String expectedFQN = KAFKA_REFERENCE.getName() + "." + topic.getName();
+    assertEquals(expectedFQN, topic.getFullyQualifiedName());
   }
 
   @Test

@@ -17,7 +17,7 @@
 
 import { getByTestId, render } from '@testing-library/react';
 import React from 'react';
-import { miscDetailsData } from '../../pages/my-data/index.mock';
+import { miscDetailsData } from '../MyData/MyData.mock';
 import MiscDetails from './MiscDetails';
 
 describe('Test MiscDetails Component', () => {

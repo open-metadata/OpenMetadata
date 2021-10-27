@@ -14,11 +14,6 @@
 #  limitations under the License.
 
 import time
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 
 import pytest
 import requests
@@ -26,7 +21,19 @@ from requests.exceptions import ConnectionError
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from metadata.generated.schema.api.data.createDatabase import (
+    CreateDatabaseEntityRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
+from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.openmetadata_rest import (
+    MetadataServerConfig,
+    OpenMetadataAPIClient,
+)
 
 
 def is_responsive(url):
@@ -40,32 +47,42 @@ def is_responsive(url):
 
 def create_delete_table(client):
     databases = client.list_databases()
-    columns = [Column(name="id", dataType="INT", dataLength=1),
-               Column(name="name", dataType="VARCHAR", dataLength=1)]
+    columns = [
+        Column(name="id", dataType="INT", dataLength=1),
+        Column(name="name", dataType="VARCHAR", dataLength=1),
+    ]
     table = CreateTableEntityRequest(
-        name="test1", columns=columns, database=databases[0].id)
+        name="test1", columns=columns, database=databases[0].id
+    )
     created_table = client.create_or_update_table(table)
-    if(table.name.__root__ == created_table.name.__root__):
+    if table.name.__root__ == created_table.name.__root__:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 1
     else:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 0
 
 
 def create_delete_database(client):
-    data = {'jdbc': {'connectionUrl': 'mysql://localhost/catalog_db', 'driverClass': 'jdbc'},
-            'name': 'temp_local_mysql',
-            'serviceType': 'MySQL',
-            'description': 'local mysql env'}
+    data = {
+        "jdbc": {
+            "connectionUrl": "mysql://localhost/catalog_db",
+            "driverClass": "jdbc",
+        },
+        "name": "temp_local_mysql",
+        "serviceType": "MySQL",
+        "description": "local mysql env",
+    }
     create_mysql_service = CreateDatabaseServiceEntityRequest(**data)
     mysql_service = client.create_database_service(create_mysql_service)
     create_database_request = CreateDatabaseEntityRequest(
-        name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService"))
-    created_database = client.create_database(
-        create_database_request)
+        name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService")
+    )
+    created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)
     print(resp)
     client.delete_database(created_database.id.__root__)
@@ -88,14 +105,12 @@ def catalog_service(docker_ip, docker_services):
 
 def test_check_tables(catalog_service):
     metadata_config = MetadataServerConfig.parse_obj(
-        {
-            "api_endpoint": catalog_service + "/api",
-            "auth_provider_type": "no-auth"
-        }
+        {"api_endpoint": catalog_service + "/api", "auth_provider_type": "no-auth"}
     )
     client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
     assert create_delete_database(client)
+
 
 def test_read_schema():
     url = "mysql+pymysql://catalog_user:catalog_password@localhost:3307"

@@ -13,10 +13,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Dict, Set
 import os
+from typing import Dict, Set
 
-from setuptools import setup, find_namespace_packages
+from setuptools import find_namespace_packages, setup
 
 
 def get_version():
@@ -34,7 +34,6 @@ def get_long_description():
     with open(os.path.join(root, "CHANGELOG")) as f:
         description += f.read()
     return description
-
 
 
 base_requirements = {
@@ -57,19 +56,19 @@ base_requirements = {
     "sqlalchemy>=1.3.24",
     "sql-metadata~=2.0.0",
     "requests~=2.26",
-    "PyYAML"
+    "PyYAML",
 }
 pii_requirements = {
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
     "pandas~=1.3.1",
-    "spacy==3.0.5"
+    "spacy==3.0.5",
 }
 
 report_requirements = {
     "asgiref==3.4.1",
     "Django==3.2.7",
     "pytz==2021.1",
-    "sqlparse==0.4.2"
+    "sqlparse==0.4.2",
 }
 
 base_plugins = {
@@ -83,7 +82,12 @@ plugins: Dict[str, Set[str]] = {
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
-    "hive": {"openmetadata-sqlalchemy-hive==0.2.0", "thrift~=0.13.0", "sasl==0.3.1", "thrift-sasl==0.4.3"},
+    "hive": {
+        "openmetadata-sqlalchemy-hive==0.2.0",
+        "thrift~=0.13.0",
+        "sasl==0.3.1",
+        "thrift-sasl==0.4.3",
+    },
     "kafka": {"confluent_kafka>=1.5.0", "fastavro>=1.2.0"},
     "ldap-users": {"ldap3==2.9.1"},
     "looker": {"looker-sdk==21.12.2"},
@@ -96,23 +100,31 @@ plugins: Dict[str, Set[str]] = {
     "trino": {"sqlalchemy-trino"},
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
     "redash": {"redash-toolbelt==0.1.4"},
-    "redshift": {"openmetadata-sqlalchemy-redshift==0.2.1", "psycopg2-binary", "GeoAlchemy2"},
-    "redshift-usage": {"openmetadata-sqlalchemy-redshift==0.2.1", "psycopg2-binary", "GeoAlchemy2"},
+    "redshift": {
+        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "psycopg2-binary",
+        "GeoAlchemy2",
+    },
+    "redshift-usage": {
+        "openmetadata-sqlalchemy-redshift==0.2.1",
+        "psycopg2-binary",
+        "GeoAlchemy2",
+    },
     "data-profiler": {"openmetadata-data-profiler"},
     "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
     "snowflake-usage": {"snowflake-sqlalchemy<=1.2.4"},
-    "sample-data": {"faker~=8.1.1", "pandas~=1.3.1"},
+    "sample-data": {"faker~=8.1.1"},
     "superset": {},
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2"}
+    "airflow": {"apache-airflow >= 1.10.2", "openmetadata-airflow==1.0"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.3.2",
+    version="0.4.0",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",
@@ -123,33 +135,26 @@ setup(
     options={"build_exe": build_options},
     package_dir={"": "src"},
     zip_safe=False,
-    dependency_links=[
-
-    ],
+    dependency_links=[],
     project_urls={
         "Documentation": "https://docs.open-metadata.org/",
         "Source": "https://github.com/open-metadata/OpenMetadata",
     },
-    packages=find_namespace_packages(where='./src', exclude=['tests*']),
+    packages=find_namespace_packages(where="./src", exclude=["tests*"]),
     entry_points={
         "console_scripts": ["metadata = metadata.cmd:metadata"],
-        "apache_airflow_provider": ["provider_info = airflow_provider_openmetadata:get_provider_config"],
+        "apache_airflow_provider": [
+            "provider_info = airflow_provider_openmetadata:get_provider_config"
+        ],
     },
     install_requires=list(base_requirements),
     extras_require={
         "base": list(base_requirements),
-        **{
-            plugin: list(dependencies)
-            for (plugin, dependencies) in plugins.items()
-        },
+        **{plugin: list(dependencies) for (plugin, dependencies) in plugins.items()},
         "all": list(
             base_requirements.union(
-                *[
-                    requirements
-                    for plugin, requirements in plugins.items()
-                ]
+                *[requirements for plugin, requirements in plugins.items()]
             )
-        )
-    }
-
+        ),
+    },
 )

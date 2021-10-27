@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
-from metadata.ingestion.ometa.ometa_api import OMeta
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
@@ -35,7 +35,7 @@ class OMetaEndpointTest(TestCase):
     """
 
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
-    metadata = OMeta(server_config)
+    metadata = OpenMetadata(server_config)
 
     def test_entities_suffix(self):
         """
