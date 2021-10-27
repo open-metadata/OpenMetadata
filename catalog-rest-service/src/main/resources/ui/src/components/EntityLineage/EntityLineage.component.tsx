@@ -321,19 +321,18 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
     getLineageData(entityLineage, selectNodeHandler) as Elements
   );
 
-  const drawerHandler = (value: boolean) => {
+  const closeDrawer = (value: boolean) => {
     setIsDrawerOpen(value);
-    if (!value) {
-      setElements((prevElements) => {
-        return prevElements.map((el) => {
-          if (el.id === selectedNode.id) {
-            return { ...el, className: 'leaf-node' };
-          } else {
-            return el;
-          }
-        });
+
+    setElements((prevElements) => {
+      return prevElements.map((el) => {
+        if (el.id === selectedNode.id) {
+          return { ...el, className: 'leaf-node' };
+        } else {
+          return el;
+        }
       });
-    }
+    });
   };
 
   const onElementsRemove = (elementsToRemove: Elements) =>
@@ -391,7 +390,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
         isMainNode={selectedNode.name === entityLineage.entity.name}
         selectedNode={selectedNode}
         show={isDrawerOpen}
-        onCancel={drawerHandler}
+        onCancel={closeDrawer}
       />
     </div>
   );
