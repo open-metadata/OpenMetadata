@@ -25,6 +25,7 @@ import { searchData } from '../../axiosAPIs/miscAPI';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import { ERROR500, PAGE_SIZE } from '../../constants/constants';
+import { myDataSearchIndex } from '../../constants/Mydata.constants';
 import useToastContext from '../../hooks/useToastContext';
 import {
   getAllServices,
@@ -37,9 +38,6 @@ const MyDataPage = () => {
   const [countServices, setCountServices] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchResult, setSearchResult] = useState<SearchResponse>();
-  const [searchIndex] = useState<string>(
-    'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index'
-  );
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
   const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
@@ -50,7 +48,7 @@ const MyDataPage = () => {
       value.filters,
       value.sortField,
       value.sortOrder,
-      searchIndex
+      myDataSearchIndex
     )
       .then((res: SearchResponse) => {
         setSearchResult(res);
@@ -85,7 +83,6 @@ const MyDataPage = () => {
         filters: '',
         sortField: '',
         sortOrder: '',
-        searchIndex: searchIndex,
       },
       isUndefined(countServices)
     );
