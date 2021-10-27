@@ -264,8 +264,8 @@ public class UserResource {
             .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
             .withProfile(create.getProfile()).withTimezone(create.getTimezone())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+            .withUpdatedAt(new Date())
+            .withTeams(dao.validateTeams(create.getTeams()));
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);

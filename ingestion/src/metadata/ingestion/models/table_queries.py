@@ -15,10 +15,9 @@
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.table import ColumnJoins
 from metadata.ingestion.models.json_serializable import JsonSerializable
+from pydantic import BaseModel
 
 
 class TableQuery(JsonSerializable):
@@ -70,10 +69,13 @@ class TableUsageCount(BaseModel):
 class QueryParserData(BaseModel):
     tables: List[str]
     tables_aliases: Dict[str, str]
-    columns: Dict[str, List[str]]
+    columns: Dict[str, List[object]]
     date: str
     database: str
     sql: str
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class TableUsageRequest(BaseModel):

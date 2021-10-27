@@ -16,8 +16,8 @@
 */
 
 import { FilterObject } from 'Models';
-import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getFilterString } from '../../utils/FilterUtils';
+import { getCurrentUserId } from '../utils/CommonUtils';
+import { getFilterString } from '../utils/FilterUtils';
 
 export const myDataFilterType = [
   { key: 'Owned', value: 'owner' },

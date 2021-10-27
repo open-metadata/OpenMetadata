@@ -75,9 +75,10 @@ public class TopicRepository extends EntityRepository<Topic> {
 
   @Override
   public void validate(Topic topic) throws IOException {
+    EntityReference messagingService = getService(topic.getService());
+    topic.setService(messagingService);
     topic.setFullyQualifiedName(getFQN(topic));
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), topic.getOwner()); // Validate owner
-    getService(topic.getService());
     topic.setTags(EntityUtil.addDerivedTags(dao.tagDAO(), topic.getTags()));
   }
 

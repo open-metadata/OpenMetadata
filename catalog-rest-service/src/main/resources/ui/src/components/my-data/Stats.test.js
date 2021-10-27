@@ -18,7 +18,7 @@
 import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { statData } from '../../pages/my-data/index.mock';
+import { statData } from '../MyData/MyData.mock';
 import Stats from './Stats';
 
 describe('Test Stats Component', () => {
