@@ -55,7 +55,8 @@
     },
     "users" : {
       "description": "Users that are part of the team.",
-      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList",
+      "default": null
     },
     "owns" : {
       "description": "List of entities owned by the team.",

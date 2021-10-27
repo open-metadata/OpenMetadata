@@ -247,13 +247,13 @@ public interface CollectionDAO {
     //
     @SqlQuery("SELECT toId, toEntity FROM entity_relationship " +
             "WHERE fromId = :fromId AND relation = :relation " +
-            "ORDER BY fromId")
+            "ORDER BY toId")
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
     @SqlQuery("SELECT toId FROM entity_relationship " +
             "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity " +
-            "ORDER BY fromId")
+            "ORDER BY toId")
     List<String> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation,
                         @Bind("toEntity") String toEntity);
 

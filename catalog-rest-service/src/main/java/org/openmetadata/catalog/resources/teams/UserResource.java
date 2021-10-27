@@ -176,7 +176,6 @@ public class UserResource {
     return dao.listVersions(id);
   }
 
-
   @GET
   @Valid
   @Path("/{id}")
