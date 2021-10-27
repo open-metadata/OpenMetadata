@@ -22,6 +22,7 @@ import { EntityCounts, SearchDataFunctionType, SearchResponse } from 'Models';
 import React, { useEffect, useState } from 'react';
 import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
+import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import Loader from '../../components/Loader/Loader';
 import MyData from '../../components/MyData/MyData.component';
 import { ERROR500, PAGE_SIZE } from '../../constants/constants';
@@ -95,14 +96,17 @@ const MyDataPage = () => {
   return (
     <div data-testid="my-data-page-conatiner">
       {countServices && entityCounts && !isLoading ? (
-        <MyData
-          countServices={countServices}
-          entityCounts={entityCounts}
-          error={error}
-          fetchData={fetchData}
-          searchResult={searchResult}
-          userDetails={AppState.userDetails}
-        />
+        error ? (
+          <ErrorPlaceHolderES errorMessage={error} type="error" />
+        ) : (
+          <MyData
+            countServices={countServices}
+            entityCounts={entityCounts}
+            fetchData={fetchData}
+            searchResult={searchResult}
+            userDetails={AppState.userDetails}
+          />
+        )
       ) : (
         <Loader />
       )}

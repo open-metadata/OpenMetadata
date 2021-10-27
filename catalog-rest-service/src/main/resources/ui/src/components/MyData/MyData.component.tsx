@@ -17,11 +17,10 @@
 
 import { isEmpty } from 'lodash';
 import { FormatedTableData } from 'Models';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Ownership } from '../../enums/mydata.enum';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageContainer from '../containers/PageContainer';
 import MyDataHeader from '../MyDataHeader/MyDataHeader.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
@@ -33,7 +32,6 @@ const MyData: React.FC<MyDataProps> = ({
   userDetails,
   searchResult,
   fetchData,
-  error,
   entityCounts,
 }: MyDataProps): React.ReactElement => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
@@ -42,6 +40,8 @@ const MyData: React.FC<MyDataProps> = ({
   const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [filter, setFilter] = useState<string>('');
+
+  const isMounted = useRef(false);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
@@ -104,14 +104,16 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   useEffect(() => {
-    setIsEntityLoading(true);
-    fetchData({
-      queryString: '',
-      from: currentPage,
-      filters: filter ? getFilters() : '',
-      sortField: '',
-      sortOrder: '',
-    });
+    if (isMounted.current) {
+      setIsEntityLoading(true);
+      fetchData({
+        queryString: '',
+        from: currentPage,
+        filters: filter ? getFilters() : '',
+        sortField: '',
+        sortOrder: '',
+      });
+    }
   }, [currentPage, filter]);
 
   useEffect(() => {
@@ -128,36 +130,32 @@ const MyData: React.FC<MyDataProps> = ({
     setIsEntityLoading(false);
   }, [searchResult]);
 
+  useEffect(() => {
+    isMounted.current = true;
+  }, []);
+
   return (
-    <>
-      {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
-      ) : (
-        <>
-          <PageContainer>
-            <div className="container-fluid" data-testid="fluid-container">
-              <MyDataHeader
-                countServices={countServices}
-                entityCounts={entityCounts}
-              />
-              {getTabs()}
-              <SearchedData
-                showOnboardingTemplate
-                currentPage={currentPage}
-                data={data}
-                isLoading={isEntityLoading}
-                paginate={paginate}
-                searchText="*"
-                showOnlyChildren={currentTab === 1}
-                showResultCount={filter && data.length > 0 ? true : false}
-                totalValue={totalNumberOfValue}>
-                {currentTab === 1 ? <RecentlyViewed /> : null}
-              </SearchedData>
-            </div>
-          </PageContainer>
-        </>
-      )}
-    </>
+    <PageContainer>
+      <div className="container-fluid" data-testid="fluid-container">
+        <MyDataHeader
+          countServices={countServices}
+          entityCounts={entityCounts}
+        />
+        {getTabs()}
+        <SearchedData
+          showOnboardingTemplate
+          currentPage={currentPage}
+          data={data}
+          isLoading={isEntityLoading}
+          paginate={paginate}
+          searchText="*"
+          showOnlyChildren={currentTab === 1}
+          showResultCount={filter && data.length > 0 ? true : false}
+          totalValue={totalNumberOfValue}>
+          {currentTab === 1 ? <RecentlyViewed /> : null}
+        </SearchedData>
+      </div>
+    </PageContainer>
   );
 };
 
