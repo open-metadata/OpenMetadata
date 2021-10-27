@@ -85,15 +85,3 @@ class Snowflake(DatabaseCommon):
     def create(cls, config_dict):
         config = SnowflakeConnectionConfig.parse_obj(config_dict)
         return cls(config)
-
-    def table_metadata_query(self, table_name: str) -> str:
-        sql = (
-            f"SELECT column_name, data_type, is_nullable \n"
-            f"FROM information_schema.columns \n"
-            f"WHERE lower(table_name) = '{table_name.lower()}'"
-        )
-        if self.config.database:
-            sql += f" \n  AND lower(table_catalog) = '{self.config.database.lower()}'"
-        if self.config.db_schema:
-            sql += f" \n  AND lower(table_schema) = '{self.config.db_schema.lower()}'"
-        return sql

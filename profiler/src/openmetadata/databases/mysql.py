@@ -4,38 +4,6 @@ from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
     SQLExpressions,
-    register_custom_type,
-)
-from openmetadata.profiler.profiler_metadata import SupportedDataType
-
-register_custom_type(
-    ["CHAR", "VARCHAR", "BINARY", "VARBINARY", "BLOB", "TEXT", "ENUM", "SET"],
-    SupportedDataType.TEXT,
-)
-
-register_custom_type(
-    [
-        "INTEGER",
-        "INT",
-        "SMALLINT",
-        "TINYINT",
-        "MEDIUMINT",
-        "BIGINT",
-        "DECIMAL",
-        "NUMERIC",
-        "FLOAT",
-        "DOUBLE",
-        "REAL",
-        "DOUBLE PRECISION",
-        "DEC",
-        "FIXED",
-    ],
-    SupportedDataType.NUMERIC,
-)
-
-register_custom_type(
-    ["TIMESTAMP", "DATE", "DATETIME", "YEAR", "TIME"],
-    SupportedDataType.TIME,
 )
 
 
@@ -65,13 +33,3 @@ class MySQL(DatabaseCommon):
     def create(cls, config_dict):
         config = MySQLConnectionConfig.parse_obj(config_dict)
         return cls(config)
-
-    def table_metadata_query(self, table_name: str) -> str:
-        sql = (
-            f"SELECT column_name, data_type, is_nullable \n"
-            f"FROM information_schema.columns \n"
-            f"WHERE lower(table_name) = '{table_name}'"
-        )
-        if self.config.database:
-            sql += f" \n  AND table_schema = '{self.database}'"
-        return sql

@@ -43,18 +43,6 @@ class Postgres(DatabaseCommon):
         config = PostgresConnectionConfig.parse_obj(config_dict)
         return cls(config)
 
-    def table_metadata_query(self, table_name: str) -> str:
-        sql = (
-            f"SELECT column_name, data_type, is_nullable \n"
-            f"FROM information_schema.columns \n"
-            f"WHERE lower(table_name) = '{table_name}'"
-        )
-        if self.config.database:
-            sql += f" \n  AND table_catalog = '{self.config.database}'"
-        if self.config.db_schema:
-            sql += f" \n  AND table_schema = '{self.config.db_schema}'"
-        return sql
-
     def qualify_table_name(self, table_name: str) -> str:
         if self.config.db_schema:
             return f'"{self.config.db_schema}"."{table_name}"'
