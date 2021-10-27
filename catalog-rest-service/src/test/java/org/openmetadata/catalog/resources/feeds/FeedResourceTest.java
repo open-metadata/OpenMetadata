@@ -38,6 +38,7 @@ import org.openmetadata.catalog.type.Post;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,7 @@ public class FeedResourceTest extends CatalogApplicationTest {
   public static Thread THREAD;
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     CreateTable createTable = TableResourceTest.create(test);
     TABLE = TableResourceTest.createAndCheckTable(createTable, adminAuthHeaders());

@@ -68,6 +68,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -125,18 +126,16 @@ public class TableResourceTest extends EntityTestHelper<Table> {
           getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static EntityReference SNOWFLAKE_REFERENCE;
 
   public TableResourceTest() {
-    super(Table.class);
+    super(Table.class, "tables");
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+    EntityTestHelper.setup(test);
+
     CreateDatabaseService createSnowflake = new CreateDatabaseService()
             .withName(DatabaseServiceResourceTest.getName(test, 1))
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
@@ -146,12 +145,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
-
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
   }
 
   public static Table createTable(TestInfo test, int i) throws HttpResponseException {
@@ -404,61 +397,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
       assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
 
-  @Test
-  public void put_tableUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
-    CreateTable request = create(test).withOwner(USER_OWNER1);
-    Table table = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update table two times successfully with PUT requests
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-  }
-
-  @Test
-  public void put_tableCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new table with put
-    CreateTable request = create(test).withOwner(USER_OWNER1);
-    updateAndCheckEntity(request.withName("newName").withDescription(null), CREATED,
-            adminAuthHeaders(), UpdateType.CREATED, null);
-  }
-
-  @Test
-  public void put_tableNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create table with null description
-    CreateTable request = create(test).withOwner(USER_OWNER1);
-    Table table = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add("description");
-    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
-            change);
-  }
-
-  @Test
-  public void put_tableEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create table with empty description
-    CreateTable request = create(test).withOwner(USER_OWNER1);
-    Table table = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update empty description with a new description and expect minor version update
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsAdded().add("description");
-    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE,
-            change);
-  }
-
-  @Test
-  public void put_tableNonEmptyDescriptionUpdateIgnored_200(TestInfo test) throws HttpResponseException {
-    CreateTable request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    Table table = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Updating non-empty description is ignored
-    Table updatedTable = updateEntity(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", updatedTable.getDescription());
-    assertEquals(table.getVersion(), updatedTable.getVersion()); // No version change since description remained the same
-  }
 
   @Test
   public void put_tableOwnershipUpdate_200(TestInfo test) throws HttpResponseException {
@@ -1490,13 +1428,8 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Override
-  public WebTarget getCollection() {
-    return CatalogApplicationTest.getResource("tables");
-  }
-
-  @Override
-  public WebTarget getResource(UUID id) {
-    return CatalogApplicationTest.getResource("tables/" + id);
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withOwner(owner);
   }
 
   @Override

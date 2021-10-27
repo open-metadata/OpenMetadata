@@ -28,45 +28,36 @@ import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
+import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -74,26 +65,18 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends EntityTestHelper<Database> {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
   public static EntityReference MYSQL_REFERENCE;
   public static EntityReference BIGQUERY_REFERENCE;
 
   public DatabaseResourceTest() {
-    super(Database.class);
+    super(Database.class, "databases");
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+    EntityTestHelper.setup(test);
 
     CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
@@ -310,91 +293,6 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
   }
 
   @Test
-  public void put_databaseUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
-    // Create a database with POST
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    Database database = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update database two times successfully with PUT requests
-    ChangeDescription change = getChangeDescription(database.getVersion());
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-  }
-
-  @Test
-  public void put_databaseCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new database with PUT
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckEntity(request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), UpdateType.CREATED, null);
-  }
-
-  @Test
-  public void put_databaseCreate_as_owner_200(TestInfo test) throws HttpResponseException {
-    // Create a new database with put
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    // Add database as admin
-    Database database = createAndCheckEntity(request, adminAuthHeaders());
-    // Update the table as Owner
-    ChangeDescription change = getChangeDescription(database.getVersion())
-            .withFieldsAdded(Collections.singletonList("description"));
-    updateAndCheckEntity(request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void put_databaseNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription(null);
-    Database database = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    ChangeDescription change = getChangeDescription(database.getVersion())
-            .withFieldsAdded(Collections.singletonList("description"));
-    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void put_databaseEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create table with empty description
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    Database database = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update empty description with a new description
-    ChangeDescription change = getChangeDescription(database.getVersion())
-            .withFieldsUpdated(Collections.singletonList("description"));
-    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void put_databaseNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("description");
-    createAndCheckEntity(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    Database db = updateDatabase(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", db.getDescription());
-  }
-
-  @Test
-  public void put_databaseUpdateOwner_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    Database database = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Add ownership to TEAM_OWNER1
-    ChangeDescription change = getChangeDescription(database.getVersion())
-            .withFieldsAdded(Collections.singletonList("owner"));
-    database = updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
-    // Add ownership to TEAM_OWNER1 to USER_OWNER1
-    change = getChangeDescription(database.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
-    database = updateAndCheckEntity(request.withOwner(USER_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
-    // Remove ownership
-    change = getChangeDescription(database.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
-    database = updateAndCheckEntity(request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-    assertNull(database.getOwner());
-  }
-
-  @Test
   public void get_nonExistentDatabase_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
@@ -481,13 +379,6 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
   public static Database createAndCheckDatabase(CreateDatabase create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
     return new DatabaseResourceTest().createAndCheckEntity(create, authHeaders);
-  }
-
-  public static Database updateDatabase(CreateDatabase create,
-                                        Status status,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("databases"),
-                          create, Database.class, status, authHeaders);
   }
 
   public static Database createDatabase(CreateDatabase create,
@@ -585,13 +476,8 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
   }
 
   @Override
-  public WebTarget getCollection() {
-    return getResource("databases");
-  }
-
-  @Override
-  public WebTarget getResource(UUID id) {
-    return getResource("databases/" + id);
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withOwner(owner);
   }
 
   @Override

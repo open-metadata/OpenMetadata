@@ -32,6 +32,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -187,10 +188,10 @@ public class TopicRepository extends EntityRepository<Topic> {
     EntityUtil.removeFollower(dao.relationshipDAO(), topicId, userId);
   }
 
-  static class TopicEntityInterface implements EntityInterface<Topic> {
+  public static class TopicEntityInterface implements EntityInterface<Topic> {
     private final Topic entity;
 
-    TopicEntityInterface(Topic entity) {
+    public TopicEntityInterface(Topic entity) {
       this.entity = entity;
     }
 
@@ -234,6 +235,9 @@ public class TopicRepository extends EntityRepository<Topic> {
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TOPIC);
@@ -243,8 +247,7 @@ public class TopicRepository extends EntityRepository<Topic> {
     public Topic getEntity() { return entity; }
 
     @Override
-    public void setId(UUID id) { entity.setId(id);
-    }
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
     public void setDescription(String description) {
@@ -267,6 +270,9 @@ public class TopicRepository extends EntityRepository<Topic> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

@@ -28,7 +28,6 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
@@ -36,7 +35,6 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChartType;
@@ -45,7 +43,6 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +51,6 @@ import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,7 +72,6 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -86,26 +81,18 @@ import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class ChartResourceTest extends EntityTestHelper<Chart> {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public ChartResourceTest() {
-    super(Chart.class);
+    super(Chart.class, "charts");
   }
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+    EntityTestHelper.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));
@@ -291,98 +278,6 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
   }
 
   @Test
-  public void put_chartUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
-    // Create a chart with POST
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update chart two times successfully with PUT requests
-    ChangeDescription change = getChangeDescription(chart.getVersion());
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
-  }
-
-  @Test
-  public void put_chartCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new chart with PUT
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckEntity(request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), UpdateType.CREATED, null);
-  }
-
-  @Test
-  public void put_chartCreate_as_owner_200(TestInfo test) throws HttpResponseException {
-    // Create a new chart with PUT
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withOwner(USER_OWNER1);
-    // Create chart as admin
-    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update chart as user owner changing description from null
-    ChangeDescription change = getChangeDescription(chart.getVersion())
-            .withFieldsAdded(Collections.singletonList("description"));
-    chart = updateAndCheckEntity(request.withDescription("new1"), OK, authHeaders(USER1.getEmail()),
-            MINOR_UPDATE, change);
-
-    // Update chart ownership as owner
-    change = getChangeDescription(chart.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
-    updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void put_chartNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
-    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    ChangeDescription change = getChangeDescription(chart.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "displayName"));
-    chart = updateAndCheckEntity(request.withDescription("newDescription").withDisplayName("newChart")
-            , OK, adminAuthHeaders(), MINOR_UPDATE, change);
-    assertEquals("newChart", chart.getDisplayName());
-  }
-
-  @Test
-  public void put_chartEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create chart with empty description
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Update empty description with a new description
-    ChangeDescription change = getChangeDescription(chart.getVersion())
-            .withFieldsUpdated(Collections.singletonList("description"));
-    updateAndCheckEntity(request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
-  public void put_chartNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("description");
-    createAndCheckEntity(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    Chart chart = updateChart(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", chart.getDescription());
-  }
-
-  @Test
-  public void put_chartUpdateOwner_200(TestInfo test) throws HttpResponseException {
-    CreateChart request = create(test).withService(SUPERSET_REFERENCE).withDescription("");
-    Chart chart = createAndCheckEntity(request, adminAuthHeaders());
-
-    // Add TEAM_OWNER1 as owner
-    ChangeDescription change = getChangeDescription(chart.getVersion())
-            .withFieldsAdded(Collections.singletonList("owner"));
-    chart = updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
-    // Change owner from TEAM_OWNER1 to USER_OWNER1
-    change = getChangeDescription(chart.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
-    chart = updateAndCheckEntity(request.withOwner(USER_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-
-    // Remove ownership
-    change = getChangeDescription(chart.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
-    updateAndCheckEntity(request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
   public void get_nonExistentChart_404_notFound() {
     assertResponse(() -> getChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
@@ -496,12 +391,6 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
   public void delete_nonExistentChart_404() {
     assertResponse(() -> deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
-  }
-
-  public static Chart updateChart(CreateChart create,
-                                  Status status,
-                                  Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("charts"), create, Chart.class, status, authHeaders);
   }
 
   public static Chart createChart(CreateChart create,
@@ -645,13 +534,8 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
   }
 
   @Override
-  public WebTarget getCollection() {
-    return getResource("charts");
-  }
-
-  @Override
-  public WebTarget getResource(UUID id) {
-    return getResource("charts/" + id);
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override

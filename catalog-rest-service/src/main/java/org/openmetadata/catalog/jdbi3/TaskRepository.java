@@ -31,6 +31,7 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -218,6 +219,9 @@ public class TaskRepository extends EntityRepository<Task> {
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.TASK);
@@ -250,6 +254,9 @@ public class TaskRepository extends EntityRepository<Task> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

@@ -18,27 +18,21 @@ package org.openmetadata.catalog.resources.topics;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
-import org.openmetadata.catalog.api.services.CreateMessagingService;
-import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.catalog.entity.data.Topic;
-import org.openmetadata.catalog.entity.services.MessagingService;
-import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
-import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
+import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
+import org.openmetadata.catalog.resources.EntityTestHelper;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.EntityUtil;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -69,7 +63,6 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -77,34 +70,11 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
-public class TopicResourceTest extends CatalogApplicationTest {
+public class TopicResourceTest extends EntityTestHelper<Topic> {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
-  public static EntityReference KAFKA_REFERENCE;
-  public static EntityReference PULSAR_REFERENCE;
-  public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
-
-  @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
-
-    CreateMessagingService createService = new CreateMessagingService().withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
-    MessagingService service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    KAFKA_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
-
-    createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar).withBrokers(List.of("192.168.1.1:0"));
-    service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    PULSAR_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
+  public TopicResourceTest() {
+    super(Topic.class, "topics");
   }
 
   @Test
@@ -128,24 +98,23 @@ public class TopicResourceTest extends CatalogApplicationTest {
   @Test
   public void post_validTopics_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
-    CreateTopic create = create(test).withService(new EntityReference().withId(KAFKA_REFERENCE.getId())
-    .withType(KAFKA_REFERENCE.getType()));
-    createAndCheckTopic(create, adminAuthHeaders());
+    CreateTopic create = create(test);
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getTopicName(test, 1)).withDescription("description");
-    Topic topic = createAndCheckTopic(create, adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
     String expectedFQN = KAFKA_REFERENCE.getName() + "." + topic.getName();
     assertEquals(expectedFQN, topic.getFullyQualifiedName());
   }
 
   @Test
   public void post_topicWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckTopic(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
   public void post_topicWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckTopic(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
@@ -207,7 +176,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
     // Create topic for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckTopic(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List topics by filtering on service name and ensure right topics are returned in the response
       TopicList list = listTopics("service", service.getName(), adminAuthHeaders());
@@ -303,76 +272,6 @@ public class TopicResourceTest extends CatalogApplicationTest {
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
-  @Test
-  public void put_topicUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
-    // Create a topic with POST
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
-
-    // Update topic two times successfully with PUT requests
-    updateAndCheckTopic(topic, request, OK, adminAuthHeaders(), NO_CHANGE);
-    updateAndCheckTopic(topic, request, OK, adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_topicCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new topic with PUT
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckTopic(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_topicCreate_as_owner_200(TestInfo test) throws HttpResponseException {
-    // Create a new topic with put
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withOwner(USER_OWNER1);
-    // Add as admin
-    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
-    // Update the topic as Owner
-    updateAndCheckTopic(topic, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_topicNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription(null);
-    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    updateAndCheckTopic(topic, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_topicEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create topic with empty description
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription("");
-    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
-
-    // Update empty description with a new description
-    updateAndCheckTopic(topic, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_topicNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription("description");
-    createAndCheckTopic(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    Topic topic = updateTopic(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", topic.getDescription());
-  }
-
-  @Test
-  public void put_topicUpdateOwner_200(TestInfo test) throws HttpResponseException {
-    CreateTopic request = create(test).withService(KAFKA_REFERENCE).withDescription("");
-    Topic topic = createAndCheckTopic(request, adminAuthHeaders());
-
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    topic = updateAndCheckTopic(topic, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
-
-    // Remove ownership
-    topic = updateAndCheckTopic(topic, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
-    assertNull(topic.getOwner());
-  }
 
   @Test
   public void get_nonExistentTopic_404_notFound() {
@@ -386,7 +285,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public void get_topicWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
-    Topic topic = createAndCheckTopic(create, adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(topic, false);
   }
 
@@ -394,7 +293,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
   public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
-    Topic topic = createAndCheckTopic(create, adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(topic, true);
   }
 
@@ -441,7 +340,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
-    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create(test), adminAuthHeaders());
 
     // Add follower to the table
     User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
@@ -461,7 +360,7 @@ public class TopicResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
-    Topic topic = createAndCheckTopic(create(test), adminAuthHeaders());
+    Topic topic = createAndCheckEntity(create(test), adminAuthHeaders());
 
     // Add non existent user as follower to the table
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
@@ -480,53 +379,6 @@ public class TopicResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTopic(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TOPIC, NON_EXISTENT_ENTITY));
-  }
-
-  public static Topic createAndCheckTopic(CreateTopic create,
-                                          Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Topic topic = createTopic(create, authHeaders);
-    assertEquals(0.1, topic.getVersion());
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(), updatedBy);
-    return getAndValidate(topic.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static Topic updateAndCheckTopic(Topic before, CreateTopic create, Status status,
-                                          Map<String, String> authHeaders,
-                                          UpdateType updateType) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Topic updatedTopic = updateTopic(create, status, authHeaders);
-    validateTopic(updatedTopic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            updatedBy);
-    if (before == null) {
-      assertEquals(0.1, updatedTopic.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedTopic.getVersion(), updateType);
-    }
-
-    // GET the newly updated topic and validate
-    return getAndValidate(updatedTopic.getId(), create, authHeaders, updatedBy);
-  }
-
-  // Make sure in GET operations the returned topic has all the required information passed during creation
-  public static Topic getAndValidate(UUID topicId, CreateTopic create, Map<String, String> authHeaders,
-                                     String expectedUpdatedBy) throws HttpResponseException {
-    // GET the newly created topic by ID and validate
-    Topic topic = getTopic(topicId, "service,owner", authHeaders);
-    validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            expectedUpdatedBy);
-
-    // GET the newly created topic by name and validate
-    String fqn = topic.getFullyQualifiedName();
-    topic = getTopicByName(fqn, "service,owner", authHeaders);
-    return validateTopic(topic, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            expectedUpdatedBy);
-  }
-
-  public static Topic updateTopic(CreateTopic create,
-                                  Status status,
-                                  Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("topics"), create, Topic.class, status, authHeaders);
   }
 
   public static Topic createTopic(CreateTopic create,
@@ -735,5 +587,44 @@ public class TopicResourceTest extends CatalogApplicationTest {
     // GET .../users/{userId} shows user as following table
     checkUserFollowing(userId, topicId, false, authHeaders);
     return getTopic;
+  }
+
+  @Override
+  public CreateTopic createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withOwner(owner);
+  }
+
+  @Override
+  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    CreateTopic createRequest = (CreateTopic) request;
+    validateCommonEntityFields(getEntityInterface(topic), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+    assertService(createRequest.getService(), topic.getService());
+    TestUtils.validateTags(topic.getFullyQualifiedName(), createRequest.getTags(), topic.getTags());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCreatedEntity(topic, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Topic expected, Topic updated, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+    assertService(expected.getService(), expected.getService());
+    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), expected.getTags());
+  }
+
+  @Override
+  public Topic getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = target.queryParam("fields", TopicResource.FIELDS);
+    return TestUtils.get(target, Topic.class, authHeaders);
+  }
+
+  @Override
+  public EntityInterface<Topic> getEntityInterface(Topic entity) {
+    return new TopicEntityInterface(entity);
   }
 }

@@ -2,9 +2,22 @@ package org.openmetadata.catalog.resources;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.api.services.CreateMessagingService;
+import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
+import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.teams.Team;
+import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
+import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
+import org.openmetadata.catalog.resources.teams.TeamResourceTest;
+import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
@@ -14,30 +27,66 @@ import org.openmetadata.common.utils.JsonSchemaUtil;
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
   private final Class<T> entityClass;
+  private final String collectionName;
 
-  public EntityTestHelper(Class<T> entityClass) {
+  public static User USER1;
+  public static EntityReference USER_OWNER1;
+  public static Team TEAM1;
+  public static EntityReference TEAM_OWNER1;
+
+  public static EntityReference KAFKA_REFERENCE;
+  public static EntityReference PULSAR_REFERENCE;
+  public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
+  public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
+
+  public EntityTestHelper(Class<T> entityClass, String collectionName) {
     this.entityClass = entityClass;
+    this.collectionName = collectionName;
   }
 
-  /**
-   * Methods to be overridden entity classes
-   */
-  public abstract WebTarget getCollection();
+  @BeforeAll
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
+    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
 
-  public abstract WebTarget getResource(UUID id);
+    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
+    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+
+    CreateMessagingService createService = new CreateMessagingService().withName("kafka")
+            .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
+    MessagingService service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
+    KAFKA_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
+
+    createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar).withBrokers(List.of("192.168.1.1:0"));
+    service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
+    PULSAR_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Methods to be overridden entity test class
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public abstract Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) throws URISyntaxException;
 
   public abstract void validateCreatedEntity(T createdEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException;
@@ -52,6 +101,127 @@ public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
   public abstract T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException;
 
   public abstract EntityInterface<T> getEntityInterface(T entity);
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for POST operations
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for PUT operations
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void put_entityCreate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create a new entity with PUT
+    Object request = createRequest(test, "description", "displayName", null);
+    updateAndCheckEntity(request, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+  }
+
+  @Test
+  public void put_entityUpdateWithNoChange_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create a chart with POST
+    Object request = createRequest(test, "description", "display", USER_OWNER1);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Update chart two times successfully with PUT requests
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), NO_CHANGE, change);
+  }
+
+  @Test
+  public void put_entityCreate_as_owner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create a new entity with PUT as admin user
+    Object request = createRequest(test, null, null, USER_OWNER1);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Update the entity as USER_OWNER1
+    request = createRequest(test, "newDescription", null, USER_OWNER1);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsAdded(Collections.singletonList("description"));
+    updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void put_entityUpdateOwner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Add TEAM_OWNER1 as owner
+    request = createRequest(test, "description", "displayName", TEAM_OWNER1);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsAdded(Collections.singletonList("owner"));
+    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    entityInterface = getEntityInterface(entity);
+
+    // Change owner from TEAM_OWNER1 to USER_OWNER1
+    request = createRequest(test, "description", "displayName", USER_OWNER1);
+    change = getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
+    entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    entityInterface = getEntityInterface(entity);
+
+    // Remove ownership
+    request = createRequest(test, "description", "displayName", null);
+    change = getChangeDescription(entityInterface.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void put_entityNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create entity with null description
+    Object request = createRequest(test, null, "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Update null description with a new description
+    request = createRequest(test, "updatedDescription", "displayName", null);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsAdded(Collections.singletonList("description"));
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void put_entityEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create entity with empty description
+    Object request = createRequest(test, "", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Update empty description with a new description
+    request = createRequest(test, "updatedDescription", "displayName", null);
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsUpdated(Collections.singletonList("description"));
+    updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
+  @Test
+  public void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create entity with non-empty description
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Update non-empty description with a new description
+    Double oldVersion = entityInterface.getVersion();
+    request = createRequest(test, "updatedDescription", "displayName", null);
+    entity = updateEntity(request, OK, adminAuthHeaders());
+    entityInterface = getEntityInterface(entity);
+    assertEquals(oldVersion, entityInterface.getVersion());                 // Version did not change
+    assertEquals("description", entityInterface.getDescription()); // Description did not change
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity functionality for tests
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  public final WebTarget getCollection() {
+    return getResource(collectionName);
+  }
+
+  public final WebTarget getResource(UUID id) {
+    return getResource(collectionName + "/" + id);
+  }
 
   public final T createEntity(Object createRequest, Map<String, String> authHeaders)
           throws HttpResponseException {
@@ -106,7 +276,6 @@ public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
   public final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
                                      UpdateType updateType, ChangeDescription expectedChange)
           throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
     EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
