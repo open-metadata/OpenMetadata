@@ -24,8 +24,8 @@ import {
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
 import { getEntityIcon } from '../../utils/TableUtils';
+import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
 import { SelectedNode } from './EntityLineage.interface';
-import LineageDrawer from './LineageDrawer/LineageDrawer.component';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(1);
@@ -386,7 +386,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
           </div>
         )}
       </div>
-      <LineageDrawer
+      <EntityInfoDrawer
         isMainNode={selectedNode.name === entityLineage.entity.name}
         selectedNode={selectedNode}
         show={isDrawerOpen}

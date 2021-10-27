@@ -2,23 +2,23 @@ import { AxiosError, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getDatabase } from '../../../axiosAPIs/databaseAPI';
-import { getPipelineByFqn } from '../../../axiosAPIs/pipelineAPI';
-import { getServiceById } from '../../../axiosAPIs/serviceAPI';
-import { getTableDetailsByFQN } from '../../../axiosAPIs/tableAPI';
-import { EntityType } from '../../../enums/entity.enum';
-import { Dashboard } from '../../../generated/entity/data/dashboard';
-import { Pipeline } from '../../../generated/entity/data/pipeline';
-import { Table } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
-import useToastContext from '../../../hooks/useToastContext';
-import { getEntityOverview, getEntityTags } from '../../../utils/EntityUtils';
-import { getEntityIcon, getEntityLink } from '../../../utils/TableUtils';
-import Loader from '../../Loader/Loader';
-import Tags from '../../tags/tags';
-import { SelectedNode } from '../EntityLineage.interface';
-import { LineageDrawerProps } from './LineageDrawer.interface';
-import './LineageDrawer.style.css';
+import { getDatabase } from '../../axiosAPIs/databaseAPI';
+import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
+import { getServiceById } from '../../axiosAPIs/serviceAPI';
+import { getTableDetailsByFQN } from '../../axiosAPIs/tableAPI';
+import { EntityType } from '../../enums/entity.enum';
+import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Pipeline } from '../../generated/entity/data/pipeline';
+import { Table } from '../../generated/entity/data/table';
+import { Topic } from '../../generated/entity/data/topic';
+import useToastContext from '../../hooks/useToastContext';
+import { getEntityOverview, getEntityTags } from '../../utils/EntityUtils';
+import { getEntityIcon, getEntityLink } from '../../utils/TableUtils';
+import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
+import Loader from '../Loader/Loader';
+import Tags from '../tags/tags';
+import { LineageDrawerProps } from './EntityInfoDrawer.interface';
+import './EntityInfoDrawer.style.css';
 
 const getHeaderLabel = (
   v = '',
@@ -49,7 +49,7 @@ const getHeaderLabel = (
   );
 };
 
-const LineageDrawer = ({
+const EntityInfoDrawer = ({
   show,
   onCancel,
   selectedNode,
@@ -242,4 +242,4 @@ const LineageDrawer = ({
   );
 };
 
-export default LineageDrawer;
+export default EntityInfoDrawer;

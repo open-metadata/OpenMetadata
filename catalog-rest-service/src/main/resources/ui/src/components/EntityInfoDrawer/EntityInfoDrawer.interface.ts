@@ -1,4 +1,4 @@
-import { SelectedNode } from '../EntityLineage.interface';
+import { SelectedNode } from '../EntityLineage/EntityLineage.interface';
 
 export interface LineageDrawerProps {
   show: boolean;
