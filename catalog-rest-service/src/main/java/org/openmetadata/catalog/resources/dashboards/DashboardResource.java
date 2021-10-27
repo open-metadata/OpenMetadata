@@ -223,13 +223,7 @@ public class DashboardResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateDashboard create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    Dashboard dashboard = getDashboard(securityContext, create);
     dashboard = addHref(uriInfo, dao.create(dashboard));
     return Response.created(dashboard.getHref()).entity(dashboard).build();
   }
@@ -271,14 +265,7 @@ public class DashboardResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDashboard create) throws IOException, ParseException {
-    Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    Dashboard dashboard = getDashboard(securityContext, create);
     PutResponse<Dashboard> response = dao.createOrUpdate(dashboard);
     dashboard = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(dashboard).build();
@@ -334,5 +321,15 @@ public class DashboardResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Dashboard getDashboard(SecurityContext securityContext, CreateDashboard create) {
+    return new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
+            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

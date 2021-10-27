@@ -135,8 +135,7 @@ public class ReportResource {
   public Response create(@Context UriInfo uriInfo,
                          @Context SecurityContext securityContext,
                          @Valid Report report) throws IOException, ParseException {
-    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    addToReport(securityContext, report);
     addHref(uriInfo, dao.create(report));
     return Response.created(report.getHref()).entity(report).build();
   }
@@ -153,10 +152,14 @@ public class ReportResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid Report report) throws IOException, ParseException {
-    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    addToReport(securityContext, report);
     PutResponse<Report> response = dao.createOrUpdate(report);
     addHref(uriInfo, report);
     return Response.status(response.getStatus()).entity(report).build();
+  }
+
+  private void addToReport(SecurityContext securityContext, Report report) {
+    report.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

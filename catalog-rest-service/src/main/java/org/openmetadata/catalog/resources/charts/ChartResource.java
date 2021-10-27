@@ -217,15 +217,7 @@ public class ChartResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateChart create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Chart chart = getChart(securityContext, create);
     chart = addHref(uriInfo, dao.create(chart));
     return Response.created(chart.getHref()).entity(chart).build();
   }
@@ -267,15 +259,7 @@ public class ChartResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateChart create) throws IOException, ParseException {
 
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Chart chart = getChart(securityContext, create);
     PutResponse<Chart> response = dao.createOrUpdate(chart);
     chart = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(chart).build();
@@ -331,5 +315,16 @@ public class ChartResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Chart getChart(SecurityContext securityContext, CreateChart create) {
+    return new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withService(create.getService())
+            .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
+            .withTables(create.getTables()).withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

@@ -216,19 +216,7 @@ public class TaskResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateTask create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Task task =
-            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withStartDate(create.getStartDate())
-                    .withEndDate(create.getEndDate())
-                    .withTaskType(create.getTaskType())
-                    .withTaskSQL(create.getTaskSQL())
-                    .withTaskUrl(create.getTaskUrl())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Task task = getTask(securityContext, create);
     task = addHref(uriInfo, dao.create(task));
     return Response.created(task.getHref()).entity(task).build();
   }
@@ -269,26 +257,11 @@ public class TaskResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTask create) throws IOException, ParseException {
-
-    Task task =
-            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withTaskUrl(create.getTaskUrl())
-                    .withDownstreamTasks(create.getDownstreamTasks())
-                    .withStartDate(create.getStartDate())
-                    .withEndDate(create.getEndDate())
-                    .withTaskType(create.getTaskType())
-                    .withTaskSQL(create.getTaskSQL())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Task task = getTask(securityContext, create).withDownstreamTasks(create.getDownstreamTasks());
     PutResponse<Task> response = dao.createOrUpdate(task);
     task = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(task).build();
   }
-
 
   @DELETE
   @Path("/{id}")
@@ -301,5 +274,20 @@ public class TaskResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Task getTask(SecurityContext securityContext, CreateTask create) {
+    return new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withService(create.getService())
+            .withStartDate(create.getStartDate())
+            .withEndDate(create.getEndDate())
+            .withTaskType(create.getTaskType())
+            .withTaskSQL(create.getTaskSQL())
+            .withTaskUrl(create.getTaskUrl())
+            .withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

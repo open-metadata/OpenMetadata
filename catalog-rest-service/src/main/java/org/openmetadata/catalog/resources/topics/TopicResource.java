@@ -215,19 +215,7 @@ public class TopicResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateTopic create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Topic topic = getTopic(securityContext, create);
 
     topic = addHref(uriInfo, dao.create(topic));
     return Response.created(topic.getHref()).entity(topic).build();
@@ -270,20 +258,7 @@ public class TopicResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTopic create) throws IOException, ParseException {
 
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
-
+    Topic topic = getTopic(securityContext, create);
     PutResponse<Topic> response = dao.createOrUpdate(topic);
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();
@@ -340,5 +315,20 @@ public class TopicResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Topic getTopic(SecurityContext securityContext, CreateTopic create) {
+    return new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+            .withService(create.getService()).withPartitions(create.getPartitions())
+            .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
+            .withCleanupPolicies(create.getCleanupPolicies())
+            .withMaximumMessageSize(create.getMaximumMessageSize())
+            .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
+            .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+            .withReplicationFactor(create.getReplicationFactor())
+            .withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }
