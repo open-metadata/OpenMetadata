@@ -22,6 +22,10 @@
     "name": {
       "$ref": "#/definitions/userName"
     },
+    "description": {
+      "description": "Used for user biography.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",
       "type": "string"

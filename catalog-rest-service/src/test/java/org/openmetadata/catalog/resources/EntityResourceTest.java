@@ -132,6 +132,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityCreate_as_owner_200(TestInfo test) throws IOException, URISyntaxException {
+    if (entityClass == User.class || entityClass == Team.class) {
+      return; // User and team entity POST and PUSH are admin only operations
+    }
     // Create a new entity with PUT as admin user
     Object request = createRequest(test, null, null, USER_OWNER1);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -146,6 +149,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   @Test
   public void put_entityUpdateOwner_200(TestInfo test) throws IOException, URISyntaxException {
+    if (entityClass == User.class || entityClass == Team.class) {
+      // Ignore the test - User and team entities can't be owned like other data assets
+      return;
+    }
     Object request = createRequest(test, "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
@@ -316,7 +323,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // GET the entity and Validate information returned
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
-    validatePatchedEntity(updated, returned, authHeaders);
+    validatePatchedEntity(updated, getEntity, authHeaders);
     validateChangeDescription(getEntity, updateType, expectedChange);
     return returned;
   }

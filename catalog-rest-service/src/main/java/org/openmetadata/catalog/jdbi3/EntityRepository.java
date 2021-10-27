@@ -196,12 +196,6 @@ public abstract class EntityRepository<T> {
   }
 
   /**
-   * Class that provides functionality related to entity versioning
-   */
-  public static class EntityVersionHelper {
-  }
-
-  /**
    * Class that performs PUT and PATCH UPDATE operation. Override {@code entitySpecificUpdate()} to add
    * additional entity specific fields to be updated.
    */
