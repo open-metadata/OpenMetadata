@@ -16,7 +16,6 @@ from typing import List
 from openmetadata.common.database import Database
 from openmetadata.common.metric import Metric
 from openmetadata.profiler.profiler_metadata import (
-    Column,
     ColumnProfileResult,
     MetricMeasurement,
     ProfileResult,
@@ -44,7 +43,6 @@ class Profiler:
         self.time = profile_time
         self.qualified_table_name = self.database.qualify_table_name(table_name)
         self.scan_reference = None
-        self.columns: List[Column] = []
         self.start_time = None
         self.queries_executed = 0
 
@@ -57,7 +55,9 @@ class Profiler:
         self.start_time = datetime.now()
 
         try:
-            self._table_metadata()
+            self.database.table_column_metadata(self.table.name, None)
+            logger.debug(str(len(self.database.columns)) + " columns:")
+            self.profiler_result.table_result.col_count = len(self.database.columns)
             self._profile_aggregations()
             self._query_group_by_value()
             self._query_histograms()
@@ -72,37 +72,6 @@ class Profiler:
 
         return self.profiler_result
 
-    def _table_metadata(self):
-        sql = self.database.table_metadata_query(self.table.name)
-        columns = self.database.execute_query_all(sql)
-        self.queries_executed += 1
-        self.table_columns = []
-        for column in columns:
-            name = column[0]
-            data_type = column[1]
-            nullable = "YES" == column[2].upper()
-            if self.database.is_number(data_type):
-                logical_type = SupportedDataType.NUMERIC
-            elif self.database.is_time(data_type):
-                logical_type = SupportedDataType.TIME
-            elif self.database.is_text(data_type):
-                logical_type = SupportedDataType.TEXT
-            else:
-                logger.info(f"  {name} ({data_type}) not supported.")
-                continue
-            self.columns.append(
-                Column(
-                    name=name,
-                    data_type=data_type,
-                    nullable=nullable,
-                    logical_type=logical_type,
-                )
-            )
-
-        self.column_names: List[str] = [column.name for column in self.columns]
-        logger.debug(str(len(self.columns)) + " columns:")
-        self.profiler_result.table_result.col_count = len(self.columns)
-
     def _profile_aggregations(self):
         measurements: List[MetricMeasurement] = []
         fields: List[str] = []
@@ -113,7 +82,7 @@ class Profiler:
         column_metric_indices = {}
 
         try:
-            for column in self.columns:
+            for column in self.database.columns:
                 metric_indices = {}
                 column_metric_indices[column.name.lower()] = metric_indices
                 column_name = column.name
@@ -210,7 +179,7 @@ class Profiler:
                 if row_count_measurement:
                     row_count = row_count_measurement.value
                     self.profiler_result.table_result.row_count = row_count
-                    for column in self.columns:
+                    for column in self.database.columns:
                         column_name = column.name
                         metric_indices = column_metric_indices[column_name.lower()]
                         non_missing_index = metric_indices.get("non_missing")
@@ -288,7 +257,7 @@ class Profiler:
             logger.error(f"Exception during aggregation query", exc_info=e)
 
     def _query_group_by_value(self):
-        for column in self.columns:
+        for column in self.database.columns:
             try:
                 measurements = []
                 column_name = column.name
@@ -346,7 +315,7 @@ class Profiler:
                 )
 
     def _query_histograms(self):
-        for column in self.columns:
+        for column in self.database.columns:
             column_name = column.name
             try:
                 if column.is_number():

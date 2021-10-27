@@ -13,56 +13,6 @@ from openmetadata.common.database_common import (
     DatabaseCommon,
     SQLConnectionConfig,
     SQLExpressions,
-    register_custom_type,
-)
-from openmetadata.profiler.profiler_metadata import SupportedDataType
-
-register_custom_type(
-    [
-        "CHAR",
-        "CHARACTER",
-        "BPCHAR",
-        "VARCHAR",
-        "CHARACTER VARYING",
-        "NVARCHAR",
-        "TEXT",
-    ],
-    SupportedDataType.TEXT,
-)
-
-register_custom_type(
-    [
-        "SMALLINT",
-        "INT2",
-        "INTEGER",
-        "INT",
-        "INT4",
-        "BIGINT",
-        "INT8",
-        "DECIMAL",
-        "NUMERIC",
-        "REAL",
-        "FLOAT4",
-        "DOUBLE PRECISION",
-        "FLOAT8",
-        "FLOAT",
-    ],
-    SupportedDataType.NUMERIC,
-)
-
-register_custom_type(
-    [
-        "DATE",
-        "TIMESTAMP",
-        "TIMESTAMP WITHOUT TIME ZONE",
-        "TIMESTAMPTZ",
-        "TIMESTAMP WITH TIME ZONE",
-        "TIME",
-        "TIME WITHOUT TIME ZONE",
-        "TIMETZ",
-        "TIME WITH TIME ZONE",
-    ],
-    SupportedDataType.TIME,
 )
 
 
@@ -94,15 +44,3 @@ class Redshift(DatabaseCommon):
     def create(cls, config_dict):
         config = RedshiftConnectionConfig.parse_obj(config_dict)
         return cls(config)
-
-    def table_metadata_query(self, table_name: str) -> str:
-        sql = (
-            f"SELECT column_name, data_type, is_nullable \n"
-            f"FROM information_schema.columns \n"
-            f"WHERE lower(table_name) = '{table_name}'"
-        )
-        if self.config.database:
-            sql += f" \n  AND table_catalog = '{self.config.database}'"
-        if self.config.db_schema:
-            sql += f" \n  AND table_schema = '{self.config.db_schema}'"
-        return sql

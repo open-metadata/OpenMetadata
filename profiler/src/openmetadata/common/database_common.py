@@ -14,11 +14,14 @@ import re
 from abc import abstractmethod
 from datetime import date, datetime
 from numbers import Number
-from typing import List, Optional
+from typing import List, Optional, Type
 from urllib.parse import quote_plus
 
 from pydantic import BaseModel
 from sqlalchemy import create_engine
+from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.inspection import inspect
+from sqlalchemy.sql import sqltypes as types
 
 from openmetadata.common.config import ConfigModel, IncludeFilterPattern
 from openmetadata.common.database import Database
@@ -58,33 +61,27 @@ class SQLConnectionConfig(ConfigModel):
 
 
 _numeric_types = [
-    "SMALLINT",
-    "INTEGER",
-    "BIGINT",
-    "DECIMAL",
-    "NUMERIC",
-    "REAL",
-    "DOUBLE PRECISION",
-    "SMALLSERIAL",
-    "SERIAL",
-    "BIGSERIAL",
+    types.Integer,
+    types.Numeric,
 ]
 
-_text_types = ["CHARACTER VARYING", "CHARACTER", "CHAR", "VARCHAR" "TEXT"]
+_text_types = [
+    types.VARCHAR,
+    types.String,
+]
 
 _time_types = [
-    "TIMESTAMP",
-    "DATE",
-    "TIME",
-    "TIMESTAMP WITH TIME ZONE",
-    "TIMESTAMP WITHOUT TIME ZONE",
-    "TIME WITH TIME ZONE",
-    "TIME WITHOUT TIME ZONE",
+    types.Date,
+    types.DATE,
+    types.Time,
+    types.DateTime,
+    types.DATETIME,
+    types.TIMESTAMP,
 ]
 
 
 def register_custom_type(
-    data_types: List[str], type_category: SupportedDataType
+    data_types: List[Type[types.TypeEngine]], type_category: SupportedDataType
 ) -> None:
     if type_category == SupportedDataType.TIME:
         _time_types.extend(data_types)
@@ -242,18 +239,17 @@ class DatabaseCommon(Database):
     data_type_date = "DATE"
     config: SQLConnectionConfig = None
     sql_exprs: SQLExpressions = SQLExpressions()
+    columns: List[Column] = []
 
     def __init__(self, config: SQLConnectionConfig):
         self.config = config
         self.connection_string = self.config.get_connection_url()
         self.engine = create_engine(self.connection_string, **self.config.options)
         self.connection = self.engine.raw_connection()
+        self.inspector = inspect(self.engine)
 
     @classmethod
     def create(cls, config_dict: dict):
-        pass
-
-    def table_metadata_query(self, table_name: str) -> str:
         pass
 
     def qualify_table_name(self, table_name: str) -> str:
@@ -262,14 +258,66 @@ class DatabaseCommon(Database):
     def qualify_column_name(self, column_name: str):
         return column_name
 
-    def is_text(self, column_type: str):
-        return column_type.upper() in _text_types
+    def is_text(self, column_type: Type[types.TypeEngine]):
+        for sql_type in _text_types:
+            if isinstance(column_type, sql_type):
+                return True
+        return False
 
-    def is_number(self, column_type: str):
-        return column_type.upper() in _numeric_types
+    def is_number(self, column_type: Type[types.TypeEngine]):
+        for sql_type in _numeric_types:
+            if isinstance(column_type, sql_type):
+                return True
+        return False
 
-    def is_time(self, column_type: str):
-        return column_type.upper() in _time_types
+    def is_time(self, column_type: Type[types.TypeEngine]):
+        for sql_type in _time_types:
+            if isinstance(column_type, sql_type):
+                return True
+        return False
+
+    def table_column_metadata(self, table: str, schema: str):
+        table = self.qualify_table_name(table)
+        pk_constraints = self.inspector.get_pk_constraint(table, schema)
+        pk_columns = (
+            pk_constraints["column_constraints"]
+            if len(pk_constraints) > 0 and "column_constraints" in pk_constraints.keys()
+            else {}
+        )
+        unique_constraints = []
+        try:
+            unique_constraints = self.inspector.get_unique_constraints(table, schema)
+        except NotImplementedError:
+            pass
+        unique_columns = []
+        for constraint in unique_constraints:
+            if "column_names" in constraint.keys():
+                unique_columns = constraint["column_names"]
+        columns = self.inspector.get_columns(self.qualify_table_name(table))
+        for column in columns:
+            name = column["name"]
+            data_type = column["type"]
+            nullable = True
+            if not column["nullable"] or column["name"] in pk_columns:
+                nullable = False
+
+            if self.is_number(data_type):
+                logical_type = SupportedDataType.NUMERIC
+            elif self.is_time(data_type):
+                logical_type = SupportedDataType.TIME
+            elif self.is_text(data_type):
+                logical_type = SupportedDataType.TEXT
+            else:
+                logger.info(f"  {name} ({data_type}) not supported.")
+                continue
+            self.columns.append(
+                Column(
+                    name=name,
+                    data_type=data_type,
+                    nullable=nullable,
+                    logical_type=logical_type,
+                )
+            )
 
     def execute_query(self, sql: str) -> tuple:
         return self.execute_query_columns(sql)[0]

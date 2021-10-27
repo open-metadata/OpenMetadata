@@ -28,11 +28,16 @@ class Database(Closeable, metaclass=ABCMeta):
 
     @property
     @abstractmethod
+    def columns(self):
+        pass
+
+    @property
+    @abstractmethod
     def sql_exprs(self):
         pass
 
     @abstractmethod
-    def table_metadata_query(self, table_name: str) -> str:
+    def table_column_metadata(self, table: str, schema: str):
         pass
 
     @abstractmethod

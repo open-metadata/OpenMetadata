@@ -8,7 +8,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -58,7 +58,7 @@ class Column(BaseModel):
 
     name: str
     nullable: bool = None
-    data_type: str
+    data_type: Any
     logical_type: SupportedDataType
 
     def is_text(self) -> bool:
@@ -79,7 +79,7 @@ class Table(BaseModel):
 
 
 class GroupValue(BaseModel):
-    """Metrinc Group Values"""
+    """Metric Group Values"""
 
     group: Dict = {}
     value: object
