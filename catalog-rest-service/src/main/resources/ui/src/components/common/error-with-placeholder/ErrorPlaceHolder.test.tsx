@@ -7,6 +7,6 @@ describe('Test Error place holder Component', () => {
     const { container } = render(<ErrorPlaceHolder />);
 
     expect(getByTestId(container, 'error')).toBeInTheDocument();
-    expect(getByTestId(container, 'no-data-found')).toBeInTheDocument();
+    expect(getByTestId(container, 'no-data-image')).toBeInTheDocument();
   });
 });

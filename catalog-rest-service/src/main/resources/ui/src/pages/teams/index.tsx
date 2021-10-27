@@ -375,79 +375,103 @@ const TeamsPage = () => {
             <div
               className="container-fluid tw-pt-1 tw-pb-3"
               data-testid="team-container">
-              <div
-                className="tw-flex tw-justify-between tw-pl-1"
-                data-testid="header">
-                <div className="tw-heading tw-text-link tw-text-base">
-                  {currentTeam?.displayName}
-                </div>
-                <NonAdminAction
-                  position="bottom"
-                  title={TITLE_FOR_NON_ADMIN_ACTION}>
-                  <Button
-                    className="tw-h-8 tw-rounded tw-mb-2"
-                    data-testid="add-new-user-button"
-                    size="small"
-                    theme="primary"
-                    variant="contained"
-                    onClick={() => setIsAddingUsers(true)}>
-                    Add new user
-                  </Button>
-                </NonAdminAction>
-              </div>
-              <div
-                className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
-                data-testid="description-container">
-                <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
-                  <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
-                    Description
-                  </span>
-                  <div className="tw-flex-initial">
+              {teams.length > 0 ? (
+                <>
+                  <div
+                    className="tw-flex tw-justify-between tw-pl-1"
+                    data-testid="header">
+                    <div className="tw-heading tw-text-link tw-text-base">
+                      {currentTeam?.displayName}
+                    </div>
                     <NonAdminAction
                       position="bottom"
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
-                      <button
-                        className="focus:tw-outline-none"
-                        data-testid="add-description"
-                        onClick={onDescriptionEdit}>
-                        <SVGIcons
-                          alt="edit"
-                          icon="icon-edit"
-                          title="Edit"
-                          width="12px"
-                        />
-                      </button>
+                      <Button
+                        className="tw-h-8 tw-rounded tw-mb-2"
+                        data-testid="add-new-user-button"
+                        size="small"
+                        theme="primary"
+                        variant="contained"
+                        onClick={() => setIsAddingUsers(true)}>
+                        Add new user
+                      </Button>
                     </NonAdminAction>
                   </div>
-                </div>
-                <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
-                  <div data-testid="description" id="description">
-                    {currentTeam?.description ? (
-                      <RichTextEditorPreviewer
-                        markdown={currentTeam.description}
-                      />
-                    ) : (
-                      <span className="tw-no-description">
-                        No description added
+                  <div
+                    className="tw-flex tw-flex-col tw-border tw-rounded-md tw-mb-3 tw-min-h-32 tw-bg-white"
+                    data-testid="description-container">
+                    <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b">
+                      <span className="tw-flex-1 tw-leading-8 tw-m-0 tw-font-normal">
+                        Description
                       </span>
-                    )}
+                      <div className="tw-flex-initial">
+                        <NonAdminAction
+                          position="bottom"
+                          title={TITLE_FOR_NON_ADMIN_ACTION}>
+                          <button
+                            className="focus:tw-outline-none"
+                            data-testid="add-description"
+                            onClick={onDescriptionEdit}>
+                            <SVGIcons
+                              alt="edit"
+                              icon="icon-edit"
+                              title="Edit"
+                              width="12px"
+                            />
+                          </button>
+                        </NonAdminAction>
+                      </div>
+                    </div>
+                    <div className="tw-px-3 tw-pl-5 tw-py-2 tw-overflow-y-auto">
+                      <div data-testid="description" id="description">
+                        {currentTeam?.description ? (
+                          <RichTextEditorPreviewer
+                            markdown={currentTeam.description}
+                          />
+                        ) : (
+                          <span className="tw-no-description">
+                            No description added
+                          </span>
+                        )}
+                      </div>
+                      {isEditable && (
+                        <ModalWithMarkdownEditor
+                          header={`Edit description for ${currentTeam?.displayName}`}
+                          placeholder="Enter Description"
+                          value={currentTeam?.description || ''}
+                          onCancel={onCancel}
+                          onSave={onDescriptionUpdate}
+                        />
+                      )}
+                    </div>
                   </div>
-                  {isEditable && (
-                    <ModalWithMarkdownEditor
-                      header={`Edit description for ${currentTeam?.displayName}`}
-                      placeholder="Enter Description"
-                      value={currentTeam?.description || ''}
-                      onCancel={onCancel}
-                      onSave={onDescriptionUpdate}
+                  {getTabs()}
+
+                  {currentTab === 1 && getUserCards()}
+
+                  {currentTab === 2 && getDatasetCards()}
+                  {isAddingUsers && (
+                    <AddUsersModal
+                      header={`Adding new users to ${currentTeam?.name}`}
+                      list={getUniqueUserList()}
+                      onCancel={() => setIsAddingUsers(false)}
+                      onSave={(data) => createUsers(data)}
                     />
                   )}
-                </div>
-              </div>
-              {getTabs()}
-
-              {currentTab === 1 && getUserCards()}
-
-              {currentTab === 2 && getDatasetCards()}
+                </>
+              ) : (
+                <ErrorPlaceHolder>
+                  <p className="w-text-lg tw-text-center">No Teams Added.</p>
+                  <p className="w-text-lg tw-text-center">
+                    <button
+                      className="link-text tw-underline"
+                      onClick={() => setIsAddingTeam(true)}>
+                      Click here
+                    </button>
+                    {' to add new Team'}
+                  </p>
+                </ErrorPlaceHolder>
+              )}
 
               {isAddingTeam && (
                 <FormModal
@@ -460,14 +484,6 @@ const TeamsPage = () => {
                   }}
                   onCancel={() => setIsAddingTeam(false)}
                   onSave={(data) => createNewTeam(data as Team)}
-                />
-              )}
-              {isAddingUsers && (
-                <AddUsersModal
-                  header={`Adding new users to ${currentTeam?.name}`}
-                  list={getUniqueUserList()}
-                  onCancel={() => setIsAddingUsers(false)}
-                  onSave={(data) => createUsers(data)}
                 />
               )}
             </div>
