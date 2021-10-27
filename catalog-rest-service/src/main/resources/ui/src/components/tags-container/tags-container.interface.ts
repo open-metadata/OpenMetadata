@@ -15,15 +15,15 @@
   * limitations under the License.
 */
 
-import { ColumnTags } from 'Models';
+import { EntityTags } from 'Models';
 import { ReactNode } from 'react';
 
 export type TagsContainerProps = {
   children?: ReactNode;
   editable?: boolean;
-  selectedTags: Array<ColumnTags>;
+  selectedTags: Array<EntityTags>;
   tagList: Array<string>;
   showTags?: boolean;
-  onSelectionChange: (selectedTags: Array<ColumnTags>) => void;
+  onSelectionChange: (selectedTags: Array<EntityTags>) => void;
   onCancel: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
 };
