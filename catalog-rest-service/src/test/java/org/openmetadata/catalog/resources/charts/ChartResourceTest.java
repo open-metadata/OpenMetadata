@@ -32,7 +32,7 @@ import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -79,7 +79,7 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
-public class ChartResourceTest extends EntityTestHelper<Chart> {
+public class ChartResourceTest extends EntityResourceTest<Chart> {
   private static final Logger LOG = LoggerFactory.getLogger(ChartResourceTest.class);
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
@@ -92,7 +92,7 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    EntityTestHelper.setup(test);
+    EntityResourceTest.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(new URI("http://localhost:0"));

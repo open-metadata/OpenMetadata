@@ -27,7 +27,7 @@ import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
@@ -70,7 +70,7 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
-public class TopicResourceTest extends EntityTestHelper<Topic> {
+public class TopicResourceTest extends EntityResourceTest<Topic> {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
 
   public TopicResourceTest() {

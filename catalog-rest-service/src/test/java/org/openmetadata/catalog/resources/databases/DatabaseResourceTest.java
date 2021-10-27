@@ -31,7 +31,7 @@ import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
@@ -63,7 +63,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class DatabaseResourceTest extends EntityTestHelper<Database> {
+public class DatabaseResourceTest extends EntityResourceTest<Database> {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResourceTest.class);
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
@@ -76,7 +76,7 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    EntityTestHelper.setup(test);
+    EntityResourceTest.setup(test);
 
     CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);

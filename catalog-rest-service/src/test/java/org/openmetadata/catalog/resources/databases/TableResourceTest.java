@@ -37,7 +37,7 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
@@ -116,7 +116,7 @@ import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TableResourceTest extends EntityTestHelper<Table> {
+public class TableResourceTest extends EntityResourceTest<Table> {
   private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
@@ -135,7 +135,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    EntityTestHelper.setup(test);
+    EntityResourceTest.setup(test);
 
     CreateDatabaseService createSnowflake = new CreateDatabaseService()
             .withName(DatabaseServiceResourceTest.getName(test, 1))

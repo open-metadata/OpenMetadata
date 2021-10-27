@@ -32,7 +32,7 @@ import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -76,7 +76,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 
-public class TaskResourceTest extends EntityTestHelper<Task> {
+public class TaskResourceTest extends EntityResourceTest<Task> {
   private static final Logger LOG = LoggerFactory.getLogger(TaskResourceTest.class);
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
@@ -90,7 +90,7 @@ public class TaskResourceTest extends EntityTestHelper<Task> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    EntityTestHelper.setup(test);
+    EntityResourceTest.setup(test);
 
     CreatePipelineService createService = new CreatePipelineService().withName("airflow")
             .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));

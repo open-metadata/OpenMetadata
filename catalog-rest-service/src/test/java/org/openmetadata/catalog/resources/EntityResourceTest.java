@@ -48,7 +48,7 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
+public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final Class<T> entityClass;
   private final String collectionName;
   private final String allFields;
@@ -63,7 +63,7 @@ public abstract class EntityTestHelper<T> extends CatalogApplicationTest {
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public EntityTestHelper(Class<T> entityClass, String collectionName, String fields) {
+  public EntityResourceTest(Class<T> entityClass, String collectionName, String fields) {
     this.entityClass = entityClass;
     this.collectionName = collectionName;
     this.allFields = fields;

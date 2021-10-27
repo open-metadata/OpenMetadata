@@ -32,7 +32,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
-import org.openmetadata.catalog.resources.EntityTestHelper;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResourceTest;
 import org.openmetadata.catalog.resources.dashboards.DashboardResource.DashboardList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
@@ -74,7 +74,7 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
+public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   private static final Logger LOG = LoggerFactory.getLogger(DashboardResourceTest.class);
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
@@ -90,7 +90,7 @@ public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    EntityTestHelper.setup(test);
+    EntityResourceTest.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
             .withServiceType(DashboardServiceType.Superset).withDashboardUrl(TestUtils.DASHBOARD_URL);
