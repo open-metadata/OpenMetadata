@@ -1,5 +1,5 @@
 """
-OpenMetadata high-level API Database test
+OpenMetadata high-level API Dashboard test
 """
 import uuid
 from unittest import TestCase
