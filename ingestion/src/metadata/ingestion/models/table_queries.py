@@ -15,10 +15,9 @@
 
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel
-
 from metadata.generated.schema.entity.data.table import ColumnJoins
 from metadata.ingestion.models.json_serializable import JsonSerializable
+from pydantic import BaseModel
 
 
 class TableQuery(JsonSerializable):

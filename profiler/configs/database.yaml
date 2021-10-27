@@ -1,0 +1,11 @@
+profiler:
+  type: redshift
+  config:
+    sql_connection:
+      host_port: host:port
+      username: username
+      password: password
+      database: warehouse
+      db_schema: public
+      service_name: redshift
+    table_name: sales
