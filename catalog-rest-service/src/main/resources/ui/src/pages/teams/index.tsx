@@ -375,7 +375,7 @@ const TeamsPage = () => {
             <div
               className="container-fluid tw-pt-1 tw-pb-3"
               data-testid="team-container">
-              {currentTeam ? (
+              {teams.length > 0 ? (
                 <>
                   <div
                     className="tw-flex tw-justify-between tw-pl-1"
