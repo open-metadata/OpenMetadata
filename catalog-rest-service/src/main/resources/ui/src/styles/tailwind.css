@@ -308,6 +308,11 @@
   }
   .leaf-node.selected,
   .leaf-node.selected:hover {
+    @apply tw-border-main;
+    box-shadow: 0 0 0 0.5px #e2dce4;
+  }
+  .leaf-node.selected-node,
+  .leaf-node.selected-node:hover {
     @apply tw-border-primary-active;
     box-shadow: 0 0 0 0.5px #7147e8;
   }

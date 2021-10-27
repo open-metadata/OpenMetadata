@@ -13,20 +13,26 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import time
+
 import pytest
 import requests
-import time
-from metadata.ingestion.ometa.client import REST
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.entity.data.table import Column
-from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceEntityRequest
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createDatabase import CreateDatabaseEntityRequest
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
-headers = {'Content-type': 'application/json'}
-url = 'http://localhost:8585/api/v1/'
+from metadata.generated.schema.api.data.createDatabase import (
+    CreateDatabaseEntityRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceEntityRequest,
+)
+from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import REST
+
+headers = {"Content-type": "application/json"}
+url = "http://localhost:8585/api/v1/"
 
 
 def is_responsive(url):
@@ -47,32 +53,39 @@ def status(r):
 
 def create_delete_table(client):
     databases = client.list_databases()
-    columns = [Column(name="id", columnDataType="INT"),
-               Column(name="name", columnDataType="VARCHAR")]
+    columns = [
+        Column(name="id", columnDataType="INT"),
+        Column(name="name", columnDataType="VARCHAR"),
+    ]
     table = CreateTableEntityRequest(
-        name="test1", columns=columns, database=databases[0].id)
+        name="test1", columns=columns, database=databases[0].id
+    )
     created_table = client.create_or_update_table(table)
-    if(table.name.__root__ == created_table.name.__root__):
+    if table.name.__root__ == created_table.name.__root__:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 1
     else:
         requests.delete(
-            'http://localhost:8585/api/v1/tables/{}'.format(created_table.id.__root__))
+            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
+        )
         return 0
 
 
 def create_delete_database(client):
-    data = {'jdbc': {'connectionUrl': 'hive://localhost/default', 'driverClass': 'jdbc'},
-            'name': 'temp_local_hive',
-            'serviceType': 'HIVE',
-            'description': 'local hive env'}
+    data = {
+        "jdbc": {"connectionUrl": "hive://localhost/default", "driverClass": "jdbc"},
+        "name": "temp_local_hive",
+        "serviceType": "HIVE",
+        "description": "local hive env",
+    }
     create_hive_service = CreateDatabaseServiceEntityRequest(**data)
     hive_service = client.create_database_service(create_hive_service)
     create_database_request = CreateDatabaseEntityRequest(
-        name="dwh", service=EntityReference(id=hive_service.id, type="databaseService"))
-    created_database = client.create_database(
-        create_database_request)
+        name="dwh", service=EntityReference(id=hive_service.id, type="databaseService")
+    )
+    created_database = client.create_database(create_database_request)
     resp = create_delete_table(client)
     print(resp)
     client.delete_database(created_database.id.__root__)
@@ -109,10 +122,12 @@ def test_check_schema(hive_service):
 
 def test_read_tables(hive_service):
     inspector = hive_service
-    check_tables = ["metadata_array_struct_test",
-                    "metadata_struct_test",
-                    "metadata_test_table",
-                    "test_check"]
+    check_tables = [
+        "metadata_array_struct_test",
+        "metadata_struct_test",
+        "metadata_test_table",
+        "test_check",
+    ]
     tables = []
     for schema in inspector.get_schema_names():
         for table in inspector.get_table_names(schema):
@@ -124,7 +139,7 @@ def test_read_tables(hive_service):
 
 
 def test_check_table():
-    client = REST("http://localhost:8585/api", 'test', 'test')
+    client = REST("http://localhost:8585/api", "test", "test")
     databases = client.list_databases()
     if len(databases) > 0:
         assert create_delete_table(client)

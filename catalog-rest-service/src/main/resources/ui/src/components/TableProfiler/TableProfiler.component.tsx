@@ -72,28 +72,30 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                     <td
                       className="tw-relative tableBody-cell"
                       data-testid="tableBody-cell">
-                      <span
-                        className="tw-mr-2 tw-cursor-pointer"
-                        onClick={() =>
-                          setExpandedColumn((prevState) => ({
-                            name: col.name,
-                            isExpanded:
-                              prevState.name === col.name
-                                ? !prevState.isExpanded
-                                : true,
-                          }))
-                        }>
-                        {expandedColumn.name === col.name ? (
-                          expandedColumn.isExpanded ? (
-                            <i className="fas fa-caret-down" />
+                      <p className="tw-flex">
+                        <span
+                          className="tw-mr-2 tw-cursor-pointer"
+                          onClick={() =>
+                            setExpandedColumn((prevState) => ({
+                              name: col.name,
+                              isExpanded:
+                                prevState.name === col.name
+                                  ? !prevState.isExpanded
+                                  : true,
+                            }))
+                          }>
+                          {expandedColumn.name === col.name ? (
+                            expandedColumn.isExpanded ? (
+                              <i className="fas fa-caret-down" />
+                            ) : (
+                              <i className="fas fa-caret-right" />
+                            )
                           ) : (
                             <i className="fas fa-caret-right" />
-                          )
-                        ) : (
-                          <i className="fas fa-caret-right" />
-                        )}
-                      </span>
-                      {col.name}
+                          )}
+                        </span>
+                        <span>{col.name}</span>
+                      </p>
                     </td>
                     <td
                       className="tw-relative tableBody-cell profiler-graph"
@@ -196,7 +198,7 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
           })}
         </table>
       ) : (
-        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+        <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
           No profiler data available
         </div>
       )}

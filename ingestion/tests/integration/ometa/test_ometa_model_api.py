@@ -8,7 +8,7 @@ from metadata.generated.schema.api.data.createModel import CreateModelEntityRequ
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OMeta
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
@@ -19,10 +19,9 @@ class OMetaModelTest(TestCase):
     """
 
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
-    metadata = OMeta(server_config)
+    metadata = OpenMetadata(server_config)
 
     user = metadata.create_or_update(
-        entity=CreateUserEntityRequest,
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
@@ -40,12 +39,10 @@ class OMetaModelTest(TestCase):
         We can create a Model and we receive it back as Entity
         """
 
-        res = self.metadata.create_or_update(
-            entity=CreateModelEntityRequest, data=self.create
-        )
+        res = self.metadata.create_or_update(data=self.create)
 
-        self.assertEqual(res.name, self.create.name)
-        self.assertEqual(res.algorithm, self.create.algorithm)
+        self.assertEqual(res.name, self.entity.name)
+        self.assertEqual(res.algorithm, self.entity.algorithm)
         self.assertEqual(res.owner, None)
 
     def test_update(self):
@@ -53,15 +50,13 @@ class OMetaModelTest(TestCase):
         Updating it properly changes its properties
         """
 
-        res_create = self.metadata.create_or_update(
-            entity=CreateModelEntityRequest, data=self.create
-        )
+        res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.entity.dict(exclude_unset=True)
+        updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = Model(**updated)
+        updated_entity = CreateModelEntityRequest(**updated)
 
-        res = self.metadata.create_or_update(entity=Model, data=updated_entity)
+        res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
         self.assertEqual(res.algorithm, updated_entity.algorithm)
@@ -73,7 +68,7 @@ class OMetaModelTest(TestCase):
         We can fetch a model by name and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
             entity=Model, fqdn=self.entity.fullyQualifiedName
@@ -85,7 +80,7 @@ class OMetaModelTest(TestCase):
         We can fetch a model by ID and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
@@ -101,7 +96,7 @@ class OMetaModelTest(TestCase):
         We can list all our models
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.list_entities(entity=Model)
 
@@ -116,7 +111,7 @@ class OMetaModelTest(TestCase):
         We can delete a model by ID
         """
 
-        self.metadata.create_or_update(entity=Model, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # Find by name
         res_name = self.metadata.get_by_name(

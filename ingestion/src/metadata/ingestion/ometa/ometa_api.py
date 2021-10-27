@@ -1,5 +1,5 @@
 import logging
-from typing import Generic, List, Type, TypeVar, Union, get_args
+from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
@@ -44,13 +44,19 @@ class MissingEntityTypeException(Exception):
     """
 
 
+class InvalidEntityException(Exception):
+    """
+    We receive an entity not supported in an operation
+    """
+
+
 class EntityList(Generic[T], BaseModel):
     entities: List[T]
     total: int
     after: str = None
 
 
-class OMeta(Generic[T, C]):
+class OpenMetadata(Generic[T, C]):
     """
     Generic interface to the OpenMetadata API
 
@@ -249,17 +255,14 @@ class OMeta(Generic[T, C]):
         )
         return entity_class
 
-    def create_or_update(self, entity: Type[T], data: T) -> Type[C]:
+    def create_or_update(self, data: C) -> T:
         """
-        We allow both Entity and CreateEntity for PUT
-        If Entity, no need to find response class mapping.
+        We allow CreateEntity for PUT, so we expect a type C.
 
         We PUT to the endpoint and return the Entity generated result
-
-        Here the typing is a bit more weird. We will get a type T, be it
-        Entity or CreateEntity, and we are always going to return Entity
         """
 
+        entity = data.__class__
         is_create = "create" in entity.__name__.lower()
         is_service = "service" in entity.__name__.lower()
 
@@ -267,7 +270,9 @@ class OMeta(Generic[T, C]):
         if is_create:
             entity_class = self.get_entity_from_create(entity)
         else:
-            entity_class = entity
+            raise InvalidEntityException(
+                f"PUT operations need a CrateEntity, not {entity}"
+            )
 
         # Prepare the request method
         if is_service and is_create:
@@ -279,13 +284,33 @@ class OMeta(Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    def get_by_name(self, entity: Type[T], name: str) -> Type[T]:
-        resp = self.client.get(f"{self.get_suffix(entity)}/name/{name}")
-        return entity(**resp)
+    def get_by_name(self, entity: Type[T], fqdn: str) -> Optional[T]:
+        """
+        Return entity by name or None
+        """
 
-    def get_by_id(self, entity: Type[T], entity_id: str) -> Type[T]:
-        resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
-        return entity(**resp)
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
+            return entity(**resp)
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for FQDN {fqdn}"
+            )
+            return None
+
+    def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
+        """
+        Return entity by ID or None
+        """
+
+        try:
+            resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
+            return entity(**resp)
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for ID {entity_id}"
+            )
+            return None
 
     def list_entities(
         self, entity: Type[T], fields: str = None, after: str = None, limit: int = 1000
@@ -295,16 +320,11 @@ class OMeta(Generic[T, C]):
         """
 
         suffix = self.get_suffix(entity)
+        url_limit = f"?limit={limit}"
+        url_after = f"&after={after}" if after else ""
+        url_fields = f"&fields={fields}" if fields else ""
 
-        if fields is None:
-            resp = self.client.get(suffix)
-        else:
-            if after is not None:
-                resp = self.client.get(
-                    f"{suffix}?fields={fields}&after={after}&limit={limit}"
-                )
-            else:
-                resp = self.client.get(f"{suffix}?fields={fields}&limit={limit}")
+        resp = self.client.get(f"{suffix}{url_limit}{url_after}{url_fields}")
 
         if self._use_raw_data:
             return resp
@@ -327,3 +347,6 @@ class OMeta(Generic[T, C]):
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+
+    def close(self):
+        self.client.close()

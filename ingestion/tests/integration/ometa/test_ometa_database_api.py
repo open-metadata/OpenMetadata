@@ -18,7 +18,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.jdbcConnection import JdbcInfo
-from metadata.ingestion.ometa.ometa_api import OMeta
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
@@ -31,58 +31,67 @@ class OMetaDatabaseTest(TestCase):
     service_entity_id = None
 
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
-    metadata = OMeta(server_config)
+    metadata = OpenMetadata(server_config)
 
     user = metadata.create_or_update(
-        entity=CreateUserEntityRequest,
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDatabaseServiceEntityRequest(
-        name="test-service",
+        name="test-service-db",
         serviceType=DatabaseServiceType.MySQL,
         jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
     )
 
-    def setUp(self) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
         """
         Prepare ingredients
         """
-        self.service_entity = self.metadata.create_or_update(
-            entity=CreateDatabaseServiceEntityRequest, data=self.service
-        )
+        cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
-        self.entity = Database(
+        cls.entity = Database(
             id=uuid.uuid4(),
             name="test-db",
-            service=EntityReference(id=self.service_entity.id, type="databaseService"),
-            fullyQualifiedName="test-service.test-db",
+            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
+            fullyQualifiedName="test-service-db.test-db",
         )
-        self.create = CreateDatabaseEntityRequest(
+
+        cls.create = CreateDatabaseEntityRequest(
             name="test-db",
-            service=EntityReference(id=self.service_entity.id, type="databaseService"),
+            service=EntityReference(id=cls.service_entity.id, type="databaseService"),
         )
 
-        self.service_entity_id = str(self.service_entity.id.__root__)
-
-    def tearDown(self) -> None:
+    @classmethod
+    def tearDownClass(cls) -> None:
         """
         Clean up
         """
-        self.metadata.delete(entity=DatabaseService, entity_id=self.service_entity_id)
+        db_id = str(
+            cls.metadata.get_by_name(
+                entity=Database, fqdn="test-service-db.test-db"
+            ).id.__root__
+        )
+
+        service_id = str(
+            cls.metadata.get_by_name(
+                entity=DatabaseService, fqdn="test-service-db"
+            ).id.__root__
+        )
+
+        cls.metadata.delete(entity=Database, entity_id=db_id)
+        cls.metadata.delete(entity=DatabaseService, entity_id=service_id)
 
     def test_create(self):
         """
         We can create a Database and we receive it back as Entity
         """
 
-        res = self.metadata.create_or_update(
-            entity=CreateDatabaseEntityRequest, data=self.create
-        )
+        res = self.metadata.create_or_update(data=self.create)
 
-        self.assertEqual(res.name, self.create.name)
-        self.assertEqual(res.service.id, self.create.service.id)
+        self.assertEqual(res.name, self.entity.name)
+        self.assertEqual(res.service.id, self.entity.service.id)
         self.assertEqual(res.owner, None)
 
     def test_update(self):
@@ -90,15 +99,13 @@ class OMetaDatabaseTest(TestCase):
         Updating it properly changes its properties
         """
 
-        res_create = self.metadata.create_or_update(
-            entity=CreateDatabaseEntityRequest, data=self.create
-        )
+        res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.entity.dict(exclude_unset=True)
+        updated = self.create.dict(exclude_unset=True)
         updated["owner"] = self.owner
-        updated_entity = Database(**updated)
+        updated_entity = CreateDatabaseEntityRequest(**updated)
 
-        res = self.metadata.create_or_update(entity=Database, data=updated_entity)
+        res = self.metadata.create_or_update(data=updated_entity)
 
         # Same ID, updated algorithm
         self.assertEqual(res.service.id, updated_entity.service.id)
@@ -110,7 +117,7 @@ class OMetaDatabaseTest(TestCase):
         We can fetch a Database by name and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.get_by_name(
             entity=Database, fqdn=self.entity.fullyQualifiedName
@@ -122,7 +129,7 @@ class OMetaDatabaseTest(TestCase):
         We can fetch a Database by ID and get it back as Entity
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # First pick up by name
         res_name = self.metadata.get_by_name(
@@ -140,7 +147,7 @@ class OMetaDatabaseTest(TestCase):
         We can list all our Database
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         res = self.metadata.list_entities(entity=Database)
 
@@ -155,7 +162,7 @@ class OMetaDatabaseTest(TestCase):
         We can delete a Database by ID
         """
 
-        self.metadata.create_or_update(entity=Database, data=self.entity)
+        self.metadata.create_or_update(data=self.create)
 
         # Find by name
         res_name = self.metadata.get_by_name(
@@ -171,7 +178,6 @@ class OMetaDatabaseTest(TestCase):
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Database)
-        print(res)
         assert not next(
             iter(ent for ent in res.entities if ent.name == self.entity.name), None
         )
