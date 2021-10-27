@@ -23,7 +23,9 @@ import {
   EntityLineage,
 } from '../../generated/type/entityLineage';
 import { EntityReference } from '../../generated/type/entityReference';
-
+import { getEntityIcon } from '../../utils/TableUtils';
+import EntityInfoDrawer from '../EntityInfoDrawer/EntityInfoDrawer.component';
+import { SelectedNode } from './EntityLineage.interface';
 const onLoad = (reactFlowInstance: OnLoadParams) => {
   reactFlowInstance.fitView();
   reactFlowInstance.zoomTo(1);
@@ -49,16 +51,21 @@ const getDataLabel = (v = '', separator = '.') => {
   const length = v.split(separator).length;
 
   return (
-    <p className="tw-break-words description-text" data-testid="lineage-entity">
+    <span
+      className="tw-break-words description-text tw-self-center"
+      data-testid="lineage-entity">
       {v.split(separator)[length - 1]}
-    </p>
+    </span>
   );
 };
 
 const positionX = 150;
 const positionY = 60;
 
-const getLineageData = (entityLineage: EntityLineage) => {
+const getLineageData = (
+  entityLineage: EntityLineage,
+  onSelect: (state: boolean, value: SelectedNode) => void
+) => {
   const [x, y] = [0, 0];
   const nodes = entityLineage['nodes'];
   let upstreamEdges: Array<LineageEdge & { isMapped: boolean }> =
@@ -96,7 +103,22 @@ const getLineageData = (entityLineage: EntityLineage) => {
               targetPosition: Position.Left,
               type: 'default',
               className: 'leaf-node',
-              data: { label: getDataLabel(node.name as string) },
+              data: {
+                label: (
+                  <p
+                    className="tw-flex"
+                    onClick={() =>
+                      onSelect(true, {
+                        name: node.name as string,
+                        type: node.type,
+                        id: `node-${node.id}-${depth}`,
+                      })
+                    }>
+                    <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
+                    {getDataLabel(node.name as string)}
+                  </p>
+                ),
+              },
               position: {
                 x: -positionX * 2 * depth,
                 y: y + positionY * upDepth,
@@ -141,7 +163,22 @@ const getLineageData = (entityLineage: EntityLineage) => {
               targetPosition: Position.Left,
               type: 'default',
               className: 'leaf-node',
-              data: { label: getDataLabel(node.name as string) },
+              data: {
+                label: (
+                  <span
+                    className="tw-flex"
+                    onClick={() =>
+                      onSelect(true, {
+                        name: node.name as string,
+                        type: node.type,
+                        id: `node-${node.id}-${depth}`,
+                      })
+                    }>
+                    <span className="tw-mr-2">{getEntityIcon(node.type)}</span>
+                    {getDataLabel(node.name as string)}
+                  </span>
+                ),
+              },
               position: {
                 x: positionX * 2 * depth,
                 y: y + positionY * downDepth,
@@ -229,7 +266,21 @@ const getLineageData = (entityLineage: EntityLineage) => {
           : 'output'
         : 'input',
       className: 'leaf-node core',
-      data: { label: getDataLabel(mainNode.name as string) },
+      data: {
+        label: (
+          <p
+            className="tw-flex"
+            onClick={() =>
+              onSelect(true, {
+                name: mainNode.name as string,
+                type: mainNode.type,
+              })
+            }>
+            <span className="tw-mr-2">{getEntityIcon(mainNode.type)}</span>
+            {getDataLabel(mainNode.name as string)}
+          </p>
+        ),
+      },
       position: { x: x, y: y },
     },
     ...UPStreamNodes.map((up) => {
@@ -257,45 +308,90 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
 }: {
   entityLineage: EntityLineage;
 }) => {
-  const [elements, setElements] = useState<Elements>(
-    getLineageData(entityLineage) as Elements
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
+  const [selectedNode, setSelectedNode] = useState<SelectedNode>(
+    {} as SelectedNode
   );
+
+  const selectNodeHandler = (state: boolean, value: SelectedNode) => {
+    setIsDrawerOpen(state);
+    setSelectedNode(value);
+  };
+  const [elements, setElements] = useState<Elements>(
+    getLineageData(entityLineage, selectNodeHandler) as Elements
+  );
+
+  const closeDrawer = (value: boolean) => {
+    setIsDrawerOpen(value);
+
+    setElements((prevElements) => {
+      return prevElements.map((el) => {
+        if (el.id === selectedNode.id) {
+          return { ...el, className: 'leaf-node' };
+        } else {
+          return el;
+        }
+      });
+    });
+  };
+
   const onElementsRemove = (elementsToRemove: Elements) =>
     setElements((els) => removeElements(elementsToRemove, els));
   const onConnect = (params: Edge | Connection) =>
     setElements((els) => addEdge(params, els));
 
+  const onElementClick = (el: FlowElement) => {
+    setElements((prevElements) => {
+      return prevElements.map((preEl) => {
+        if (preEl.id === el.id) {
+          return { ...preEl, className: `${preEl.className} selected-node` };
+        } else {
+          return { ...preEl, className: 'leaf-node' };
+        }
+      });
+    });
+  };
+
   useEffect(() => {
-    setElements(getLineageData(entityLineage) as Elements);
+    setElements(getLineageData(entityLineage, selectNodeHandler) as Elements);
   }, [entityLineage]);
 
   return (
-    <div className="tw-w-full tw-h-full">
-      {(entityLineage?.downstreamEdges ?? []).length > 0 ||
-      (entityLineage.upstreamEdges ?? []).length ? (
-        <ReactFlowProvider>
-          <ReactFlow
-            panOnScroll
-            elements={elements as Elements}
-            nodesConnectable={false}
-            onConnect={onConnect}
-            onElementsRemove={onElementsRemove}
-            onLoad={onLoad}
-            onNodeContextMenu={onNodeContextMenu}
-            onNodeMouseEnter={onNodeMouseEnter}
-            onNodeMouseLeave={onNodeMouseLeave}
-            onNodeMouseMove={onNodeMouseMove}>
-            <Controls
-              className="tw-top-1 tw-left-1 tw-bottom-full"
-              showInteractive={false}
-            />
-          </ReactFlow>
-        </ReactFlowProvider>
-      ) : (
-        <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No Lineage data available
-        </div>
-      )}
+    <div className="tw-relative tw-h-full tw--ml-4">
+      <div className="tw-w-full tw-h-full">
+        {(entityLineage?.downstreamEdges ?? []).length > 0 ||
+        (entityLineage.upstreamEdges ?? []).length ? (
+          <ReactFlowProvider>
+            <ReactFlow
+              panOnScroll
+              elements={elements as Elements}
+              nodesConnectable={false}
+              onConnect={onConnect}
+              onElementClick={(_e, el) => onElementClick(el)}
+              onElementsRemove={onElementsRemove}
+              onLoad={onLoad}
+              onNodeContextMenu={onNodeContextMenu}
+              onNodeMouseEnter={onNodeMouseEnter}
+              onNodeMouseLeave={onNodeMouseLeave}
+              onNodeMouseMove={onNodeMouseMove}>
+              <Controls
+                className="tw-top-1 tw-left-1 tw-bottom-full tw-ml-4 tw-mt-4"
+                showInteractive={false}
+              />
+            </ReactFlow>
+          </ReactFlowProvider>
+        ) : (
+          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+            No Lineage data available
+          </div>
+        )}
+      </div>
+      <EntityInfoDrawer
+        isMainNode={selectedNode.name === entityLineage.entity.name}
+        selectedNode={selectedNode}
+        show={isDrawerOpen}
+        onCancel={closeDrawer}
+      />
     </div>
   );
 };

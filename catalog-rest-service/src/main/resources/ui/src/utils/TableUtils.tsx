@@ -8,6 +8,7 @@ import {
   getPipelineDetailsPath,
   getTopicDetailsPath,
 } from '../constants/constants';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ConstraintTypes } from '../enums/table.enum';
 import { Column, Table } from '../generated/entity/data/table';
@@ -164,15 +165,19 @@ export const getEntityLink = (
 ) => {
   switch (indexType) {
     case SearchIndex.TOPIC:
+    case EntityType.TOPIC:
       return getTopicDetailsPath(fullyQualifiedName);
 
     case SearchIndex.DASHBOARD:
+    case EntityType.DASHBOARD:
       return getDashboardDetailsPath(fullyQualifiedName);
 
     case SearchIndex.PIPELINE:
+    case EntityType.PIPELINE:
       return getPipelineDetailsPath(fullyQualifiedName);
 
     case SearchIndex.TABLE:
+    case EntityType.TABLE:
     default:
       return getDatasetDetailsPath(fullyQualifiedName);
   }
@@ -182,20 +187,24 @@ export const getEntityIcon = (indexType: string) => {
   let icon = '';
   switch (indexType) {
     case SearchIndex.TOPIC:
+    case EntityType.TOPIC:
       icon = 'topic';
 
       break;
 
     case SearchIndex.DASHBOARD:
+    case EntityType.DASHBOARD:
       icon = 'dashboard';
 
       break;
     case SearchIndex.PIPELINE:
+    case EntityType.PIPELINE:
       icon = 'pipeline';
 
       break;
 
     case SearchIndex.TABLE:
+    case EntityType.TABLE:
     default:
       icon = 'table';
 
