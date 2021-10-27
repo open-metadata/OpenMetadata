@@ -235,12 +235,7 @@ public class UserResource {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
-    User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
-            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withTeams(dao.validateTeams(create.getTeams()));
+    User user = getUser(securityContext, create);
     addHref(uriInfo, dao.create(user));
     return Response.created(user.getHref()).entity(user).build();
   }
@@ -260,12 +255,7 @@ public class UserResource {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
-    User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
-            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withTeams(dao.validateTeams(create.getTeams()));
+    User user = getUser(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
@@ -309,5 +299,14 @@ public class UserResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private User getUser(SecurityContext securityContext, CreateUser create) throws IOException {
+    return new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
+            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
+            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date())
+            .withTeams(dao.validateTeams(create.getTeams()));
   }
 }

@@ -222,14 +222,7 @@ public class TableResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateTable create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(validateNewTable(table)));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -246,14 +239,7 @@ public class TableResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTable create) throws IOException, ParseException {
-    Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    Table table = getTable(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table));
     table = addHref(uriInfo, response.getEntity());
@@ -399,5 +385,16 @@ public class TableResource {
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     DatabaseUtil.validateColumns(table);
     return table;
+  }
+
+  private Table getTable(SecurityContext securityContext, CreateTable create) {
+    return new Table().withId(UUID.randomUUID()).withName(create.getName())
+            .withColumns(create.getColumns()).withDescription(create.getDescription())
+            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withOwner(create.getOwner())
+            .withUpdatedAt(new Date())
+            .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }

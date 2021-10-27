@@ -223,11 +223,7 @@ public class DatabaseResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateDatabase create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
-            .withDescription(create.getDescription()).withService(create.getService())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    Database database = getDatabase(securityContext, create);
     database = addHref(uriInfo, dao.create(database));
     return Response.created(database.getHref()).entity(database).build();
   }
@@ -266,11 +262,7 @@ public class DatabaseResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDatabase create) throws IOException, ParseException {
-
-    Database database = new Database().withId(UUID.randomUUID()).withName(create.getName())
-            .withDescription(create.getDescription()).withOwner(create.getOwner())
-            .withService(create.getService()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    Database database = getDatabase(securityContext, create);
     PutResponse<Database> response = dao.createOrUpdate(database);
     Database db = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(db).build();
@@ -287,5 +279,13 @@ public class DatabaseResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Database getDatabase(SecurityContext securityContext, CreateDatabase create) {
+    return new Database().withId(UUID.randomUUID()).withName(create.getName())
+            .withDescription(create.getDescription()).withService(create.getService())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

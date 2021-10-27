@@ -217,15 +217,7 @@ public class ModelResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Model model = new Model().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withDashboard(create.getDashboard()) //ADDED
-            .withAlgorithm(create.getAlgorithm()) //ADDED
-            .withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    Model model = getModel(securityContext, create);
     model = addHref(uriInfo, dao.create(model));
     return Response.created(model.getHref()).entity(model).build();
   }
@@ -267,16 +259,7 @@ public class ModelResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateModel create) throws IOException, ParseException {
-    Model model = new Model().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withDashboard(create.getDashboard()) //ADDED
-            .withAlgorithm(create.getAlgorithm()) //ADDED
-            .withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    Model model = getModel(securityContext, create);
     PutResponse<Model> response = dao.createOrUpdate(model);
     model = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(model).build();
@@ -332,5 +315,17 @@ public class ModelResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Model getModel(SecurityContext securityContext, CreateModel create) {
+    return new Model().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withDashboard(create.getDashboard()) //ADDED
+            .withAlgorithm(create.getAlgorithm()) //ADDED
+            .withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }
