@@ -447,4 +447,30 @@ public final class EntityUtil {
     return refList.stream().sorted(Comparator.comparing(EntityReference::getId)).map(EntityReference::getId)
             .collect(Collectors.toList());
   }
+
+  public static String getVersionExtension(String entityName, Double version) {
+    return String.format("%s.%s.%s", entityName, "version", version.toString());
+  }
+
+  public static String getVersionExtensionPrefix(String entityName) {
+    return String.format("%s.%s", entityName, "version");
+  }
+
+  public static Double getVersion(String extension) {
+    String[] s = extension.split("\\.");
+    String versionString = s[2] + "." + s[3];
+    return Double.valueOf(versionString);
+  }
+
+  public static String getLocalColumnName(String fqn) {
+    // Return for fqn=service.database.table.c1 -> c1
+    // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
+    String localColumnName = "";
+    String[] s = fqn.split("\\.");
+    for (int i = 3; i < s.length -1 ; i++) {
+      localColumnName += s[i] + ".";
+    }
+    localColumnName += s[s.length - 1];
+    return localColumnName;
+  }
 }

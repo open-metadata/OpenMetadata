@@ -19,18 +19,15 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.resources.metrics.MetricsResource;
-import org.openmetadata.catalog.resources.metrics.MetricsResource.MetricsList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -173,6 +170,12 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.METRICS);
@@ -199,13 +202,16 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
-
-    @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) {

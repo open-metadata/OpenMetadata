@@ -19,16 +19,13 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
-import org.openmetadata.catalog.resources.bots.BotsResource.BotsList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -106,6 +103,12 @@ public class BotsRepository extends EntityRepository<Bots>{
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.BOTS);
@@ -128,13 +131,16 @@ public class BotsRepository extends EntityRepository<Bots>{
     }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
-
-    @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

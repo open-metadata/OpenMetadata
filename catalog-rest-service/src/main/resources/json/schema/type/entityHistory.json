@@ -1,0 +1,63 @@
+{
+  "$id": "https://open-metadata.org/schema/type/entityHistory.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Entity Version History",
+  "description": "This schema defines the type used for capturing version of history of entity.",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.type.EntityHistory",
+  "definitions": {
+    "entityVersion": {
+      "description" : "Metadata version of the entity in the form `Major.Minor`. First version always starts from `0.1` when the entity is created. When the backward compatible changes are made to the entity, only the `Minor` version is incremented - example `1.0` is changed to `1.1`. When backward incompatible changes are made the `Major` version is incremented - example `1.1` to `2.0`.",
+      "type" : "number",
+      "multipleOf": 0.1,
+      "default" : 0.1,
+      "minimum": 0.1
+    },
+    "changeDescription": {
+      "description": "Description of the change.",
+      "type" : "object",
+      "javaType": "org.openmetadata.catalog.type.ChangeDescription",
+      "properties": {
+        "fieldsAdded" : {
+          "description": "Fields added during the version changes.",
+          "type" : "array",
+          "items" : {
+            "type": "string"
+          }
+        },
+        "fieldsUpdated" : {
+          "description": "Fields modified during the version changes.",
+          "type" : "array",
+          "items" : {
+            "type": "string"
+          }
+        },
+        "fieldsDeleted" : {
+          "description": "Fields deleted during the version changes.",
+          "type" : "array",
+          "items" : {
+            "type": "string"
+          }
+        },
+        "previousVersion" : {
+          "$ref" : "#/definitions/entityVersion"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "entityType" : {
+      "description": "Entity type, such as `database`, `table`, `dashboard`, for which this version history is produced.",
+      "type": "string"
+    },
+    "versions": {
+      "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to the entity schema. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
+      "type" : "array"
+    }
+  },
+  "required": [
+    "entityType", "versions"
+  ],
+  "additionalProperties": false
+}

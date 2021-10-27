@@ -20,6 +20,7 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.resources.reports.ReportResource;
 import org.openmetadata.catalog.resources.reports.ReportResource.ReportList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -153,6 +154,12 @@ public class ReportRepository extends EntityRepository<Report> {
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.REPORT);
@@ -175,13 +182,16 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
-
-    @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

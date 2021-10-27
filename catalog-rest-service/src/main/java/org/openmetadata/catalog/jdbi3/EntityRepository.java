@@ -2,7 +2,11 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
+import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -20,8 +24,10 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -31,6 +37,7 @@ import java.util.UUID;
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
   private final Class<T> entityClass;
+  private final String entityName;
   private final EntityDAO<T> dao;
   private final CollectionDAO daoCollection;
   private final Fields patchFields;
@@ -58,6 +65,7 @@ public abstract class EntityRepository<T> {
     this.daoCollection = collectionDAO;
     this.patchFields = patchFields;
     this.putFields = putFields;
+    this.entityName = entityClass.getSimpleName().toLowerCase(Locale.ROOT);
   }
 
   @Transaction
@@ -114,6 +122,26 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
+  public T getVersion(String id, String version) throws IOException {
+    String extension = EntityUtil.getVersionExtension(entityName, Double.parseDouble(version));
+    String json = daoCollection.entityExtensionDAO().getEntityVersion(id, extension);
+    return JsonUtils.readValue(json, entityClass);
+  }
+
+  @Transaction
+  public EntityHistory listVersions(String id) throws IOException, ParseException {
+    T latest = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityName);
+    List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
+    oldVersions.sort(Comparator.comparing(EntityVersionPair::getVersion).reversed());
+
+    final List<Object> allVersions = new ArrayList<>();
+    allVersions.add(JsonUtils.pojoToJson(latest));
+    oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
+    return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
+  }
+
+  @Transaction
   public final T create(T entity) throws IOException, ParseException {
     validate(entity);
     return createInternal(entity);
@@ -141,8 +169,7 @@ public abstract class EntityRepository<T> {
     T original = setFields(dao.findEntityById(id), patchFields);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
-    updatedEntity.setUpdatedBy(user);
-    updatedEntity.setUpdatedAt(new Date());
+    updatedEntity.setUpdateDetails(user, new Date());
 
     validate(updated);
     restorePatchAttributes(original, updated);
@@ -169,6 +196,12 @@ public abstract class EntityRepository<T> {
   }
 
   /**
+   * Class that provides functionality related to entity versioning
+   */
+  public static class EntityVersionHelper {
+  }
+
+  /**
    * Class that performs PUT and PATCH UPDATE operation. Override {@code entitySpecificUpdate()} to add
    * additional entity specific fields to be updated.
    */
@@ -176,9 +209,7 @@ public abstract class EntityRepository<T> {
     protected final EntityInterface<T> original;
     protected final EntityInterface<T> updated;
     protected final boolean patchOperation;
-    protected final List<String> fieldsUpdated = new ArrayList<>();
-    protected final List<String> fieldsAdded = new ArrayList<>();
-    protected final List<String> fieldsDeleted = new ArrayList<>();
+    protected final ChangeDescription changeDescription = new ChangeDescription();
     protected boolean majorVersionChange = false;
 
     public EntityUpdater(T original, T updated, boolean patchOperation) {
@@ -232,28 +263,38 @@ public abstract class EntityRepository<T> {
 
     private void updateTags() throws IOException {
       // Remove current table tags in the database. It will be added back later from the merged tag list.
+      List<TagLabel> origTags = original.getTags();
+      List<TagLabel> updatedTags = updated.getTags();
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), original.getFullyQualifiedName());
       if (!patchOperation) {
         // PUT operation merges tags in the request with what already exists
-        updated.setTags(EntityUtil.mergeTags(updated.getTags(), original.getTags()));
+        updated.setTags(EntityUtil.mergeTags(updatedTags, origTags));
       }
 
-      recordChange("tags", original.getTags() == null ? 0 : original.getTags().size(),
-              updated.getTags() == null ? 0 : updated.getTags().size());
-      EntityUtil.applyTags(daoCollection.tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
+      recordTagChange("tags", origTags, updatedTags);
+      EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, updated.getFullyQualifiedName());
     }
 
 
-    public final Double getNewVersion(Double oldVersion) {
+    public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
         newVersion = Math.round((oldVersion + 1.0) * 10.0)/10.0;
-      } else if (!fieldsUpdated.isEmpty() || !fieldsAdded.isEmpty() || !fieldsDeleted.isEmpty()) {
+      } else if (fieldsChanged()) {
         newVersion = Math.round((oldVersion + 0.1) * 10.0)/10.0;
       }
       LOG.info("{}->{} - Fields added {}, updated {}, deleted {}",
-              oldVersion, newVersion, fieldsAdded, fieldsUpdated, fieldsDeleted);
-      return newVersion;
+              oldVersion, newVersion, changeDescription.getFieldsAdded(), changeDescription.getFieldsUpdated(),
+              changeDescription.getFieldsDeleted());
+      changeDescription.withPreviousVersion(oldVersion);
+      updated.setChangeDescription(newVersion, changeDescription);
+      return !newVersion.equals(oldVersion);
+    }
+
+    private boolean fieldsChanged() {
+      return !changeDescription.getFieldsAdded().isEmpty() ||
+              !changeDescription.getFieldsUpdated().isEmpty() ||
+              !changeDescription.getFieldsDeleted().isEmpty();
     }
 
     public final boolean recordChange(String field, Object orig, Object updated) {
@@ -261,21 +302,46 @@ public abstract class EntityRepository<T> {
         return false;
       }
       if (orig == null) {
-        fieldsAdded.add(field);
+        changeDescription.getFieldsAdded().add(field);
         return true;
       } else if (updated == null) {
-        fieldsDeleted.add(field);
+        changeDescription.getFieldsDeleted().add(field);
         return true;
       } else if (!orig.equals(updated)) {
-        fieldsUpdated.add(field);
+        changeDescription.getFieldsUpdated().add(field);
         return true;
       }
       return false;
     }
 
-    public final void store() throws IOException {
-      updated.setVersion(getNewVersion(original.getVersion()));
-      EntityRepository.this.store(updated.getEntity(), true);
+    public final boolean recordTagChange(String field, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      if (origTags == null || origTags.isEmpty()) {
+        origTags = null;
+      } else {
+        origTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      }
+      if (updatedTags == null || updatedTags.isEmpty()) {
+        updatedTags = null;
+      } else {
+        updatedTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      }
+      return recordChange(field,origTags, updatedTags);
+    }
+
+    private void storeOldVersion() throws IOException {
+      // TODO move this into a single place
+      String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
+      daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
+              JsonUtils.pojoToJson(original.getEntity()));
+    }
+
+    public final void store() throws IOException, ParseException {
+      if (updateVersion(original.getVersion())) {
+        // Store the old version
+        storeOldVersion();
+        // Store the new version
+        EntityRepository.this.store(updated.getEntity(), true);
+      }
     }
   }
 }

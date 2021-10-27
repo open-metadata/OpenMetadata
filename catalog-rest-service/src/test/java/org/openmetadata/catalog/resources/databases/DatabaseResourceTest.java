@@ -22,71 +22,61 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.services.CreateDatabaseService;
 import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
+import java.net.URISyntaxException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class DatabaseResourceTest extends CatalogApplicationTest {
+public class DatabaseResourceTest extends EntityResourceTest<Database> {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static EntityReference SNOWFLAKE_REFERENCE;
   public static EntityReference REDSHIFT_REFERENCE;
   public static EntityReference MYSQL_REFERENCE;
   public static EntityReference BIGQUERY_REFERENCE;
 
-  @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
+  public DatabaseResourceTest() {
+    super(Database.class, "databases", DatabaseResource.FIELDS);
+  }
 
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+  @BeforeAll
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+    EntityResourceTest.setup(test);
 
     CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
             .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
@@ -136,10 +126,10 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void post_validDatabases_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
     CreateDatabase create = create(test);
-    createAndCheckDatabase(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getDatabaseName(test, 1)).withDescription("description");
-    createAndCheckDatabase(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
@@ -147,7 +137,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     // Create team with different optional fields
     CreateDatabase create = create(test);
     create.setService(new EntityReference().withId(SNOWFLAKE_REFERENCE.getId()).withType("databaseService"));
-    Database db = createAndCheckDatabase(create, adminAuthHeaders());
+    Database db = createAndCheckEntity(create, adminAuthHeaders());
     String expectedFQN = SNOWFLAKE_REFERENCE.getName()+"."+create.getName();
     assertEquals(expectedFQN, db.getFullyQualifiedName());
 
@@ -155,12 +145,12 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_databaseWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDatabase(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
   public void post_databaseWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
-    createAndCheckDatabase(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
   @Test
@@ -205,7 +195,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
     // Create database for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckDatabase(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List databases by filtering on service name and ensure right databases are returned in the response
       DatabaseList list = listDatabases("service", service.getName(), adminAuthHeaders());
@@ -303,77 +293,6 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_databaseUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
-    // Create a database with POST
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    Database database = createAndCheckDatabase(request, adminAuthHeaders());
-
-    // Update database two times successfully with PUT requests
-    database = updateAndCheckDatabase(database, request, OK, adminAuthHeaders(), NO_CHANGE);
-    updateAndCheckDatabase(database, request, OK, adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_databaseCreate_200(TestInfo test) throws HttpResponseException {
-    // Create a new database with PUT
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    updateAndCheckDatabase(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
-            adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_databaseCreate_as_owner_200(TestInfo test) throws HttpResponseException {
-    // Create a new database with put
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withOwner(USER_OWNER1);
-    // Add database as admin
-    Database database = createAndCheckDatabase(request, adminAuthHeaders());
-    // Update the table as Owner
-    updateAndCheckDatabase(database, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
-  }
-
-  @Test
-  public void put_databaseNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription(null);
-    Database database = createAndCheckDatabase(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    updateAndCheckDatabase(database, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_databaseEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    // Create table with empty description
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    Database database = createAndCheckDatabase(request, adminAuthHeaders());
-
-    // Update empty description with a new description
-    updateAndCheckDatabase(database, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_databaseNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("description");
-    createAndCheckDatabase(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    Database db = updateDatabase(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", db.getDescription());
-  }
-
-  @Test
-  public void put_databaseUpdateOwner_200(TestInfo test) throws HttpResponseException {
-    CreateDatabase request = create(test).withService(SNOWFLAKE_REFERENCE).withDescription("");
-    Database database = createAndCheckDatabase(request, adminAuthHeaders());
-
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    database = updateAndCheckDatabase(database, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
-
-    // Remove ownership
-    database = updateAndCheckDatabase(database, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
-    assertNull(database.getOwner());
-  }
-
-  @Test
   public void get_nonExistentDatabase_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getDatabase(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
@@ -385,7 +304,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void get_databaseWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SNOWFLAKE_REFERENCE);
-    Database database = createAndCheckDatabase(create, adminAuthHeaders());
+    Database database = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(database, false);
   }
 
@@ -393,7 +312,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
   public void get_databaseByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
     CreateDatabase create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SNOWFLAKE_REFERENCE);
-    Database database = createAndCheckDatabase(create, adminAuthHeaders());
+    Database database = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(database, true);
   }
 
@@ -408,20 +327,32 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     database = getDatabase(database.getId(), "service,owner,usageSummary", adminAuthHeaders());
     database.getService().setHref(null); // href is readonly and not patchable
 
+    //
     // Add description, owner when previously they were null
-    database = patchDatabaseAttributesAndCheck(database, "description", TEAM_OWNER1,
-            adminAuthHeaders(), MINOR_UPDATE);
+    //
+    String origJson = JsonUtils.pojoToJson(database);
+    database.withDescription("description").withOwner(TEAM_OWNER1);
+    ChangeDescription change = getChangeDescription(database.getVersion())
+            .withFieldsAdded(Arrays.asList("description", "owner"));
+    database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     database.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(MYSQL_REFERENCE); // Get rid of href and name returned in the response for service
+    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
 
+    //
     // Replace description, tier, owner
-    database = patchDatabaseAttributesAndCheck(database, "description1", USER_OWNER1,
-            adminAuthHeaders(), MINOR_UPDATE);
+    //
+    origJson = JsonUtils.pojoToJson(database);
+    database.withDescription("description1").withOwner(USER_OWNER1);
+    change = getChangeDescription(database.getVersion()).withFieldsUpdated(Arrays.asList("description", "owner"));
+    database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     database.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(REDSHIFT_REFERENCE); // Get rid of href and name returned in the response for service
+    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
 
     // Remove description, tier, owner
-    patchDatabaseAttributesAndCheck(database, null, null, adminAuthHeaders(), MINOR_UPDATE);
+    origJson = JsonUtils.pojoToJson(database);
+    database.withDescription(null).withOwner(null);
+    change = getChangeDescription(database.getVersion()).withFieldsDeleted(Arrays.asList("description", "owner"));
+    patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   // TODO listing tables test:1
@@ -447,50 +378,7 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
   public static Database createAndCheckDatabase(CreateDatabase create,
                                                 Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Database database = createDatabase(create, authHeaders);
-    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
-    assertEquals(0.1, database.getVersion());
-    return getAndValidate(database.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static Database updateAndCheckDatabase(Database before, CreateDatabase create, Status status,
-                                                Map<String, String> authHeaders, UpdateType updateType)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Database updatedDb = updateDatabase(create, status, authHeaders);
-    validateDatabase(updatedDb, create.getDescription(), create.getOwner(), create.getService(), updatedBy);
-    if (before == null) {
-      assertEquals(0.1, updatedDb.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedDb.getVersion(), updateType);
-    }
-
-    // GET the newly updated database and validate
-    return getAndValidate(updatedDb.getId(), create, authHeaders, updatedBy);
-  }
-
-  // Make sure in GET operations the returned database has all the required information passed during creation
-  public static Database getAndValidate(UUID databaseId,
-                                        CreateDatabase create,
-                                        Map<String, String> authHeaders,
-                                        String expectedUpdatedBy) throws HttpResponseException {
-    // GET the newly created database by ID and validate
-    Database database = getDatabase(databaseId, "service,owner", authHeaders);
-    validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(), expectedUpdatedBy);
-
-    // GET the newly created database by name and validate
-    String fqn = database.getFullyQualifiedName();
-    database = getDatabaseByName(fqn, "service,owner", authHeaders);
-    return validateDatabase(database, create.getDescription(), create.getOwner(), create.getService(),
-            expectedUpdatedBy);
-  }
-
-  public static Database updateDatabase(CreateDatabase create,
-                                        Status status,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("databases"),
-                          create, Database.class, status, authHeaders);
+    return new DatabaseResourceTest().createAndCheckEntity(create, authHeaders);
   }
 
   public static Database createDatabase(CreateDatabase create,
@@ -526,66 +414,6 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
     TestUtils.validateEntityReference(database.getTables());
     assertNotNull(database.getUsageSummary());
 
-  }
-
-  private static Database validateDatabase(Database database, String expectedDescription, EntityReference expectedOwner,
-                                           EntityReference expectedService, String expectedUpdatedBy) {
-    assertNotNull(database.getId());
-    assertNotNull(database.getHref());
-    assertEquals(expectedDescription, database.getDescription());
-    assertEquals(expectedUpdatedBy, database.getUpdatedBy());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(database.getOwner());
-      assertEquals(expectedOwner.getId(), database.getOwner().getId());
-      assertEquals(expectedOwner.getType(), database.getOwner().getType());
-      assertNotNull(database.getOwner().getHref());
-    }
-
-    // Validate service
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(database.getService());
-      assertEquals(expectedService.getId(), database.getService().getId());
-      assertEquals(expectedService.getType(), database.getService().getType());
-    }
-    return database;
-  }
-
-  private Database patchDatabaseAttributesAndCheck(Database before, String newDescription, EntityReference newOwner,
-                                                   Map<String, String> authHeaders, UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String databaseJson = JsonUtils.pojoToJson(before);
-
-    // Update the table attributes
-    before.setDescription(newDescription);
-    before.setOwner(newOwner);
-
-    // Validate information returned in patch response has the updates
-    Database updatedDatabase = patchDatabase(databaseJson, before, authHeaders);
-    validateDatabase(updatedDatabase, before.getDescription(), newOwner, null, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedDatabase.getVersion(), updateType);
-
-    // GET the table and Validate information returned
-    Database getDatabase = getDatabase(before.getId(), "service,owner", authHeaders);
-    validateDatabase(getDatabase, before.getDescription(), newOwner, null, updatedBy);
-    return updatedDatabase;
-  }
-
-  private Database patchDatabase(UUID databaseId, String originalJson, Database updatedDatabase,
-                                 Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String updateTableJson = JsonUtils.pojoToJson(updatedDatabase);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTableJson);
-    return TestUtils.patch(getResource("databases/" + databaseId), patch, Database.class, authHeaders);
-  }
-
-  private Database patchDatabase(String originalJson,
-                                 Database updatedDatabase,
-                                 Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    return patchDatabase(updatedDatabase.getId(), originalJson, updatedDatabase, authHeaders);
   }
 
   public static void getDatabase(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -645,5 +473,38 @@ public class DatabaseResourceTest extends CatalogApplicationTest {
 
   public static CreateDatabase create(TestInfo test, int index) {
     return new CreateDatabase().withName(getDatabaseName(test, index)).withService(SNOWFLAKE_REFERENCE);
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withOwner(owner);
+  }
+
+  @Override
+  public void validateCreatedEntity(Database createdEntity, Object request, Map<String, String> authHeaders) {
+    CreateDatabase createRequest = (CreateDatabase) request;
+    validateCommonEntityFields(getEntityInterface(createdEntity), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+
+    // Validate service
+    assertService(createRequest.getService(), createdEntity.getService());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Database updatedEntity, Object request, Map<String, String> authHeaders) {
+    validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Database expected, Database updated, Map<String, String> authHeaders) {
+    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+    // Validate service
+    assertService(expected.getService(), updated.getService());
+  }
+
+  @Override
+  public EntityInterface<Database> getEntityInterface(Database entity) {
+    return new DatabaseEntityInterface(entity);
   }
 }
