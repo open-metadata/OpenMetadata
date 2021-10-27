@@ -381,7 +381,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
             </ReactFlow>
           </ReactFlowProvider>
         ) : (
-          <div className="tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
+          <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
             No Lineage data available
           </div>
         )}

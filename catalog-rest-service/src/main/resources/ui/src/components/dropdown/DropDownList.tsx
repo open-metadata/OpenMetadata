@@ -34,7 +34,18 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   const isMounted = useRef<boolean>(false);
   const [searchedList, setSearchedList] = useState(dropDownList);
   const [searchText, setSearchText] = useState(searchString);
-  const [activeTab, setActiveTab] = useState<number>(1);
+
+  const setCurrentTabOnMount = () => {
+    const selectedItem = dropDownList.find((l) => l.value === value);
+    let index = 0;
+    if (selectedItem) {
+      index = listGroups.indexOf(selectedItem.group as string);
+    }
+
+    return index >= 0 ? index + 1 : 1;
+  };
+
+  const [activeTab, setActiveTab] = useState<number>(setCurrentTabOnMount());
 
   const getTabClasses = (tab: number, activeTab: number) => {
     return 'tw-gh-tabs' + (activeTab === tab ? ' active' : '');
@@ -70,15 +81,6 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
     );
   };
 
-  const setCurrentTabOnMount = () => {
-    const owner = dropDownList.find((l) => l.value === value);
-    if (owner) {
-      const index = listGroups.indexOf(owner.group as string);
-
-      setActiveTab(index >= 0 ? index + 1 : 1);
-    }
-  };
-
   useEffect(() => {
     setSearchText(searchString);
   }, [searchString]);
@@ -108,8 +110,8 @@ const DropDownList: FunctionComponent<DropDownListProp> = ({
   }, [searchText]);
 
   useEffect(() => {
+    setActiveTab(setCurrentTabOnMount());
     isMounted.current = true;
-    setCurrentTabOnMount();
   }, []);
 
   return (
