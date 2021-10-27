@@ -71,7 +71,7 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
   public static EntityReference BIGQUERY_REFERENCE;
 
   public DatabaseResourceTest() {
-    super(Database.class, "databases");
+    super(Database.class, "databases", DatabaseResource.FIELDS);
   }
 
   @BeforeAll
@@ -501,13 +501,6 @@ public class DatabaseResourceTest extends EntityTestHelper<Database> {
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Validate service
     assertService(expected.getService(), updated.getService());
-  }
-
-  @Override
-  public Database getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", DatabaseResource.FIELDS);
-    return TestUtils.get(target, Database.class, authHeaders);
   }
 
   @Override

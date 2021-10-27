@@ -46,6 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -83,7 +84,7 @@ public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
   public DashboardResourceTest() {
-    super(Dashboard.class, "dashboards");
+    super(Dashboard.class, "dashboards", DashboardResource.FIELDS);
   }
 
 
@@ -303,7 +304,7 @@ public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
   }
 
   @Test
-  public void put_DashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_DashboardChartsUpdate_200(TestInfo test) throws IOException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -315,7 +316,7 @@ public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
   }
 
   @Test
-  public void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_AddRemoveDashboardChartsUpdate_200(TestInfo test) throws IOException {
     CreateDashboard request = create(test).withService(SUPERSET_REFERENCE).withDescription(null);
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
@@ -542,13 +543,6 @@ public class DashboardResourceTest extends EntityTestHelper<Dashboard> {
 
   @Override
   public void validatePatchedEntity(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {
-  }
-
-  @Override
-  public Dashboard getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", DashboardResource.FIELDS);
-    return TestUtils.get(target, Dashboard.class, authHeaders);
   }
 
   @Override

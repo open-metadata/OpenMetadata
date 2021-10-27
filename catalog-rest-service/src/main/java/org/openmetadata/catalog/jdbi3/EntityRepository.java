@@ -123,7 +123,7 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public T getVersion(String id, String version) throws IOException {
-    String extension = EntityUtil.getVersionExtension(entityName, Double.valueOf(version));
+    String extension = EntityUtil.getVersionExtension(entityName, Double.parseDouble(version));
     String json = daoCollection.entityExtensionDAO().getEntityVersion(id, extension);
     return JsonUtils.readValue(json, entityClass);
   }

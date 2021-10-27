@@ -28,12 +28,14 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -170,6 +172,22 @@ public class DatabaseResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List database versions", tags = "databases",
+          description = "Get a list of all the versions of a database identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of database versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "database Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a database", tags = "databases",
           description = "Get a database by `id`.",
@@ -209,6 +227,27 @@ public class DatabaseResource {
     Database database = dao.getByName(fqn, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the database", tags = "databases",
+          description = "Get a version of the database by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "database",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Database.class))),
+                  @ApiResponse(responseCode = "404", description = "Database for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Database getVersion(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Parameter(description = "Database Id", schema = @Schema(type = "string"))
+                         @PathParam("id") String id,
+                         @Parameter(description = "Database version number in the form `major`.`minor`",
+                                 schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                         @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @POST

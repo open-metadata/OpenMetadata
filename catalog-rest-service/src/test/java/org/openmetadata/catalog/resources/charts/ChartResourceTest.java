@@ -87,7 +87,7 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public ChartResourceTest() {
-    super(Chart.class, "charts");
+    super(Chart.class, "charts", ChartResource.FIELDS);
   }
 
   @BeforeAll
@@ -556,13 +556,6 @@ public class ChartResourceTest extends EntityTestHelper<Chart> {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), patched.getService());
-  }
-
-  @Override
-  public Chart getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", ChartResource.FIELDS);
-    return TestUtils.get(target, Chart.class, authHeaders);
   }
 
   @Override

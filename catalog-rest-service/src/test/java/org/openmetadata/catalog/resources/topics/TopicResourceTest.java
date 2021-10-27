@@ -74,7 +74,7 @@ public class TopicResourceTest extends EntityTestHelper<Topic> {
   private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
 
   public TopicResourceTest() {
-    super(Topic.class, "topics");
+    super(Topic.class, "topics", TopicResource.FIELDS);
   }
 
   @Test
@@ -614,13 +614,6 @@ public class TopicResourceTest extends EntityTestHelper<Topic> {
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());
     TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), expected.getTags());
-  }
-
-  @Override
-  public Topic getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", TopicResource.FIELDS);
-    return TestUtils.get(target, Topic.class, authHeaders);
   }
 
   @Override

@@ -84,7 +84,7 @@ public class TaskResourceTest extends EntityTestHelper<Task> {
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public TaskResourceTest() {
-    super(Task.class, "tasks");
+    super(Task.class, "tasks", TaskResource.FIELDS);
   }
 
 
@@ -134,13 +134,6 @@ public class TaskResourceTest extends EntityTestHelper<Task> {
     assertEquals(expected.getTaskUrl(), patched.getTaskUrl());
     assertService(expected.getService(), patched.getService());
     TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
-  }
-
-  @Override
-  public Task getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", TaskResource.FIELDS);
-    return TestUtils.get(target, Task.class, authHeaders);
   }
 
   @Override

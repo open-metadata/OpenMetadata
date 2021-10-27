@@ -27,13 +27,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -165,6 +168,22 @@ public class TaskResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List task versions", tags = "tasks",
+          description = "Get a list of all the versions of a task identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of task versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "task Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a Task", tags = "tasks",
           description = "Get a task by `id`.",
@@ -202,6 +221,27 @@ public class TaskResource {
     Task task = dao.getByName(fqn, fields);
     addHref(uriInfo, task);
     return Response.ok(task).build();
+  }
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the task", tags = "tasks",
+          description = "Get a version of the task by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "task",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Task.class))),
+                  @ApiResponse(responseCode = "404", description = "Task for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Task getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Task Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Task version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
   }
 
   @POST

@@ -168,9 +168,9 @@ public class TableResource {
   @Path("/{id}/versions")
   @Operation(summary = "List table versions", tags = "tables",
           description = "Get a list of all the versions of a table identified by `id`",
-          responses = {@ApiResponse(responseCode = "200", description = "List of tables",
+          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
                   content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = TableList.class)))
+                          schema = @Schema(implementation = EntityHistory.class)))
           })
   public EntityHistory listVersions(@Context UriInfo uriInfo,
                                     @Context SecurityContext securityContext,
@@ -231,7 +231,8 @@ public class TableResource {
                   @ApiResponse(responseCode = "200", description = "table",
                           content = @Content(mediaType = "application/json",
                                   schema = @Schema(implementation = Table.class))),
-                  @ApiResponse(responseCode = "404", description = "Table for instance {id} is not found")
+                  @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is " +
+                          "not found")
           })
   public Table getVersion(@Context UriInfo uriInfo,
                           @Context SecurityContext securityContext,
@@ -239,7 +240,7 @@ public class TableResource {
                           @PathParam("id") String id,
                           @Parameter(description = "table version number in the form `major`.`minor`",
                                   schema = @Schema(type = "string", example = "0.1 or 1.1"))
-                          @QueryParam("version") String version) throws IOException, ParseException {
+                          @PathParam("version") String version) throws IOException, ParseException {
     return dao.getVersion(id, version);
   }
 

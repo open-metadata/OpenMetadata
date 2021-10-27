@@ -204,9 +204,8 @@ public interface CollectionDAO {
     @RegisterRowMapper(EntityVersionMapper.class)
     @SqlQuery("SELECT extension, json FROM entity_extension WHERE id = :id AND extension " +
             "LIKE CONCAT (:extensionPrefix, '.%')")
-    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extension") String extensionPrefix);
+    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
 
-    @RegisterRowMapper(EntityVersionMapper.class)
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
   }

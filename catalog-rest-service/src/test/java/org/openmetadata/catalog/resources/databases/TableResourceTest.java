@@ -68,6 +68,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -129,7 +130,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   public static EntityReference SNOWFLAKE_REFERENCE;
 
   public TableResourceTest() {
-    super(Table.class, "tables");
+    super(Table.class, "tables", TableResource.FIELDS);
   }
 
   @BeforeAll
@@ -262,7 +263,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Test
-  public void post_put_patch_complexColumnTypes(TestInfo test) throws HttpResponseException, JsonProcessingException {
+  public void post_put_patch_complexColumnTypes(TestInfo test) throws IOException {
     Column c1 = getColumn("c1", ARRAY, "array<int>", USER_ADDRESS_TAG_LABEL).withArrayDataType(INT);
     Column c2_a = getColumn("a", INT, USER_ADDRESS_TAG_LABEL);
     Column c2_b = getColumn("b", CHAR, USER_ADDRESS_TAG_LABEL);
@@ -399,7 +400,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
 
 
   @Test
-  public void put_tableOwnershipUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_tableOwnershipUpdate_200(TestInfo test) throws IOException {
     CreateTable request = create(test).withOwner(USER_OWNER1).withDescription("description");
     Table table = createAndCheckEntity(request, adminAuthHeaders());
     checkOwnerOwns(USER_OWNER1, table.getId(), true);
@@ -422,7 +423,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Test
-  public void put_tableTableConstraintUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_tableTableConstraintUpdate_200(TestInfo test) throws IOException {
     // Create table without table constraints
     CreateTable request = create(test).withOwner(USER_OWNER1).withDescription("description").withTableConstraints(null);
     Table table = createAndCheckEntity(request, adminAuthHeaders());
@@ -455,7 +456,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Test
-  public void put_columnConstraintUpdate_200(TestInfo test) throws HttpResponseException {
+  public void put_columnConstraintUpdate_200(TestInfo test) throws IOException {
     List<Column> columns = new ArrayList<>();
     columns.add(getColumn("c1", INT, null).withConstraint(ColumnConstraint.NULL));
     columns.add(getColumn("c2", INT, null).withConstraint(ColumnConstraint.UNIQUE));
@@ -483,7 +484,7 @@ public class TableResourceTest extends EntityTestHelper<Table> {
   }
 
   @Test
-  public void put_updateColumns_200(TestInfo test) throws HttpResponseException {
+  public void put_updateColumns_200(TestInfo test) throws IOException {
     int tagCategoryUsageCount = getTagCategoryUsageCount("user", userAuthHeaders());
     int addressTagUsageCount = getTagUsageCount(USER_ADDRESS_TAG_LABEL.getTagFQN(), userAuthHeaders());
     int bankTagUsageCount = getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), userAuthHeaders());
@@ -1418,13 +1419,6 @@ public class TableResourceTest extends EntityTestHelper<Table> {
       assertNotNull(storedProfile);
       assertEquals(tableProfile, storedProfile);
     }
-  }
-
-  @Override
-  public Table getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = getResource(id);
-    target = target.queryParam("fields", TableResource.FIELDS);
-    return TestUtils.get(target, Table.class, authHeaders);
   }
 
   @Override
