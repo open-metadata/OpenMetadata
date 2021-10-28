@@ -44,6 +44,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -87,6 +88,8 @@ class MetadataRestSink(Sink):
         self.wrote_something = False
         self.charts_dict = {}
         self.client = OpenMetadataAPIClient(self.metadata_config)
+        # Let's migrate usages from OpenMetadataAPIClient to OpenMetadata
+        self.metadata = OpenMetadata(self.metadata_config)
         self.api_client = self.client.client
         self.api_team = "/teams"
         self.api_users = "/users"
@@ -290,7 +293,7 @@ class MetadataRestSink(Sink):
     def write_lineage(self, add_lineage: AddLineage):
         try:
             logger.info(add_lineage)
-            created_lineage = self.client.create_or_update_lineage(add_lineage)
+            created_lineage = self.metadata.add_lineage(add_lineage)
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")
         except (APIError, ValidationError) as err:

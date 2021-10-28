@@ -1,12 +1,9 @@
 """
-OpenMetadata high-level API Database test
+OpenMetadata high-level API Chart test
 """
 import uuid
 from unittest import TestCase
 
-from ingestion.src.metadata.generated.schema.entity.services.messagingService import (
-    Brokers,
-)
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.services.createMessagingService import (
     CreateMessagingServiceEntityRequest,
@@ -180,5 +177,10 @@ class OMetaTopicTest(TestCase):
         # Then we should not find it
         res = self.metadata.list_entities(entity=Topic)
         assert not next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
+            ),
+            None,
         )

@@ -14,15 +14,14 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineServiceType,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import convert_epoch_to_iso
 
 if TYPE_CHECKING:
@@ -96,7 +95,7 @@ def parse_lineage_to_openmetadata(
     operator: "BaseOperator",
     inlets: List,
     outlets: List,
-    client: OpenMetadataAPIClient,
+    client: OpenMetadata,
 ):
     import ast
 
@@ -184,7 +183,7 @@ def parse_lineage_to_openmetadata(
         downstreamTasks=downstream_tasks,
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
-    task = client.create_or_update_task(create_task)
+    task = client.create_or_update(create_task)
     operator.log.info("Created Task {}".format(task))
     operator.log.info("Dag {}".format(dag))
     create_pipeline = CreatePipelineEntityRequest(
@@ -196,12 +195,12 @@ def parse_lineage_to_openmetadata(
         tasks=[EntityReference(id=task.id, type="task")],
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
-    pipeline = client.create_or_update_pipeline(create_pipeline)
+    pipeline = client.create_or_update(create_pipeline)
     operator.log.info("Create Pipeline {}".format(pipeline))
 
     operator.log.info("Parsing Lineage")
     for table in inlets:
-        table_entity = client.get_table_by_name(table.fullyQualifiedName)
+        table_entity = client.get_by_name(entity=Table, fqdn=table.fullyQualifiedName)
         operator.log.debug("from entity {}".format(table_entity))
         lineage = AddLineage(
             edge=EntitiesEdge(
@@ -210,10 +209,10 @@ def parse_lineage_to_openmetadata(
             )
         )
         operator.log.debug("from lineage {}".format(lineage))
-        client.create_or_update_lineage(lineage)
+        client.add_lineage(lineage)
 
     for table in outlets:
-        table_entity = client.get_table_by_name(table.fullyQualifiedName)
+        table_entity = client.get_by_name(entity=Table, fqdn=table.fullyQualifiedName)
         operator.log.debug("to entity {}".format(table_entity))
         lineage = AddLineage(
             edge=EntitiesEdge(
@@ -222,7 +221,7 @@ def parse_lineage_to_openmetadata(
             )
         )
         operator.log.debug("to lineage {}".format(lineage))
-        client.create_or_update_lineage(lineage)
+        client.add_lineage(lineage)
 
 
 def is_airflow_version_1() -> bool:
@@ -269,7 +268,7 @@ class OpenMetadataLineageBackend(LineageBackend):
                     "secret_key": config.secret_key,
                 }
             )
-            client = OpenMetadataAPIClient(metadata_config)
+            client = OpenMetadata(metadata_config)
             op_inlets = []
             op_outlets = []
             if (

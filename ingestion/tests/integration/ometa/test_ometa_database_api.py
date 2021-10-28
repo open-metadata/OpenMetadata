@@ -179,5 +179,10 @@ class OMetaDatabaseTest(TestCase):
         # Then we should not find it
         res = self.metadata.list_entities(entity=Database)
         assert not next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
+            ),
+            None,
         )
