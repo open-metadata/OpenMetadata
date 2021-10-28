@@ -1,5 +1,16 @@
 import logging
-from typing import Generic, List, Optional, Tuple, Type, TypeVar, Union, get_args
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    get_args,
+)
 
 from pydantic import BaseModel
 
@@ -284,7 +295,7 @@ class OpenMetadata(Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    def add_lineage(self, data: AddLineage) -> Tuple[dict, dict]:
+    def add_lineage(self, data: AddLineage) -> Dict[str, Any]:
         """
         Add lineage relationship between two entities and returns
         the entity information of the origin node
@@ -309,7 +320,7 @@ class OpenMetadata(Generic[T, C]):
         entity_id: str,
         up_depth: int = 1,
         down_depth: int = 1,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -327,7 +338,7 @@ class OpenMetadata(Generic[T, C]):
         fqdn: str,
         up_depth: int = 1,
         down_depth: int = 1,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
@@ -348,7 +359,7 @@ class OpenMetadata(Generic[T, C]):
         path: str,
         up_depth: int = 1,
         down_depth: int = 1,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """
         Generic function to get entity data.
         :param entity: Type of the entity
