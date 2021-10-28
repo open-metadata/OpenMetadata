@@ -21,9 +21,18 @@
  */
 export interface PipelineService {
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Description of a pipeline service instance.
    */
   description?: string;
+  /**
+   * Display Name that identifies this pipeline service. It could be title or label from the
+   * source services.
+   */
+  displayName?: string;
   /**
    * Link to the resource corresponding to this pipeline service.
    */
@@ -48,6 +57,39 @@ export interface PipelineService {
    * Type of pipeline service such as Airflow or Prefect...
    */
   serviceType?: PipelineServiceType;
+  /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Fields added during the version changes.
+   */
+  fieldsAdded?: string[];
+  /**
+   * Fields deleted during the version changes.
+   */
+  fieldsDeleted?: string[];
+  /**
+   * Fields modified during the version changes.
+   */
+  fieldsUpdated?: string[];
+  previousVersion?: number;
 }
 
 /**

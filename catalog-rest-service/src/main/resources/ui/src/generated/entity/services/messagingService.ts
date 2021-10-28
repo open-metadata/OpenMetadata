@@ -25,9 +25,18 @@ export interface MessagingService {
    */
   brokers: string[];
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Description of a messaging service instance.
    */
   description?: string;
+  /**
+   * Display Name that identifies this messaging service. It could be title or label from the
+   * source services.
+   */
+  displayName?: string;
   /**
    * Link to the resource corresponding to this messaging service.
    */
@@ -52,6 +61,39 @@ export interface MessagingService {
    * Type of messaging service such as Kafka or Pulsar...
    */
   serviceType: MessagingServiceType;
+  /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Fields added during the version changes.
+   */
+  fieldsAdded?: string[];
+  /**
+   * Fields deleted during the version changes.
+   */
+  fieldsDeleted?: string[];
+  /**
+   * Fields modified during the version changes.
+   */
+  fieldsUpdated?: string[];
+  previousVersion?: number;
 }
 
 /**
