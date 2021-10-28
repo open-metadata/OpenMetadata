@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { findByTestId, render } from '@testing-library/react';
+import { findByText, render } from '@testing-library/react';
 import React from 'react';
 import ExplorePage from './ExplorePage.component';
 
@@ -31,7 +31,7 @@ describe('Test Explore page', () => {
   it('Page Should render', async () => {
     const { container } = render(<ExplorePage />);
 
-    const explorePage = await findByTestId(container, 'explore-page');
+    const explorePage = await findByText(container, /Explore Component/i);
 
     expect(explorePage).toBeInTheDocument();
   });

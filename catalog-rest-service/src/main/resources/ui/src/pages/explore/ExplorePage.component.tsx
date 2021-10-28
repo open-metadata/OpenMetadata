@@ -33,7 +33,7 @@ import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const showToast = useToastContext();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const { searchQuery, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
@@ -65,89 +65,61 @@ const ExplorePage: FunctionComponent = () => {
 
   const fetchCounts = () => {
     const emptyValue = '';
-    const tableCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TABLE
-    );
-    const topicCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TOPIC
-    );
-    const dashboardCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.DASHBOARD
-    );
-    const pipelineCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.PIPELINE
+    const entities = [
+      SearchIndex.TABLE,
+      SearchIndex.TOPIC,
+      SearchIndex.DASHBOARD,
+      SearchIndex.PIPELINE,
+    ];
+
+    const entityCounts = entities.map((entity) =>
+      searchData(searchText, 0, 0, emptyValue, emptyValue, emptyValue, entity)
     );
 
-    Promise.allSettled([
-      tableCount,
-      topicCount,
-      dashboardCount,
-      pipelineCount,
-    ]).then(
-      ([
-        table,
-        topic,
-        dashboard,
-        pipeline,
-      ]: PromiseSettledResult<SearchResponse>[]) => {
-        setTableCount(
-          table.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                table.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setTopicCount(
-          topic.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                topic.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setDashboardCount(
-          dashboard.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                dashboard.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setPipelineCount(
-          pipeline.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                pipeline.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-      }
-    );
+    Promise.allSettled(entityCounts)
+      .then(
+        ([
+          table,
+          topic,
+          dashboard,
+          pipeline,
+        ]: PromiseSettledResult<SearchResponse>[]) => {
+          setTableCount(
+            table.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  table.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setTopicCount(
+            topic.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  topic.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setDashboardCount(
+            dashboard.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  dashboard.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setPipelineCount(
+            pipeline.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  pipeline.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setIsLoading(false);
+        }
+      )
+      .catch(() => setIsLoading(false));
   };
 
   const fetchData = (value: SearchDataFunctionType[]) => {
@@ -172,6 +144,7 @@ const ExplorePage: FunctionComponent = () => {
           resAggTier,
           resAggTag,
         ]: Array<SearchResponse>) => {
+          setError('');
           setSearchResult({
             resSearchResults,
             resAggServiceType,
@@ -195,7 +168,7 @@ const ExplorePage: FunctionComponent = () => {
   }, [searchText]);
 
   return (
-    <div data-testid="explore-page">
+    <>
       {isLoading ? (
         <Loader />
       ) : (
@@ -203,7 +176,6 @@ const ExplorePage: FunctionComponent = () => {
           error={error}
           fetchData={fetchData}
           handleSearchText={handleSearchText}
-          isLoading={isLoading}
           searchQuery={searchQuery}
           searchResult={searchResult}
           searchText={searchText}
@@ -220,7 +192,7 @@ const ExplorePage: FunctionComponent = () => {
           updateTopicCount={handleTopicCount}
         />
       )}
-    </div>
+    </>
   );
 };
 

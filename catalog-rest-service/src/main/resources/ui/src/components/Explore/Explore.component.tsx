@@ -40,6 +40,7 @@ import {
 } from '../../constants/constants';
 import {
   getAggrWithDefaultValue,
+  getCurrentIndex,
   tabsInfo,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
@@ -96,32 +97,6 @@ const getCurrentTab = (tab: string) => {
   return currentTab;
 };
 
-const getCurrentIndex = (tab: string) => {
-  let currentIndex = SearchIndex.TABLE;
-  switch (tab) {
-    case 'topics':
-      currentIndex = SearchIndex.TOPIC;
-
-      break;
-    case 'dashboards':
-      currentIndex = SearchIndex.DASHBOARD;
-
-      break;
-    case 'pipelines':
-      currentIndex = SearchIndex.PIPELINE;
-
-      break;
-
-    case 'tables':
-    default:
-      currentIndex = SearchIndex.TABLE;
-
-      break;
-  }
-
-  return currentIndex;
-};
-
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
@@ -129,7 +104,6 @@ const Explore: React.FC<ExploreProps> = ({
   searchQuery,
   searchResult,
   error,
-  isLoading,
   handleSearchText,
   fetchData,
   updateTableCount,
@@ -157,6 +131,7 @@ const Explore: React.FC<ExploreProps> = ({
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
+  const [isEntityLoading, setIsEntityLoading] = useState(true);
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
@@ -263,6 +238,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const fetchTableData = () => {
+    setIsEntityLoading(true);
     const fetchParams = [
       {
         queryString: searchText,
@@ -498,6 +474,7 @@ const Explore: React.FC<ExploreProps> = ({
 
         updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
       }
+      setIsEntityLoading(false);
     }
   }, [searchResult]);
 
@@ -539,7 +516,7 @@ const Explore: React.FC<ExploreProps> = ({
             showResultCount
             currentPage={currentPage}
             data={data}
-            isLoading={isLoading}
+            isLoading={isEntityLoading}
             paginate={paginate}
             searchText={searchText}
             totalValue={totalNumberOfValue}

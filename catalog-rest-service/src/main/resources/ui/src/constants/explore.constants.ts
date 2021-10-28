@@ -66,6 +66,32 @@ export const getAggrWithDefaultValue = (
     .filter(Boolean) as Array<AggregationType>;
 };
 
+export const getCurrentIndex = (tab: string) => {
+  let currentIndex = SearchIndex.TABLE;
+  switch (tab) {
+    case 'topics':
+      currentIndex = SearchIndex.TOPIC;
+
+      break;
+    case 'dashboards':
+      currentIndex = SearchIndex.DASHBOARD;
+
+      break;
+    case 'pipelines':
+      currentIndex = SearchIndex.PIPELINE;
+
+      break;
+
+    case 'tables':
+    default:
+      currentIndex = SearchIndex.TABLE;
+
+      break;
+  }
+
+  return currentIndex;
+};
+
 export const tabsInfo = [
   {
     label: 'Tables',
