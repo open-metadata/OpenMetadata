@@ -65,6 +65,7 @@ import IconTerns from '../assets/svg/terms.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
+import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
 type Props = {
@@ -142,6 +143,7 @@ export const Icons = {
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
+  VERSION: 'icon-version',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -422,6 +424,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PIPELINE_GREY:
       IconComponent = IconPipelineGrey;
+
+      break;
+    case Icons.VERSION:
+      IconComponent = IconVersion;
 
       break;
 

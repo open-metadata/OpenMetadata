@@ -15,6 +15,7 @@ export interface DatasetOwner extends EntityReference {
 }
 
 export interface DatasetDetailsProps {
+  version?: string;
   joins: TableJoins;
   usageSummary: TypeUsedToReturnUsageDetailsOfAnEntity;
   users: Array<User>;

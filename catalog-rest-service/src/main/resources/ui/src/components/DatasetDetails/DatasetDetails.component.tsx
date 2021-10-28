@@ -1,7 +1,11 @@
 import { isEqual, isNil } from 'lodash';
 import { ColumnJoins, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { getTeamDetailsPath } from '../../constants/constants';
+import { useHistory } from 'react-router';
+import {
+  getDatasetVersionPath,
+  getTeamDetailsPath,
+} from '../../constants/constants';
 import {
   JoinedWith,
   Table,
@@ -54,7 +58,9 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   users,
   usageSummary,
   joins,
+  version,
 }: DatasetDetailsProps) => {
+  const history = useHistory();
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -292,6 +298,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     }
   };
 
+  const versionHandler = () => {
+    history.push(getDatasetVersionPath(datasetFQN, version as string));
+  };
+
   useEffect(() => {
     if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
@@ -322,6 +332,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tags={tableTags}
           tier={tier || ''}
           titleLinks={slashedTableName}
+          version={version}
+          versionHandler={versionHandler}
         />
 
         <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">

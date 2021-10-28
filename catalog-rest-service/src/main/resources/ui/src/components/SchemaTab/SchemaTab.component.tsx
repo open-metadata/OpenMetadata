@@ -36,6 +36,8 @@ type Props = {
   sampleData: TableData;
   columnName: string;
   hasEditAccess: boolean;
+  isToggable?: boolean;
+  isReadOnly?: boolean;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -46,6 +48,8 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasEditAccess,
   owner,
+  isToggable = false,
+  isReadOnly = false,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
   const [checkedValue, setCheckedValue] = useState('schema');
@@ -101,26 +105,28 @@ const SchemaTab: FunctionComponent<Props> = ({
             />
           )}
         </div>
-        <div className="tw-col-span-2 tw-text-right tw-mb-4">
-          <div
-            className="tw-w-60 tw-inline-flex tw-border tw-border-main
+        {!isToggable ? (
+          <div className="tw-col-span-2 tw-text-right tw-mb-4">
+            <div
+              className="tw-w-60 tw-inline-flex tw-border tw-border-main
             tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
-            <button
-              className={getToggleButtonClasses('schema')}
-              data-testid="schema-button"
-              onClick={() => handleToggleChange('schema')}>
-              Schema
-            </button>
-            <button
-              className={getToggleButtonClasses('sample-data')}
-              data-testid="sample-data-button"
-              onClick={() => {
-                handleToggleChange('sample-data');
-              }}>
-              Sample Data
-            </button>
+              <button
+                className={getToggleButtonClasses('schema')}
+                data-testid="schema-button"
+                onClick={() => handleToggleChange('schema')}>
+                Schema
+              </button>
+              <button
+                className={getToggleButtonClasses('sample-data')}
+                data-testid="sample-data-button"
+                onClick={() => {
+                  handleToggleChange('sample-data');
+                }}>
+                Sample Data
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="row">
         <div className="col-sm-12">
@@ -128,6 +134,7 @@ const SchemaTab: FunctionComponent<Props> = ({
             <EntityTable
               columnName={columnName}
               hasEditAccess={hasEditAccess}
+              isReadOnly={isReadOnly}
               joins={joins}
               owner={owner}
               searchText={lowerCase(searchText)}

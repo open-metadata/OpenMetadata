@@ -92,6 +92,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
+  const [currentVersion, setCurrentVersion] = useState<string>();
 
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
@@ -171,9 +172,11 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tags,
           sampleData,
           tableProfile,
+          version,
         } = res.data;
         setTableDetails(res.data);
         setTableId(id);
+        setCurrentVersion(version);
         setTier(getTierFromTableTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
@@ -263,6 +266,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
           users={AppState.users}
+          version={currentVersion}
         />
       )}
     </>
