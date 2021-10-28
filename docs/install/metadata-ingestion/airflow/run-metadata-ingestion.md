@@ -88,4 +88,4 @@ def metadata_ingestion_workflow():
     workflow.stop
 ```
 
-Create a Workflow instance and pass a sample-data configuration which will read metadata from Json files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../../../openmetadata/connectors/).
+Create a Workflow instance and pass a sample-data configuration which will read metadata from Json files and ingest it into the OpenMetadata Server. You can customize this configuration or add different connectors please refer to our [examples](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/examples/workflows) and refer to [Connectors](../connectors/).
