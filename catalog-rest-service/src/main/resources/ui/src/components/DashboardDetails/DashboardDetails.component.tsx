@@ -278,7 +278,7 @@ const DashboardDetails = ({
   }, [followers]);
 
   return (
-    <div>
+    <>
       <PageContainer>
         <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
@@ -458,7 +458,7 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
-    </div>
+    </>
   );
 };
 
