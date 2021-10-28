@@ -47,11 +47,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.util.EntityUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -197,6 +200,40 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @RegisterRowMapper(EntityVersionMapper.class)
+    @SqlQuery("SELECT extension, json FROM entity_extension WHERE id = :id AND extension " +
+            "LIKE CONCAT (:extensionPrefix, '.%')")
+    List<EntityVersionPair> getEntityVersions(@Bind("id") String id, @Bind("extensionPrefix") String extensionPrefix);
+
+    @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
+    String getEntityVersion(@Bind("id") String id, @Bind("extension") String extension);
+  }
+
+  class EntityVersionPair {
+    private Double version;
+    private String entityJson;
+
+    public Double getVersion() {
+      return version;
+    }
+
+    public String getEntityJson() {
+      return entityJson;
+    }
+
+    public EntityVersionPair(Double version, String json) {
+      this.version = version;
+      this.entityJson = json;
+    }
+  }
+
+  class EntityVersionMapper implements RowMapper<EntityVersionPair> {
+    @Override
+    public EntityVersionPair map(ResultSet rs, StatementContext ctx) throws SQLException {
+      Double version = EntityUtil.getVersion(rs.getString("extension"));
+      return new EntityVersionPair(version, rs.getString("json"));
+    }
   }
 
   interface EntityRelationshipDAO {
@@ -208,34 +245,41 @@ public interface CollectionDAO {
     //
     // Find to operations
     //
-    @SqlQuery("SELECT toId, toEntity FROM entity_relationship WHERE fromId = :fromId AND relation = :relation")
+    @SqlQuery("SELECT toId, toEntity FROM entity_relationship " +
+            "WHERE fromId = :fromId AND relation = :relation " +
+            "ORDER BY fromId")
     @RegisterRowMapper(ToEntityReferenceMapper.class)
     List<EntityReference> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
-    @SqlQuery("SELECT toId FROM entity_relationship WHERE " +
-            "fromId = :fromId AND relation = :relation AND toEntity = :toEntity ORDER BY fromId")
+    @SqlQuery("SELECT toId FROM entity_relationship " +
+            "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity " +
+            "ORDER BY fromId")
     List<String> findTo(@Bind("fromId") String fromId, @Bind("relation") int relation,
                         @Bind("toEntity") String toEntity);
 
-    @SqlQuery("SELECT count(*) FROM entity_relationship WHERE " +
-            "fromId = :fromId AND relation = :relation AND toEntity = :toEntity ORDER BY fromId")
+    @SqlQuery("SELECT count(*) FROM entity_relationship " +
+            "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity " +
+            "ORDER BY fromId")
     int findToCount(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
     //
     // Find from operations
     //
-    @SqlQuery("SELECT fromId FROM entity_relationship WHERE " +
-            "toId = :toId AND relation = :relation AND fromEntity = :fromEntity ORDER BY fromId")
+    @SqlQuery("SELECT fromId FROM entity_relationship " +
+            "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity " +
+            "ORDER BY fromId")
     List<String> findFrom(@Bind("toId") String toId, @Bind("relation") int relation,
                           @Bind("fromEntity") String fromEntity);
 
-    @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship WHERE toId = :toId AND relation = :relation " +
+    @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship " +
+            "WHERE toId = :toId AND relation = :relation " +
             "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFrom(@Bind("toId") String toId, @Bind("relation") int relation);
 
-    @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship WHERE toId = :toId AND relation = :relation AND " +
-            "fromEntity = :fromEntity ORDER BY fromId")
+    @SqlQuery("SELECT fromId, fromEntity FROM entity_relationship " +
+            "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity " +
+            "ORDER BY fromId")
     @RegisterRowMapper(FromEntityReferenceMapper.class)
     List<EntityReference> findFromEntity(@Bind("toId") String toId, @Bind("relation") int relation,
                                          @Bind("fromEntity") String fromEntity);
@@ -243,22 +287,27 @@ public interface CollectionDAO {
     //
     // Delete Operations
     //
-    @SqlUpdate("DELETE from entity_relationship WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
+    @SqlUpdate("DELETE from entity_relationship " +
+            "WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
     void delete(@Bind("fromId") String fromId, @Bind("toId") String toId, @Bind("relation") int relation);
 
     // Delete all the entity relationship fromID --- relation --> entity of type toEntity
-    @SqlUpdate("DELETE from entity_relationship WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity")
+    @SqlUpdate("DELETE from entity_relationship " +
+            "WHERE fromId = :fromId AND relation = :relation AND toEntity = :toEntity")
     void deleteFrom(@Bind("fromId") String fromId, @Bind("relation") int relation, @Bind("toEntity") String toEntity);
 
     // Delete all the entity relationship fromID --- relation --> to any entity
-    @SqlUpdate("DELETE from entity_relationship WHERE fromId = :fromId AND relation = :relation")
+    @SqlUpdate("DELETE from entity_relationship " +
+            "WHERE fromId = :fromId AND relation = :relation")
     void deleteFrom(@Bind("fromId") String fromId, @Bind("relation") int relation);
 
     // Delete all the entity relationship toId <-- relation --  entity of type fromEntity
-    @SqlUpdate("DELETE from entity_relationship WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity")
+    @SqlUpdate("DELETE from entity_relationship " +
+            "WHERE toId = :toId AND relation = :relation AND fromEntity = :fromEntity")
     void deleteTo(@Bind("toId") String toId, @Bind("relation") int relation, @Bind("fromEntity") String fromEntity);
 
-    @SqlUpdate("DELETE from entity_relationship WHERE toId = :id OR fromId = :id")
+    @SqlUpdate("DELETE from entity_relationship " +
+            "WHERE toId = :id OR fromId = :id")
     void deleteAll(@Bind("id") String id);
   }
 

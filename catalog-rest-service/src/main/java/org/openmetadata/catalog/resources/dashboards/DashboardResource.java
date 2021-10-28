@@ -28,11 +28,13 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -171,6 +173,22 @@ public class DashboardResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List dashboard versions", tags = "dashboards",
+          description = "Get a list of all the versions of a dashboard identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of dashboard versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "Dashboard Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a dashboard", tags = "dashboards",
           description = "Get a dashboard by `id`.",
@@ -210,6 +228,26 @@ public class DashboardResource {
     return addHref(uriInfo, dashboard);
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the dashboard", tags = "dashboards",
+          description = "Get a version of the dashboard by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "dashboard",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Dashboard.class))),
+                  @ApiResponse(responseCode = "404", description = "Dashboard for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Dashboard getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Dashboard Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Dashboard version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
 
   @POST
   @Operation(summary = "Create a dashboard", tags = "dashboards",
@@ -223,13 +261,7 @@ public class DashboardResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateDashboard create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+    Dashboard dashboard = getDashboard(securityContext, create);
     dashboard = addHref(uriInfo, dao.create(dashboard));
     return Response.created(dashboard.getHref()).entity(dashboard).build();
   }
@@ -271,14 +303,7 @@ public class DashboardResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDashboard create) throws IOException, ParseException {
-    Dashboard dashboard = new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
-            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    Dashboard dashboard = getDashboard(securityContext, create);
     PutResponse<Dashboard> response = dao.createOrUpdate(dashboard);
     dashboard = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(dashboard).build();
@@ -334,5 +359,15 @@ public class DashboardResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Dashboard getDashboard(SecurityContext securityContext, CreateDashboard create) {
+    return new Dashboard().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription()).withService(create.getService()).withCharts(create.getCharts())
+            .withDashboardUrl(create.getDashboardUrl()).withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

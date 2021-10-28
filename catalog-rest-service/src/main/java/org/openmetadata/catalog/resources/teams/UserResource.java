@@ -35,6 +35,7 @@ import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -160,6 +161,23 @@ public class UserResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List user versions", tags = "users",
+          description = "Get a list of all the versions of a user identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of user versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "user Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+
+  @GET
   @Valid
   @Path("/{id}")
   @Operation(summary = "Get a user", tags = "users",
@@ -221,6 +239,27 @@ public class UserResource {
     return addHref(uriInfo, user);
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the user", tags = "users",
+          description = "Get a version of the user by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "user",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = User.class))),
+                  @ApiResponse(responseCode = "404", description = "User for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public User getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "User Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "User version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a user", tags = "users",
           description = "Create a new user.",
@@ -235,12 +274,7 @@ public class UserResource {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
-    User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
-            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withTeams(dao.validateTeams(create.getTeams()));
+    User user = getUser(securityContext, create);
     addHref(uriInfo, dao.create(user));
     return Response.created(user.getHref()).entity(user).build();
   }
@@ -260,12 +294,7 @@ public class UserResource {
     if (create.getIsAdmin() != null && create.getIsAdmin()) {
       SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     }
-    User user = new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
-            .withDisplayName(create.getDisplayName()).withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
-            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withTeams(dao.validateTeams(create.getTeams()));
+    User user = getUser(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new UserEntityInterface(user).getEntityReference());
     RestUtil.PutResponse<User> response = dao.createOrUpdate(user);
@@ -309,5 +338,14 @@ public class UserResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private User getUser(SecurityContext securityContext, CreateUser create) throws IOException {
+    return new User().withId(UUID.randomUUID()).withName(create.getName()).withEmail(create.getEmail())
+            .withDescription(create.getDescription()).withDisplayName(create.getDisplayName())
+            .withIsBot(create.getIsBot()).withIsAdmin(create.getIsAdmin())
+            .withProfile(create.getProfile()).withTimezone(create.getTimezone())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date()).withTeams(dao.validateTeams(create.getTeams()));
   }
 }

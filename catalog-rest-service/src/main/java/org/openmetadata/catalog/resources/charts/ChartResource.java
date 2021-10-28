@@ -28,12 +28,15 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
+import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -166,6 +169,22 @@ public class ChartResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List chart versions", tags = "charts",
+          description = "Get a list of all the versions of a chart identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of chart versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "Chart Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a Chart", tags = "charts",
           description = "Get a chart by `id`.",
@@ -205,6 +224,27 @@ public class ChartResource {
     return Response.ok(chart).build();
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the chart", tags = "charts",
+          description = "Get a version of the chart by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "chart",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Chart.class))),
+                  @ApiResponse(responseCode = "404", description = "Chart for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Chart getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Chart Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Chart version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a chart", tags = "charts",
           description = "Create a chart under an existing `service`.",
@@ -217,15 +257,7 @@ public class ChartResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateChart create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Chart chart = getChart(securityContext, create);
     chart = addHref(uriInfo, dao.create(chart));
     return Response.created(chart.getHref()).entity(chart).build();
   }
@@ -267,15 +299,7 @@ public class ChartResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateChart create) throws IOException, ParseException {
 
-    Chart chart =
-            new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
-                    .withTables(create.getTables()).withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Chart chart = getChart(securityContext, create);
     PutResponse<Chart> response = dao.createOrUpdate(chart);
     chart = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(chart).build();
@@ -331,5 +355,16 @@ public class ChartResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Chart getChart(SecurityContext securityContext, CreateChart create) {
+    return new Chart().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withService(create.getService())
+            .withChartType(create.getChartType()).withChartUrl(create.getChartUrl())
+            .withTables(create.getTables()).withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

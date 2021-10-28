@@ -33,6 +33,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
@@ -42,8 +43,6 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -82,7 +81,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource {
-  private static final Logger LOG = LoggerFactory.getLogger(TableResource.class);
   private static final String TABLE_COLLECTION_PATH = "v1/tables/";
   private final TableRepository dao;
   private final CatalogAuthorizer authorizer;
@@ -167,6 +165,22 @@ public class TableResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List table versions", tags = "tables",
+          description = "Get a list of all the versions of a table identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of table versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a table", tags = "tables",
           description = "Get a table by `id`",
@@ -209,6 +223,27 @@ public class TableResource {
     return addHref(uriInfo, dao.getByName(fqn, fields));
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the table", tags = "tables",
+          description = "Get a version of the table by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "table",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Table.class))),
+                  @ApiResponse(responseCode = "404", description = "Table for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Table getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "table Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "table version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a table", tags = "tables",
           description = "Create a new table under an existing `database`.",
@@ -222,14 +257,7 @@ public class TableResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateTable create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    Table table = getTable(securityContext, create);
     table = addHref(uriInfo, dao.create(validateNewTable(table)));
     return Response.created(table.getHref()).entity(table).build();
   }
@@ -246,14 +274,7 @@ public class TableResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTable create) throws IOException, ParseException {
-    Table table = new Table().withId(UUID.randomUUID()).withName(create.getName())
-            .withColumns(create.getColumns()).withDescription(create.getDescription())
-            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
-            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withOwner(create.getOwner())
-            .withUpdatedAt(new Date())
-            .withDatabase(new EntityReference().withId(create.getDatabase()));
+    Table table = getTable(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
     PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table));
     table = addHref(uriInfo, response.getEntity());
@@ -399,5 +420,16 @@ public class TableResource {
     DatabaseUtil.validateViewDefinition(table.getTableType(), table.getViewDefinition());
     DatabaseUtil.validateColumns(table);
     return table;
+  }
+
+  private Table getTable(SecurityContext securityContext, CreateTable create) {
+    return new Table().withId(UUID.randomUUID()).withName(create.getName())
+            .withColumns(create.getColumns()).withDescription(create.getDescription())
+            .withTableConstraints(create.getTableConstraints()).withTableType(create.getTableType())
+            .withTags(create.getTags()).withViewDefinition(create.getViewDefinition())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withOwner(create.getOwner())
+            .withUpdatedAt(new Date())
+            .withDatabase(new EntityReference().withId(create.getDatabase()));
   }
 }

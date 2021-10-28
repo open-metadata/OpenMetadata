@@ -27,12 +27,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTopic;
+import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -164,6 +166,22 @@ public class TopicResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List topic versions", tags = "topics",
+          description = "Get a list of all the versions of a topic identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of topic versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "Topic Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a topic", tags = "topics",
           description = "Get a topic by `id`.",
@@ -203,6 +221,28 @@ public class TopicResource {
     return Response.ok(topic).build();
   }
 
+
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the topic", tags = "topics",
+          description = "Get a version of the topic by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "topic",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Topic.class))),
+                  @ApiResponse(responseCode = "404", description = "Topic for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Topic getVersion(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Topic Id", schema = @Schema(type = "string"))
+                              @PathParam("id") String id,
+                              @Parameter(description = "Topic version number in the form `major`.`minor`",
+                                      schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                              @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a topic", tags = "topics",
           description = "Create a topic under an existing `service`.",
@@ -215,19 +255,7 @@ public class TopicResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateTopic create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Topic topic = getTopic(securityContext, create);
 
     topic = addHref(uriInfo, dao.create(topic));
     return Response.created(topic.getHref()).entity(topic).build();
@@ -270,20 +298,7 @@ public class TopicResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTopic create) throws IOException, ParseException {
 
-    Topic topic =
-            new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
-                    .withService(create.getService()).withPartitions(create.getPartitions())
-                    .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
-                    .withCleanupPolicies(create.getCleanupPolicies())
-                    .withMaximumMessageSize(create.getMaximumMessageSize())
-                    .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
-                    .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
-                    .withReplicationFactor(create.getReplicationFactor())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
-
+    Topic topic = getTopic(securityContext, create);
     PutResponse<Topic> response = dao.createOrUpdate(topic);
     topic = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(topic).build();
@@ -340,5 +355,20 @@ public class TopicResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Topic getTopic(SecurityContext securityContext, CreateTopic create) {
+    return new Topic().withId(UUID.randomUUID()).withName(create.getName()).withDescription(create.getDescription())
+            .withService(create.getService()).withPartitions(create.getPartitions())
+            .withSchemaText(create.getSchemaText()).withSchemaType(create.getSchemaType())
+            .withCleanupPolicies(create.getCleanupPolicies())
+            .withMaximumMessageSize(create.getMaximumMessageSize())
+            .withMinimumInSyncReplicas(create.getMinimumInSyncReplicas())
+            .withRetentionSize(create.getRetentionSize()).withRetentionTime(create.getRetentionTime())
+            .withReplicationFactor(create.getReplicationFactor())
+            .withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

@@ -21,23 +21,22 @@ import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.resources.teams.UserResource.UserList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.ResultList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -176,7 +175,9 @@ public class UserRepository extends EntityRepository<User> {
 
   private void assignTeams(User user, List<EntityReference> teams) {
     // Query - add team to the user
-    for (EntityReference team : Optional.ofNullable(teams).orElse(Collections.emptyList())) {
+    teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
+    teams.sort(Comparator.comparing(EntityReference::getId)); // Sort team order to the query order
+    for (EntityReference team : teams) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
               "team", "user", CONTAINS.ordinal());
     }
@@ -208,9 +209,7 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     @Override
-    public String getDescription() {
-      return null;
-    }
+    public String getDescription() { return entity.getDescription(); }
 
     @Override
     public String getDisplayName() {
@@ -230,6 +229,15 @@ public class UserRepository extends EntityRepository<User> {
     public Double getVersion() { return entity.getVersion(); }
 
     @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.USER);
@@ -239,23 +247,28 @@ public class UserRepository extends EntityRepository<User> {
     public User getEntity() { return entity; }
 
     @Override
-    public void setId(UUID id) { entity.setId(id);
-    }
+    public void setId(UUID id) { entity.setId(id); }
 
     @Override
-    public void setDescription(String description) { }
+    public void setDescription(String description) { entity.setDescription(description);}
 
     @Override
     public void setDisplayName(String displayName) { }
 
     @Override
-    public void setVersion(Double version) { entity.setVersion(version); }
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
 
     @Override
-    public void setUpdatedBy(String user) { entity.setUpdatedBy(user); }
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
 
     @Override
-    public void setUpdatedAt(Date date) { entity.setUpdatedAt(date); }
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }
@@ -276,13 +289,31 @@ public class UserRepository extends EntityRepository<User> {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
+      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
+      recordChange("timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
+      recordChange("isBot", original.getEntity().getIsBot(), updated.getEntity().getIsBot());
+      recordChange("isAdmin", original.getEntity().getIsAdmin(), updated.getEntity().getIsAdmin());
+      recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
     }
 
     private void updateTeams(User origUser, User updatedUser) {
       // Remove teams from original and add teams from updated
       dao.relationshipDAO().deleteTo(origUser.getId().toString(), CONTAINS.ordinal(), "team");
       assignTeams(updatedUser, updatedUser.getTeams());
-      // TODO change is not recorded
+
+      List<EntityReference> origTeams = origUser.getTeams();
+      List<EntityReference> updatedTeams = updatedUser.getTeams();
+      if (origTeams == null || origTeams.isEmpty()) {
+        origTeams = null;
+      } else {
+        origTeams.sort(Comparator.comparing(EntityReference::getId));
+      }
+      if (updatedTeams == null || updatedTeams.isEmpty()) {
+        updatedTeams = null;
+      } else {
+        updatedTeams.sort(Comparator.comparing(EntityReference::getId));
+      }
+      recordChange("teams", origTeams, updatedTeams);
     }
   }
 }

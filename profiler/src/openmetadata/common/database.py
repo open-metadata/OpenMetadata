@@ -28,11 +28,16 @@ class Database(Closeable, metaclass=ABCMeta):
 
     @property
     @abstractmethod
+    def columns(self):
+        pass
+
+    @property
+    @abstractmethod
     def sql_exprs(self):
         pass
 
     @abstractmethod
-    def table_metadata_query(self, table_name: str) -> str:
+    def table_column_metadata(self, table: str, schema: str):
         pass
 
     @abstractmethod
@@ -56,17 +61,17 @@ class Database(Closeable, metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def sql_fetchone(self, sql) -> tuple:
+    def execute_query(self, sql) -> tuple:
         pass
 
     @abstractmethod
-    def sql_fetchone_description(self, sql) -> tuple:
+    def execute_query_columns(self, sql) -> tuple:
         pass
 
     @abstractmethod
-    def sql_fetchall(self, sql) -> List[tuple]:
+    def execute_query_all(self, sql) -> List[tuple]:
         pass
 
     @abstractmethod
-    def sql_fetchall_description(self, sql) -> tuple:
+    def execute_query_all_columns(self, sql) -> tuple:
         pass

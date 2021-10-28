@@ -29,15 +29,15 @@ import org.openmetadata.catalog.api.services.CreatePipelineService;
 import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
-import org.openmetadata.catalog.entity.teams.Team;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -50,6 +50,8 @@ import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +59,6 @@ import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -69,33 +70,27 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 
-public class TaskResourceTest extends CatalogApplicationTest {
+public class TaskResourceTest extends EntityResourceTest<Task> {
   private static final Logger LOG = LoggerFactory.getLogger(TaskResourceTest.class);
-  public static User USER1;
-  public static EntityReference USER_OWNER1;
-  public static Team TEAM1;
-  public static EntityReference TEAM_OWNER1;
   public static EntityReference AIRFLOW_REFERENCE;
   public static EntityReference PREFECT_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
+  public TaskResourceTest() {
+    super(Task.class, "tasks", TaskResource.FIELDS);
+  }
 
 
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
-    USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
-    USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
-
-    TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
-    TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
+    EntityResourceTest.setup(test);
 
     CreatePipelineService createService = new CreatePipelineService().withName("airflow")
             .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));
@@ -106,6 +101,44 @@ public class TaskResourceTest extends CatalogApplicationTest {
             .withPipelineUrl(new URI("http://localhost:0"));
     service = createService(createService, adminAuthHeaders());
     PREFECT_REFERENCE = new PipelineServiceEntityInterface(service).getEntityReference();
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
+    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  }
+
+  @Override
+  public void validateCreatedEntity(Task task, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    CreateTask createRequest = (CreateTask) request;
+    validateCommonEntityFields(getEntityInterface(task), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
+
+    assertEquals(createRequest.getTaskUrl(), task.getTaskUrl());
+    assertService(createRequest.getService(), task.getService());
+    TestUtils.validateTags(task.getFullyQualifiedName(), createRequest.getTags(), task.getTags());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Task updatedEntity, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Task expected, Task patched, Map<String, String> authHeaders) throws HttpResponseException {
+    validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), expected.getOwner());
+
+    // Entity specific validation
+    assertEquals(expected.getTaskUrl(), patched.getTaskUrl());
+    assertService(expected.getService(), patched.getService());
+    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
+  }
+
+  @Override
+  public EntityInterface<Task> getEntityInterface(Task entity) {
+    return new TaskEntityInterface(entity);
   }
 
   @Test
@@ -293,68 +326,6 @@ public class TaskResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_taskUpdateWithNoChange_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create a task with POST
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    Task task = createAndCheckTask(request, adminAuthHeaders());
-
-    // Update task two times successfully with PUT requests
-    task = updateAndCheckTask(task, request, OK, adminAuthHeaders(), NO_CHANGE);
-    updateAndCheckTask(task, request, OK, adminAuthHeaders(), NO_CHANGE);
-  }
-
-  @Test
-  public void put_taskCreate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create a new task with PUT
-    CreateTask request = create(test).withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId())
-            .withType(AIRFLOW_REFERENCE.getType())).withOwner(USER_OWNER1);
-    Task task = updateAndCheckTask(null, request, CREATED, adminAuthHeaders(), NO_CHANGE);
-    String expectedFQN = AIRFLOW_REFERENCE.getName() + "." + task.getName();
-    assertEquals(expectedFQN, task.getFullyQualifiedName());
-  }
-
-  @Test
-  public void put_taskCreate_as_owner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create a new task with put
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
-    // Add task as admin
-    Task task = createAndCheckTask(request, adminAuthHeaders());
-    // Update the task Owner and see if it is allowed
-    updateAndCheckTask(task, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
-  }
-
-  @Test
-  public void put_taskNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription(null);
-    Task task = createAndCheckTask(request, adminAuthHeaders());
-
-    // Update null description with a new description
-    task = updateAndCheckTask(task, request.withDescription("newDescription").withDisplayName("newTask"), OK,
-            adminAuthHeaders(), MINOR_UPDATE);
-    assertEquals("newTask", task.getDisplayName()); // TODO move this to validate
-  }
-
-  @Test
-  public void put_taskEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    // Create task with empty description
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    Task task = createAndCheckTask(request, adminAuthHeaders());
-
-    // Update empty description with a new description
-    updateAndCheckTask(task, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
-  public void put_taskNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("description");
-    createAndCheckTask(request, adminAuthHeaders());
-
-    // Updating description is ignored when backend already has description
-    Task task = updateTask(request.withDescription("newDescription"), OK, adminAuthHeaders());
-    assertEquals("description", task.getDescription());
-  }
-
-  @Test
   public void put_taskUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
     URI taskURI = new URI("http://localhost:8080/task_id=1");
     String taskSQL = "select * from test;";
@@ -420,27 +391,39 @@ public class TaskResourceTest extends CatalogApplicationTest {
     assertNull(task.getDescription());
     assertNull(task.getOwner());
     assertNotNull(task.getService());
+
+    //
+    // Add description, owner and tags when previously they were null
+    //
     List<TagLabel> taskTags = List.of(USER_ADDRESS_TAG_LABEL);
-
-    task = getTask(task.getId(), "service,owner,tags", adminAuthHeaders());
-    task.getService().setHref(null); // href is readonly and not patchable
-
-    // Add description, owner when previously they were null
-    task = patchTaskAttributesAndCheck(task, "description", TEAM_OWNER1, taskTags,
-            adminAuthHeaders(), MINOR_UPDATE);
+    String origJson = JsonUtils.pojoToJson(task);
+    task.withDescription("description").withOwner(TEAM_OWNER1).withTags(taskTags);
+    ChangeDescription change = getChangeDescription(task.getVersion())
+            .withFieldsAdded(Arrays.asList("description","owner", "tags"));
+    task = patchEntityAndCheck(task, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     task.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
     task.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
-    taskTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
 
-    // Replace description, tier, owner
-    task = patchTaskAttributesAndCheck(task, "description1", USER_OWNER1, taskTags,
-            adminAuthHeaders(), MINOR_UPDATE);
+    //
+    // Update description, tier, owner
+    //
+    taskTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
+    origJson = JsonUtils.pojoToJson(task);
+    task.withDescription("description1").withOwner(USER_OWNER1).withTags(taskTags);
+    change = getChangeDescription(task.getVersion()).withFieldsUpdated(Arrays.asList("description", "owner", "tags"));
+    task = patchEntityAndCheck(task, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
     task.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
     task.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
-    taskTags = List.of(TIER_1);
 
-    // Remove description, tier, owner
-    patchTaskAttributesAndCheck(task, null, null, taskTags, adminAuthHeaders(), MINOR_UPDATE);
+    //
+    // Remove description and owner - remove a tag
+    //
+    taskTags = List.of(TIER_1);
+    origJson = JsonUtils.pojoToJson(task);
+    task.withDescription(null).withOwner(null).withTags(taskTags);
+    change = getChangeDescription(task.getVersion()).withFieldsDeleted(Arrays.asList("description","owner"))
+                    .withFieldsUpdated(Collections.singletonList("tags"));
+    patchEntityAndCheck(task, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -575,42 +558,12 @@ public class TaskResourceTest extends CatalogApplicationTest {
     return task;
   }
 
-  private Task patchTaskAttributesAndCheck(Task before, String newDescription, EntityReference newOwner,
-                                           List<TagLabel> tags, Map<String, String> authHeaders, UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String taskJson = JsonUtils.pojoToJson(before);
-
-    // Update the task attributes
-    before.setDescription(newDescription);
-    before.setOwner(newOwner);
-    before.setTags(tags);
-
-    // Validate information returned in patch response has the updates
-    Task updateTask = patchTask(taskJson, before, authHeaders);
-    validateTask(updateTask, before.getDescription(), newOwner, null, tags, before.getTaskUrl(),
-            updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updateTask.getVersion(), updateType);
-
-    // GET the task and Validate information returned
-    Task getTask = getTask(before.getId(), "service,owner,tags", authHeaders);
-    validateTask(getTask, before.getDescription(), newOwner, null, tags, before.getTaskUrl(), updatedBy);
-    return updateTask;
-  }
-
   private Task patchTask(UUID taskId, String originalJson, Task updatedTask,
                            Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     String updatedTaskJson = JsonUtils.pojoToJson(updatedTask);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedTaskJson);
     return TestUtils.patch(getResource("tasks/" + taskId), patch, Task.class, authHeaders);
-  }
-
-  private Task patchTask(String originalJson,
-                         Task updatedTask,
-                         Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    return patchTask(updatedTask.getId(), originalJson, updatedTask, authHeaders);
   }
 
   public static void getTask(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

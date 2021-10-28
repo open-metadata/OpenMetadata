@@ -36,6 +36,7 @@ public abstract class CatalogApplicationTest {
     APP = new DropwizardAppExtension<>(CatalogApplication.class, CONFIG_PATH);
   }
 
+
   public static WebTarget getResource(String collection) {
     String targetURI = "http://localhost:" + APP.getLocalPort() + "/api/v1/" + collection;
     return APP.client().target(targetURI);

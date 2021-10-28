@@ -58,6 +58,14 @@ plugins: Dict[str, Set[str]] = {
         "GeoAlchemy2",
     },
     "postgres": {"pymysql>=1.0.2", "psycopg2-binary", "GeoAlchemy2"},
+    "mysql": {"pymysql>=1.0.2"},
+    "snowflake": {"snowflake-sqlalchemy<=1.2.4"},
+    "hive": {
+        "openmetadata-sqlalchemy-hive==0.2.0",
+        "thrift~=0.13.0",
+        "sasl==0.3.1",
+        "thrift-sasl==0.4.3",
+    },
 }
 
 build_options = {"includes": ["_cffi_backend"]}
