@@ -637,10 +637,6 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get("/pipelines/name/{}".format(pipeline_name), data=params)
         return Pipeline(**resp)
 
-    def create_or_update_lineage(self, lineage: AddLineage):
-        resp = self.client.put("/lineage", data=lineage.json())
-        return resp
-
     def create_or_update_model(self, model: Model):
         resp = self.client.put("/models", data=model.json())
         return Model(**resp)
