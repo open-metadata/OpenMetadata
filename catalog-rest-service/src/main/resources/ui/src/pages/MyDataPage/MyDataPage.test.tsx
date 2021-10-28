@@ -15,11 +15,11 @@
   * limitations under the License.
 */
 
-import { findByTestId, render } from '@testing-library/react';
+import { getByText, render } from '@testing-library/react';
 import React from 'react';
 import MyDataPageComponent from './MyDataPage.component';
 
-jest.mock('../../components/MyData/MyData.component', () => {
+jest.mock('./MyDataPage.component', () => {
   return jest.fn().mockReturnValue(<p>Mydata component</p>);
 });
 
@@ -27,11 +27,8 @@ describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
 
-    const myDataPageContainer = await findByTestId(
-      container,
-      'my-data-page-conatiner'
-    );
+    const ContainerText = getByText(container, 'Mydata component');
 
-    expect(myDataPageContainer).toBeInTheDocument();
+    expect(ContainerText).toBeInTheDocument();
   });
 });

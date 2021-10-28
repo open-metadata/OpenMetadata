@@ -17,7 +17,7 @@
 
 import classNames from 'classnames';
 import { capitalize, isEmpty } from 'lodash';
-import { ColumnTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
 import { Button } from '../buttons/Button/Button';
 import PopOver from '../common/popover/PopOver';
@@ -38,7 +38,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
   onSelectionChange,
   showTags = true,
 }: TagsContainerProps) => {
-  const [tags, setTags] = useState<Array<ColumnTags>>(selectedTags);
+  const [tags, setTags] = useState<Array<EntityTags>>(selectedTags);
   const [newTag, setNewTag] = useState<string>('');
   const [hasFocus, setFocus] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +123,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     onCancel(event);
   };
 
-  const getTagsContainer = (tag: ColumnTags, index: number) => {
+  const getTagsContainer = (tag: EntityTags, index: number) => {
     return tag.tagFQN ? (
       <Tags
         className="tw-bg-gray-200"
@@ -138,7 +138,7 @@ const TagsContainer: FunctionComponent<TagsContainerProps> = ({
     ) : null;
   };
 
-  const getTagsElement = (tag: ColumnTags, index: number) => {
+  const getTagsElement = (tag: EntityTags, index: number) => {
     if (tag.labelType) {
       return (
         <PopOver

@@ -17,7 +17,7 @@
 
 import classNames from 'classnames';
 import { lowerCase, upperCase } from 'lodash';
-import { ColumnTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, {
   Fragment,
   FunctionComponent,
@@ -146,7 +146,7 @@ const SchemaTable: FunctionComponent<Props> = ({
       return selectedTags.includes(tag?.tagFQN as string);
     });
 
-    const newTags: Array<ColumnTags> = selectedTags
+    const newTags: Array<EntityTags> = selectedTags
       .filter((tag) => {
         return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
       })
@@ -171,7 +171,7 @@ const SchemaTable: FunctionComponent<Props> = ({
     setEditColumnTag({ column, index });
   };
 
-  const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     const newSelectedTags = selectedTags?.map((tag) => tag.tagFQN);
     if (newSelectedTags && editColumnTag) {
       updateColumnTags(
@@ -393,7 +393,7 @@ const SchemaTable: FunctionComponent<Props> = ({
                       trigger="click">
                       <TagsContainer
                         editable={editColumnTag?.index === index}
-                        selectedTags={column.tags as ColumnTags[]}
+                        selectedTags={column.tags as EntityTags[]}
                         tagList={allTags}
                         onCancel={() => {
                           handleTagSelection();

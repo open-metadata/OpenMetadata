@@ -1,88 +1,61 @@
-import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import AppState from '../../AppState';
-import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
-import {
-  addFollower,
-  getDashboardByFqn,
-  patchDashboardDetails,
-  removeFollower,
-} from '../../axiosAPIs/dashboardAPI';
-import { getServiceById } from '../../axiosAPIs/serviceAPI';
-import Description from '../../components/common/description/Description';
-import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
-import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
-import TabsPane from '../../components/common/TabsPane/TabsPane';
-import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
-import PageContainer from '../../components/containers/PageContainer';
-import Loader from '../../components/Loader/Loader';
-import ManageTab from '../../components/ManageTab/ManageTab.component';
-import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../components/tags-container/tags-container';
-import Tags from '../../components/tags/tags';
-import {
-  getServiceDetailsPath,
-  getTeamDetailsPath,
-} from '../../constants/constants';
-import { EntityType } from '../../enums/entity.enum';
-import { Chart } from '../../generated/entity/data/chart';
-import { Dashboard, TagLabel } from '../../generated/entity/data/dashboard';
+import { Link } from 'react-router-dom';
+import { getTeamDetailsPath } from '../../constants/constants';
+import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
+import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
-  addToRecentViewed,
   getCurrentUserId,
   getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
-import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import SVGIcons from '../../utils/SvgUtils';
-import {
-  getOwnerFromId,
-  getTagsWithoutTier,
-  getTierFromTableTags,
-} from '../../utils/TableUtils';
-import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-type ChartType = {
-  displayName: string;
-} & Chart;
-const MyDashBoardPage = () => {
-  const USERId = getCurrentUserId();
+import { getTagsWithoutTier } from '../../utils/TableUtils';
+import Description from '../common/description/Description';
+import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
+import NonAdminAction from '../common/non-admin-action/NonAdminAction';
+import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
+import TabsPane from '../common/TabsPane/TabsPane';
+import PageContainer from '../containers/PageContainer';
+import ManageTabComponent from '../ManageTab/ManageTab.component';
+import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+import TagsContainer from '../tags-container/tags-container';
+import Tags from '../tags/tags';
+import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
 
+const DashboardDetails = ({
+  entityName,
+  followers,
+  followDashboardHandler,
+  unfollowDashboardHandler,
+  owner,
+  tagList,
+  tier,
+  slashedDashboardName,
+  activeTab,
+  setActiveTabHandler,
+  description,
+  serviceType,
+  dashboardUrl,
+  dashboardTags,
+  dashboardDetails,
+  users,
+  descriptionUpdateHandler,
+  settingsUpdateHandler,
+  tagUpdateHandler,
+  charts,
+  chartDescriptionUpdateHandler,
+  chartTagUpdateHandler,
+}: DashboardDetailsProps) => {
   const { isAuthDisabled } = useAuth();
-
-  const [tagList, setTagList] = useState<Array<string>>([]);
-  const { dashboardFQN } = useParams() as Record<string, string>;
-  const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
-    {} as Dashboard
-  );
-  const [dashboardId, setDashboardId] = useState<string>('');
-  const [isLoading, setLoading] = useState<boolean>(false);
-  const [description, setDescription] = useState<string>('');
-  const [followers, setFollowers] = useState<Array<User>>([]);
-  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [isEdit, setIsEdit] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [owner, setOwner] = useState<TableDetail['owner']>();
-  const [tier, setTier] = useState<string>();
-  const [tags, setTags] = useState<Array<ColumnTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(1);
-  const [isEdit, setIsEdit] = useState<boolean>(false);
-  const [charts, setCharts] = useState<ChartType[]>([]);
-  const [dashboardUrl, setDashboardUrl] = useState<string>('');
-  const [displayName, setDisplayName] = useState<string>('');
-  const [serviceType, setServiceType] = useState<string>('');
-  // const [usage, setUsage] = useState('');
-  // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
-  const [slashedDashboardName, setSlashedDashboardName] = useState<
-    TitleBreadcrumbProps['titleLinks']
-  >([]);
-
   const [editChart, setEditChart] = useState<{
     chart: ChartType;
     index: number;
@@ -91,13 +64,18 @@ const MyDashBoardPage = () => {
     chart: ChartType;
     index: number;
   }>();
-
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
     } else {
       return getUserTeams().some((team) => team.id === owner?.id);
     }
+  };
+  const setFollowersData = (followers: Array<User>) => {
+    setIsFollowing(
+      followers.some(({ id }: { id: string }) => id === getCurrentUserId())
+    );
+    setFollowersCount(followers?.length);
   };
   const tabs = [
     {
@@ -138,159 +116,12 @@ const MyDashBoardPage = () => {
     {
       key: `${serviceType} Url`,
       value: dashboardUrl,
-      placeholderText: displayName,
+      placeholderText: entityName,
       isLink: true,
       openInNewTab: true,
     },
-    // { key: 'Usage', value: usage },
-    // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
-  const fetchTags = () => {
-    getTagCategories().then((res) => {
-      if (res.data) {
-        setTagList(getTaglist(res.data));
-      }
-    });
-  };
 
-  const fetchCharts = async (charts: Dashboard['charts']) => {
-    let chartsData: ChartType[] = [];
-    let promiseArr: Array<AxiosPromise> = [];
-    if (charts?.length) {
-      promiseArr = charts.map((chart) =>
-        getChartById(chart.id, ['service', 'tags'])
-      );
-      await Promise.allSettled(promiseArr).then(
-        (res: PromiseSettledResult<AxiosResponse>[]) => {
-          if (res.length) {
-            chartsData = res
-              .filter((chart) => chart.status === 'fulfilled')
-              .map(
-                (chart) =>
-                  (chart as PromiseFulfilledResult<AxiosResponse>).value.data
-              );
-          }
-        }
-      );
-    }
-
-    return chartsData;
-  };
-
-  const setFollowersData = (followers: Array<User>) => {
-    // need to check if already following or not with logedIn user id
-    setIsFollowing(followers.some(({ id }: { id: string }) => id === USERId));
-    setFollowersCount(followers?.length);
-  };
-
-  const fetchDashboardDetail = (dashboardFQN: string) => {
-    setLoading(true);
-    getDashboardByFqn(dashboardFQN, [
-      'owner',
-      'service',
-      'followers',
-      'tags',
-      'usageSummary',
-      'charts',
-    ]).then((res: AxiosResponse) => {
-      const {
-        id,
-        description,
-        followers,
-        fullyQualifiedName,
-        service,
-        tags,
-        owner,
-        displayName,
-        charts,
-        dashboardUrl,
-        // usageSummary,
-      } = res.data;
-      setDisplayName(displayName);
-      setDashboardDetails(res.data);
-      setDashboardId(id);
-      setDescription(description ?? '');
-      setFollowers(followers);
-      setFollowersData(followers);
-      setOwner(getOwnerFromId(owner?.id));
-      setTier(getTierFromTableTags(tags));
-      setTags(getTagsWithoutTier(tags));
-      getServiceById('dashboardServices', service?.id).then(
-        (serviceRes: AxiosResponse) => {
-          setServiceType(serviceRes.data.serviceType);
-          setSlashedDashboardName([
-            {
-              name: serviceRes.data.name,
-              url: serviceRes.data.name
-                ? getServiceDetailsPath(
-                    serviceRes.data.name,
-                    serviceRes.data.serviceType
-                  )
-                : '',
-              imgSrc: serviceRes.data.serviceType
-                ? serviceTypeLogo(serviceRes.data.serviceType)
-                : undefined,
-            },
-            {
-              name: displayName,
-              url: '',
-              activeTitle: true,
-            },
-          ]);
-
-          addToRecentViewed({
-            entityType: EntityType.DASHBOARD,
-            fqn: fullyQualifiedName,
-            serviceType: serviceRes.data.serviceType,
-            timestamp: 0,
-          });
-        }
-      );
-      setDashboardUrl(dashboardUrl);
-      fetchCharts(charts).then((charts) => setCharts(charts));
-      // if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
-      //   const percentile = getUsagePercentile(
-      //     usageSummary.weeklyStats.percentileRank
-      //   );
-      //   setUsage(percentile);
-      // } else {
-      //   setUsage('--');
-      // }
-      // setWeeklyUsageCount(
-      //   usageSummary?.weeklyStats.count.toLocaleString() || '--'
-      // );
-
-      setLoading(false);
-    });
-  };
-
-  const followDashboard = (): void => {
-    if (isFollowing) {
-      removeFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-        const { followers } = res.data;
-        setFollowers(followers);
-        setFollowersCount((preValu) => preValu - 1);
-        setIsFollowing(false);
-      });
-    } else {
-      addFollower(dashboardId, USERId).then((res: AxiosResponse) => {
-        const { followers } = res.data;
-        setFollowers(followers);
-        setFollowersCount((preValu) => preValu + 1);
-        setIsFollowing(true);
-      });
-    }
-  };
-
-  const onDescriptionUpdate = (updatedHTML: string) => {
-    const updatedDashboard = { ...dashboardDetails, description: updatedHTML };
-
-    const jsonPatch = compare(dashboardDetails, updatedDashboard);
-    patchDashboardDetails(dashboardId, jsonPatch).then((res: AxiosResponse) => {
-      setDescription(res.data.description);
-    });
-    setIsEdit(false);
-  };
   const onDescriptionEdit = (): void => {
     setIsEdit(true);
   };
@@ -298,74 +129,92 @@ const MyDashBoardPage = () => {
     setIsEdit(false);
   };
 
+  const onDescriptionUpdate = (updatedHTML: string) => {
+    if (description !== updatedHTML) {
+      const updatedTopicDetails = {
+        ...dashboardDetails,
+        description: updatedHTML,
+      };
+      descriptionUpdateHandler(updatedTopicDetails);
+      setIsEdit(false);
+    } else {
+      setIsEdit(false);
+    }
+  };
+
   const onSettingsUpdate = (
-    newOwner?: TableDetail['owner'],
-    newTier?: TableDetail['tier']
-  ): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      if (newOwner || newTier) {
-        const tierTag: TableDetail['tags'] = newTier
-          ? [
-              ...getTagsWithoutTier(dashboardDetails.tags as ColumnTags[]),
-              { tagFQN: newTier, labelType: 'Manual', state: 'Confirmed' },
-            ]
-          : (dashboardDetails.tags as ColumnTags[]);
-        const updatedDashboard = {
-          ...dashboardDetails,
-          owner: newOwner
-            ? { ...dashboardDetails.owner, ...newOwner }
-            : dashboardDetails.owner,
-          tags: tierTag,
-        };
-        const jsonPatch = compare(dashboardDetails, updatedDashboard);
-        patchDashboardDetails(dashboardId, jsonPatch)
-          .then((res: AxiosResponse) => {
-            setDashboardDetails(res.data);
-            setOwner(getOwnerFromId(res.data.owner?.id));
-            setTier(getTierFromTableTags(res.data.tags));
-            resolve();
-          })
-          .catch(() => reject());
-      } else {
-        reject();
-      }
-    });
+    newOwner?: Dashboard['owner'],
+    newTier?: string
+  ) => {
+    if (newOwner || newTier) {
+      const tierTag: Dashboard['tags'] = newTier
+        ? [
+            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
+            {
+              tagFQN: newTier,
+              labelType: LabelType.Manual,
+              state: State.Confirmed,
+            },
+          ]
+        : dashboardDetails.tags;
+      const updatedTopicDetails = {
+        ...dashboardDetails,
+        owner: newOwner
+          ? {
+              ...dashboardDetails.owner,
+              ...newOwner,
+            }
+          : dashboardDetails.owner,
+        tags: tierTag,
+      };
+
+      return settingsUpdateHandler(updatedTopicDetails);
+    } else {
+      return Promise.reject();
+    }
   };
 
   const onTagUpdate = (selectedTags?: Array<string>) => {
     if (selectedTags) {
-      const prevTags = dashboardDetails?.tags?.filter((tag) =>
-        selectedTags.includes(tag?.tagFQN as string)
-      );
-      const newTags: Array<ColumnTags> = selectedTags
+      const prevTags =
+        dashboardDetails?.tags?.filter((tag) =>
+          selectedTags.includes(tag?.tagFQN as string)
+        ) || [];
+      const newTags = selectedTags
         .filter((tag) => {
           return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
         })
         .map((tag) => ({
-          labelType: 'Manual',
-          state: 'Confirmed',
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
           tagFQN: tag,
         }));
-      const updatedTags = [...(prevTags as TagLabel[]), ...newTags];
-      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      const jsonPatch = compare(dashboardDetails, updatedDashboard);
-      patchDashboardDetails(dashboardId, jsonPatch).then(
-        (res: AxiosResponse) => {
-          setTier(getTierFromTableTags(res.data.tags));
-          setTags(getTagsWithoutTier(res.data.tags));
-        }
-      );
+      const updatedTags = [...prevTags, ...newTags];
+      const updatedTopic = { ...dashboardDetails, tags: updatedTags };
+      tagUpdateHandler(updatedTopic);
     }
   };
-
+  const followDashboard = () => {
+    if (isFollowing) {
+      setFollowersCount((preValu) => preValu - 1);
+      setIsFollowing(false);
+      unfollowDashboardHandler();
+    } else {
+      setFollowersCount((preValu) => preValu + 1);
+      setIsFollowing(true);
+      followDashboardHandler();
+    }
+  };
   const handleUpdateChart = (chart: ChartType, index: number) => {
     setEditChart({ chart, index });
+  };
+  const handleEditChartTag = (chart: ChartType, index: number): void => {
+    setEditChartTags({ chart, index });
   };
 
   const closeEditChartModal = (): void => {
     setEditChart(undefined);
   };
-
   const onChartUpdate = (chartDescription: string) => {
     if (editChart) {
       const updatedChart = {
@@ -373,27 +222,18 @@ const MyDashBoardPage = () => {
         description: chartDescription,
       };
       const jsonPatch = compare(charts[editChart.index], updatedChart);
-      updateChart(editChart.chart.id, jsonPatch).then((res: AxiosResponse) => {
-        if (res.data) {
-          setCharts((prevCharts) => {
-            const charts = [...prevCharts];
-            charts[editChart.index] = res.data;
-
-            return charts;
-          });
-        }
-      });
+      chartDescriptionUpdateHandler(
+        editChart.index,
+        editChart.chart.id,
+        jsonPatch
+      );
       setEditChart(undefined);
     } else {
       setEditChart(undefined);
     }
   };
 
-  const handleEditChartTag = (chart: ChartType, index: number): void => {
-    setEditChartTags({ chart, index });
-  };
-
-  const handleChartTagSelection = (selectedTags?: Array<ColumnTags>) => {
+  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags && editChartTags) {
       const prevTags = editChartTags.chart.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
@@ -416,17 +256,10 @@ const MyDashBoardPage = () => {
         tags: [...(prevTags as TagLabel[]), ...newTags],
       };
       const jsonPatch = compare(charts[editChartTags.index], updatedChart);
-      updateChart(editChartTags.chart.id, jsonPatch).then(
-        (res: AxiosResponse) => {
-          if (res.data) {
-            setCharts((prevCharts) => {
-              const charts = [...prevCharts];
-              charts[editChartTags.index] = res.data;
-
-              return charts;
-            });
-          }
-        }
+      chartTagUpdateHandler(
+        editChartTags.index,
+        editChartTags.chart.id,
+        jsonPatch
       );
       setEditChartTags(undefined);
     } else {
@@ -435,28 +268,22 @@ const MyDashBoardPage = () => {
   };
 
   useEffect(() => {
-    fetchDashboardDetail(dashboardFQN);
-  }, [dashboardFQN]);
-
-  useEffect(() => {
-    if (isAuthDisabled && AppState.users.length && followers.length) {
+    if (isAuthDisabled && users.length && followers.length) {
       setFollowersData(followers);
     }
-  }, [AppState.users, followers]);
+  }, [users, followers]);
 
   useEffect(() => {
-    fetchTags();
-  }, []);
+    setFollowersData(followers);
+  }, [followers]);
 
   return (
-    <PageContainer>
-      {isLoading ? (
-        <Loader />
-      ) : (
+    <>
+      <PageContainer>
         <div className="tw-px-4 tw-w-full tw-h-full tw-flex tw-flex-col">
           <EntityPageInfo
             isTagEditable
-            entityName={displayName}
+            entityName={entityName}
             extraInfo={extraInfo}
             followers={followersCount}
             followersList={followers}
@@ -465,7 +292,7 @@ const MyDashBoardPage = () => {
             isFollowing={isFollowing}
             owner={owner}
             tagList={tagList}
-            tags={tags}
+            tags={dashboardTags}
             tagsHandler={onTagUpdate}
             tier={tier || ''}
             titleLinks={slashedDashboardName}
@@ -474,7 +301,7 @@ const MyDashBoardPage = () => {
             <TabsPane
               activeTab={activeTab}
               className="tw-flex-initial"
-              setActiveTab={setActiveTab}
+              setActiveTab={setActiveTabHandler}
               tabs={tabs}
             />
 
@@ -572,7 +399,7 @@ const MyDashBoardPage = () => {
                                 trigger="click">
                                 <TagsContainer
                                   editable={editChartTags?.index === index}
-                                  selectedTags={chart.tags as ColumnTags[]}
+                                  selectedTags={chart.tags as EntityTags[]}
                                   tagList={tagList}
                                   onCancel={() => {
                                     handleChartTagSelection();
@@ -610,7 +437,7 @@ const MyDashBoardPage = () => {
               )}
               {activeTab === 2 && (
                 <div className="tw-mt-4">
-                  <ManageTab
+                  <ManageTabComponent
                     currentTier={tier}
                     currentUser={owner?.id}
                     hasEditAccess={hasEditAccess()}
@@ -621,7 +448,7 @@ const MyDashBoardPage = () => {
             </div>
           </div>
         </div>
-      )}
+      </PageContainer>
       {editChart && (
         <ModalWithMarkdownEditor
           header={`Edit Chart: "${editChart.chart.displayName}"`}
@@ -631,8 +458,8 @@ const MyDashBoardPage = () => {
           onSave={onChartUpdate}
         />
       )}
-    </PageContainer>
+    </>
   );
 };
 
-export default MyDashBoardPage;
+export default DashboardDetails;

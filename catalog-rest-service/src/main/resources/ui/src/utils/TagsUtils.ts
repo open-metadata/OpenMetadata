@@ -1,6 +1,6 @@
 import { AxiosError, AxiosPromise, AxiosResponse } from 'axios';
 import { flatten } from 'lodash';
-import { ColumnTags, TableColumn } from 'Models';
+import { EntityTags, TableColumn } from 'Models';
 import { getCategory, getTags } from '../axiosAPIs/tagAPI';
 import { TagCategory, TagClass } from '../generated/entity/tags/tagCategory';
 
@@ -56,9 +56,9 @@ export const getTaglist = (
 
 export const getTableTags = (
   columns: Array<Partial<TableColumn>>
-): Array<ColumnTags> => {
+): Array<EntityTags> => {
   const flag: { [x: string]: boolean } = {};
-  const uniqueTags: Array<ColumnTags> = [];
+  const uniqueTags: Array<EntityTags> = [];
   const tags = columns
     .map((column) => column.tags || [])
     .reduce((prev, curr) => prev.concat(curr), [])

@@ -16,7 +16,7 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
-import { ColumnTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -147,7 +147,7 @@ const TagsPage = () => {
     setEditTag(undefined);
   };
 
-  const handleTagSelection = (tags?: Array<ColumnTags>) => {
+  const handleTagSelection = (tags?: Array<EntityTags>) => {
     const newTags = tags?.map((tag) => tag.tagFQN);
     if (newTags && editTag) {
       updateTag(currentCategory?.name, editTag?.name, {

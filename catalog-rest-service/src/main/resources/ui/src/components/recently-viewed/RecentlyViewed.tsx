@@ -15,7 +15,7 @@
   * limitations under the License.
 */
 
-import { ColumnTags, FormatedTableData } from 'Models';
+import { EntityTags, FormatedTableData } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { getDashboardByFqn } from '../../axiosAPIs/dashboardAPI';
 import { getPipelineByFqn } from '../../axiosAPIs/pipelineAPI';
@@ -97,8 +97,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<EntityTags>),
             });
 
             break;
@@ -125,8 +125,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<EntityTags>),
             });
 
             break;
@@ -154,8 +154,8 @@ const RecentlyViewed: FunctionComponent = () => {
               name: displayName,
               owner: getOwnerFromId(owner?.id)?.name || '--',
               serviceType: oData.serviceType,
-              tags: (tags as Array<ColumnTags>).map((tag) => tag.tagFQN),
-              tier: getTierFromTableTags(tags as Array<ColumnTags>),
+              tags: (tags as Array<EntityTags>).map((tag) => tag.tagFQN),
+              tier: getTierFromTableTags(tags as Array<EntityTags>),
             });
 
             break;

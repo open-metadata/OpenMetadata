@@ -21,7 +21,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import AppState from '../AppState';
 import Onboarding from '../components/onboarding/Onboarding'; // Remove this route once Onboarding is added to my-data
 import { ROUTES } from '../constants/constants';
-import MyDashBoardPage from '../pages/dashboard-details';
+import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
@@ -70,7 +70,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
       <Route component={DatasetDetailsPage} path={ROUTES.DATASET_DETAILS} />
       <Route component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
-      <Route component={MyDashBoardPage} path={ROUTES.DASHBOARD_DETAILS} />
+      <Route component={DashboardDetailsPage} path={ROUTES.DASHBOARD_DETAILS} />
       <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Redirect to={ROUTES.NOT_FOUND} />

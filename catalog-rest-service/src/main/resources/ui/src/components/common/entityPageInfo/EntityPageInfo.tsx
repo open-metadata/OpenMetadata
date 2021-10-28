@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { isNil } from 'lodash';
-import { ColumnTags, TableDetail } from 'Models';
+import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
 import { User } from '../../../generated/entity/teams/user';
@@ -31,7 +31,7 @@ type Props = {
   followers: number;
   extraInfo: Array<ExtraInfo>;
   tier: string;
-  tags: Array<ColumnTags>;
+  tags: Array<EntityTags>;
   isTagEditable?: boolean;
   tagList?: Array<string>;
   owner?: TableDetail['owner'];
@@ -61,7 +61,7 @@ const EntityPageInfo = ({
   const [entityFollowers, setEntityFollowers] =
     useState<Array<User>>(followersList);
   const [isViewMore, setIsViewMore] = useState<boolean>(false);
-  const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     tagsHandler?.(selectedTags?.map((tag) => tag.tagFQN));
     setIsEditable(false);
   };
