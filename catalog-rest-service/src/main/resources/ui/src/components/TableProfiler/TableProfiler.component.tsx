@@ -53,7 +53,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
           <thead>
             <tr className="tableHead-row">
               <th className="tableHead-cell">Column Name</th>
-              <th className="tableHead-cell">Rows</th>
               <th className="tableHead-cell">Distinct Ratio (%)</th>
               <th className="tableHead-cell">Null Ratio (%)</th>
               <th className="tableHead-cell">Min</th>
@@ -96,20 +95,6 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
                         </span>
                         <span>{col.name}</span>
                       </p>
-                    </td>
-                    <td
-                      className="tw-relative tableBody-cell profiler-graph"
-                      data-testid="profiler-graph">
-                      <TableProfilerGraph
-                        data={
-                          col.data
-                            ?.map((d) => ({
-                              date: d.profilDate,
-                              value: d.rows ?? 0,
-                            }))
-                            .reverse() as ProfilerGraphData
-                        }
-                      />
                     </td>
                     <td className="tw-relative tableBody-cell profiler-graph">
                       <TableProfilerGraph

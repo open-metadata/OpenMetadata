@@ -3,8 +3,18 @@ import { Area, AreaChart, Tooltip } from 'recharts';
 
 type Props = {
   data: Array<{ date: Date | undefined; value: number | undefined }>;
+  margin?: { top: number; left: number; right: number; bottom: number };
+  toolTipPos?: { x: number; y: number };
+  height?: number;
+  className?: string;
 };
-const TableProfilerGraph = ({ data }: Props) => {
+const TableProfilerGraph = ({
+  data,
+  margin,
+  toolTipPos,
+  height,
+  className = '',
+}: Props) => {
   const CustomTooltip = ({
     active,
     payload,
@@ -26,30 +36,34 @@ const TableProfilerGraph = ({ data }: Props) => {
   };
 
   return (
-    <AreaChart
-      data={data}
-      height={40}
-      margin={{
-        top: 10,
-        right: 30,
-        left: 0,
-        bottom: 0,
-      }}
-      width={150}>
-      <Tooltip
-        content={CustomTooltip}
-        cursor={{ stroke: '#FF4C3B', strokeWidth: 2 }}
-        offset={20}
-        position={{ x: 20, y: -40 }}
-      />
-      <Area
-        dataKey="value"
-        fill="#7147E8"
-        fillOpacity="0.4"
-        stroke="#7147E8"
-        type="monotone"
-      />
-    </AreaChart>
+    <div className={className}>
+      <AreaChart
+        data={data}
+        height={height ?? 40}
+        margin={
+          margin ?? {
+            top: 10,
+            right: 30,
+            left: 0,
+            bottom: 0,
+          }
+        }
+        width={150}>
+        <Tooltip
+          content={CustomTooltip}
+          cursor={{ stroke: '#FF4C3B', strokeWidth: 2 }}
+          offset={20}
+          position={toolTipPos ?? { x: 20, y: -40 }}
+        />
+        <Area
+          dataKey="value"
+          fill="#7147E8"
+          fillOpacity="0.4"
+          stroke="#7147E8"
+          type="monotone"
+        />
+      </AreaChart>
+    </div>
   );
 };
 

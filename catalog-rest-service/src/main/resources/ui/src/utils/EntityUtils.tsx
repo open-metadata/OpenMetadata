@@ -1,4 +1,6 @@
 import { isNil } from 'lodash';
+import React from 'react';
+import TableProfilerGraph from '../components/TableProfiler/TableProfilerGraph.component';
 import {
   getDatabaseDetailsPath,
   getServiceDetailsPath,
@@ -17,7 +19,6 @@ import {
   getUsagePercentile,
 } from './TableUtils';
 import { getTableTags } from './TagsUtils';
-import { getRelativeDay } from './TimeUtils';
 
 export const getEntityTags = (
   type: string,
@@ -53,7 +54,7 @@ export const getEntityOverview = (
   serviceType: string
 ): Array<{
   name: string;
-  value: string;
+  value: string | number | React.ReactNode;
   isLink: boolean;
   isExternal?: boolean;
   url?: string;
@@ -73,25 +74,7 @@ export const getEntityOverview = (
         ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank || 0)
         : '--';
       const queries = usageSummary?.weeklyStats?.count.toLocaleString() || '--';
-      const getProfilerRowDiff = (tableProfile: Table['tableProfile']) => {
-        let retDiff;
-        if (tableProfile && tableProfile.length > 0) {
-          let rowDiff: string | number = tableProfile[0].rowCount || 0;
-          const dayDiff = getRelativeDay(
-            tableProfile[0].profileDate
-              ? new Date(tableProfile[0].profileDate).getTime()
-              : Date.now()
-          );
-          if (tableProfile.length > 1) {
-            rowDiff = rowDiff - (tableProfile[1].rowCount || 0);
-          }
-          retDiff = `${(rowDiff >= 0 ? '+' : '') + rowDiff} rows ${dayDiff}`;
-        }
 
-        return retDiff;
-      };
-
-      const profilerRowDiff = getProfilerRowDiff(tableProfile);
       const overview = [
         {
           name: 'Service',
@@ -137,14 +120,6 @@ export const getEntityOverview = (
           isLink: false,
         },
         {
-          name: 'Rows',
-          value:
-            tableProfile && tableProfile[0]?.rowCount
-              ? tableProfile[0].rowCount
-              : '--',
-          isLink: false,
-        },
-        {
           name: 'Columns',
           value:
             tableProfile && tableProfile[0]?.columnCount
@@ -152,10 +127,31 @@ export const getEntityOverview = (
               : '--',
           isLink: false,
         },
+        {
+          name: 'Rows',
+          value: tableProfile ? (
+            <TableProfilerGraph
+              className="tw--mt-5"
+              data={
+                tableProfile
+                  ?.map((d) => ({
+                    date: d.profileDate,
+                    value: d.rowCount ?? 0,
+                  }))
+                  .reverse() as Array<{
+                  date: Date;
+                  value: number;
+                }>
+              }
+              height={38}
+              toolTipPos={{ x: 20, y: -30 }}
+            />
+          ) : (
+            '--'
+          ),
+          isLink: false,
+        },
       ];
-      if (!isNil(profilerRowDiff)) {
-        overview.push({ value: profilerRowDiff, name: '', isLink: false });
-      }
 
       return overview;
     }

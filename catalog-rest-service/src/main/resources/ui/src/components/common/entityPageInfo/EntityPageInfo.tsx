@@ -18,7 +18,7 @@ import FollowersModal from './FollowersModal';
 
 type ExtraInfo = {
   key?: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   isLink?: boolean;
   placeholderText?: string;
   openInNewTab?: boolean;
@@ -175,7 +175,7 @@ const EntityPageInfo = ({
       </div>
       <div className="tw-flex tw-gap-1 tw-mb-2 tw-mt-1">
         {extraInfo.map((info, index) => (
-          <span key={index}>
+          <span className="tw-flex" key={index}>
             {!isNil(info.key) ? (
               <>
                 <span className="tw-text-grey-muted tw-font-normal">
