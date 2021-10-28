@@ -17,21 +17,27 @@
 package org.openmetadata.catalog.selenium.pages.tags;
 
 import com.github.javafaker.Faker;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TagsPageTest {
 
     static WebDriver webDriver;
@@ -44,17 +50,22 @@ public class TagsPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openTagsPage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
         wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -66,7 +77,8 @@ public class TagsPageTest {
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void addTagCategory() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='add-category']")));
@@ -95,7 +107,8 @@ public class TagsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='saveButton']")).click();
     }
 
-    @Test(priority = 3)
+    @Test
+    @Order(3)
     public void editTagCategoryDescription() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -111,7 +124,8 @@ public class TagsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void addTag() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -144,12 +158,14 @@ public class TagsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='saveButton']")).click();
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void changeTagDescription() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "))))
                 .click(); // Select the created listed team
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='tags']")));
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']"))).perform();
         webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
@@ -157,12 +173,14 @@ public class TagsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 6)
+    @Test
+    @Order(6)
     public void addAssociatedTag() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "))))
                 .click(); // Select the created listed team
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='tags']")));
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[data-testid='tags']")))).click();
@@ -179,12 +197,14 @@ public class TagsPageTest {
                 webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")))).click();
     }
 
-    @Test(priority = 7)
+    @Test
+    @Order(7)
     public void removeAssociatedTag() throws InterruptedException {
         openTagsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "))))
                 .click(); // Select the created listed team
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='tags']")));
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[data-testid='tags']")))).click();
@@ -196,7 +216,8 @@ public class TagsPageTest {
                 webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")))).click();
     }
 
-    @Test(priority = 8)
+    @Test
+    @Order(8)
     public void addTagToTableColumn() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
         webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
@@ -228,7 +249,7 @@ public class TagsPageTest {
         webDriver.navigate().refresh();
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();

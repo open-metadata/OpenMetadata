@@ -17,21 +17,27 @@
 package org.openmetadata.catalog.selenium.pages.pipelineService;
 
 import com.github.javafaker.Faker;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineServiceTestPage {
     static WebDriver webDriver;
     static String url = Property.getInstance().getURL();
@@ -42,17 +48,20 @@ public class PipelineServiceTestPage {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openPipelineServicePage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
         wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -61,11 +70,13 @@ public class PipelineServiceTestPage {
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//button[@data-testid='tab'])[4]")));
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[4]")).click();
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void addPipelineService() throws InterruptedException {
         openPipelineServicePage();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='add-new-user-button']")));
@@ -96,7 +107,9 @@ public class PipelineServiceTestPage {
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save-button']")));
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
     }
-    @Test(priority = 3)
+
+    @Test
+    @Order(3)
     public void editPipelineService() throws InterruptedException {
         openPipelineServicePage();
         webDriver.findElement(By.xpath("(//button[@data-testid='edit-service'])[2]")).click();
@@ -109,7 +122,8 @@ public class PipelineServiceTestPage {
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void checkPipelineServiceDetails() throws InterruptedException {
         openPipelineServicePage();
         webDriver.findElement(By.xpath("(//h6[@data-testid='service-name'])[2]")).click();
@@ -123,21 +137,23 @@ public class PipelineServiceTestPage {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void searchPipelineService() throws InterruptedException {
         openPipelineServicePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys("sample");
+        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         webDriver.findElement(By.cssSelector("[data-testid='service-name']")).click();
     }
 
-    @Test(priority = 6)
+    @Test
+    @Order(6)
     public void deletePipelineService() throws InterruptedException {
         openPipelineServicePage();
         webDriver.findElement(By.xpath("(//button[@data-testid='delete-service'])[2]")).click();
         webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();

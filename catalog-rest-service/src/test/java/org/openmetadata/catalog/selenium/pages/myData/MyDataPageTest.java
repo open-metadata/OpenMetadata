@@ -16,16 +16,19 @@
 
 package org.openmetadata.catalog.selenium.pages.myData;
 
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -33,16 +36,17 @@ import java.util.ArrayList;
 public class MyDataPageTest {
 
     static WebDriver webDriver;
-    String homeXPath = "[data-testid='image']";
     static String url = Property.getInstance().getURL();
     Integer waitTime = Property.getInstance().getSleepTime();
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();
@@ -50,7 +54,8 @@ public class MyDataPageTest {
     }
 
     @Test
-    public static void checkWhatsNew() {
+    @Order(1)
+    public void checkWhatsNew() {
         webDriver.findElement(
                 By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")).click(); // What's new page 2
         webDriver.findElement(
@@ -64,6 +69,7 @@ public class MyDataPageTest {
     }
 
     @Test
+    @Order(2)
     public void checkTabs() {
         checkWhatsNew();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -73,50 +79,33 @@ public class MyDataPageTest {
     }
 
     @Test
-    public void checkOverview() {
+    @Order(3)
+    public void checkOverview() throws InterruptedException {
         checkWhatsNew();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='tables']")));
         webDriver.findElement(By.cssSelector("[data-testid='tables']")).click(); // Tables
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='topics']")));
         webDriver.findElement(By.cssSelector("[data-testid='topics']")).click(); // Topics
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='dashboards']")));
         webDriver.findElement(By.cssSelector("[data-testid='dashboards']")).click(); // Dashboard
-        webDriver.findElement(By.cssSelector(homeXPath)).click();  // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='pipelines']")));
         webDriver.findElement(By.cssSelector("[data-testid='pipelines']")).click(); // Pipeline
-        webDriver.findElement(By.cssSelector(homeXPath)).click();  // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='service']")));
         webDriver.findElement(By.cssSelector("[data-testid='service']")).click(); // Services
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='user']")));
         webDriver.findElement(By.cssSelector("[data-testid='user']")).click(); // Users
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='terms']")));
         webDriver.findElement(By.cssSelector("[data-testid='terms']")).click();  // Teams
     }
 
     @Test
-    public void checkCards() {
-        ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-        checkWhatsNew();
-        webDriver.findElement(By.xpath("//div[@data-testid='states-box-container']//div[1]")).click(); // Explore Assets
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.xpath("//div[@data-testid='states-box-container']//div[2]")));
-        webDriver.findElement(
-                By.xpath("//div[@data-testid='states-box-container']//div[2]")).click(); // Register Service
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='knowledgebaseDocs']")));
-        webDriver.findElement(By.cssSelector("[data-testid='knowledgebaseDocs']")).click(); // Knowledgebase/docs
-        webDriver.switchTo().window(tabs.get(0));
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='knowledgebaseAPIs']")));
-        webDriver.findElement(By.cssSelector("[data-testid='knowledgebaseAPIs']")).click(); // Knowledgebase/API
-        webDriver.navigate().back();
-    }
-
-    @Test
+    @Order(4)
     public void checkSearchBar() throws InterruptedException {
         checkWhatsNew();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -130,25 +119,26 @@ public class MyDataPageTest {
 
 
     @Test
+    @Order(5)
     public void checkHeaders() {
         checkWhatsNew();
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
         webDriver.findElement(
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Teams']")));
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Teams']")).click(); // Setting/Teams
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
         webDriver.findElement(
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
         wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Tags']")));
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Tags']")).click(); // Setting/Tags
-        webDriver.findElement(By.cssSelector(homeXPath)).click(); // Home
+        webDriver.navigate().back();
         wait.until(ExpectedConditions.presenceOfElementLocated(
                 By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
         webDriver.findElement(
@@ -180,13 +170,14 @@ public class MyDataPageTest {
     }
 
     @Test
+    @Order(6)
     public void checkLogout() {
         checkWhatsNew();
         webDriver.findElement(By.cssSelector("[data-testid='greeting-text']")).click();
         webDriver.findElement(By.cssSelector("[data-testid='menu-item-Logout']")).click();
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();

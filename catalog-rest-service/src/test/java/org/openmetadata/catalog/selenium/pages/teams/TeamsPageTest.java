@@ -17,20 +17,26 @@
 package org.openmetadata.catalog.selenium.pages.teams;
 
 import com.github.javafaker.Faker;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TeamsPageTest {
 
     static WebDriver webDriver;
@@ -41,17 +47,22 @@ public class TeamsPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();
         webDriver.get(URL);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openTeamsPage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
         wait.until(ExpectedConditions.presenceOfElementLocated(
@@ -63,7 +74,8 @@ public class TeamsPageTest {
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void createTeam() throws InterruptedException {
         openTeamsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -84,7 +96,8 @@ public class TeamsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='saveButton']")).click();
     }
 
-    @Test(priority = 3)
+    @Test
+    @Order(3)
     public void addUser() throws InterruptedException {
         openTeamsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -103,7 +116,8 @@ public class TeamsPageTest {
         }
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void editDescription() throws InterruptedException {
         openTeamsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -120,7 +134,8 @@ public class TeamsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void addAsset() throws InterruptedException {
         openTeamsPage();
         wait.until(ExpectedConditions.elementToBeClickable(
@@ -167,7 +182,7 @@ public class TeamsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='user-card-container']")).click();
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();

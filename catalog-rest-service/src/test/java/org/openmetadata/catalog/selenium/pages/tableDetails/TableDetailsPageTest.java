@@ -17,21 +17,27 @@
 package org.openmetadata.catalog.selenium.pages.tableDetails;
 
 import com.github.javafaker.Faker;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TableDetailsPageTest {
     static WebDriver webDriver;
     static String url = Property.getInstance().getURL();
@@ -42,27 +48,32 @@ public class TableDetailsPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openExplorePage() throws InterruptedException {
         webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
         webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void checkTabs() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//button[@data-testid='tab'])[2]")));
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click(); // Profiler
@@ -70,10 +81,12 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[4]")).click(); // Manage
     }
 
-    @Test(priority = 3)
+    @Test
+    @Order(3)
     public void editDescription() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='edit-description']")));
         webDriver.findElement(By.cssSelector("[data-testid='edit-description']")).click();
@@ -82,10 +95,12 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void searchColumnAndEditDescription() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys("address1");
@@ -97,10 +112,12 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void addTagsToColumn() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         Thread.sleep(waitTime);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
@@ -117,10 +134,12 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")).click();
     }
 
-    @Test(priority = 6)
+    @Test
+    @Order(6)
     public void removeTagsFromColumn() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         Thread.sleep(waitTime);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
@@ -133,10 +152,12 @@ public class TableDetailsPageTest {
                 webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")))).click();
     }
 
-    @Test(priority = 7)
+    @Test
+    @Order(7)
     public void basicChecks() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='follow-button']")));
         webDriver.findElement(By.cssSelector("[data-testid='follow-button']")).click();
@@ -146,10 +167,12 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='sample-data-button']")).click();
     }
 
-    @Test(priority = 8)
+    @Test
+    @Order(8)
     public void checkProfiler() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//button[@data-testid='tab'])[2]")));
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click(); // Profiler
@@ -165,7 +188,8 @@ public class TableDetailsPageTest {
         }
     }
 
-    @Test(priority = 9)
+    @Test
+    @Order(9)
     public void checkManage() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
@@ -190,21 +214,23 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.cssSelector("[data-testid='table-link']")).click();
     }
 
-    @Test(priority = 10)
+    @Test
+    @Order(10)
     public void checkLineage() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='data-name']")));
         webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click();
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//button[@data-testid='tab'])[3]")));
         webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[3]")).click();
         for (int i=1; i<=3; i++) {
             WebElement lineageEntity = webDriver.findElement(
-                    By.xpath("(//p[@data-testid='lineage-entity'])" + "[" + i + "]"));
-            actions.dragAndDropBy(lineageEntity, 100, 200).build().perform();
+                    By.xpath("(//span[@data-testid='lineage-entity'])" + "[" + i + "]"));
+            actions.dragAndDropBy(lineageEntity, 100, 200).build();
         }
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();
