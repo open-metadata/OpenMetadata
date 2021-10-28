@@ -16,16 +16,13 @@
 */
 
 import { isEmpty } from 'lodash';
-import { Bucket, FormatedTableData, Sterm } from 'Models';
+import { FormatedTableData } from 'Models';
 import React, { useEffect, useRef, useState } from 'react';
 import { Ownership } from '../../enums/mydata.enum';
 import { formatDataResponse } from '../../utils/APIUtils';
 import { getCurrentUserId } from '../../utils/CommonUtils';
-import { getEntityCountByService } from '../../utils/ServiceUtils';
-import ErrorPlaceHolderES from '../common/error-with-placeholder/ErrorPlaceHolderES';
 import PageContainer from '../containers/PageContainer';
-import Loader from '../Loader/Loader';
-import MyDataHeader from '../my-data/MyDataHeader';
+import MyDataHeader from '../MyDataHeader/MyDataHeader.component';
 import RecentlyViewed from '../recently-viewed/RecentlyViewed';
 import SearchedData from '../searched-data/SearchedData';
 import { MyDataProps } from './MyData.interface';
@@ -35,21 +32,16 @@ const MyData: React.FC<MyDataProps> = ({
   userDetails,
   searchResult,
   fetchData,
-  error,
+  entityCounts,
 }: MyDataProps): React.ReactElement => {
   const [data, setData] = useState<Array<FormatedTableData>>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalNumberOfValue, setTotalNumberOfValues] = useState<number>(0);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isEntityLoading, setIsEntityLoading] = useState<boolean>(true);
   const [currentTab, setCurrentTab] = useState<number>(1);
   const [filter, setFilter] = useState<string>('');
-  const [aggregations, setAggregations] = useState<Record<string, Sterm>>();
-  const [searchIndex] = useState<string>(
-    'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index'
-  );
-  const isMounted = useRef<boolean>(false);
-  const setAssetCount = useRef<boolean>(true);
+
+  const isMounted = useRef(false);
 
   const getActiveTabClass = (tab: number) => {
     return tab === currentTab ? 'active' : '';
@@ -66,21 +58,6 @@ const MyData: React.FC<MyDataProps> = ({
     }
 
     return `${filter}:${getCurrentUserId()}`;
-  };
-
-  const fetchTableData = () => {
-    if (!isEntityLoading) {
-      setIsLoading(true);
-    }
-
-    fetchData({
-      queryString: '',
-      from: currentPage,
-      filters: filter ? getFilters() : '',
-      sortField: '',
-      sortOrder: '',
-      searchIndex: searchIndex,
-    });
   };
 
   const handleTabChange = (tab: number, filter: string) => {
@@ -127,8 +104,16 @@ const MyData: React.FC<MyDataProps> = ({
   };
 
   useEffect(() => {
-    setAssetCount.current = !isMounted.current;
-    fetchTableData();
+    if (isMounted.current) {
+      setIsEntityLoading(true);
+      fetchData({
+        queryString: '',
+        from: currentPage,
+        filters: filter ? getFilters() : '',
+        sortField: '',
+        sortOrder: '',
+      });
+    }
   }, [currentPage, filter]);
 
   useEffect(() => {
@@ -137,22 +122,12 @@ const MyData: React.FC<MyDataProps> = ({
       if (hits.length > 0) {
         setTotalNumberOfValues(searchResult.data.hits.total.value);
         setData(formatDataResponse(hits));
-        if (setAssetCount.current) {
-          setAggregations(searchResult.data.aggregations);
-          setAssetCount.current = false;
-        }
-        setIsLoading(false);
-        setIsEntityLoading(false);
       } else {
         setData([]);
         setTotalNumberOfValues(0);
-        setIsLoading(false);
-        setIsEntityLoading(false);
       }
-    } else {
-      setIsLoading(false);
-      setIsEntityLoading(false);
     }
+    setIsEntityLoading(false);
   }, [searchResult]);
 
   useEffect(() => {
@@ -160,41 +135,27 @@ const MyData: React.FC<MyDataProps> = ({
   }, []);
 
   return (
-    <>
-      {error ? (
-        <ErrorPlaceHolderES errorMessage={error} type="error" />
-      ) : (
-        <>
-          {isLoading ? (
-            <Loader />
-          ) : (
-            <PageContainer>
-              <div className="container-fluid" data-testid="fluid-container">
-                <MyDataHeader
-                  countServices={countServices}
-                  entityCounts={getEntityCountByService(
-                    aggregations?.['sterms#Service']?.buckets as Bucket[]
-                  )}
-                />
-                {getTabs()}
-                <SearchedData
-                  showOnboardingTemplate
-                  currentPage={currentPage}
-                  data={data}
-                  isLoading={isEntityLoading}
-                  paginate={paginate}
-                  searchText="*"
-                  showOnlyChildren={currentTab === 1}
-                  showResultCount={filter && data.length > 0 ? true : false}
-                  totalValue={totalNumberOfValue}>
-                  {currentTab === 1 ? <RecentlyViewed /> : null}
-                </SearchedData>
-              </div>
-            </PageContainer>
-          )}
-        </>
-      )}
-    </>
+    <PageContainer>
+      <div className="container-fluid" data-testid="fluid-container">
+        <MyDataHeader
+          countServices={countServices}
+          entityCounts={entityCounts}
+        />
+        {getTabs()}
+        <SearchedData
+          showOnboardingTemplate
+          currentPage={currentPage}
+          data={data}
+          isLoading={isEntityLoading}
+          paginate={paginate}
+          searchText="*"
+          showOnlyChildren={currentTab === 1}
+          showResultCount={filter && data.length > 0 ? true : false}
+          totalValue={totalNumberOfValue}>
+          {currentTab === 1 ? <RecentlyViewed /> : null}
+        </SearchedData>
+      </div>
+    </PageContainer>
   );
 };
 

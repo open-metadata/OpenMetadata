@@ -237,7 +237,7 @@ jest.mock('../../components/recently-viewed/RecentlyViewed', () => {
   return jest.fn().mockReturnValue(<p>RecentlyViewed</p>);
 });
 
-jest.mock('../../components/my-data/MyDataHeader', () => {
+jest.mock('../MyDataHeader/MyDataHeader.component', () => {
   return jest.fn().mockReturnValue(<p>MyDataHeader</p>);
 });
 
@@ -258,7 +258,12 @@ describe('Test MyData page', () => {
     const { container } = render(
       <MyDataPage
         countServices={0}
-        error=""
+        entityCounts={{
+          tableCount: 10,
+          topicCount: 5,
+          dashboardCount: 8,
+          pipelineCount: 1,
+        }}
         fetchData={fetchData}
         searchResult={mockData as unknown as SearchResponse}
         userDetails={mockUserDetails as unknown as User}
