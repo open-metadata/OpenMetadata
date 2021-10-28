@@ -335,8 +335,8 @@ public class PipelineResourceTest extends CatalogApplicationTest {
     CreatePipeline request = create(test).withService(AIRFLOW_REFERENCE).withOwner(USER_OWNER1);
     // Add pipeline as admin
     Pipeline pipeline = createAndCheckPipeline(request, adminAuthHeaders());
-    // Update the table as user owner
-    updateAndCheckPipeline(pipeline, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+    // Update the pipeline as user owner
+    updateAndCheckPipeline(pipeline, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test

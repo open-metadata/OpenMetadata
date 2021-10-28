@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -56,7 +57,7 @@ public class LineageResourceTest extends CatalogApplicationTest {
   public static final int TABLE_COUNT = 10;
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException {
+  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
     for (int i = 0; i < TABLE_COUNT; i++) {

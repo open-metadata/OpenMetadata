@@ -27,13 +27,16 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateTask;
+import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TaskRepository;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -165,6 +168,22 @@ public class TaskResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List task versions", tags = "tasks",
+          description = "Get a list of all the versions of a task identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of task versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "task Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a Task", tags = "tasks",
           description = "Get a task by `id`.",
@@ -204,6 +223,27 @@ public class TaskResource {
     return Response.ok(task).build();
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the task", tags = "tasks",
+          description = "Get a version of the task by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "task",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Task.class))),
+                  @ApiResponse(responseCode = "404", description = "Task for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Task getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Task Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Task version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a task", tags = "tasks",
           description = "Create a task under an existing `service`.",
@@ -216,19 +256,7 @@ public class TaskResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreateTask create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Task task =
-            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withStartDate(create.getStartDate())
-                    .withEndDate(create.getEndDate())
-                    .withTaskType(create.getTaskType())
-                    .withTaskSQL(create.getTaskSQL())
-                    .withTaskUrl(create.getTaskUrl())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Task task = getTask(securityContext, create);
     task = addHref(uriInfo, dao.create(task));
     return Response.created(task.getHref()).entity(task).build();
   }
@@ -269,26 +297,11 @@ public class TaskResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreateTask create) throws IOException, ParseException {
-
-    Task task =
-            new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
-                    .withDescription(create.getDescription())
-                    .withService(create.getService())
-                    .withTaskUrl(create.getTaskUrl())
-                    .withDownstreamTasks(create.getDownstreamTasks())
-                    .withStartDate(create.getStartDate())
-                    .withEndDate(create.getEndDate())
-                    .withTaskType(create.getTaskType())
-                    .withTaskSQL(create.getTaskSQL())
-                    .withTags(create.getTags())
-                    .withOwner(create.getOwner())
-                    .withUpdatedBy(securityContext.getUserPrincipal().getName())
-                    .withUpdatedAt(new Date());
+    Task task = getTask(securityContext, create).withDownstreamTasks(create.getDownstreamTasks());
     PutResponse<Task> response = dao.createOrUpdate(task);
     task = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(task).build();
   }
-
 
   @DELETE
   @Path("/{id}")
@@ -301,5 +314,20 @@ public class TaskResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Task getTask(SecurityContext securityContext, CreateTask create) {
+    return new Task().withId(UUID.randomUUID()).withName(create.getName()).withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription())
+            .withService(create.getService())
+            .withStartDate(create.getStartDate())
+            .withEndDate(create.getEndDate())
+            .withTaskType(create.getTaskType())
+            .withTaskSQL(create.getTaskSQL())
+            .withTaskUrl(create.getTaskUrl())
+            .withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

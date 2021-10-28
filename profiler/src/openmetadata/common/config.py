@@ -10,6 +10,7 @@
 import io
 import json
 import pathlib
+import re
 from abc import ABC, abstractmethod
 from typing import IO, Any, List, Optional
 

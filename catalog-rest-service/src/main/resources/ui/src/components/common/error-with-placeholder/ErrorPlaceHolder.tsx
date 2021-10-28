@@ -16,17 +16,30 @@
 */
 
 import React from 'react';
-import NoDataFound from '../../../assets/svg/no-data-found.svg';
+import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png';
 
-const ErrorPlaceHolder = () => {
-  return (
+type Props = {
+  children?: React.ReactNode;
+};
+
+const ErrorPlaceHolder = ({ children }: Props) => (
+  <>
     <div
       className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center"
       data-testid="error">
       {' '}
-      <img data-testid="no-data-found" src={NoDataFound} width="500" />
+      <img
+        data-testid="no-data-image"
+        src={NoDataFoundPlaceHolder}
+        width="200"
+      />
     </div>
-  );
-};
+    {children && (
+      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
+        {children}
+      </div>
+    )}
+  </>
+);
 
 export default ErrorPlaceHolder;

@@ -9,6 +9,10 @@
     "name": {
       "$ref": "../../entity/teams/user.json#/definitions/userName"
     },
+    "description": {
+      "description": "Used for user biography.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'",
       "type": "string"
@@ -26,12 +30,13 @@
       "type": "boolean"
     },
     "isAdmin" : {
-      "description": "When true indicates user is an adiministrator for the sytem with superuser privileges",
+      "description": "When true indicates user is an administrator for the system with superuser privileges",
       "type": "boolean",
       "default": false
     },
     "profile": {
-      "$ref": "../../type/profile.json"
+      "$ref": "../../type/profile.json",
+      "default": null
     },
     "teams" : {
       "description": "Teams that the user belongs to",
@@ -42,5 +47,6 @@
       "default" : null
     }
   },
-  "required": ["name", "email"]
+  "required": ["name", "email"],
+  "additionalProperties": false
 }

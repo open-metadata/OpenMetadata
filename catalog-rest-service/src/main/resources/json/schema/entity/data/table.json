@@ -365,7 +365,7 @@
     },
     "version" : {
       "description": "Metadata version of the entity.",
-      "$ref": "../../type/basic.json#/definitions/entityVersion"
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
     "updatedAt" : {
       "description": "Last update time corresponding to the new version of the entity.",
@@ -445,6 +445,10 @@
         "$ref": "#/definitions/tableProfile"
       },
       "default": null
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
   "required": [

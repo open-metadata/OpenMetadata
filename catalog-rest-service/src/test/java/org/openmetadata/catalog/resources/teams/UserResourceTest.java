@@ -28,11 +28,15 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
+import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -42,11 +46,12 @@ import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -70,15 +75,18 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnl
 import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTeam;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class UserResourceTest extends CatalogApplicationTest {
+public class UserResourceTest extends EntityResourceTest<User> {
   public static final Logger LOG = LoggerFactory.getLogger(UserResourceTest.class);
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+
+  public UserResourceTest() {
+    super(User.class, "users", UserResource.FIELDS);
+  }
 
   @Test
   public void post_userWithLongName_400_badRequest(TestInfo test) {
@@ -139,7 +147,7 @@ public class UserResourceTest extends CatalogApplicationTest {
             .withIsAdmin(true);
 
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            createAndCheckUser(create, null));
+            createAndCheckEntity(create, null));
     assertResponse(exception, UNAUTHORIZED, "Not authorized; User's Email is not present");
   }
 
@@ -147,30 +155,33 @@ public class UserResourceTest extends CatalogApplicationTest {
   public void post_validUser_200_ok(TestInfo test) throws HttpResponseException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 2).withDisplayName("displayName");
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 3).withProfile(PROFILE);
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 5).withDisplayName("displayName").withProfile(PROFILE).withIsBot(true);
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 6).withDisplayName("displayName").withProfile(PROFILE).withIsAdmin(true);
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
-  public void put_validUser_200_ok(TestInfo test) throws HttpResponseException {
+  public void put_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
-    User user = createOrUpdateAndCheckUser(null, create, CREATED, adminAuthHeaders(), NO_CHANGE);
+    User user = updateAndCheckEntity(create, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
 
     // Update the user information using PUT
+    ChangeDescription change = getChangeDescription(user.getVersion())
+            .withFieldsAdded(Collections.singletonList("displayName"))
+            .withFieldsUpdated(Collections.singletonList("email"));
     CreateUser update = create.withEmail("test1@email.com").withDisplayName("displayName1");
-    createOrUpdateAndCheckUser(user, update, OK, adminAuthHeaders(), MINOR_UPDATE);
+    updateAndCheckEntity(update, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
 
@@ -181,7 +192,7 @@ public class UserResourceTest extends CatalogApplicationTest {
             .withDisplayName("displayName")
             .withEmail("test@email.com").withIsAdmin(true);
 
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckUser(create,
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create,
             authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
@@ -192,7 +203,7 @@ public class UserResourceTest extends CatalogApplicationTest {
             .withName("test1")
             .withDisplayName("displayName")
             .withEmail("test1@email.com").withIsAdmin(true);
-    createAndCheckUser(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
@@ -202,7 +213,7 @@ public class UserResourceTest extends CatalogApplicationTest {
     Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
     List<UUID> teams = Arrays.asList(team1.getId(), team2.getId());
     CreateUser create = create(test).withTeams(teams);
-    User user = createAndCheckUser(create, adminAuthHeaders());
+    User user = createAndCheckEntity(create, adminAuthHeaders());
 
     // Make sure Team has relationship to this user
     team1 = TeamResourceTest.getTeam(team1.getId(), "users", adminAuthHeaders());
@@ -395,7 +406,7 @@ public class UserResourceTest extends CatalogApplicationTest {
   @Test
   public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws HttpResponseException,
           JsonProcessingException {
-    // Create user without any attributes
+    // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
     assertNull(user.getDisplayName());
     assertNull(user.getIsBot());
@@ -410,23 +421,40 @@ public class UserResourceTest extends CatalogApplicationTest {
             new TeamEntityInterface(team2).getEntityReference());
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
-
+    //
     // Add previously absent attributes
-    String timezone = "America/Los_Angeles";
-    user = patchUserAttributesAndCheck(user, "displayName", teams, profile, timezone, false,
-            false, adminAuthHeaders(), MINOR_UPDATE);
+    //
+    String origJson = JsonUtils.pojoToJson(user);
+    user.withTeams(teams).withTimezone("America/Los_Angeles").withDisplayName("displayName")
+            .withProfile(profile).withIsBot(false).withIsAdmin(false);
+    ChangeDescription change = getChangeDescription(user.getVersion())
+            .withFieldsAdded(Arrays.asList("teams", "timezone", "displayName", "profile","isBot"));
+    user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    user.getTeams().get(0).setHref(null);
+    user.getTeams().get(1).setHref(null);
 
+    //
     // Replace the attributes
-    timezone = "Canada/Eastern";
+    //
     teams = Arrays.asList(new TeamEntityInterface(team1).getEntityReference(),
             new TeamEntityInterface(team3).getEntityReference()); // team2 dropped and team3 is added
     profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
-    user = patchUserAttributesAndCheck(user, "displayName1", teams, profile, timezone, true,
-            false, adminAuthHeaders(), MINOR_UPDATE);
+
+    origJson = JsonUtils.pojoToJson(user);
+    user.withTeams(teams).withTimezone("Canada/Eastern").withDisplayName("displayName")
+            .withProfile(profile).withIsBot(true).withIsAdmin(false);
+    // Note non-empty display field is not updated below
+    change = getChangeDescription(user.getVersion())
+            .withFieldsUpdated(Arrays.asList("teams", "timezone", "profile", "isBot"));
+    user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove the attributes
-    patchUserAttributesAndCheck(user, null, null, null, null, null,
-            null, adminAuthHeaders(), MINOR_UPDATE);
+    origJson = JsonUtils.pojoToJson(user);
+    user.withTeams(null).withTimezone(null).withDisplayName(null).withProfile(null)
+            .withIsBot(null).withIsAdmin(false);
+    change = getChangeDescription(user.getVersion())
+            .withFieldsDeleted(Arrays.asList("teams", "timezone", "displayName", "profile", "isBot"));
+    patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -482,12 +510,6 @@ public class UserResourceTest extends CatalogApplicationTest {
     assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  public static User putUser(CreateUser user, Response.Status expectedStatus, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users");
-    return TestUtils.put(target, user, User.class, expectedStatus, authHeaders);
-  }
-
   private User patchUser(UUID userId, String originalJson, User updated, Map<String, String> headers)
           throws JsonProcessingException, HttpResponseException {
     String updatedJson = JsonUtils.pojoToJson(updated);
@@ -500,79 +522,6 @@ public class UserResourceTest extends CatalogApplicationTest {
     return patchUser(updated.getId(), originalJson, updated, headers);
   }
 
-  private User patchUserAttributesAndCheck(User before, String displayName, List<EntityReference> teams,
-                                           Profile profile,
-                                           String timezone, Boolean isBot, Boolean isAdmin,
-                                           Map<String, String> authHeaders, UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Optional.ofNullable(before.getTeams()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
-    String userJson = JsonUtils.pojoToJson(before);
-
-    // Update the user attributes
-    before.setDisplayName(displayName);
-    before.setTeams(teams);
-    before.setProfile(profile);
-    before.setTimezone(timezone);
-    before.setIsBot(isBot);
-    before.setIsAdmin(isAdmin);
-
-    // Validate information returned in patch response has the updates
-    User updatedUser = patchUser(userJson, before, authHeaders);
-    validateUser(updatedUser, before.getName(), displayName, teams, profile, timezone, isBot, isAdmin, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedUser.getVersion(), updateType);
-
-    // GET the user and Validate information returned
-    User getUser = getUser(before.getId(), "teams,profile", authHeaders);
-    validateUser(getUser, before.getName(), displayName, teams, profile, timezone, isBot, isAdmin, updatedBy);
-    return getUser;
-  }
-
-
-  public static User createAndCheckUser(CreateUser create, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    final User user = createUser(create, authHeaders);
-    assertEquals(0.1, user.getVersion());
-    List<EntityReference> expectedTeams = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
-      expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
-    }
-    validateUser(user, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
-
-    // GET the newly created user and validate
-    User getUser = getUser(user.getId(), "profile,teams", authHeaders);
-    validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
-    return user;
-  }
-
-  public static User createOrUpdateAndCheckUser(User before, CreateUser create, Response.Status expectedStatus,
-                                                Map<String, String> authHeaders, UpdateType updateType)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    final User updatedUser = putUser(create, expectedStatus, authHeaders);
-    List<EntityReference> expectedTeams = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(create.getTeams()).orElse(Collections.emptyList())) {
-      expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
-    }
-    validateUser(updatedUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
-
-    if (before == null) {
-      assertEquals(0.1, updatedUser.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedUser.getVersion(), updateType);
-    }
-
-    // GET the newly created user and validate
-    User getUser = getUser(updatedUser.getId(), "profile,teams", authHeaders);
-    validateUser(getUser, create.getName(), create.getDisplayName(), expectedTeams, create.getProfile(),
-            create.getTimezone(), create.getIsBot(), create.getIsAdmin(), updatedBy);
-    return updatedUser;
-  }
-
   public static CreateUser create(TestInfo test, int index) {
     return new CreateUser().withName(getUserName(test) + index).withEmail(getUserName(test) + "@open-metadata.org");
   }
@@ -583,37 +532,6 @@ public class UserResourceTest extends CatalogApplicationTest {
 
   public static User createUser(CreateUser create, Map<String, String> authHeaders) throws HttpResponseException {
     return TestUtils.post(CatalogApplicationTest.getResource("users"), create, User.class, authHeaders);
-  }
-
-  public static void validateUser(User user, String expectedName, String expectedDisplayName,
-                                  List<EntityReference> expectedTeams,
-                                  Profile expectedProfile, String expectedTimeZone, Boolean expectedIsBot,
-                                  Boolean expectedIsAdmin, String expectedUpdatedBy) {
-    assertEquals(expectedName, user.getName());
-    assertEquals(expectedDisplayName, user.getDisplayName());
-    assertEquals(expectedUpdatedBy, user.getUpdatedBy());
-    assertEquals(expectedTimeZone, user.getTimezone());
-    assertEquals(expectedIsBot, user.getIsBot());
-    assertEquals(expectedIsAdmin, user.getIsAdmin());
-    assertNotNull(user.getId());
-    assertNotNull(user.getHref());
-    if (expectedTeams != null && !expectedTeams.isEmpty()) {
-      assertEquals(expectedTeams.size(), user.getTeams().size());
-      for (EntityReference team : user.getTeams()) {
-        TestUtils.validateEntityReference(team);
-        boolean foundTeam = false;
-        for (EntityReference expected : expectedTeams) {
-          if (expected.getId().equals(team.getId())) {
-            foundTeam = true;
-            break;
-          }
-        }
-        assertTrue(foundTeam);
-      }
-    }
-    if (expectedProfile != null) {
-      assertEquals(expectedProfile, user.getProfile());
-    }
   }
 
   /** Validate returned fields GET .../users/{id}?fields="..." or GET .../users/name/{name}?fields="..." */
@@ -671,5 +589,82 @@ public class UserResourceTest extends CatalogApplicationTest {
     String testName = testInfo.getDisplayName();
     // user name can't be longer than 64 characters
     return String.format("user_%s", testName.substring(0, Math.min(testName.length(), 50)));
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
+    return create(test).withDescription(description).withDisplayName(displayName);
+  }
+
+  @Override
+  public void validateCreatedEntity(User user, Object request, Map<String, String> authHeaders) {
+    CreateUser createRequest = (CreateUser) request;
+    validateCommonEntityFields(getEntityInterface(user), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), null);
+
+    assertEquals(createRequest.getName(), user.getName());
+    assertEquals(createRequest.getDisplayName(), user.getDisplayName());
+    assertEquals(createRequest.getTimezone(), user.getTimezone());
+    assertEquals(createRequest.getIsBot(), user.getIsBot());
+    assertEquals(createRequest.getIsAdmin(), user.getIsAdmin());
+
+    List<EntityReference> expectedTeams = new ArrayList<>();
+    for (UUID teamId : Optional.ofNullable(createRequest.getTeams()).orElse(Collections.emptyList())) {
+      expectedTeams.add(new EntityReference().withId(teamId).withType(Entity.TEAM));
+    }
+
+    if (!expectedTeams.isEmpty()) {
+      assertEquals(expectedTeams.size(), user.getTeams().size());
+      for (EntityReference team : user.getTeams()) {
+        TestUtils.validateEntityReference(team);
+        boolean foundTeam = false;
+        for (EntityReference expected : expectedTeams) {
+          if (expected.getId().equals(team.getId())) {
+            foundTeam = true;
+            break;
+          }
+        }
+        assertTrue(foundTeam);
+      }
+    }
+    if (createRequest.getProfile() != null) {
+      assertEquals(createRequest.getProfile(), user.getProfile());
+    }
+  }
+
+  @Override
+  public void validateUpdatedEntity(User user, Object request, Map<String, String> authHeaders) {
+    validateCreatedEntity(user, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(User expected, User updated, Map<String, String> authHeaders) {
+    validateCommonEntityFields(getEntityInterface(expected), null,
+            TestUtils.getPrincipal(authHeaders), null);
+
+    assertEquals(expected.getName(), expected.getName());
+    assertEquals(expected.getDisplayName(), expected.getDisplayName());
+    assertEquals(expected.getTimezone(), expected.getTimezone());
+    assertEquals(expected.getIsBot(), expected.getIsBot());
+    assertEquals(expected.getIsAdmin(), expected.getIsAdmin());
+
+    List<EntityReference> expectedTeams = Optional.ofNullable(expected.getTeams()).orElse(Collections.emptyList());
+    List<EntityReference> updatedTeams = new ArrayList<>(Optional.ofNullable(updated.getTeams())
+            .orElse(Collections.emptyList()));
+
+    updatedTeams.forEach(TestUtils::validateEntityReference);
+
+    expectedTeams.sort(Comparator.comparing(EntityReference::getName));
+    updatedTeams.sort(Comparator.comparing(EntityReference::getName));
+    updatedTeams.forEach(t -> t.setHref(null));
+    assertEquals(expectedTeams, updatedTeams);
+    if (expected.getProfile() != null) {
+      assertEquals(expected.getProfile(), updated.getProfile());
+    }
+  }
+
+  @Override
+  public EntityInterface<User> getEntityInterface(User entity) {
+    return new UserEntityInterface(entity);
   }
 }

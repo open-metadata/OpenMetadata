@@ -223,14 +223,7 @@ public class PipelineResource {
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
                          @Valid CreatePipeline create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
-            .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    Pipeline pipeline = getPipeline(securityContext, create);
     pipeline = addHref(uriInfo, dao.create(pipeline));
     return Response.created(pipeline.getHref()).entity(pipeline).build();
   }
@@ -272,15 +265,8 @@ public class PipelineResource {
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Valid CreatePipeline create) throws IOException, ParseException {
-    Pipeline pipeline = new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
-            .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
-            .withConcurrency(create.getConcurrency()).withStartDate(create.getStartDate())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
-
+    Pipeline pipeline = getPipeline(securityContext, create).withConcurrency(create.getConcurrency())
+            .withStartDate(create.getStartDate());
     PutResponse<Pipeline> response = dao.createOrUpdate(pipeline);
     pipeline = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(pipeline).build();
@@ -336,5 +322,15 @@ public class PipelineResource {
   public Response delete(@Context UriInfo uriInfo, @PathParam("id") String id) {
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Pipeline getPipeline(SecurityContext securityContext, CreatePipeline create) {
+    return new Pipeline().withId(UUID.randomUUID()).withName(create.getName())
+            .withDisplayName(create.getDisplayName())
+            .withDescription(create.getDescription()).withService(create.getService()).withTasks(create.getTasks())
+            .withPipelineUrl(create.getPipelineUrl()).withTags(create.getTags())
+            .withOwner(create.getOwner())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
   }
 }

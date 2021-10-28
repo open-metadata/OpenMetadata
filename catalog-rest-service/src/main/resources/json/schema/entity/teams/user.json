@@ -22,13 +22,17 @@
     "name": {
       "$ref": "#/definitions/userName"
     },
+    "description": {
+      "description": "Used for user biography.",
+      "type": "string"
+    },
     "displayName": {
       "description": "Name used for display purposes. Example 'FirstName LastName'.",
       "type": "string"
     },
     "version" : {
       "description": "Metadata version of the entity.",
-      "$ref": "../../type/basic.json#/definitions/entityVersion"
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },
     "updatedAt" : {
       "description": "Last update time corresponding to the new version of the entity.",
@@ -80,6 +84,10 @@
     "follows" : {
       "description": "List of entities followed by the user.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     }
   },
   "additionalProperties": false,

@@ -299,7 +299,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
     // Add model as admin
     Model model = createAndCheckModel(request, adminAuthHeaders());
     // Update the table as Owner
-    updateAndCheckModel(model, request, OK, authHeaders(USER1.getEmail()), NO_CHANGE);
+    updateAndCheckModel(model, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test
