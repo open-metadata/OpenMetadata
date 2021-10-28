@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.TeamRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
@@ -48,6 +49,7 @@ import javax.ws.rs.DELETE;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -106,7 +108,7 @@ public class TeamResource {
     }
   }
 
-  private static final String FIELDS = "profile,users,owns";
+  public static final String FIELDS = "profile,users,owns";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
   @GET
@@ -151,6 +153,22 @@ public class TeamResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List team versions", tags = "teams",
+          description = "Get a list of all the versions of a team identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of team versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "team Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Valid
   @Path("/{id}")
   @Operation(summary = "Get a team", tags = "teams",
@@ -192,6 +210,27 @@ public class TeamResource {
     return addHref(uriInfo, dao.getByName(name, fields));
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the team", tags = "teams",
+          description = "Get a version of the team by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "team",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Team.class))),
+                  @ApiResponse(responseCode = "404", description = "Team for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Team getVersion(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Parameter(description = "Team Id", schema = @Schema(type = "string"))
+                         @PathParam("id") String id,
+                         @Parameter(description = "Team version number in the form `major`.`minor`",
+                                 schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                         @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
+
   @POST
   @Operation(summary = "Create a team", tags = "teams",
           description = "Create a new team.",
@@ -205,13 +244,28 @@ public class TeamResource {
                          @Context SecurityContext securityContext,
                          @Valid CreateTeam ct) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Team team = new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
-            .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date())
-            .withUsers(dao.getUsers(ct.getUsers()));
+    Team team = getTeam(ct, securityContext);
     addHref(uriInfo, dao.create(team));
     return Response.created(team.getHref()).entity(team).build();
+  }
+
+  @PUT
+  @Operation(summary = "Create or Update a team", tags = "teams",
+          description = "Create or Update a team.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "The team ",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = CreateTeam.class))),
+                  @ApiResponse(responseCode = "400", description = "Bad request")
+          })
+  public Response createOrUpdateTeam(@Context UriInfo uriInfo,
+                                     @Context SecurityContext securityContext,
+                                     @Valid CreateTeam ct) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Team team = getTeam(ct, securityContext);
+    RestUtil.PutResponse<Team> response = dao.createOrUpdate(team);
+    team = addHref(uriInfo, response.getEntity());
+    return Response.status(response.getStatus()).entity(team).build();
   }
 
   @PATCH
@@ -251,5 +305,13 @@ public class TeamResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     dao.delete(UUID.fromString(id));
     return Response.ok().build();
+  }
+
+  private Team getTeam(CreateTeam ct, SecurityContext securityContext) throws IOException {
+    return new Team().withId(UUID.randomUUID()).withName(ct.getName()).withDescription(ct.getDescription())
+            .withDisplayName(ct.getDisplayName()).withProfile(ct.getProfile())
+            .withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date())
+            .withUsers(dao.getUsers(ct.getUsers()));
   }
 }

@@ -448,7 +448,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
             .withFieldsUpdated(Arrays.asList("teams", "timezone", "profile", "isBot"));
     user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
+    //
     // Remove the attributes
+    //
     origJson = JsonUtils.pojoToJson(user);
     user.withTeams(null).withTimezone(null).withDisplayName(null).withProfile(null)
             .withIsBot(null).withIsAdmin(false);
@@ -654,8 +656,10 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     updatedTeams.forEach(TestUtils::validateEntityReference);
 
-    expectedTeams.sort(Comparator.comparing(EntityReference::getName));
-    updatedTeams.sort(Comparator.comparing(EntityReference::getName));
+    // Note ordering is same as server side ordering by ID as string
+    // Patch requests work only if the same ordering of users on the server side
+    expectedTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+    updatedTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
     updatedTeams.forEach(t -> t.setHref(null));
     assertEquals(expectedTeams, updatedTeams);
     if (expected.getProfile() != null) {
