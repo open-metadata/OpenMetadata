@@ -54,6 +54,10 @@ export interface EntityReference {
    */
   description?: string;
   /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
