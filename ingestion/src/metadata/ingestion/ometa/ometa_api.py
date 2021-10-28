@@ -1,5 +1,5 @@
 import logging
-from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Generic, List, Optional, Tuple, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -283,6 +283,92 @@ class OpenMetadata(Generic[T, C]):
 
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
+
+    def add_lineage(self, data: AddLineage) -> Tuple[dict, dict]:
+        """
+        Add lineage relationship between two entities and returns
+        the entity information of the origin node
+        """
+        try:
+            self.client.put(self.get_suffix(data.__class__), data=data.json())
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to PUT lineage for {data.json()}"
+            )
+            raise err
+
+        from_entity_lineage = self.get_lineage_by_id(
+            data.edge.fromEntity.type, str(data.edge.fromEntity.id.__root__)
+        )
+
+        return from_entity_lineage
+
+    def get_lineage_by_id(
+        self,
+        entity: Union[Type[T], str],
+        entity_id: str,
+        up_depth: int = 1,
+        down_depth: int = 1,
+    ):
+        """
+        Get lineage details for an entity `id`
+        :param entity: Type of the entity
+        :param entity_id: Entity ID
+        :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
+        :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
+        """
+        return self.get_lineage(
+            entity=entity, suffix=entity_id, up_depth=up_depth, down_depth=down_depth
+        )
+
+    def get_lineage_by_name(
+        self,
+        entity: Union[Type[T], str],
+        fqdn: str,
+        up_depth: int = 1,
+        down_depth: int = 1,
+    ):
+        """
+        Get lineage details for an entity `id`
+        :param entity: Type of the entity
+        :param entity_id: Entity ID
+        :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
+        :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
+        """
+        return self.get_lineage(
+            entity=entity,
+            suffix=f"name/{fqdn}",
+            up_depth=up_depth,
+            down_depth=down_depth,
+        )
+
+    def get_lineage(
+        self,
+        entity: Union[Type[T], str],
+        suffix: str,
+        up_depth: int = 1,
+        down_depth: int = 1,
+    ):
+        """
+        Generic function to get entity data.
+        :param entity: Type of the entity
+        :param suffix: URL suffix by FQDN or ID
+        :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
+        :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
+        """
+        entity_name = entity if isinstance(entity, str) else entity.__name__.lower()
+        search = (
+            f"?upstreamDepth={min(up_depth, 3)}&downstreamDepth={min(down_depth, 3)}"
+        )
+
+        try:
+            res = self.client.get(f"/lineage/{entity_name}/{suffix}{search}")
+            return res
+        except APIError as err:
+            logger.error(
+                f"Error {err.status_code} trying to GET linage for {entity.__class__.__name__} and {suffix}"
+            )
+            return None
 
     def get_by_name(self, entity: Type[T], fqdn: str) -> Optional[T]:
         """
