@@ -318,7 +318,7 @@ class OpenMetadata(Generic[T, C]):
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
         return self.get_lineage(
-            entity=entity, suffix=entity_id, up_depth=up_depth, down_depth=down_depth
+            entity=entity, path=entity_id, up_depth=up_depth, down_depth=down_depth
         )
 
     def get_lineage_by_name(
@@ -331,13 +331,13 @@ class OpenMetadata(Generic[T, C]):
         """
         Get lineage details for an entity `id`
         :param entity: Type of the entity
-        :param entity_id: Entity ID
+        :param fqdn: Entity FQDN
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
         return self.get_lineage(
             entity=entity,
-            suffix=f"name/{fqdn}",
+            path=f"name/{fqdn}",
             up_depth=up_depth,
             down_depth=down_depth,
         )
@@ -345,14 +345,14 @@ class OpenMetadata(Generic[T, C]):
     def get_lineage(
         self,
         entity: Union[Type[T], str],
-        suffix: str,
+        path: str,
         up_depth: int = 1,
         down_depth: int = 1,
     ):
         """
         Generic function to get entity data.
         :param entity: Type of the entity
-        :param suffix: URL suffix by FQDN or ID
+        :param path: URL suffix by FQDN or ID
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
@@ -362,11 +362,11 @@ class OpenMetadata(Generic[T, C]):
         )
 
         try:
-            res = self.client.get(f"/lineage/{entity_name}/{suffix}{search}")
+            res = self.client.get(f"/lineage/{entity_name}/{path}{search}")
             return res
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET linage for {entity.__class__.__name__} and {suffix}"
+                f"Error {err.status_code} trying to GET linage for {entity.__class__.__name__} and {path}"
             )
             return None
 
@@ -375,26 +375,27 @@ class OpenMetadata(Generic[T, C]):
         Return entity by name or None
         """
 
-        try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
-            return entity(**resp)
-        except APIError as err:
-            logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for FQDN {fqdn}"
-            )
-            return None
+        return self.get(entity=entity, path=f"name/{fqdn}")
 
     def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
+        return self.get(entity=entity, path=entity_id)
+
+    def get(self, entity: Type[T], path: str) -> Optional[T]:
+        """
+        Generic GET operation for an entity
+        :param entity: Entity Class
+        :param path: URL suffix by FQDN or ID
+        """
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
+            resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for ID {entity_id}"
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for {path}"
             )
             return None
 
