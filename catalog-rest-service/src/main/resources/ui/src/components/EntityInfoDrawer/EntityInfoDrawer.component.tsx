@@ -180,7 +180,6 @@ const EntityInfoDrawer = ({
       ) : (
         <>
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Overview</span>
             <div className="tw-flex tw-flex-col">
               {getEntityOverview(
                 selectedNode.type,
