@@ -28,7 +28,7 @@ public class StartServerAndIngestSampleDataTest {
 
     // RUN THIS TEST FIRST
 
-    @Test
+//    @Test
     public void initAndIngestTest() throws IOException, InterruptedException {
         File scriptDir = new File("../bin/initAndIngest.sh");
         String absolutePath = scriptDir.getAbsolutePath();
