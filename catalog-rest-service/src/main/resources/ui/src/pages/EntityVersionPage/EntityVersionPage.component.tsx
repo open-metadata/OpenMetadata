@@ -20,6 +20,7 @@ import Loader from '../../components/Loader/Loader';
 import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
 import {
   getDatabaseDetailsPath,
+  getDatasetDetailsPath,
   getDatasetVersionPath,
   getServiceDetailsPath,
   getTeamDetailsPath,
@@ -81,6 +82,9 @@ const EntityVersionPage = () => {
 
   const versionDrawerHandler = () => {
     setIsDrawerOpen((prevState) => !prevState);
+  };
+  const backHandler = () => {
+    history.push(getDatasetDetailsPath(datasetFQN));
   };
 
   const versionHandler = (v = version) => {
@@ -241,9 +245,9 @@ const EntityVersionPage = () => {
           currentVersion={version}
           isLoading={isLoading}
           show={isDrawerOpen}
-          versionDrawerHandler={versionDrawerHandler}
           versionHandler={versionHandler}
           versionList={versionList}
+          onBack={backHandler}
         />
       </div>
     </PageContainer>

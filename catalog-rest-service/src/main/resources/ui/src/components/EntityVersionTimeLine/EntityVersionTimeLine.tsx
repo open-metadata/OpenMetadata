@@ -11,7 +11,7 @@ type Props = {
   show?: boolean;
   isLoading: boolean;
   versionHandler: (v: string) => void;
-  versionDrawerHandler: () => void;
+  onBack: () => void;
 };
 
 const EntityVersionTimeLine = ({
@@ -19,7 +19,7 @@ const EntityVersionTimeLine = ({
   currentVersion,
   show = false,
   versionHandler,
-  versionDrawerHandler,
+  onBack,
   isLoading,
 }: Props) => {
   const getVersionList = () => {
@@ -75,7 +75,7 @@ const EntityVersionTimeLine = ({
     <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
         <p className="tw-font-medium">Version history</p>
-        <div className="tw-flex" onClick={versionDrawerHandler}>
+        <div className="tw-flex" onClick={onBack}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
             data-testid="closeDrawer"
