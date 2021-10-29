@@ -21,7 +21,10 @@ jobs:
       with:
         java-version: '11'
         distribution: 'adopt'
-        
-    - name: Build with Maven
-      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.**.**.*.java" -DfailIfNoTests=false
+
+    - name: Start Server and Ingest Sample Data
+      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.initAndIngest.StartServerAndIngestSampleDataTest.java" -DfailIfNoTests=false
+
+    - name: Run Page Tests
+      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pages.**.*.java" -DfailIfNoTests=false
 
