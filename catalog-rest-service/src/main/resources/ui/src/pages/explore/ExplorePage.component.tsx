@@ -190,7 +190,7 @@ const ExplorePage: FunctionComponent = () => {
   useEffect(() => {
     fetchData([
       {
-        queryString: emptyValue,
+        queryString: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
         filters: emptyValue,
@@ -199,7 +199,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: emptyValue,
+        queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: emptyValue,
@@ -208,7 +208,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: emptyValue,
+        queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: emptyValue,
@@ -217,7 +217,7 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
       {
-        queryString: emptyValue,
+        queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
         filters: emptyValue,
