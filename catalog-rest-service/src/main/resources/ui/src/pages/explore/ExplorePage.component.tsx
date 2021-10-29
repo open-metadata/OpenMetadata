@@ -19,6 +19,7 @@ import { AxiosError } from 'axios';
 import { Bucket, SearchDataFunctionType, SearchResponse } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import AppState from '../../AppState';
 import { searchData } from '../../axiosAPIs/miscAPI';
 import Explore from '../../components/Explore/Explore.component';
 import {
@@ -26,14 +27,25 @@ import {
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
-import { ERROR500 } from '../../constants/constants';
+import { ERROR500, PAGE_SIZE } from '../../constants/constants';
+import {
+  emptyValue,
+  getCurrentIndex,
+  getCurrentTab,
+  INITIAL_FROM,
+  INITIAL_SORT_FIELD,
+  INITIAL_SORT_ORDER,
+  tabsInfo,
+  ZERO_SIZE,
+} from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import useToastContext from '../../hooks/useToastContext';
 import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
   const showToast = useToastContext();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
   const { searchQuery, tab } = useParams<UrlParams>();
   const [searchText, setSearchText] = useState<string>(searchQuery || '');
@@ -42,6 +54,11 @@ const ExplorePage: FunctionComponent = () => {
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
+  const [initialSortField] = useState<string>(
+    searchQuery
+      ? tabsInfo[getCurrentTab(tab) - 1].sortField
+      : INITIAL_SORT_FIELD
+  );
 
   const handleSearchText = (text: string) => {
     setSearchText(text);
@@ -63,95 +80,69 @@ const ExplorePage: FunctionComponent = () => {
     setPipelineCount(count);
   };
 
+  const handlePathChange = (path: string) => {
+    AppState.explorePageTab = path;
+  };
+
   const fetchCounts = () => {
-    const emptyValue = '';
-    const tableCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TABLE
-    );
-    const topicCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.TOPIC
-    );
-    const dashboardCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.DASHBOARD
-    );
-    const pipelineCount = searchData(
-      searchText,
-      0,
-      0,
-      emptyValue,
-      emptyValue,
-      emptyValue,
-      SearchIndex.PIPELINE
+    const entities = [
+      SearchIndex.TABLE,
+      SearchIndex.TOPIC,
+      SearchIndex.DASHBOARD,
+      SearchIndex.PIPELINE,
+    ];
+
+    const entityCounts = entities.map((entity) =>
+      searchData(searchText, 0, 0, emptyValue, emptyValue, emptyValue, entity)
     );
 
-    Promise.allSettled([
-      tableCount,
-      topicCount,
-      dashboardCount,
-      pipelineCount,
-    ]).then(
-      ([
-        table,
-        topic,
-        dashboard,
-        pipeline,
-      ]: PromiseSettledResult<SearchResponse>[]) => {
-        setTableCount(
-          table.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                table.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setTopicCount(
-          topic.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                topic.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setDashboardCount(
-          dashboard.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                dashboard.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-        setPipelineCount(
-          pipeline.status === 'fulfilled'
-            ? getTotalEntityCountByService(
-                pipeline.value.data.aggregations?.['sterms#Service']
-                  ?.buckets as Bucket[]
-              )
-            : 0
-        );
-      }
-    );
+    Promise.allSettled(entityCounts)
+      .then(
+        ([
+          table,
+          topic,
+          dashboard,
+          pipeline,
+        ]: PromiseSettledResult<SearchResponse>[]) => {
+          setTableCount(
+            table.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  table.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setTopicCount(
+            topic.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  topic.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setDashboardCount(
+            dashboard.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  dashboard.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setPipelineCount(
+            pipeline.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  pipeline.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setIsLoading(false);
+        }
+      )
+      .catch(() => setIsLoading(false));
   };
 
   const fetchData = (value: SearchDataFunctionType[]) => {
-    setIsLoading(true);
     const promiseValue = value.map((d) => {
       return searchData(
         d.queryString,
@@ -172,12 +163,14 @@ const ExplorePage: FunctionComponent = () => {
           resAggTier,
           resAggTag,
         ]: Array<SearchResponse>) => {
+          setError('');
           setSearchResult({
             resSearchResults,
             resAggServiceType,
             resAggTier,
             resAggTag,
           });
+          setIsLoadingForData(false);
         }
       )
       .catch((err: AxiosError) => {
@@ -186,27 +179,69 @@ const ExplorePage: FunctionComponent = () => {
           variant: 'error',
           body: err.response?.data?.responseMessage ?? ERROR500,
         });
+        setIsLoadingForData(false);
       });
-    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchCounts();
   }, [searchText]);
 
+  useEffect(() => {
+    fetchData([
+      {
+        queryString: emptyValue,
+        from: INITIAL_FROM,
+        size: PAGE_SIZE,
+        filters: emptyValue,
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: emptyValue,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: emptyValue,
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: emptyValue,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: emptyValue,
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+      {
+        queryString: emptyValue,
+        from: INITIAL_FROM,
+        size: ZERO_SIZE,
+        filters: emptyValue,
+        sortField: initialSortField,
+        sortOrder: INITIAL_SORT_ORDER,
+        searchIndex: getCurrentIndex(tab),
+      },
+    ]);
+  }, []);
+
   return (
-    <div data-testid="explore-page">
-      {isLoading ? (
+    <>
+      {isLoading || isLoadingForData ? (
         <Loader />
       ) : (
         <Explore
           error={error}
           fetchData={fetchData}
+          handlePathChange={handlePathChange}
           handleSearchText={handleSearchText}
-          isLoading={isLoading}
           searchQuery={searchQuery}
           searchResult={searchResult}
           searchText={searchText}
+          sortValue={initialSortField}
           tab={tab}
           tabCounts={{
             table: tableCount,
@@ -220,7 +255,7 @@ const ExplorePage: FunctionComponent = () => {
           updateTopicCount={handleTopicCount}
         />
       )}
-    </div>
+    </>
   );
 };
 

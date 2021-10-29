@@ -25,7 +25,6 @@ import {
 } from 'Models';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useHistory, useLocation } from 'react-router-dom';
-import AppState from '../../AppState';
 import { Button } from '../../components/buttons/Button/Button';
 import ErrorPlaceHolderES from '../../components/common/error-with-placeholder/ErrorPlaceHolderES';
 import FacetFilter from '../../components/common/facetfilter/FacetFilter';
@@ -39,8 +38,14 @@ import {
   visibleFilters,
 } from '../../constants/constants';
 import {
+  emptyValue,
   getAggrWithDefaultValue,
+  getCurrentIndex,
+  getCurrentTab,
+  INITIAL_SORT_FIELD,
+  INITIAL_SORT_ORDER,
   tabsInfo,
+  ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { usePrevious } from '../../hooks/usePrevious';
@@ -70,66 +75,15 @@ const getQueryParam = (urlSearchQuery = ''): FilterObject => {
     }, {}) as FilterObject;
 };
 
-const getCurrentTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'topics':
-      currentTab = 2;
-
-      break;
-    case 'dashboards':
-      currentTab = 3;
-
-      break;
-    case 'pipelines':
-      currentTab = 4;
-
-      break;
-
-    case 'tables':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
-
-const getCurrentIndex = (tab: string) => {
-  let currentIndex = SearchIndex.TABLE;
-  switch (tab) {
-    case 'topics':
-      currentIndex = SearchIndex.TOPIC;
-
-      break;
-    case 'dashboards':
-      currentIndex = SearchIndex.DASHBOARD;
-
-      break;
-    case 'pipelines':
-      currentIndex = SearchIndex.PIPELINE;
-
-      break;
-
-    case 'tables':
-    default:
-      currentIndex = SearchIndex.TABLE;
-
-      break;
-  }
-
-  return currentIndex;
-};
-
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
   searchText,
   tab,
   searchQuery,
   searchResult,
+  sortValue,
   error,
-  isLoading,
+  handlePathChange,
   handleSearchText,
   fetchData,
   updateTableCount,
@@ -151,12 +105,13 @@ const Explore: React.FC<ExploreProps> = ({
   const [searchTag, setSearchTag] = useState<string>(location.search);
 
   const [fieldListVisible, setFieldListVisible] = useState<boolean>(false);
-  const [sortField, setSortField] = useState<string>('');
-  const [sortOrder, setSortOrder] = useState<string>('desc');
+  const [sortField, setSortField] = useState<string>(sortValue);
+  const [sortOrder, setSortOrder] = useState<string>(INITIAL_SORT_ORDER);
   const [searchIndex, setSearchIndex] = useState<string>(getCurrentIndex(tab));
   const [currentTab, setCurrentTab] = useState<number>(getCurrentTab(tab));
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
+  const [isEntityLoading, setIsEntityLoading] = useState(true);
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
@@ -263,6 +218,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const fetchTableData = () => {
+    setIsEntityLoading(true);
     const fetchParams = [
       {
         queryString: searchText,
@@ -276,7 +232,7 @@ const Explore: React.FC<ExploreProps> = ({
       {
         queryString: searchText,
         from: currentPage,
-        size: 0,
+        size: ZERO_SIZE,
         filters: getFilterString(filters, ['service']),
         sortField: sortField,
         sortOrder: sortOrder,
@@ -285,7 +241,7 @@ const Explore: React.FC<ExploreProps> = ({
       {
         queryString: searchText,
         from: currentPage,
-        size: 0,
+        size: ZERO_SIZE,
         filters: getFilterString(filters, ['tier']),
         sortField: sortField,
         sortOrder: sortOrder,
@@ -294,7 +250,7 @@ const Explore: React.FC<ExploreProps> = ({
       {
         queryString: searchText,
         from: currentPage,
-        size: 0,
+        size: ZERO_SIZE,
         filters: getFilterString(filters, ['tags']),
         sortField: sortField,
         sortOrder: sortOrder,
@@ -321,7 +277,7 @@ const Explore: React.FC<ExploreProps> = ({
     _e: React.MouseEvent<HTMLElement, MouseEvent>,
     value?: string
   ) => {
-    setSortField(value || '');
+    setSortField(value || sortField);
     setFieldListVisible(false);
   };
   const handleOrder = (value: string) => {
@@ -403,7 +359,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
   const onTabChange = (selectedTab: number) => {
     if (tabsInfo[selectedTab - 1].path !== tab) {
-      AppState.explorePageTab = tabsInfo[selectedTab - 1].path;
+      handlePathChange(tabsInfo[selectedTab - 1].path);
       resetFilters();
       history.push({
         pathname: getExplorePathWithSearch(
@@ -445,15 +401,19 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   useEffect(() => {
-    handleSearchText(searchQuery || '');
+    handleSearchText(searchQuery || emptyValue);
     setCurrentPage(1);
   }, [searchQuery]);
 
   useEffect(() => {
     setFilters(filterObject);
     setFieldList(tabsInfo[getCurrentTab(tab) - 1].sortingFields);
-    setSortField(tabsInfo[getCurrentTab(tab) - 1].sortField);
-    setSortOrder('desc');
+    setSortField(
+      searchQuery
+        ? tabsInfo[getCurrentTab(tab) - 1].sortField
+        : INITIAL_SORT_FIELD
+    );
+    setSortOrder(INITIAL_SORT_ORDER);
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
@@ -467,7 +427,9 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     forceSetAgg.current = true;
-    fetchTableData();
+    if (!isMounting.current) {
+      fetchTableData();
+    }
   }, [searchText, searchIndex]);
 
   useEffect(() => {
@@ -498,6 +460,7 @@ const Explore: React.FC<ExploreProps> = ({
 
         updateAggregationCount([...aggServiceType, ...aggTier, ...aggTag]);
       }
+      setIsEntityLoading(false);
     }
   }, [searchResult]);
 
@@ -539,7 +502,7 @@ const Explore: React.FC<ExploreProps> = ({
             showResultCount
             currentPage={currentPage}
             data={data}
-            isLoading={isLoading}
+            isLoading={isEntityLoading}
             paginate={paginate}
             searchText={searchText}
             totalValue={totalNumberOfValue}

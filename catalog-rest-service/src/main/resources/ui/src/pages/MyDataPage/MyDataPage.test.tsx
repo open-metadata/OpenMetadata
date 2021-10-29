@@ -15,20 +15,38 @@
   * limitations under the License.
 */
 
-import { getByText, render } from '@testing-library/react';
+import { findByTestId, render } from '@testing-library/react';
 import React from 'react';
 import MyDataPageComponent from './MyDataPage.component';
 
-jest.mock('./MyDataPage.component', () => {
-  return jest.fn().mockReturnValue(<p>Mydata component</p>);
+jest.mock('../../components/MyData/MyData.component', () => {
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="my-data-component">Mydata component</p>);
 });
+
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: { hits: [] } })),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getAllServices: jest.fn().mockImplementation(() => Promise.resolve(['test'])),
+  getEntityCountByService: jest.fn().mockReturnValue({
+    tableCount: 0,
+    topicCount: 0,
+    dashboardCount: 0,
+    pipelineCount: 0,
+  }),
+}));
 
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
 
-    const ContainerText = getByText(container, 'Mydata component');
+    const myData = await findByTestId(container, 'my-data-component');
 
-    expect(ContainerText).toBeInTheDocument();
+    expect(myData).toBeInTheDocument();
   });
 });
