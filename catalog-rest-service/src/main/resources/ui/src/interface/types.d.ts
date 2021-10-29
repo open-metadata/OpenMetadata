@@ -73,13 +73,9 @@ declare module 'Models' {
     piiTags?: Array<string>;
   };
 
-  export type ColumnTags = {
+  export type EntityTags = {
     isRemovable?: boolean;
   } & TagLabel;
-
-  export interface EntityTags extends TagLabel {
-    isRemovable?: boolean;
-  }
 
   export type TableColumn = {
     name: string;

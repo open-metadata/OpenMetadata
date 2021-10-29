@@ -180,7 +180,6 @@ const EntityInfoDrawer = ({
       ) : (
         <>
           <section className="tw-mt-1">
-            <span className="tw-text-grey-muted">Overview</span>
             <div className="tw-flex tw-flex-col">
               {getEntityOverview(
                 selectedNode.type,
@@ -188,7 +187,7 @@ const EntityInfoDrawer = ({
                 serviceType
               ).map((d) => {
                 return (
-                  <p className="tw-py-1.5" key={d.name}>
+                  <p className="tw-py-1.5 tw-flex" key={d.name}>
                     {d.name && <span>{d.name}:</span>}
                     <span
                       className={classNames(

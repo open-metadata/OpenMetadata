@@ -176,7 +176,6 @@ public class UserRepository extends EntityRepository<User> {
   private void assignTeams(User user, List<EntityReference> teams) {
     // Query - add team to the user
     teams = Optional.ofNullable(teams).orElse(Collections.emptyList());
-    teams.sort(Comparator.comparing(EntityReference::getId)); // Sort team order to the query order
     for (EntityReference team : teams) {
       dao.relationshipDAO().insert(team.getId().toString(), user.getId().toString(),
               "team", "user", CONTAINS.ordinal());
@@ -301,19 +300,13 @@ public class UserRepository extends EntityRepository<User> {
       dao.relationshipDAO().deleteTo(origUser.getId().toString(), CONTAINS.ordinal(), "team");
       assignTeams(updatedUser, updatedUser.getTeams());
 
-      List<EntityReference> origTeams = origUser.getTeams();
-      List<EntityReference> updatedTeams = updatedUser.getTeams();
-      if (origTeams == null || origTeams.isEmpty()) {
-        origTeams = null;
-      } else {
-        origTeams.sort(Comparator.comparing(EntityReference::getId));
-      }
-      if (updatedTeams == null || updatedTeams.isEmpty()) {
-        updatedTeams = null;
-      } else {
-        updatedTeams.sort(Comparator.comparing(EntityReference::getId));
-      }
-      recordChange("teams", origTeams, updatedTeams);
+      List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
+      List<EntityReference> updatedTeams = Optional.ofNullable(updatedUser.getTeams()).orElse(Collections.emptyList());
+
+      // Sort by team Id as string (as done in the database)
+      origTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+      updatedTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+      recordChange("teams", origTeams.isEmpty() ? null : origTeams, updatedTeams.isEmpty() ? null : updatedTeams);
     }
   }
 }

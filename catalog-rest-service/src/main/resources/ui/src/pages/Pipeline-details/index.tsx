@@ -1,7 +1,7 @@
 import { AxiosPromise, AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { ColumnTags, TableDetail } from 'Models';
+import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
@@ -72,7 +72,7 @@ const MyPipelinePage = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
-  const [tags, setTags] = useState<Array<ColumnTags>>([]);
+  const [tags, setTags] = useState<Array<EntityTags>>([]);
   const [activeTab, setActiveTab] = useState<number>(1);
   const [isEdit, setIsEdit] = useState<boolean>(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -320,10 +320,10 @@ const MyPipelinePage = () => {
       if (newOwner || newTier) {
         const tierTag: TableDetail['tags'] = newTier
           ? [
-              ...getTagsWithoutTier(pipelineDetails.tags as ColumnTags[]),
+              ...getTagsWithoutTier(pipelineDetails.tags as EntityTags[]),
               { tagFQN: newTier, labelType: 'Manual', state: 'Confirmed' },
             ]
-          : (pipelineDetails.tags as ColumnTags[]);
+          : (pipelineDetails.tags as EntityTags[]);
         const updatedPipeline = {
           ...pipelineDetails,
           owner: newOwner
@@ -351,7 +351,7 @@ const MyPipelinePage = () => {
       const prevTags = pipelineDetails?.tags?.filter((tag) =>
         selectedTags.includes(tag?.tagFQN as string)
       );
-      const newTags: Array<ColumnTags> = selectedTags
+      const newTags: Array<EntityTags> = selectedTags
         .filter((tag) => {
           return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
         })
@@ -405,7 +405,7 @@ const MyPipelinePage = () => {
     setEditTaskTags({ task, index });
   };
 
-  const handleTaskTagSelection = (selectedTags?: Array<ColumnTags>) => {
+  const handleTaskTagSelection = (selectedTags?: Array<EntityTags>) => {
     if (selectedTags && editTaskTags) {
       const prevTags = editTaskTags.task.tags?.filter((tag) =>
         selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
@@ -581,7 +581,7 @@ const MyPipelinePage = () => {
                                 trigger="click">
                                 <TagsContainer
                                   editable={editTaskTags?.index === index}
-                                  selectedTags={task.tags as ColumnTags[]}
+                                  selectedTags={task.tags as EntityTags[]}
                                   tagList={tagList}
                                   onCancel={() => {
                                     handleTaskTagSelection();

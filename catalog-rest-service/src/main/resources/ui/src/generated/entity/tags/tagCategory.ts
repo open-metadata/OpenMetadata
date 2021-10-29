@@ -24,6 +24,10 @@
 export interface TagCategory {
   categoryType: TagCategoryType;
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Tags under this category.
    */
   children?: Array<
@@ -34,14 +38,30 @@ export interface TagCategory {
    */
   description: string;
   /**
+   * Display Name that identifies this tag category.
+   */
+  displayName?: string;
+  /**
    * Link to the resource corresponding to the tag category.
    */
   href?: string;
   name: string;
   /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
    * Count of how many times the tags from this tag category are used.
    */
   usageCount?: number;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
 }
 
 /**
@@ -50,6 +70,27 @@ export interface TagCategory {
 export enum TagCategoryType {
   Classification = 'Classification',
   Descriptive = 'Descriptive',
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Fields added during the version changes.
+   */
+  fieldsAdded?: string[];
+  /**
+   * Fields deleted during the version changes.
+   */
+  fieldsDeleted?: string[];
+  /**
+   * Fields modified during the version changes.
+   */
+  fieldsUpdated?: string[];
+  previousVersion?: number;
 }
 
 export interface TagClass {
@@ -88,7 +129,19 @@ export interface TagClass {
    */
   name: string;
   /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
    * Count of how many times this tag and children tags are used.
    */
   usageCount?: number;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
 }

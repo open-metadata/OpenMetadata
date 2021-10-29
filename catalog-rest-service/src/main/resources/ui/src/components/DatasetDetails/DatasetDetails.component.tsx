@@ -18,7 +18,6 @@ import {
   getUserTeams,
 } from '../../utils/CommonUtils';
 import { getTagsWithoutTier, getUsagePercentile } from '../../utils/TableUtils';
-import { getRelativeDay } from '../../utils/TimeUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
 import TabsPane from '../common/TabsPane/TabsPane';
@@ -28,6 +27,7 @@ import FrequentlyJoinedTables from '../FrequentlyJoinedTables/FrequentlyJoinedTa
 import ManageTab from '../ManageTab/ManageTab.component';
 import SchemaTab from '../SchemaTab/SchemaTab.component';
 import TableProfiler from '../TableProfiler/TableProfiler.component';
+import TableProfilerGraph from '../TableProfiler/TableProfilerGraph.component';
 import { DatasetDetailsProps } from './DatasetDetails.interface';
 
 const DatasetDetails: React.FC<DatasetDetailsProps> = ({
@@ -168,29 +168,10 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
 
     return freqJoin;
   };
-  const getProfilerRowDiff = (tableProfile: Table['tableProfile']) => {
-    let retDiff;
-    if (tableProfile && tableProfile.length > 0) {
-      let rowDiff: string | number = tableProfile[0].rowCount || 0;
-      const dayDiff = getRelativeDay(
-        tableProfile[0].profileDate
-          ? new Date(tableProfile[0].profileDate).getTime()
-          : Date.now()
-      );
-      if (tableProfile.length > 1) {
-        rowDiff = rowDiff - (tableProfile[1].rowCount || 0);
-      }
-      retDiff = `${(rowDiff >= 0 ? '+' : '') + rowDiff} rows ${dayDiff}`;
-    }
-
-    return retDiff;
-  };
-
-  const profilerRowDiff = getProfilerRowDiff(tableProfile);
 
   const extraInfo: Array<{
     key?: string;
-    value: string | number;
+    value: string | number | React.ReactNode;
     isLink?: boolean;
     placeholderText?: string;
     openInNewTab?: boolean;
@@ -209,24 +190,36 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
     { key: 'Usage', value: usage },
     { key: 'Queries', value: `${weeklyUsageCount} past week` },
     {
-      key: 'Rows',
-      value:
-        tableProfile && tableProfile[0]?.rowCount
-          ? tableProfile[0].rowCount
-          : '--',
-    },
-    {
       key: 'Columns',
       value:
         tableProfile && tableProfile[0]?.columnCount
           ? tableProfile[0].columnCount
           : '--',
     },
+    {
+      key: 'Rows',
+      value: tableProfile ? (
+        <TableProfilerGraph
+          className="tw--mt-5"
+          data={
+            tableProfile
+              ?.map((d) => ({
+                date: d.profileDate,
+                value: d.rowCount ?? 0,
+              }))
+              .reverse() as Array<{
+              date: Date;
+              value: number;
+            }>
+          }
+          height={38}
+          toolTipPos={{ x: 20, y: -30 }}
+        />
+      ) : (
+        '--'
+      ),
+    },
   ];
-
-  if (!isNil(profilerRowDiff)) {
-    extraInfo.push({ value: profilerRowDiff });
-  }
 
   const onDescriptionEdit = (): void => {
     setIsEdit(true);

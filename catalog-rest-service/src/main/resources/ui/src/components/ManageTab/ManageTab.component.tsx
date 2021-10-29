@@ -109,7 +109,7 @@ const ManageTab: FunctionComponent<Props> = ({
     }
   });
   const [owner, setOwner] = useState(currentUser);
-  const [, setIsLoadingTierData] = useState<boolean>(false);
+  const [isLoadingTierData, setIsLoadingTierData] = useState<boolean>(false);
 
   const getOwnerById = (): string => {
     return listOwners.find((item) => item.value === owner)?.name || '';
@@ -242,26 +242,30 @@ const ManageTab: FunctionComponent<Props> = ({
           )}
         </span>
       </div>
-      <div className="tw-flex tw-flex-col" data-testid="cards">
-        {tierData.map((card, i) => (
-          <NonAdminAction
-            html={
-              <>
-                <p>You need to be owner to perform this action</p>
-                <p>Claim ownership from above </p>
-              </>
-            }
-            isOwner={hasEditAccess || Boolean(owner)}
-            key={i}
-            position="left">
-            <CardListItem
-              card={card}
-              isActive={activeTier === card.id}
-              onSelect={handleCardSelection}
-            />
-          </NonAdminAction>
-        ))}
-      </div>
+      {isLoadingTierData ? (
+        <Loader />
+      ) : (
+        <div className="tw-flex tw-flex-col" data-testid="cards">
+          {tierData.map((card, i) => (
+            <NonAdminAction
+              html={
+                <>
+                  <p>You need to be owner to perform this action</p>
+                  <p>Claim ownership from above </p>
+                </>
+              }
+              isOwner={hasEditAccess || Boolean(owner)}
+              key={i}
+              position="left">
+              <CardListItem
+                card={card}
+                isActive={activeTier === card.id}
+                onSelect={handleCardSelection}
+              />
+            </NonAdminAction>
+          ))}
+        </div>
+      )}
       <div className="tw-mt-6 tw-text-right" data-testid="buttons">
         <Button
           size="regular"

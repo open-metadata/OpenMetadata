@@ -1,5 +1,5 @@
 """
-OpenMetadata high-level API Database test
+OpenMetadata high-level API Table test
 """
 import uuid
 from unittest import TestCase
@@ -41,7 +41,7 @@ class OMetaTableTest(TestCase):
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDatabaseServiceEntityRequest(
-        name="test-service",
+        name="test-service-table",
         serviceType=DatabaseServiceType.MySQL,
         jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
     )
@@ -65,7 +65,7 @@ class OMetaTableTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             database=EntityReference(id=cls.create_db_entity.id, type="database"),
-            fullyQualifiedName="test-service.test-db.test",
+            fullyQualifiedName="test-service-table.test-db.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -82,19 +82,19 @@ class OMetaTableTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service.test-db.test"
+                entity=Table, fqdn="test-service-table.test-db.test"
             ).id.__root__
         )
 
         database_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service.test-db"
+                entity=Database, fqdn="test-service-table.test-db"
             ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service"
+                entity=DatabaseService, fqdn="test-service-table"
             ).id.__root__
         )
 
@@ -196,5 +196,10 @@ class OMetaTableTest(TestCase):
         # Then we should not find it
         res = self.metadata.list_entities(entity=Table)
         assert not next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
+            ),
+            None,
         )

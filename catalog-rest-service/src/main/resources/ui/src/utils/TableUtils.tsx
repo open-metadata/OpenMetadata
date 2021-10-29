@@ -1,4 +1,4 @@
-import { ColumnTags, TableDetail } from 'Models';
+import { EntityTags, TableDetail } from 'Models';
 import React from 'react';
 import AppState from '../AppState';
 import PopOver from '../components/common/popover/PopOver';
@@ -46,8 +46,8 @@ export const getUsagePercentile = (pctRank: number) => {
 };
 
 export const getTierFromTableTags = (
-  tags: Array<ColumnTags>
-): ColumnTags['tagFQN'] => {
+  tags: Array<EntityTags>
+): EntityTags['tagFQN'] => {
   const tierTag = tags.find(
     (item) =>
       item.tagFQN.startsWith('Tier.Tier') &&
@@ -58,8 +58,8 @@ export const getTierFromTableTags = (
 };
 
 export const getTagsWithoutTier = (
-  tags: Array<ColumnTags>
-): Array<ColumnTags> => {
+  tags: Array<EntityTags>
+): Array<EntityTags> => {
   return tags.filter(
     (item) =>
       !item.tagFQN.startsWith('Tier.Tier') ||

@@ -21,6 +21,10 @@
  */
 export interface DashboardService {
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.
    */
   dashboardUrl: string;
@@ -28,6 +32,10 @@ export interface DashboardService {
    * Description of a dashboard service instance.
    */
   description?: string;
+  /**
+   * Display Name that identifies this dashboard service.
+   */
+  displayName?: string;
   /**
    * Link to the resource corresponding to this dashboard service.
    */
@@ -53,9 +61,42 @@ export interface DashboardService {
    */
   serviceType: DashboardServiceType;
   /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
    * Username to log-into Dashboard Service.
    */
   username?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Fields added during the version changes.
+   */
+  fieldsAdded?: string[];
+  /**
+   * Fields deleted during the version changes.
+   */
+  fieldsDeleted?: string[];
+  /**
+   * Fields modified during the version changes.
+   */
+  fieldsUpdated?: string[];
+  previousVersion?: number;
 }
 
 /**

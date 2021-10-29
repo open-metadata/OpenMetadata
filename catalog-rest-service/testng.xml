@@ -40,6 +40,7 @@
     <test name="datasetPageTests">
         <classes>
             <class name="org.openmetadata.catalog.selenium.pages.tableDetails.TableDetailsPageTest"/>
+            <class name="org.openmetadata.catalog.selenium.pages.topicDetails.TopicDetailsPageTest"/>
             <class name="org.openmetadata.catalog.selenium.pages.dashboardDetails.DashboardDetailsPageTest"/>
         </classes>
     </test>

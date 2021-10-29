@@ -24,9 +24,17 @@
  */
 export interface Metrics {
   /**
+   * Change that lead to this version of the entity.
+   */
+  changeDescription?: ChangeDescription;
+  /**
    * Description of metrics instance, what it is, and how to use it.
    */
   description?: string;
+  /**
+   * Display Name that identifies this metric.
+   */
+  displayName?: string;
   /**
    * A unique name that identifies a metric in the format 'ServiceName.MetricName'.
    */
@@ -52,9 +60,46 @@ export interface Metrics {
    */
   service: EntityReference;
   /**
+   * Tags for this chart.
+   */
+  tags?: TagLabel[];
+  /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
    * Latest usage information for this database.
    */
   usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
+}
+
+/**
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Fields added during the version changes.
+   */
+  fieldsAdded?: string[];
+  /**
+   * Fields deleted during the version changes.
+   */
+  fieldsDeleted?: string[];
+  /**
+   * Fields modified during the version changes.
+   */
+  fieldsUpdated?: string[];
+  previousVersion?: number;
 }
 
 /**
@@ -73,6 +118,10 @@ export interface EntityReference {
    */
   description?: string;
   /**
+   * Display Name that identifies this entity.
+   */
+  displayName?: string;
+  /**
    * Link to the entity resource.
    */
   href?: string;
@@ -90,6 +139,53 @@ export interface EntityReference {
    * `bigquery`, `snowflake`...
    */
   type: string;
+}
+
+/**
+ * This schema defines the type for labeling an entity with a Tag.
+ */
+export interface TagLabel {
+  /**
+   * Link to the tag resource.
+   */
+  href?: string;
+  /**
+   * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+   * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+   * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
+   * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
+   * to determine the tag label.
+   */
+  labelType?: LabelType;
+  /**
+   * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+   * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+   */
+  state?: State;
+  tagFQN?: string;
+}
+
+/**
+ * Label type describes how a tag label was applied. 'Manual' indicates the tag label was
+ * applied by a person. 'Derived' indicates a tag label was derived using the associated tag
+ * relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label
+ * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
+ * to determine the tag label.
+ */
+export enum LabelType {
+  Automated = 'Automated',
+  Derived = 'Derived',
+  Manual = 'Manual',
+  Propagated = 'Propagated',
+}
+
+/**
+ * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ */
+export enum State {
+  Confirmed = 'Confirmed',
+  Suggested = 'Suggested',
 }
 
 /**

@@ -17,7 +17,7 @@
 
 import classNames from 'classnames';
 import { cloneDeep, lowerCase, upperCase } from 'lodash';
-import { ColumnTags } from 'Models';
+import { EntityTags } from 'Models';
 import React, { Fragment, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useExpanded, useTable } from 'react-table';
@@ -258,7 +258,7 @@ const EntityTable = ({
     }
   };
 
-  const handleTagSelection = (selectedTags?: Array<ColumnTags>) => {
+  const handleTagSelection = (selectedTags?: Array<EntityTags>) => {
     const newSelectedTags = selectedTags?.map((tag) => tag.tagFQN);
     if (newSelectedTags && editColumnTag) {
       const tableCols = cloneDeep(tableColumns);
@@ -272,7 +272,7 @@ const EntityTable = ({
             return newSelectedTags.includes(tag?.tagFQN as string);
           });
 
-          const newTags: Array<ColumnTags> = newSelectedTags
+          const newTags: Array<EntityTags> = newSelectedTags
             .filter((tag) => {
               return !prevTags?.map((prevTag) => prevTag.tagFQN).includes(tag);
             })

@@ -21,12 +21,16 @@
  */
 export interface CreateUser {
   /**
+   * Used for user biography.
+   */
+  description?: string;
+  /**
    * Name used for display purposes. Example 'FirstName LastName'
    */
   displayName?: string;
   email: string;
   /**
-   * When true indicates user is an adiministrator for the sytem with superuser privileges
+   * When true indicates user is an administrator for the system with superuser privileges
    */
   isAdmin?: boolean;
   /**
