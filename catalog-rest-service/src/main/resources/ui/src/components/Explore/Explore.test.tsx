@@ -45,6 +45,7 @@ const updateTableCount = jest.fn();
 const updateTopicCount = jest.fn();
 const updateDashboardCount = jest.fn();
 const updatePipelineCount = jest.fn();
+const handlePathChange = jest.fn();
 const fetchData = jest.fn();
 
 const mockSearchResult = {
@@ -60,11 +61,12 @@ describe('Test Explore component', () => {
       <Explore
         error=""
         fetchData={fetchData}
+        handlePathChange={handlePathChange}
         handleSearchText={handleSearchText}
-        isLoading={false}
         searchQuery=""
         searchResult={mockSearchResult}
         searchText=""
+        sortValue=""
         tab=""
         tabCounts={{
           table: 15,

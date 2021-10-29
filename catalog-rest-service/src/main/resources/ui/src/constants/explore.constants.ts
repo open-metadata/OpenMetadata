@@ -21,6 +21,12 @@ import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
 import { tableSortingFields, tiers, topicSortingFields } from './constants';
 
+export const INITIAL_SORT_FIELD = 'last_updated_timestamp';
+export const INITIAL_SORT_ORDER = 'desc';
+export const INITIAL_FROM = 1;
+export const ZERO_SIZE = 0;
+export const emptyValue = '';
+
 export const getBucketList = (buckets: Array<Bucket>) => {
   let bucketList: Array<Bucket> = [...tiers];
   buckets.forEach((el) => {
@@ -90,6 +96,32 @@ export const getCurrentIndex = (tab: string) => {
   }
 
   return currentIndex;
+};
+
+export const getCurrentTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'topics':
+      currentTab = 2;
+
+      break;
+    case 'dashboards':
+      currentTab = 3;
+
+      break;
+    case 'pipelines':
+      currentTab = 4;
+
+      break;
+
+    case 'tables':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
 };
 
 export const tabsInfo = [

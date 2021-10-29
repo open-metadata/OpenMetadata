@@ -20,18 +20,33 @@ import React from 'react';
 import MyDataPageComponent from './MyDataPage.component';
 
 jest.mock('../../components/MyData/MyData.component', () => {
-  return jest.fn().mockReturnValue(<p>Mydata component</p>);
+  return jest
+    .fn()
+    .mockReturnValue(<p data-testid="my-data-component">Mydata component</p>);
 });
+
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve({ data: { hits: [] } })),
+}));
+
+jest.mock('../../utils/ServiceUtils', () => ({
+  getAllServices: jest.fn().mockImplementation(() => Promise.resolve(['test'])),
+  getEntityCountByService: jest.fn().mockReturnValue({
+    tableCount: 0,
+    topicCount: 0,
+    dashboardCount: 0,
+    pipelineCount: 0,
+  }),
+}));
 
 describe('Test MyData page component', () => {
   it('Component should render', async () => {
     const { container } = render(<MyDataPageComponent />);
 
-    const myDataPageContainer = await findByTestId(
-      container,
-      'my-data-page-conatiner'
-    );
+    const myData = await findByTestId(container, 'my-data-component');
 
-    expect(myDataPageContainer).toBeInTheDocument();
+    expect(myData).toBeInTheDocument();
   });
 });

@@ -27,6 +27,10 @@ jest.mock('../../components/Explore/Explore.component', () => {
   return jest.fn().mockReturnValue(<p>Explore Component</p>);
 });
 
+jest.mock('../../axiosAPIs/miscAPI', () => ({
+  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+}));
+
 describe('Test Explore page', () => {
   it('Page Should render', async () => {
     const { container } = render(<ExplorePage />);

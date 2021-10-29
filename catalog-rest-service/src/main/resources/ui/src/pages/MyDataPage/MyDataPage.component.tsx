@@ -95,7 +95,9 @@ const MyDataPage = () => {
 
   return (
     <>
-      {countServices && entityCounts && !isLoading ? (
+      {!isUndefined(countServices) &&
+      !isUndefined(entityCounts) &&
+      !isLoading ? (
         error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (

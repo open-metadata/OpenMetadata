@@ -37,9 +37,11 @@ export interface ExploreProps {
     pipeline: number;
   };
   searchText: string;
+  sortValue: string;
   tab: string;
   error: string;
   searchQuery: string;
+  handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;
   updateTopicCount: (count: number) => void;
