@@ -51,10 +51,10 @@ type Props = {
   tableColumns: Table['columns'];
   joins: Array<ColumnJoins>;
   searchText?: string;
-  onUpdate: (columns: Table['columns']) => void;
   columnName: string;
   hasEditAccess: boolean;
   isReadOnly?: boolean;
+  onUpdate?: (columns: Table['columns']) => void;
 };
 
 const EntityTable = ({
@@ -95,15 +95,21 @@ const EntityTable = ({
     [searchedColumns]
   );
 
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable(
-      {
-        columns: columns,
-        data,
-        autoResetExpanded: false,
-      },
-      useExpanded
-    );
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows,
+    prepareRow,
+    toggleAllRowsExpanded,
+  } = useTable(
+    {
+      columns: columns,
+      data,
+      autoResetExpanded: false,
+    },
+    useExpanded
+  );
   const [editColumn, setEditColumn] = useState<{
     column: Column;
     index: number;
@@ -251,7 +257,7 @@ const EntityTable = ({
           ...tableCols.slice(indexs[0] + 1),
         ];
 
-        onUpdate(updatedColumns);
+        onUpdate?.(updatedColumns);
       }
 
       setEditColumn(undefined);
@@ -344,7 +350,7 @@ const EntityTable = ({
           ...tableCols.slice(indexs[0] + 1),
         ];
 
-        onUpdate(updatedColumns);
+        onUpdate?.(updatedColumns);
       }
     }
     setEditColumnTag(undefined);
@@ -382,6 +388,7 @@ const EntityTable = ({
 
   useEffect(() => {
     fetchTags();
+    toggleAllRowsExpanded(isReadOnly);
   }, []);
 
   return (

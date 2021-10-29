@@ -39,4 +39,5 @@ export interface DatasetDetailsProps {
   settingsUpdateHandler: (updatedTable: Table) => Promise<void>;
   columnsUpdateHandler: (updatedTable: Table) => void;
   descriptionUpdateHandler: (updatedTable: Table) => void;
+  versionHandler: () => void;
 }

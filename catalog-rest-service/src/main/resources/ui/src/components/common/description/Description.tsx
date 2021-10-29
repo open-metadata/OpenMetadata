@@ -7,13 +7,13 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
-  owner: Table['owner'];
-  hasEditAccess: boolean;
-  onDescriptionEdit: () => void;
+  owner?: Table['owner'];
+  hasEditAccess?: boolean;
   description: string;
-  isEdit: boolean;
-  onCancel: () => void;
-  onDescriptionUpdate: (value: string) => void;
+  isEdit?: boolean;
+  onDescriptionEdit?: () => void;
+  onCancel?: () => void;
+  onDescriptionUpdate?: (value: string) => void;
   onSuggest?: (value: string) => void;
   isReadOnly?: boolean;
 };

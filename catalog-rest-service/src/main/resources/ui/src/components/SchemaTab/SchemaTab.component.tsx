@@ -29,15 +29,14 @@ import SampleDataTable, {
 } from '../SampleDataTable/SampleDataTable.component';
 
 type Props = {
-  owner: Table['owner'];
+  owner?: Table['owner'];
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  onUpdate: (columns: Table['columns']) => void;
-  sampleData: TableData;
+  sampleData?: TableData;
   columnName: string;
-  hasEditAccess: boolean;
-  isToggable?: boolean;
+  hasEditAccess?: boolean;
   isReadOnly?: boolean;
+  onUpdate?: (columns: Table['columns']) => void;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -48,7 +47,6 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasEditAccess,
   owner,
-  isToggable = false,
   isReadOnly = false,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
@@ -105,7 +103,7 @@ const SchemaTab: FunctionComponent<Props> = ({
             />
           )}
         </div>
-        {!isToggable ? (
+        {!isReadOnly ? (
           <div className="tw-col-span-2 tw-text-right tw-mb-4">
             <div
               className="tw-w-60 tw-inline-flex tw-border tw-border-main
@@ -133,7 +131,7 @@ const SchemaTab: FunctionComponent<Props> = ({
           {checkedValue === 'schema' ? (
             <EntityTable
               columnName={columnName}
-              hasEditAccess={hasEditAccess}
+              hasEditAccess={Boolean(hasEditAccess)}
               isReadOnly={isReadOnly}
               joins={joins}
               owner={owner}

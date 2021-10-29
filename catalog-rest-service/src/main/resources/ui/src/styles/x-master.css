@@ -720,3 +720,9 @@ body .profiler-graph .recharts-active-dot circle {
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #7147e8;
 }
+
+/* EntityVersion  */
+
+.version-data {
+  width: calc(100% - 330px);
+}

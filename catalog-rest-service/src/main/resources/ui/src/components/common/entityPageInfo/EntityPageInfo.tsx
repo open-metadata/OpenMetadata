@@ -27,7 +27,7 @@ type ExtraInfo = {
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
   isFollowing?: boolean;
-  followers: number;
+  followers?: number;
   extraInfo: Array<ExtraInfo>;
   tier: string;
   tags: Array<EntityTags>;
@@ -39,7 +39,7 @@ type Props = {
   entityName: string;
   version?: string;
   isVersionSelected?: boolean;
-  followHandler: () => void;
+  followHandler?: () => void;
   tagsHandler?: (selectedTags?: Array<string>) => void;
   versionHandler?: () => void;
 };
@@ -48,7 +48,7 @@ const EntityPageInfo = ({
   titleLinks,
   isFollowing,
   followHandler,
-  followers,
+  followers = 0,
   extraInfo,
   tier,
   tags,

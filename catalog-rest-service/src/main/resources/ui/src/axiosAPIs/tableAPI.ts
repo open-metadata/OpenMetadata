@@ -28,10 +28,19 @@ export const getTableDetails: Function = (
 
   return APIClient.get(url);
 };
+
 export const getTableVersions: Function = (
   id: string
 ): Promise<AxiosResponse> => {
   const url = `/tables/${id}/versions`;
+
+  return APIClient.get(url);
+};
+export const getTableVersion: Function = (
+  id: string,
+  version: string
+): Promise<AxiosResponse> => {
+  const url = `/tables/${id}/versions/${version}`;
 
   return APIClient.get(url);
 };

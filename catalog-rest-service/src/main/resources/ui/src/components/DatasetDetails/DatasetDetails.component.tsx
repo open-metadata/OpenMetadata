@@ -1,11 +1,7 @@
 import { isEqual, isNil } from 'lodash';
 import { ColumnJoins, EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useHistory } from 'react-router';
-import {
-  getDatasetVersionPath,
-  getTeamDetailsPath,
-} from '../../constants/constants';
+import { getTeamDetailsPath } from '../../constants/constants';
 import {
   JoinedWith,
   Table,
@@ -59,8 +55,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   usageSummary,
   joins,
   version,
+  versionHandler,
 }: DatasetDetailsProps) => {
-  const history = useHistory();
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
@@ -296,10 +292,6 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
       setIsFollowing(true);
       followTableHandler();
     }
-  };
-
-  const versionHandler = () => {
-    history.push(getDatasetVersionPath(datasetFQN, version as string));
   };
 
   useEffect(() => {

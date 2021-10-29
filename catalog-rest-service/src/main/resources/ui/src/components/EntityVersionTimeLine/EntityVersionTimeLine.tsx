@@ -1,17 +1,81 @@
+import classNames from 'classnames';
+import { toString } from 'lodash';
 import React from 'react';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import Loader from '../Loader/Loader';
 import './EntityVersionTimeLine.css';
 
 type Props = {
   versionList: EntityHistory;
+  currentVersion: string;
+  show?: boolean;
+  isLoading: boolean;
+  versionHandler: (v: string) => void;
+  versionDrawerHandler: () => void;
 };
 
-const EntityVersionTimeLine = ({ versionList }: Props) => {
+const EntityVersionTimeLine = ({
+  versionList,
+  currentVersion,
+  show = false,
+  versionHandler,
+  versionDrawerHandler,
+  isLoading,
+}: Props) => {
+  const getVersionList = () => {
+    const list = versionList.versions?.slice(1) || [];
+
+    return list.map((v, i) => {
+      const currV = JSON.parse(v);
+
+      return (
+        <div
+          className="timeline-content tw-py-2 tw-cursor-pointer"
+          key={i}
+          onClick={() => versionHandler(toString(currV?.version))}>
+          <div className="timeline-wrapper">
+            <span
+              className={classNames('timeline-rounder', {
+                selected: toString(currV?.version) === currentVersion,
+              })}
+            />
+            <span className="timeline-line" />
+            {list.length === i + 1 ? (
+              <>
+                <span className="timeline-line" />
+                <span className="timeline-line" />
+              </>
+            ) : null}
+          </div>
+          <div className="tw-grid tw-gap-0.5">
+            <p
+              className={classNames('tw-text-grey-body tw-font-normal', {
+                'tw-text-primary-active':
+                  toString(currV?.version) === currentVersion,
+              })}>
+              v{currV?.version}
+            </p>
+            <p className="tw-text-xs">
+              <span className="tw-font-normal">{currV?.updatedBy}</span>
+              <span className="tw-text-grey-muted"> updated on </span>
+              <span className="tw-font-normal">
+                {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
+                  hour: 'numeric',
+                  minute: 'numeric',
+                })}
+              </span>
+            </p>
+          </div>
+        </div>
+      );
+    });
+  };
+
   return (
-    <div className="timeline-drawer">
+    <div className={classNames('timeline-drawer', { open: show })}>
       <header className="tw-flex tw-justify-between">
-        <p className="tw-flex">Version history</p>
-        <div className="tw-flex">
+        <p className="tw-font-medium">Version history</p>
+        <div className="tw-flex" onClick={versionDrawerHandler}>
           <svg
             className="tw-w-5 tw-h-5 tw-ml-1 tw-cursor-pointer"
             data-testid="closeDrawer"
@@ -31,36 +95,11 @@ const EntityVersionTimeLine = ({ versionList }: Props) => {
         </div>
       </header>
       <hr className="tw-mt-3 tw-border-primary-hover-lite" />
-      <div className="tw-mt-2">
-        {versionList.versions?.map((v, i) => (
-          <div className="timeline-content tw-py-2" key={i}>
-            <div className="timeline-wrapper">
-              <span className="timeline-rounder" />
-              <span className="timeline-line" />
-            </div>
-            <div className="tw-grid tw-gap-0.5">
-              <h5 className="tw-text-grey-body tw-font-normal tw-text-sm tw-m-0">
-                v{JSON.parse(v)?.version}
-              </h5>
-              <p>
-                <span className="tw-font-medium">
-                  {JSON.parse(v)?.updatedBy}
-                </span>{' '}
-                updated on{' '}
-                <span className="tw-font-medium">
-                  {new Date(JSON.parse(v)?.updatedAt).toLocaleDateString(
-                    'en-CA',
-                    {
-                      hour: 'numeric',
-                      minute: 'numeric',
-                    }
-                  )}
-                </span>
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <Loader />
+      ) : (
+        <div className="tw-mt-2">{getVersionList()}</div>
+      )}
     </div>
   );
 };
