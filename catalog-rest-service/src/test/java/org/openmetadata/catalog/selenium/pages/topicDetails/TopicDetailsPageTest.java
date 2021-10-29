@@ -45,7 +45,7 @@ public class TopicDetailsPageTest {
         System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
         webDriver = new ChromeDriver();
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
+        wait = new WebDriverWait(webDriver, Duration.ofMinutes(1));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }

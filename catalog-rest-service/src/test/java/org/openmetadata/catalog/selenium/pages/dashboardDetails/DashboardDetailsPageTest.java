@@ -17,7 +17,6 @@
 package org.openmetadata.catalog.selenium.pages.dashboardDetails;
 
 import com.github.javafaker.Faker;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -49,12 +48,12 @@ public class DashboardDetailsPageTest {
 
     @BeforeEach
     public void openMetadataWindow() {
-        WebDriverManager.chromedriver().setup();
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless");
         webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
+        wait = new WebDriverWait(webDriver, Duration.ofMinutes(1));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
