@@ -4,34 +4,34 @@ OpenMetadata supports connectors to some popular services. We will continue as a
 
 #### Database Services
 
-* [Athena](database-services/athena.md)
-* [BigQuery](database-services/bigquery.md)
-* [BigQuery Usage](database-services/bigquery-usage.md)
-* [ElasticSearch](database-services/elastic-search.md)
-* [MSSQL](database-services/mssql.md)
-* [MySQL](database-services/mysql.md)
-* [Hive](database-services/hive.md)
-* [Oracle](database-services/oracle.md)
-* [Postgres](database-services/postgres.md)
-* [Presto](database-services/presto.md)
-* [Redshift](database-services/redshift.md)
-* [Redshift Usage](database-services/redshift-usage.md)
-* [Salesforce](database-services/salesforce.md)
-* [Snowflake](database-services/snowflake.md)
-* [Snowflake Usage](database-services/snowflake-usage.md)
-* [Trino](database-services/trino.md)
-* [Vertica](database-services/vertica.md)
+* [Athena](../../../openmetadata/connectors/athena.md)
+* [BigQuery](../../../openmetadata/connectors/bigquery.md)
+* [BigQuery Usage](../../../openmetadata/connectors/bigquery-usage.md)
+* [ElasticSearch](../../../openmetadata/connectors/elastic-search.md)
+* [MSSQL](../../../openmetadata/connectors/mssql.md)
+* [MySQL](../../../openmetadata/connectors/mysql.md)
+* [Hive](../../../openmetadata/connectors/hive.md)
+* [Oracle](../../../openmetadata/connectors/oracle.md)
+* [Postgres](../../../openmetadata/connectors/postgres.md)
+* [Presto](../../../openmetadata/connectors/presto.md)
+* [Redshift](../../../openmetadata/connectors/redshift.md)
+* [Redshift Usage](../../../openmetadata/connectors/redshift-usage.md)
+* [Salesforce](../../../openmetadata/connectors/salesforce.md)
+* [Snowflake](../../../openmetadata/connectors/snowflake.md)
+* [Snowflake Usage](../../../openmetadata/connectors/snowflake-usage.md)
+* [Trino](../../../openmetadata/connectors/trino.md)
+* [Vertica](../../../openmetadata/connectors/vertica.md)
 
 #### Dashboard Services
 
-* [Looker](dashboard-services/looker.md)
-* [Redash](dashboard-services/redash.md)
-* [Superset](dashboard-services/superset.md)
-* [Tableau](dashboard-services/tableau.md)
+* [Looker](../../../openmetadata/connectors/looker.md)
+* [Redash](../../../openmetadata/connectors/redash.md)
+* [Superset](../../../openmetadata/connectors/superset.md)
+* [Tableau](../../../openmetadata/connectors/tableau.md)
 
 #### Messaging Services
 
-* [Kafka](messaging-services/kafka.md)
+* [Kafka](../../../openmetadata/connectors/kafka.md)
 * Pulsar (WIP)
 
 #### Pipeline Services

@@ -27,7 +27,7 @@ python -m spacy download en_core_web_sm
 ### Publish to OpenMetadata
 
 {% hint style="info" %}
-We can use this in different [Database Services](../database-services/)
+We can use this in different [Database Services](broken-reference)
 {% endhint %}
 
 Below is the configuration to publish MySQL data into the OpenMetadata service.
