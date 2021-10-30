@@ -14,7 +14,7 @@ description: >-
 **Prerequisites**
 
 * Docker >= 20.10.x
-* Minimum allocated memory to Docker >= 4GB (Preferences -> Advanced -> Resources)
+* Minimum allocated memory to Docker >= 4GB (Preferences -> Resources -> Advanced)
 {% endhint %}
 
 ```bash
