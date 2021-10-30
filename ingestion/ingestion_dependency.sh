@@ -29,7 +29,7 @@ airflow users create \
     --email spiderman@superhero.org \
     --password admin
 airflow webserver --port 8080 -D & 
-(sleep 5; airflow db init) &
+(sleep 5; airflow db init)
 (sleep 5; airflow db init)
 (sleep 5; curl -u admin:admin --data '{"dag_run_id":"sample_data"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_data/dagRuns) &
 (sleep 7; curl -u admin:admin --data '{"dag_run_id":"sample_users"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_users/dagRuns) &
