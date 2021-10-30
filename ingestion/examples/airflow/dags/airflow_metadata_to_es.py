@@ -14,6 +14,7 @@
 #  limitations under the License.
 import pathlib
 from datetime import timedelta
+
 from airflow import DAG
 
 try:
@@ -21,25 +22,28 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from airflow.utils.dates import days_ago
+
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
     "email_on_failure": False,
     "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
+    "retry_delay": timedelta(minutes=2),
+    "execution_timeout": timedelta(minutes=60),
 }
 
 config = """
 """
+
+
 def metadata_ingestion_workflow():
     config_file = pathlib.Path("/ingestion/pipelines/metadata_to_es.json")
     workflow_config = load_config_file(config_file)
-    
+
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
@@ -51,7 +55,6 @@ with DAG(
     "elasticsearch",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
-    schedule_interval='*/5 * * * *', 
     start_date=days_ago(1),
     is_paused_upon_creation=False,
     catchup=False,
