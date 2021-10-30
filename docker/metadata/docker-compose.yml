@@ -17,13 +17,10 @@ version: "3.9"
 services:
   db:
     platform: linux/x86_64
-    image: mysql:latest
+    image: openmetadata/db:latest
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: openmetadata_user
-      MYSQL_PASSWORD: openmetadata_password
-      MYSQL_DATABASE: openmetadata_db
     expose:
       - 3306
     networks:
@@ -41,20 +38,6 @@ services:
       - 9200:9200
       - 9300:9300
 
-  db2:
-    extends: db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: airflow_user
-      MYSQL_PASSWORD: airflow_pass
-      MYSQL_DATABASE: airflow_db
-    expose:
-      - 3306
-    networks:
-      app_net:
-        ipv4_address: 172.16.239.12
-  
   openmetadata-server:
     restart: always
     image: openmetadata/server:latest
@@ -76,6 +59,8 @@ services:
 
   ingestion:
     image: openmetadata/ingestion:latest
+    depends_on:
+      - db
     expose:
       - 8080
     ports:
@@ -85,7 +70,6 @@ services:
     extra_hosts:
       - "localhost:172.16.239.10"
       - "localhost:172.16.239.11"
-      - "airflow:172.16.239.12"
       - "localhost:172.16.239.13"
 
 networks:
