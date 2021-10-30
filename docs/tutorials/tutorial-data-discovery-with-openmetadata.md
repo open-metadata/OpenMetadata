@@ -10,11 +10,11 @@ For this tutorial, we will assume the role of data analysts who have been asked 
 
 ![](../.gitbook/assets/sandbox.png)
 
-**1. Log in to the OpenMetadata sandbox using a Google account**
+### **1. Log in to the OpenMetadata sandbox using a Google account**
 
 ![](../.gitbook/assets/log-in-with-google.png)
 
-#### 2. **Add yourself as a user and add yourself to several teams.**
+### 2. Add yourself as a user and add yourself to several teams
 
 This is only necessary if you have previously logged in to OpenMetadata.
 
@@ -24,7 +24,7 @@ Once logged in, your view of the sandbox should look something like the figure b
 
 ![](../.gitbook/assets/my-data.png)
 
-#### 3. Search for "sales"
+### 3. Search for "sales"
 
 In the search box, enter the search term, sales. OpenMetadata will perform the search across all assets, regardless of type, and retrieve those that match by name or based on the text of metadata associated with that asset.
 
@@ -32,7 +32,7 @@ Note that as we type the search term sales, OpenMetadata auto-suggests a number 
 
 ![](../.gitbook/assets/sales-search-v2.png)
 
-**4. Explore the search results: Tables, Dashboards, Pipelines, etc.**
+### 4. Explore the search results: Tables, Dashboards, Pipelines
 
 Having issued our search for sales, we see results similar to those depicted below. This query matches 12 tables across the BigQuery and Redshift services.
 
@@ -46,7 +46,7 @@ In addition, we’ve identified four dashboards...&#x20;
 
 ![](../.gitbook/assets/pipeline-description.png)
 
-**5. Take note of descriptions and tags**
+### 5. Take note of descriptions and tags
 
 As we look through all of this, it’s important to note the descriptions for these assets. For example, the _fact\_order\_and\_sales\_etl_ pipeline identifies the _fact\_sale_ table as a critical reporting table.
 
@@ -56,7 +56,7 @@ We also see tags that other users have applied to help identify data types of pa
 
 Finally, we see that some of the assets are identified with a tag specifying tiers ranging from Tier1 to Tier5. Tiers are a means of identifying the relative importance of assets.
 
-#### 6. View in-product documentation for Tiers
+### 6. View in-product documentation for Tiers
 
 To learn more about Tiers and other tags, we can visit _Settings > Tags_.
 
@@ -68,7 +68,7 @@ Note also that the description for each tier includes a _Usage_ label identifyin
 
 ![](../.gitbook/assets/tier-documentation-v2.png)
 
-#### 7. **Focus on Tier1 (important) assets**
+### 7. Focus on Tier1 (important) assets
 
 In general, for analyses that will drive business decisions, we want to ensure that the data we are using is important and already being used to drive other decisions. As we saw in the previous step, Tier1 assets meet this criterion.
 
@@ -80,19 +80,19 @@ Let’s go back to the tables tab in our search results since that’s where we�
 
 ![](../.gitbook/assets/tier1-results.png)
 
-#### **8. Sort by usage frequency**
+### 8. Sort by usage frequency
 
 In addition to tiers, another determiner of importance is how frequently a table is used. The OpenMetadata search UI enables us to sort results by weekly usage. Let’s go ahead and do that.
 
 ![](../.gitbook/assets/sort-by-weekly-usage.png)
 
-#### **9. Limit consideration to high usage, Tier1 assets**
+### 9. Limit consideration to high usage, Tier1 assets
 
 Having sorted the Tier1 assets, we can see that there are probably only two tables that warrant further consideration: _fact\_sale_ and _fact\_order_. Both of these tables are roughly among the top quarter of the most frequently used tables. Based on their names, either could serve our purpose so we’ll need to dig deeper.
 
 ![](<../.gitbook/assets/sorted-by-weekly-usage (1).png>)
 
-**10. Use descriptions to distinguish between candidate assets**
+### 10. Use descriptions to distinguish between candidate assets
 
 At this point, we can see that we’ll need to compare _fact\_sale_ and _fact\_order_ to determine which best suits our needs. Looking at the descriptions for each table we see a couple of statements that help clarify which table we should use.
 
