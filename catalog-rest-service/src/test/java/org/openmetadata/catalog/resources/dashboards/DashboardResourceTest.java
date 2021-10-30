@@ -80,8 +80,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static EntityReference LOOKER_REFERENCE;
   public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
   public DashboardResourceTest() {
     super(Dashboard.class, "dashboards", DashboardResource.FIELDS);
@@ -110,7 +108,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       Chart chart = ChartResourceTest.createChart(createChart, adminAuthHeaders());
       CHART_REFERENCES.add(new ChartEntityInterface(chart).getEntityReference());
     }
-
   }
 
   @Test
@@ -362,7 +359,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     assertNull(dashboard.getOwner());
     assertNotNull(dashboard.getService());
 
-    List<TagLabel> dashboardTags = singletonList(TIER_1);
+    List<TagLabel> dashboardTags = singletonList(TIER1_TAG_LABEL);
 
     //
     // Add displayName, description, owner when previously they were null

@@ -65,10 +65,6 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   private static final Logger LOG = LoggerFactory.getLogger(DatabaseResourceTest.class);
-  public static EntityReference SNOWFLAKE_REFERENCE;
-  public static EntityReference REDSHIFT_REFERENCE;
-  public static EntityReference MYSQL_REFERENCE;
-  public static EntityReference BIGQUERY_REFERENCE;
 
   public DatabaseResourceTest() {
     super(Database.class, "databases", DatabaseResource.FIELDS);
@@ -77,23 +73,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     EntityResourceTest.setup(test);
-
-    CreateDatabaseService createService = new CreateDatabaseService().withName("snowflakeDB")
-            .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
-    DatabaseService service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    SNOWFLAKE_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
-
-    createService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
-    service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
-
-    createService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
-    service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
-
-    createService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
-    service = DatabaseServiceResourceTest.createService(createService, adminAuthHeaders());
-    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(service).getEntityReference();
   }
 
   @Test

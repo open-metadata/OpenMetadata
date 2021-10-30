@@ -26,11 +26,9 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTask;
 import org.openmetadata.catalog.api.services.CreatePipelineService;
-import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
-import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.tasks.TaskResource.TaskList;
@@ -40,14 +38,10 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -78,29 +72,15 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class TaskResourceTest extends EntityResourceTest<Task> {
   private static final Logger LOG = LoggerFactory.getLogger(TaskResourceTest.class);
-  public static EntityReference AIRFLOW_REFERENCE;
-  public static EntityReference PREFECT_REFERENCE;
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public TaskResourceTest() {
     super(Task.class, "tasks", TaskResource.FIELDS);
   }
 
-
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     EntityResourceTest.setup(test);
 
-    CreatePipelineService createService = new CreatePipelineService().withName("airflow")
-            .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));
-    PipelineService service = createService(createService, adminAuthHeaders());
-    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(service).getEntityReference();
-
-    createService.withName("prefect").withServiceType(PipelineServiceType.Prefect)
-            .withPipelineUrl(new URI("http://localhost:0"));
-    service = createService(createService, adminAuthHeaders());
-    PREFECT_REFERENCE = new PipelineServiceEntityInterface(service).getEntityReference();
   }
 
   @Override
@@ -163,20 +143,20 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
   public void post_validTasks_as_admin_200_OK(TestInfo test) throws HttpResponseException, URISyntaxException {
     // Create team with different optional fields
     CreateTask create = create(test);
-    createAndCheckTask(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create.withName(getTaskName(test, 1)).withDescription("description");
-    createAndCheckTask(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
   public void post_taskWithUserOwner_200_ok(TestInfo test) throws HttpResponseException, URISyntaxException {
-    createAndCheckTask(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
   public void post_taskWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException, URISyntaxException {
-    createAndCheckTask(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
+    createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("chart1"), adminAuthHeaders());
   }
 
   @Test
@@ -229,7 +209,7 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
 
     // Create task for each service and test APIs
     for (EntityReference service : differentServices) {
-      createAndCheckTask(create(test).withService(service), adminAuthHeaders());
+      createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List tasks by filtering on service name and ensure right tasks are returned in the response
       TaskList list = listTasks("service", service.getName(), adminAuthHeaders());
@@ -333,10 +313,10 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
     Date endDate = new DateTime("2021-12-13T20:20:39+00:00").toDate();
     CreateTask request = create(test).withService(AIRFLOW_REFERENCE)
             .withDescription("description").withTaskUrl(taskURI);
-    createAndCheckTask(request, adminAuthHeaders());
+    createAndCheckEntity(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
-    Task task = updateTask(request.withTaskUrl(taskURI).withTaskSQL(taskSQL)
+    Task task = updateEntity(request.withTaskUrl(taskURI).withTaskSQL(taskSQL)
                     .withTaskType("test").withStartDate(startDate).withEndDate(endDate),
             OK, adminAuthHeaders());
     assertEquals(taskURI, task.getTaskUrl());
@@ -344,19 +324,6 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
     assertEquals("test", task.getTaskType());
     assertEquals(startDate, task.getStartDate());
     assertEquals(endDate, task.getEndDate());
-  }
-
-  @Test
-  public void put_taskUpdateOwner_200(TestInfo test) throws HttpResponseException, URISyntaxException {
-    CreateTask request = create(test).withService(AIRFLOW_REFERENCE).withDescription("");
-    Task task = createAndCheckTask(request, adminAuthHeaders());
-
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    task = updateAndCheckTask(task, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
-
-    // Remove ownership
-    task = updateAndCheckTask(task, request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE);
-    assertNull(task.getOwner());
   }
 
   @Test
@@ -371,7 +338,7 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
   public void get_taskWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateTask create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AIRFLOW_REFERENCE);
-    Task task = createAndCheckTask(create, adminAuthHeaders());
+    Task task = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(task, false);
   }
 
@@ -379,7 +346,7 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
   public void get_taskByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException, URISyntaxException {
     CreateTask create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AIRFLOW_REFERENCE);
-    Task task = createAndCheckTask(create, adminAuthHeaders());
+    Task task = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(task, true);
   }
 
@@ -407,7 +374,7 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
     //
     // Update description, tier, owner
     //
-    taskTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
+    taskTags = List.of(USER_ADDRESS_TAG_LABEL, TIER1_TAG_LABEL);
     origJson = JsonUtils.pojoToJson(task);
     task.withDescription("description1").withOwner(USER_OWNER1).withTags(taskTags);
     change = getChangeDescription(task.getVersion()).withFieldsUpdated(Arrays.asList("description", "owner", "tags"));
@@ -418,7 +385,7 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
     //
     // Remove description and owner - remove a tag
     //
-    taskTags = List.of(TIER_1);
+    taskTags = List.of(TIER1_TAG_LABEL);
     origJson = JsonUtils.pojoToJson(task);
     task.withDescription(null).withOwner(null).withTags(taskTags);
     change = getChangeDescription(task.getVersion()).withFieldsDeleted(Arrays.asList("description","owner"))
@@ -437,56 +404,6 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTask(NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound(Entity.TASK, NON_EXISTENT_ENTITY));
-  }
-
-  public static Task createAndCheckTask(CreateTask create,
-                                        Map<String, String> authHeaders) throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Task task = createTask(create, authHeaders);
-    assertEquals(0.1, task.getVersion());
-    validateTask(task, task.getDisplayName(), create.getDescription(), create.getOwner(), create.getService(),
-            create.getTags(), create.getTaskUrl(), updatedBy);
-    return getAndValidate(task.getId(), create, authHeaders, updatedBy);
-  }
-
-  public static Task updateAndCheckTask(Task before, CreateTask create, Status status,
-                                        Map<String, String> authHeaders, UpdateType updateType)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Task updatedTask = updateTask(create, status, authHeaders);
-    validateTask(updatedTask, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            create.getTaskUrl(), updatedBy);
-    if (before == null) {
-      assertEquals(0.1, updatedTask.getVersion()); // First version created
-    } else {
-      TestUtils.validateUpdate(before.getVersion(), updatedTask.getVersion(), updateType);
-    }
-
-    // GET the newly updated task and validate
-    return getAndValidate(updatedTask.getId(), create, authHeaders, updatedBy);
-  }
-
-  // Make sure in GET operations the returned task has all the required information passed during creation
-  public static Task getAndValidate(UUID taskId,
-                                    CreateTask create,
-                                    Map<String, String> authHeaders,
-                                    String expectedUpdatedBy) throws HttpResponseException {
-    // GET the newly created task by ID and validate
-    Task task = getTask(taskId, "service,owner", authHeaders);
-    validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-            create.getTaskUrl(), expectedUpdatedBy);
-
-    // GET the newly created task by name and validate
-    String fqn = task.getFullyQualifiedName();
-    task = getTaskByName(fqn, "service,owner", authHeaders);
-    return validateTask(task, create.getDescription(), create.getOwner(), create.getService(), create.getTags(),
-           create.getTaskUrl(), expectedUpdatedBy);
-  }
-
-  public static Task updateTask(CreateTask create,
-                                Status status,
-                                Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("tasks"), create, Task.class, status, authHeaders);
   }
 
   public static Task createTask(CreateTask create,
@@ -518,52 +435,6 @@ public class TaskResourceTest extends EntityResourceTest<Task> {
             getTask(task.getId(), fields, adminAuthHeaders());
     assertNotNull(task.getOwner());
     assertNotNull(task.getService());
-  }
-
-  private static Task validateTask(Task  task, String expectedDisplayName, String expectedDescription,
-                                     EntityReference expectedOwner, EntityReference expectedService,
-                                     List<TagLabel> expectedTags, URI expectedTaskUrl, String expectedUpdatedBy)
-          throws HttpResponseException {
-    Task newTask = validateTask(task, expectedDescription, expectedOwner, expectedService, expectedTags,
-            expectedTaskUrl, expectedUpdatedBy);
-    assertEquals(expectedDisplayName, newTask.getDisplayName());
-    return task;
-  }
-
-  private static Task validateTask(Task task, String expectedDescription, EntityReference expectedOwner,
-                                    EntityReference expectedService, List<TagLabel> expectedTags,
-                                   URI expectedTaskUrl, String expectedUpdatedBy)
-          throws HttpResponseException {
-    assertNotNull(task.getId());
-    assertNotNull(task.getHref());
-    assertEquals(expectedDescription, task.getDescription());
-    assertEquals(expectedUpdatedBy, task.getUpdatedBy());
-    assertEquals(expectedTaskUrl, task.getTaskUrl());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(task.getOwner());
-      assertEquals(expectedOwner.getId(), task.getOwner().getId());
-      assertEquals(expectedOwner.getType(), task.getOwner().getType());
-      assertNotNull(task.getOwner().getHref());
-    }
-
-    // Validate service
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(task.getService());
-      assertEquals(expectedService.getId(), task.getService().getId());
-      assertEquals(expectedService.getType(), task.getService().getType());
-    }
-    TestUtils.validateTags(task.getFullyQualifiedName(), expectedTags, task.getTags());
-    return task;
-  }
-
-  private Task patchTask(UUID taskId, String originalJson, Task updatedTask,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedTaskJson = JsonUtils.pojoToJson(updatedTask);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedTaskJson);
-    return TestUtils.patch(getResource("tasks/" + taskId), patch, Task.class, authHeaders);
   }
 
   public static void getTask(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

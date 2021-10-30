@@ -28,8 +28,6 @@ import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.api.data.CreateTable;
-import org.openmetadata.catalog.api.services.CreateDatabaseService;
-import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -119,15 +117,12 @@ import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 public class TableResourceTest extends EntityResourceTest<Table> {
   private static final Logger LOG = LoggerFactory.getLogger(TableResourceTest.class);
   public static Database DATABASE;
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
 
   public static final List<Column> COLUMNS = Arrays.asList(
           getColumn("c1", BIGINT, USER_ADDRESS_TAG_LABEL),
           getColumn("c2", ColumnDataType.VARCHAR, USER_ADDRESS_TAG_LABEL).withDataLength(10),
           getColumn("c3", BIGINT, USER_BANK_ACCOUNT_TAG_LABEL));
 
-  public static EntityReference SNOWFLAKE_REFERENCE;
 
   public TableResourceTest() {
     super(Table.class, "tables", TableResource.FIELDS);
@@ -136,14 +131,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   @BeforeAll
   public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
     EntityResourceTest.setup(test);
-
-    CreateDatabaseService createSnowflake = new CreateDatabaseService()
-            .withName(DatabaseServiceResourceTest.getName(test, 1))
-            .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
-    DatabaseService service = createService(createSnowflake, adminAuthHeaders());
-    SNOWFLAKE_REFERENCE = new EntityReference().withName(service.getName()).withId(service.getId())
-            .withType(Entity.DATABASE_SERVICE);
-
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
   }
