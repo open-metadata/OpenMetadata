@@ -31,7 +31,6 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
@@ -39,7 +38,6 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -383,30 +381,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createEntity(create,
             authHeaders("test@open-metadata.org")));
       assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-
-
-  @Test
-  public void put_tableOwnershipUpdate_200(TestInfo test) throws IOException {
-    CreateTable request = create(test).withOwner(USER_OWNER1).withDescription("description");
-    Table table = createAndCheckEntity(request, adminAuthHeaders());
-    checkOwnerOwns(USER_OWNER1, table.getId(), true);
-
-    // Change ownership from USER_OWNER1 to TEAM_OWNER1
-    ChangeDescription change = getChangeDescription(table.getVersion());
-    change.getFieldsUpdated().add("owner");
-    Table updatedTable = updateAndCheckEntity(request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(),
-            MINOR_UPDATE, change);
-    checkOwnerOwns(USER_OWNER1, updatedTable.getId(), false);
-    checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), true);
-
-    // Remove ownership
-    change = getChangeDescription(updatedTable.getVersion());
-    change.getFieldsDeleted().add("owner");
-    updatedTable = updateAndCheckEntity(request.withOwner(null), OK, adminAuthHeaders(), MINOR_UPDATE,
-            change);
-    assertNull(updatedTable.getOwner());
-    checkOwnerOwns(TEAM_OWNER1, updatedTable.getId(), false);
   }
 
   @Test
@@ -1355,32 +1329,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return getTable;
   }
 
-  private static void checkOwnerOwns(EntityReference owner, UUID tableId, boolean expectedOwning)
-          throws HttpResponseException {
-    if (owner != null) {
-      UUID ownerId = owner.getId();
-      List<EntityReference> ownsList;
-      if (owner.getType().equals(Entity.USER)) {
-        User user = UserResourceTest.getUser(ownerId, "owns", adminAuthHeaders());
-        ownsList = user.getOwns();
-      } else if (owner.getType().equals(Entity.TEAM)) {
-        Team team = TeamResourceTest.getTeam(ownerId, "owns", adminAuthHeaders());
-        ownsList = team.getOwns();
-      } else {
-        throw new IllegalArgumentException("Invalid owner type " + owner.getType());
-      }
-
-      boolean owning = false;
-      for (EntityReference owns : ownsList) {
-        TestUtils.validateEntityReference(owns);
-        if (owns.getId().equals(tableId)) {
-          owning = true;
-          break;
-        }
-      }
-      assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
-    }
-  }
 
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();
