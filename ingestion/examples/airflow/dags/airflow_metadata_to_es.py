@@ -32,7 +32,7 @@ default_args = {
     "email": ["username@org.com"],
     "email_on_failure": False,
     "retries": 3,
-    "retry_delay": timedelta(minutes=2),
+    "retry_delay": timedelta(minutes=1),
     "execution_timeout": timedelta(minutes=60),
 }
 

@@ -28,17 +28,11 @@ airflow users create \
     --role Admin \
     --email spiderman@superhero.org \
     --password admin
-airflow webserver --port 8080 &
-sleep 5;
-airflow db init
-sleep 5;
-airflow db init
-
-curl -u admin:admin --data '{"dag_run_id":"sample_data"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_data/dagRuns
-sleep 3;
-curl -u admin:admin --data '{"dag_run_id":"sample_usage"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_usage/dagRuns
-sleep 3;
-curl -u admin:admin --data '{"dag_run_id":"elasticsearch","state":"running"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/elasticsearch/dagRuns
-sleep 3;
-
+airflow webserver --port 8080 -D & 
+(sleep 5; airflow db init) &
+(sleep 5; airflow db init)
+(sleep 5; curl -u admin:admin --data '{"dag_run_id":"sample_data"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_data/dagRuns) &
+(sleep 7; curl -u admin:admin --data '{"dag_run_id":"sample_users"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_users/dagRuns) &
+(sleep 12; curl -u admin:admin --data '{"dag_run_id":"sample_usage"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_usage/dagRuns) &
+(sleep 17; curl -u admin:admin --data '{"dag_run_id":"elasticsearch"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/elasticsearch/dagRuns) &
 airflow scheduler
