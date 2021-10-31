@@ -34,11 +34,17 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from urllib.parse import urlparse
 
 def is_responsive(url):
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            return True
+    except ConnectionError:
+        return False
+
+def is_port_open(url):
     url_parts = urlparse(url)
     hostname = url_parts.hostname
     port = url_parts.port
-    if port is None:
-        port = 80
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((hostname, port))
@@ -115,7 +121,7 @@ def hive_service(docker_ip, docker_services):
     sleep(timeout_s)
     url = "hive://localhost:10000/"
     docker_services.wait_until_responsive(
-        timeout=timeout_s, pause=0.1, check=lambda: is_responsive(url)
+        timeout=timeout_s, pause=0.1, check=lambda: is_port_open(url)
     )
     engine = create_engine(url)
     inspector = inspect(engine)
