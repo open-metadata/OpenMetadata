@@ -328,7 +328,7 @@ class OpenMetadata(Generic[T, C]):
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
-        return self.get_lineage(
+        return self._get_lineage(
             entity=entity, path=entity_id, up_depth=up_depth, down_depth=down_depth
         )
 
@@ -346,14 +346,14 @@ class OpenMetadata(Generic[T, C]):
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
-        return self.get_lineage(
+        return self._get_lineage(
             entity=entity,
             path=f"name/{fqdn}",
             up_depth=up_depth,
             down_depth=down_depth,
         )
 
-    def get_lineage(
+    def _get_lineage(
         self,
         entity: Union[Type[T], str],
         path: str,
@@ -386,16 +386,16 @@ class OpenMetadata(Generic[T, C]):
         Return entity by name or None
         """
 
-        return self.get(entity=entity, path=f"name/{fqdn}")
+        return self._get(entity=entity, path=f"name/{fqdn}")
 
     def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
-        return self.get(entity=entity, path=entity_id)
+        return self._get(entity=entity, path=entity_id)
 
-    def get(self, entity: Type[T], path: str) -> Optional[T]:
+    def _get(self, entity: Type[T], path: str) -> Optional[T]:
         """
         Generic GET operation for an entity
         :param entity: Entity Class
@@ -445,6 +445,12 @@ class OpenMetadata(Generic[T, C]):
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+
+    def health_check(self) -> bool:
+        """
+        Run endpoint health-check. Return `true` if OK
+        """
+        return self.client.get("/health-check")["status"] == "healthy"
 
     def close(self):
         self.client.close()
