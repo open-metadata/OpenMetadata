@@ -359,14 +359,14 @@ class ElasticsearchSink(Sink):
                 tier = pipeline_tag.tagFQN
             else:
                 tags.add(pipeline_tag.tagFQN)
-        tasks: List[Task] = self._get_tasks(pipeline.tasks)
+        tasks: List[Task] = pipeline.tasks
         task_names = []
         task_descriptions = []
         for task in tasks:
             task_names.append(task.displayName)
             if task.description is not None:
                 task_descriptions.append(task.description)
-            if len(task.tags) > 0:
+            if tags in task and len(task.tags) > 0:
                 for col_tag in task.tags:
                     tags.add(col_tag.tagFQN)
 

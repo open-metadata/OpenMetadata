@@ -352,7 +352,6 @@ class SampleDataSource(Source):
         yield from self.ingest_topics()
         yield from self.ingest_charts()
         yield from self.ingest_dashboards()
-        yield from self.ingest_tasks()
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_users()
@@ -436,25 +435,14 @@ class SampleDataSource(Source):
             yield task_ev
 
     def ingest_pipelines(self) -> Iterable[Dashboard]:
-        tasks = self.client.list_tasks("service")
-        task_dict = {}
-        for task in tasks:
-            task_dict[task.name] = task
-
         for pipeline in self.pipelines["pipelines"]:
-            task_refs = []
-            for task in pipeline["tasks"]:
-                if task in task_dict:
-                    task_refs.append(
-                        EntityReference(id=task_dict[task].id, type="task")
-                    )
             pipeline_ev = Pipeline(
                 id=uuid.uuid4(),
                 name=pipeline["name"],
                 displayName=pipeline["displayName"],
                 description=pipeline["description"],
                 pipelineUrl=pipeline["pipelineUrl"],
-                tasks=task_refs,
+                tasks=pipeline["tasks"],
                 service=EntityReference(
                     id=self.pipeline_service.id, type="pipelineService"
                 ),
