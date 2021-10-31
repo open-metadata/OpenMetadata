@@ -1,7 +1,6 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -251,12 +250,12 @@ public abstract class EntityRepository<T> {
       if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
               updatedOwner == null ? null : updatedOwner.getId())) {
         EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
-                updatedOwner, original.getId(), Entity.TABLE);
+                updatedOwner, original.getId(), entityName);
       }
     }
 
     private void updateTags() throws IOException {
-      // Remove current table tags in the database. It will be added back later from the merged tag list.
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
       List<TagLabel> origTags = original.getTags();
       List<TagLabel> updatedTags = updated.getTags();
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), original.getFullyQualifiedName());

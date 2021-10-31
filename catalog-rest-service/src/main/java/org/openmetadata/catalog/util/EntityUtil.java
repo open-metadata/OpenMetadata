@@ -193,7 +193,7 @@ public final class EntityUtil {
                               EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
       dao.insert(owner.getId().toString(), ownedEntityId.toString(), owner.getType(), ownedEntityType,
               Relationship.OWNS.ordinal());
     }
@@ -465,12 +465,12 @@ public final class EntityUtil {
   public static String getLocalColumnName(String fqn) {
     // Return for fqn=service.database.table.c1 -> c1
     // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
-    String localColumnName = "";
+    StringBuilder localColumnName = new StringBuilder();
     String[] s = fqn.split("\\.");
     for (int i = 3; i < s.length -1 ; i++) {
-      localColumnName += s[i] + ".";
+      localColumnName.append(s[i]).append(".");
     }
-    localColumnName += s[s.length - 1];
-    return localColumnName;
+    localColumnName.append(s[s.length - 1]);
+    return localColumnName.toString();
   }
 }

@@ -211,27 +211,32 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       // Ignore the test - User and team entities can't be owned like other data assets
       return;
     }
+    // Create an entity without owner
     Object request = createRequest(test, "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Add TEAM_OWNER1 as owner
+    // Set TEAM_OWNER1 as owner using PUT request
     request = createRequest(test, "description", "displayName", TEAM_OWNER1);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
             .withFieldsAdded(Collections.singletonList("owner"));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
+    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
 
-    // Change owner from TEAM_OWNER1 to USER_OWNER1
+    // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(test, "description", "displayName", USER_OWNER1);
     change = getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
 
-    // Remove ownership
+    // Remove ownership (from USER_OWNER1) using PUT request
     request = createRequest(test, "description", "displayName", null);
     change = getChangeDescription(entityInterface.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), false);
   }
 
   @Test
@@ -281,38 +286,38 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  public final WebTarget getCollection() {
+  protected final WebTarget getCollection() {
     return getResource(collectionName);
   }
 
-  public final WebTarget getResource(UUID id) {
+  protected final WebTarget getResource(UUID id) {
     return getResource(collectionName + "/" + id);
   }
 
-  public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public final T createEntity(Object createRequest, Map<String, String> authHeaders)
+  protected final T createEntity(Object createRequest, Map<String, String> authHeaders)
           throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
-  public final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
+  protected final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
     return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
 
-  public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
+  protected final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     String updatedTableJson = JsonUtils.pojoToJson(updated);
     JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedTableJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
-  public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws HttpResponseException {
+  protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws HttpResponseException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -330,7 +335,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return entity;
   }
 
-  public T updateAndCheckEntity(Object request, Status status, Map<String, String> authHeaders,
+  protected final T updateAndCheckEntity(Object request, Status status, Map<String, String> authHeaders,
                                 UpdateType updateType, ChangeDescription changeDescription)
           throws IOException {
     T updated = updateEntity(request, status, authHeaders);
@@ -369,7 +374,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return updated;
   }
 
-  public final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
+  protected final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
                                      UpdateType updateType, ChangeDescription expectedChange)
           throws JsonProcessingException, HttpResponseException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
@@ -386,7 +391,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return returned;
   }
 
-  public final void validateCommonEntityFields(EntityInterface<T> entity, String expectedDescription,
+  protected final void validateCommonEntityFields(EntityInterface<T> entity, String expectedDescription,
                                                String expectedUpdatedByUser, EntityReference expectedOwner) {
     assertNotNull(entity.getId());
     assertNotNull(entity.getHref());
@@ -396,7 +401,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertOwner(expectedOwner, entity.getOwner());
   }
 
-  public final void validateChangeDescription(T updated, UpdateType updateType,
+  protected final void validateChangeDescription(T updated, UpdateType updateType,
                                               ChangeDescription expectedChange) {
     EntityInterface<T> updatedEntityInterface = getEntityInterface(updated);
     if (updateType == UpdateType.CREATED) {
@@ -414,29 +419,29 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     }
   }
 
-  public EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/" + id + "/versions");
     return TestUtils.get(target, EntityHistory.class, authHeaders);
   }
 
-  public T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {
+  protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/" + id + "/versions/" + version.toString());
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public void assertFieldLists(List<String> expectedList, List<String> actualList) {
+  protected static void assertFieldLists(List<String> expectedList, List<String> actualList) {
     expectedList.sort(Comparator.comparing(String::toString));
     actualList.sort(Comparator.comparing(String::toString));
     assertIterableEquals(expectedList, actualList);
   }
 
-  public ChangeDescription getChangeDescription(Double previousVersion) {
+  protected ChangeDescription getChangeDescription(Double previousVersion) {
     return new ChangeDescription().withPreviousVersion(previousVersion)
             .withFieldsAdded(new ArrayList<>()).withFieldsUpdated(new ArrayList<>())
             .withFieldsDeleted(new ArrayList<>());
   }
 
-  public static void assertOwner(EntityReference expected, EntityReference actual) {
+  protected static void assertOwner(EntityReference expected, EntityReference actual) {
     if (expected != null) {
       TestUtils.validateEntityReference(actual);
       assertEquals(expected.getId(), actual.getId());
@@ -445,9 +450,36 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertNull(actual);
     }
   }
-  public static void assertService(EntityReference expected, EntityReference actual) {
+  protected static void assertService(EntityReference expected, EntityReference actual) {
     TestUtils.validateEntityReference(actual);
     assertEquals(expected.getId(), actual.getId());
     assertEquals(expected.getType(), actual.getType());
+  }
+
+  protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
+          throws HttpResponseException {
+    if (owner != null) {
+      UUID ownerId = owner.getId();
+      List<EntityReference> ownsList;
+      if (owner.getType().equals(Entity.USER)) {
+        User user = UserResourceTest.getUser(ownerId, "owns", adminAuthHeaders());
+        ownsList = user.getOwns();
+      } else if (owner.getType().equals(Entity.TEAM)) {
+        Team team = TeamResourceTest.getTeam(ownerId, "owns", adminAuthHeaders());
+        ownsList = team.getOwns();
+      } else {
+        throw new IllegalArgumentException("Invalid owner type " + owner.getType());
+      }
+
+      boolean owning = false;
+      for (EntityReference owns : ownsList) {
+        TestUtils.validateEntityReference(owns);
+        if (owns.getId().equals(entityId)) {
+          owning = true;
+          break;
+        }
+      }
+      assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
+    }
   }
 }
