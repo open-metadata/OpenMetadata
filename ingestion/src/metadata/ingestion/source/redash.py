@@ -125,7 +125,7 @@ class RedashSource(Source):
             dashboard_id = dashboard_info["id"]
             if dashboard_info["id"] is not None:
                 self.status.item_scanned_status()
-                dashboard_data = self.client.dashboard(dashboard_id)
+                dashboard_data = self.client.dashboard(dashboard_info["slug"])
                 dashboard_url = (
                     f"{self.config.uri}/dashboard/{dashboard_data.get('slug', '')}"
                 )
