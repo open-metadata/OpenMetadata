@@ -175,19 +175,6 @@ public class TopicRepository extends EntityRepository<Topic> {
     }
   }
 
-  @Transaction
-  public Status addFollower(UUID topicId, UUID userId) throws IOException {
-    dao.topicDAO().findEntityById(topicId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), topicId, Entity.TOPIC, userId, Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(UUID topicId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), topicId, userId);
-  }
-
   public static class TopicEntityInterface implements EntityInterface<Topic> {
     private final Topic entity;
 
@@ -236,6 +223,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Override
     public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public EntityReference getEntityReference() {

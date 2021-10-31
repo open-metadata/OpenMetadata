@@ -1,6 +1,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -176,6 +177,19 @@ public abstract class EntityRepository<T> {
     entityUpdater.update();
     entityUpdater.store();
     return updated;
+  }
+
+  @Transaction
+  public Status addFollower(UUID entityId, UUID userId) throws IOException {
+    dao.findEntityById(entityId);
+    return EntityUtil.addFollower(daoCollection.relationshipDAO(), daoCollection.userDAO(), entityId,
+            entityName, userId, Entity.USER) ? Status.CREATED : Status.OK;
+  }
+
+  @Transaction
+  public void deleteFollower(UUID entityId, UUID userId) {
+    EntityUtil.validateUser(daoCollection.userDAO(), userId);
+    EntityUtil.removeFollower(daoCollection.relationshipDAO(), entityId, userId);
   }
 
   public final String getFullyQualifiedName(T entity) {

@@ -200,6 +200,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
     }
 
     @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Database does not support followers");
+    }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DATABASE);

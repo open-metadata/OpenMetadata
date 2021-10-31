@@ -77,7 +77,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Team.class, "teams", TeamResource.FIELDS);
+    super(Team.class, "teams", TeamResource.FIELDS, false);
   }
 
   @Test
@@ -291,7 +291,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
   /**
-   * @see TableResourceTest#put_addDeleteFollower_200
+   * @see EntityResourceTest#put_addDeleteFollower_200
    * for tests related getting team with entities owned by the team
    */
 

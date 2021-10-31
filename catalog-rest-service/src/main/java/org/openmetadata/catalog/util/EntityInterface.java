@@ -22,9 +22,8 @@ public interface EntityInterface<T> {
   Double getVersion();
   String getUpdatedBy();
   Date getUpdatedAt();
-  default URI getHref() {
-    return null; // Remove this implementation once all entities implement this
-  }
+  URI getHref();
+  List<EntityReference> getFollowers();
 
   EntityReference getEntityReference();
   T getEntity();

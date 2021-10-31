@@ -30,7 +30,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -60,20 +59,6 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   @Override
   public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
     return new DashboardEntityInterface(entity);
-  }
-
-  @Transaction
-  public Status addFollower(UUID dashboardId, UUID userId) throws IOException {
-    dao.dashboardDAO().findEntityById(dashboardId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), dashboardId, Entity.DASHBOARD, userId,
-            Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(UUID dashboardId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), dashboardId, userId);
   }
 
   @Transaction
@@ -291,6 +276,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Override
     public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public EntityReference getEntityReference() {

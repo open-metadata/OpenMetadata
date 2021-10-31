@@ -85,7 +85,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(User.class, "users", UserResource.FIELDS);
+    super(User.class, "users", UserResource.FIELDS, false);
   }
 
   @Test
@@ -359,9 +359,9 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   /**
-   * @see TableResourceTest#put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
+   * @see EntityResourceTest#put_addDeleteFollower_200 test for tests related to GET user with owns field parameter
    *
-   * @see TableResourceTest#put_addDeleteFollower_200 for tests related getting user with follows list
+   * @see EntityResourceTest#put_addDeleteFollower_200 for tests related getting user with follows list
    *
    * @see TableResourceTest also tests GET user returns owns list
    */
@@ -479,7 +479,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // Add user as follower to a table
     Table table = TableResourceTest.createTable(test, 1);
-    TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders());
+    TableResourceTest tableResource = new TableResourceTest();
+    tableResource.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders());
 
     deleteUser(user.getId(), adminAuthHeaders());
 
@@ -490,7 +491,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     // Make sure the user is no longer following the table
     team = TeamResourceTest.getTeam(team.getId(), "users", adminAuthHeaders());
     assertTrue(team.getUsers().isEmpty());
-    TableResourceTest.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
+    tableResource.checkFollowerDeleted(table.getId(), user.getId(), adminAuthHeaders());
 
     // Get deactivated user and ensure the name and display name has deactivated
     User deactivatedUser = getUser(user.getId(), adminAuthHeaders());
@@ -499,7 +500,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     // User can no longer follow other entities
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            TableResourceTest.addAndCheckFollower(table, user.getId(), CREATED, 1, adminAuthHeaders()));
+            tableResource.addAndCheckFollower(table.getId(), user.getId(), CREATED, 1, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, deactivatedUser(user.getId()));
 
     // TODO deactivated user can't be made owner

@@ -18,6 +18,7 @@ import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
@@ -49,21 +50,30 @@ import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.services.PipelineServiceResourceTest.createService;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final Class<T> entityClass;
   private final String collectionName;
   private final String allFields;
+  private final boolean supportsFollowers;
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -85,10 +95,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public EntityResourceTest(Class<T> entityClass, String collectionName, String fields) {
+  public EntityResourceTest(Class<T> entityClass, String collectionName, String fields, boolean supportsFollowers) {
     this.entityClass = entityClass;
     this.collectionName = collectionName;
     this.allFields = fields;
+    this.supportsFollowers = supportsFollowers;
   }
 
   @BeforeAll
@@ -283,6 +294,51 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertEquals("description", entityInterface.getDescription()); // Description did not change
   }
 
+  @Test
+  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add follower to the entity
+    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
+    addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
+
+    // Add a new follower to the entity
+    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    addAndCheckFollower(entityId, user2.getId(), CREATED, 2, userAuthHeaders());
+
+    // Delete followers and make sure they are deleted
+    deleteAndCheckFollower(entityId, user1.getId(), 1, userAuthHeaders());
+    deleteAndCheckFollower(entityId, user2.getId(), 0, userAuthHeaders());
+  }
+
+  @Test
+  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add non existent user as follower to the entity
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+
+    // Delete non existent user as follower to the entity
+    exception = assertThrows(HttpResponseException.class, () ->
+            deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -292,6 +348,14 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   protected final WebTarget getResource(UUID id) {
     return getResource(collectionName + "/" + id);
+  }
+
+  protected final WebTarget getFollowersCollection(UUID id) {
+    return getResource(collectionName + "/" + id + "/followers");
+  }
+
+  protected final WebTarget getFollowerResource(UUID id, UUID userId) {
+    return getResource(collectionName + "/" + id + "/followers/" + userId);
   }
 
   protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -312,8 +376,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   protected final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
-    String updatedTableJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedTableJson);
+    String updatedEntityJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedEntityJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
@@ -481,5 +545,61 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       }
       assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
     }
+  }
+
+  public void addAndCheckFollower(UUID entityId, UUID userId, Status status, int totalFollowerCount,
+                                  Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getFollowersCollection(entityId);
+    TestUtils.put(target, userId.toString(), status, authHeaders);
+
+    // GET .../entity/{entityId} returns newly added follower
+    T getEntity = getEntity(entityId, authHeaders);
+    EntityInterface<T> entityInterface = getEntityInterface(getEntity);
+    List<EntityReference> followers = entityInterface.getFollowers();
+
+    assertEquals(totalFollowerCount, followers.size());
+    TestUtils.validateEntityReference(followers);
+    boolean followerFound = false;
+    for (EntityReference follower : followers) {
+      if (follower.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertTrue(followerFound, "Follower added was not found in " + entityClass + " get response");
+
+    // GET .../users/{userId} shows user as following the entity
+    checkUserFollowing(userId, entityId, true, authHeaders);
+  }
+
+  protected void deleteAndCheckFollower(UUID entityId, UUID userId, int totalFollowerCount,
+                                      Map<String, String> authHeaders) throws HttpResponseException {
+    // Delete the follower
+    WebTarget target = getFollowerResource(entityId, userId);
+    TestUtils.delete(target, authHeaders);
+
+    // Get the entity and ensure the deleted follower is not in the followers list
+    T getEntity = checkFollowerDeleted(entityId, userId, authHeaders);
+    assertEquals(totalFollowerCount, getEntityInterface(getEntity).getFollowers().size());
+  }
+
+  public T checkFollowerDeleted(UUID entityId, UUID userId, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    // Get the entity and ensure the deleted follower is not in the followers list
+    T getEntity = getEntity(entityId, authHeaders);
+    List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
+    TestUtils.validateEntityReference(followers);
+    boolean followerFound = false;
+    for (EntityReference follower : followers) {
+      if (follower.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertFalse(followerFound, "Follower deleted is still found in " + entityClass + " get response");
+
+    // GET .../users/{userId} shows user as following the entity
+    checkUserFollowing(userId, entityId, false, authHeaders);
+    return getEntity;
   }
 }

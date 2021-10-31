@@ -82,7 +82,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static List<EntityReference> CHART_REFERENCES;
 
   public DashboardResourceTest() {
-    super(Dashboard.class, "dashboards", DashboardResource.FIELDS);
+    super(Dashboard.class, "dashboards", DashboardResource.FIELDS, true);
   }
 
 

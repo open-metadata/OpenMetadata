@@ -120,14 +120,6 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Status addFollower(UUID tableId, UUID userId) throws IOException {
-    dao.tableDAO().findEntityById(tableId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), tableId, Entity.TABLE, userId,
-            Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
   public void addJoins(UUID tableId, TableJoins joins) throws IOException, ParseException {
     // Validate the request content
     Table table = dao.tableDAO().findEntityById(tableId);
@@ -190,12 +182,6 @@ public class TableRepository extends EntityRepository<Table> {
 
     dao.entityExtensionDAO().insert(tableId.toString(), "table.tableProfile", "tableProfile",
             JsonUtils.pojoToJson(updatedProfiles));
-  }
-
-  @Transaction
-  public void deleteFollower(UUID tableId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), tableId, userId);
   }
 
   @Transaction
@@ -589,6 +575,9 @@ public class TableRepository extends EntityRepository<Table> {
     public URI getHref() {
       return entity.getHref();
     }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public Table getEntity() { return entity; }

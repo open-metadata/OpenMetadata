@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -59,20 +58,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
   public static String getFQN(Pipeline pipeline) {
     return (pipeline.getService().getName() + "." + pipeline.getName());
-  }
-
-  @Transaction
-  public Status addFollower(UUID pipelineId, UUID userId) throws IOException {
-    dao.pipelineDAO().findEntityById(pipelineId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), pipelineId, Entity.PIPELINE, userId,
-            Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(UUID pipelineId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), pipelineId, userId);
   }
 
   @Transaction
@@ -256,6 +241,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public EntityReference getEntityReference() {

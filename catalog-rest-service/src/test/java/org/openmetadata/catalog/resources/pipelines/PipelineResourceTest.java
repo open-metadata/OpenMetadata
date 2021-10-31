@@ -75,7 +75,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
   public PipelineResourceTest() {
-    super(Pipeline.class, "pipelines", PipelineResource.FIELDS);
+    super(Pipeline.class, "pipelines", PipelineResource.FIELDS, true);
   }
 
 
