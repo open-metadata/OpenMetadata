@@ -450,7 +450,7 @@ class OpenMetadata(Generic[T, C]):
         """
         Run endpoint health-check. Return `true` if OK
         """
-        return self.client.get("/health-check").status_code == 200
+        return self.client.get("/health-check")["status"] == "healthy"
 
     def close(self):
         self.client.close()

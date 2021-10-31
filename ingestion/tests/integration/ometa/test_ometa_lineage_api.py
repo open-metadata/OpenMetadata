@@ -46,6 +46,8 @@ class OMetaLineageTest(TestCase):
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
+    assert metadata.health_check()
+
     db_service = CreateDatabaseServiceEntityRequest(
         name="test-service-db-lineage",
         serviceType=DatabaseServiceType.MySQL,

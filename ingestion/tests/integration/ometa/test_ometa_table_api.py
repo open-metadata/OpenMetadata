@@ -35,6 +35,8 @@ class OMetaTableTest(TestCase):
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
+    assert metadata.health_check()
+
     user = metadata.create_or_update(
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
@@ -52,7 +54,6 @@ class OMetaTableTest(TestCase):
         """
         Prepare ingredients
         """
-        assert cls.metadata.health_check()
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
