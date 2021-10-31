@@ -446,5 +446,11 @@ class OpenMetadata(Generic[T, C]):
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
 
+    def health_check(self) -> bool:
+        """
+        Run endpoint health-check. Return `true` if OK
+        """
+        return self.client.get("/health-check").status_code == 200
+
     def close(self):
         self.client.close()

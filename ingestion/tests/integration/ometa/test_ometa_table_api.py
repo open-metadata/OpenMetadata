@@ -52,6 +52,8 @@ class OMetaTableTest(TestCase):
         """
         Prepare ingredients
         """
+        assert cls.metadata.health_check()
+
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.create_db = CreateDatabaseEntityRequest(
