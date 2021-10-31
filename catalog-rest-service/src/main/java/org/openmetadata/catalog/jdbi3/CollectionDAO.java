@@ -16,7 +16,6 @@ import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
-import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
@@ -39,7 +38,6 @@ import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
-import org.openmetadata.catalog.jdbi3.TaskRepository.TaskEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
@@ -53,8 +51,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
 
 public interface CollectionDAO {
   @CreateSqlObject
@@ -86,9 +82,6 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   MetricsDAO metricsDAO();
-
-  @CreateSqlObject
-  TaskDAO taskDAO();
 
   @CreateSqlObject
   ChartDAO chartDAO();
@@ -211,8 +204,8 @@ public interface CollectionDAO {
   }
 
   class EntityVersionPair {
-    private Double version;
-    private String entityJson;
+    private final Double version;
+    private final String entityJson;
 
     public Double getVersion() {
       return version;
@@ -576,22 +569,6 @@ public interface CollectionDAO {
                 .withState(TagLabel.State.values()[r.getInt("state")])
                 .withTagFQN(r.getString("tagFQN"));
       }
-    }
-  }
-
-  interface TaskDAO extends EntityDAO<Task>{
-    @Override
-    default String getTableName() { return "task_entity"; }
-
-    @Override
-    default Class<Task> getEntityClass() { return Task.class; }
-
-    @Override
-    default String getNameColumn() { return "fullyQualifiedName"; }
-
-    @Override
-    default EntityReference getEntityReference(Task entity) {
-      return new TaskEntityInterface(entity).getEntityReference();
     }
   }
 

@@ -39,7 +39,6 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -129,8 +128,6 @@ public final class EntityUtil {
       DashboardResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       ModelResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      TaskResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       PipelineResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
@@ -247,8 +244,6 @@ public final class EntityUtil {
       return dao.topicDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       return dao.chartDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      return dao.taskDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       return dao.pipelineDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
@@ -273,8 +268,6 @@ public final class EntityUtil {
       return dao.chartDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       return dao.dashboardDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      return dao.taskDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       return dao.pipelineDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {

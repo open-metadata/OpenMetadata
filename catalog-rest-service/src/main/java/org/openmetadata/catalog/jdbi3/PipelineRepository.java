@@ -25,6 +25,7 @@ import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -32,11 +33,15 @@ import org.openmetadata.catalog.util.JsonUtils;
 
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
@@ -95,7 +100,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     pipeline.setConcurrency(pipeline.getConcurrency());
     pipeline.setOwner(fields.contains("owner") ? getOwner(pipeline) : null);
     pipeline.setFollowers(fields.contains("followers") ? getFollowers(pipeline) : null);
-    pipeline.setTasks(fields.contains("tasks") ? getTasks(pipeline) : null);
+    if (!fields.contains("tasks")) {
+      pipeline.withTasks(null);
+    }
     pipeline.setTags(fields.contains("tags") ? getTags(pipeline.getFullyQualifiedName()) : null);
     return pipeline;
   }
@@ -132,10 +139,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     EntityReference owner = pipeline.getOwner();
     List<TagLabel> tags = pipeline.getTags();
     EntityReference service = pipeline.getService();
-    List<EntityReference> tasks = pipeline.getTasks();
 
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on relationships
-    pipeline.withOwner(null).withService(null).withTasks(null).withHref(null).withTags(null);
+    pipeline.withOwner(null).withService(null).withHref(null).withTags(null);
 
     if (update) {
       dao.pipelineDAO().update(pipeline.getId(), JsonUtils.pojoToJson(pipeline));
@@ -144,7 +150,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     // Restore the relationships
-    pipeline.withOwner(owner).withService(service).withTasks(tasks).withTags(tags);
+    pipeline.withOwner(owner).withService(service).withTags(tags);
   }
 
   @Override
@@ -153,14 +159,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     dao.relationshipDAO().insert(service.getId().toString(), pipeline.getId().toString(), service.getType(),
             Entity.PIPELINE, Relationship.CONTAINS.ordinal());
 
-    // Add relationship from pipeline to task
-    String pipelineId = pipeline.getId().toString();
-    if (pipeline.getTasks() != null) {
-      for (EntityReference task : pipeline.getTasks()) {
-        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
-                Relationship.CONTAINS.ordinal());
-      }
-    }
     // Add owner relationship
     EntityUtil.setOwner(dao.relationshipDAO(), pipeline.getId(), Entity.PIPELINE, pipeline.getOwner());
 
@@ -210,37 +208,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     return pipeline == null ? null : EntityUtil.getFollowers(pipeline.getId(), dao.relationshipDAO(), dao.userDAO());
   }
 
-  private List<EntityReference> getTasks(Pipeline pipeline) throws IOException {
-    if (pipeline == null) {
-      return null;
-    }
-    String pipelineId = pipeline.getId().toString();
-    List<String> taskIds = dao.relationshipDAO().findTo(pipelineId, Relationship.CONTAINS.ordinal(), Entity.TASK);
-    List<EntityReference> tasks = new ArrayList<>();
-    for (String taskId : taskIds) {
-      tasks.add(dao.taskDAO().findEntityReferenceById(UUID.fromString(taskId)));
-    }
-    return tasks;
-  }
-
-  private void updateTaskRelationships(Pipeline pipeline) {
-    String pipelineId = pipeline.getId().toString();
-
-    // Add relationship from pipeline to task
-    if (pipeline.getTasks() != null) {
-      // Remove any existing tasks associated with this pipeline
-      dao.relationshipDAO().deleteFrom(pipelineId, Relationship.CONTAINS.ordinal(), Entity.TASK);
-      for (EntityReference task : pipeline.getTasks()) {
-        dao.relationshipDAO().insert(pipelineId, task.getId().toString(), Entity.PIPELINE, Entity.TASK,
-                Relationship.CONTAINS.ordinal());
-      }
-    }
-  }
-
-  static class PipelineEntityInterface implements EntityInterface<Pipeline> {
+  public static class PipelineEntityInterface implements EntityInterface<Pipeline> {
     private final Pipeline entity;
 
-    PipelineEntityInterface(Pipeline entity) {
+    public PipelineEntityInterface(Pipeline entity) {
       this.entity = entity;
     }
 
@@ -284,6 +255,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.PIPELINE);
@@ -318,9 +292,10 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
-    public void setTags(List<TagLabel> tags) {
-      entity.setTags(tags);
-    }
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { entity.setTags(tags); }
   }
 
   /**
@@ -339,18 +314,20 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
       // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a
-      // pipeline
-      // in the next task run we may have to update. To take care of this we will merge the tasks
-      if (updatedPipeline.getTasks() == null) {
-        updatedPipeline.setTasks(origPipeline.getTasks());
-      } else {
-        updatedPipeline.getTasks().addAll(origPipeline.getTasks()); // TODO remove duplicates
-      }
+      // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
+      List<Task> updatedTasks = Optional.ofNullable(updatedPipeline.getTasks()).orElse(Collections.emptyList());
+      List<Task> origTasks = Optional.ofNullable(origPipeline.getTasks()).orElse(Collections.emptyList());
 
-      // Add relationship from pipeline to task
-      updateTaskRelationships(updatedPipeline);
-      recordChange("tasks", EntityUtil.getIDList(updatedPipeline.getTasks()),
-              EntityUtil.getIDList(origPipeline.getTasks()));
+      // TODO this might not provide distinct
+      updatedTasks = Stream.concat(origTasks.stream(), updatedTasks.stream()).distinct().collect(Collectors.toList());
+      if (origTasks.isEmpty()) {
+        origTasks = null;
+      }
+      if (updatedTasks.isEmpty()) {
+        updatedTasks = null;
+      }
+      updatedPipeline.setTasks(updatedTasks);
+      recordChange("tasks", origTasks, updatedTasks);
     }
   }
 }

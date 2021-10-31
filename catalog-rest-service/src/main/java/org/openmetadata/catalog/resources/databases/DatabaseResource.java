@@ -28,7 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.Task;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
