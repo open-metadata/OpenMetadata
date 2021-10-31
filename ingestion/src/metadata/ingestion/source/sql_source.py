@@ -406,6 +406,11 @@ class SQLSource(Source):
                 if col_data_length is None:
                     col_data_length = 1
                 try:
+                    if col_type == "NULL":
+                        col_type = "VARCHAR"
+                        logger.warning(
+                            f"Unknown type mapped to VARCHAR: {column['name']}"
+                        )
                     om_column = Column(
                         name=column["name"],
                         description=column.get("comment", None),
