@@ -237,6 +237,11 @@ public class UserRepository extends EntityRepository<User> {
     public URI getHref() { return entity.getHref(); }
 
     @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("User does not support followers");
+    }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.USER);

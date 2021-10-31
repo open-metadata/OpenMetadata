@@ -31,14 +31,12 @@ import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
-import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -79,16 +77,13 @@ import java.util.UUID;
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
@@ -107,7 +102,6 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 import static org.openmetadata.common.utils.CommonUtil.getDateStringByOffset;
 
@@ -123,7 +117,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
 
   public TableResourceTest() {
-    super(Table.class, "tables", TableResource.FIELDS);
+    super(Table.class, "tables", TableResource.FIELDS, true);
   }
 
   @BeforeAll
@@ -1062,40 +1056,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     validateColumns(columns, table.getColumns());
   }
 
-  @Test
-  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
-    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
-
-    // Add follower to the table
-    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
-    addAndCheckFollower(table, user1.getId(), CREATED, 1, userAuthHeaders());
-
-    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
-    addAndCheckFollower(table, user1.getId(), OK, 1, userAuthHeaders());
-
-    // Add a new follower to the table
-    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
-    addAndCheckFollower(table, user2.getId(), CREATED, 2, userAuthHeaders());
-
-    // Delete followers and make sure they are deleted
-    deleteAndCheckFollower(table, user1.getId(), 1, userAuthHeaders());
-    deleteAndCheckFollower(table, user2.getId(), 0, userAuthHeaders());
-  }
-
-  @Test
-  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
-    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
-
-    // Add non existent user as follower to the table
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            addAndCheckFollower(table, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-
-    // Delete non existent user as follower to the table
-    exception = assertThrows(HttpResponseException.class, () ->
-            deleteAndCheckFollower(table, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
     tableList.forEach(t -> assertFields(t, fieldsParam));
@@ -1278,57 +1238,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getTable(id, authHeaders));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound(Entity.TABLE, id));
   }
-
-  public static void addAndCheckFollower(Table table, UUID userId, Status status, int totalFollowerCount,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/followers", table.getId()));
-    TestUtils.put(target, userId.toString(), status, authHeaders);
-
-    // GET .../tables/{tableId} returns newly added follower
-    Table getTable = getTable(table.getId(), "followers", authHeaders);
-    assertEquals(totalFollowerCount, getTable.getFollowers().size());
-    TestUtils.validateEntityReference(getTable.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getTable.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertTrue(followerFound, "Follower added was not found in table get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, table.getId(), true, authHeaders);
-  }
-
-  private void deleteAndCheckFollower(Table table, UUID userId, int totalFollowerCount,
-                                      Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/followers/%s",
-            table.getId(), userId));
-    TestUtils.delete(target, authHeaders);
-
-    Table getTable = checkFollowerDeleted(table.getId(), userId, authHeaders);
-    assertEquals(totalFollowerCount, getTable.getFollowers().size());
-  }
-
-  public static Table checkFollowerDeleted(UUID tableId, UUID userId, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    Table getTable = getTable(tableId, "followers", authHeaders);
-    TestUtils.validateEntityReference(getTable.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getTable.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertFalse(followerFound, "Follower deleted is still found in table get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, tableId, false, authHeaders);
-    return getTable;
-  }
-
 
   private static int getTagUsageCount(String tagFQN, Map<String, String> authHeaders) throws HttpResponseException {
     return TagResourceTest.getTag(tagFQN, "usageCount", authHeaders).getUsageCount();

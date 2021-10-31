@@ -140,6 +140,14 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
 
     @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Pipeline service does not support followers");
+    }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.PIPELINE_SERVICE);
