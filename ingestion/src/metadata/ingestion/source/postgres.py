@@ -14,7 +14,9 @@
 #  limitations under the License.
 
 from collections import namedtuple
+from urllib.parse import urlparse
 
+import psycopg2
 import pymysql  # noqa: F401
 
 # This import verifies that the dependencies are available.
@@ -45,6 +47,19 @@ class PostgresSourceConfig(SQLConnectionConfig):
 class PostgresSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
+        result = urlparse(self.connection_string)
+        username = result.username
+        password = result.password
+        database = result.path[1:]
+        hostname = result.hostname
+        port = result.port
+        self.pgconn = psycopg2.connect(
+            database=database,
+            user=username,
+            password=password,
+            host=hostname,
+            port=port,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
@@ -54,3 +69,17 @@ class PostgresSource(SQLSource):
 
     def get_status(self) -> SourceStatus:
         return self.status
+
+    def type_of_column_name(self, sa_type, table_name: str, column_name: str):
+        cur = self.pgconn.cursor()
+        schema_table = table_name.split(".")
+        cur.execute(
+            """select data_type, udt_name
+               from information_schema.columns
+               where table_schema = %s and table_name = %s and column_name = %s""",
+            (schema_table[0], schema_table[1], column_name),
+        )
+        pgtype = cur.fetchone()[1]
+        if pgtype == "geometry" or pgtype == "geography":
+            return "GEOGRAPHY"
+        return sa_type
