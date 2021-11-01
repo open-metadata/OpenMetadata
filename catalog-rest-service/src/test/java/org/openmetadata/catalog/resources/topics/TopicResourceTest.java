@@ -31,14 +31,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,15 +56,13 @@ import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class TopicResourceTest extends EntityResourceTest<Topic> {
-  private static final Logger LOG = LoggerFactory.getLogger(TopicResourceTest.class);
 
   public TopicResourceTest() {
-    super(Topic.class, "topics", TopicResource.FIELDS, true);
+    super(Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true);
   }
 
   @Test
@@ -169,99 +167,13 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List topics by filtering on service name and ensure right topics are returned in the response
-      TopicList list = listTopics("service", service.getName(), adminAuthHeaders());
+      Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
+      ResultList<Topic> list = listEntities(queryParams, adminAuthHeaders());
       for (Topic topic : list.getData()) {
         assertEquals(service.getName(), topic.getService().getName());
       }
     }
   }
-
-  @Test
-  public void get_topicListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTopics(null, null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTopics(null, null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTopics(null, null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_topicListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTopics(null, null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_topicListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of topics
-    int maxTopics = 40;
-    for (int i = 0; i < maxTopics; i++) {
-      createTopic(create(test, i), adminAuthHeaders());
-    }
-
-    // List all topics
-    TopicList allTopics = listTopics(null, null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allTopics.getData().size();
-    printTopics(allTopics);
-
-    // List limit number topics at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxTopics; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTopics = 0;
-      TopicList forwardPage;
-      TopicList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listTopics(null, null, limit, null, after, adminAuthHeaders());
-        printTopics(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTopics.getData(), forwardPage, limit, indexInAllTopics);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listTopics(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allTopics.getData(), backwardPage, limit, (indexInAllTopics - limit));
-        }
-
-        indexInAllTopics += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTopics = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listTopics(null, null, limit, before, null, adminAuthHeaders());
-        printTopics(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTopics.getData(), forwardPage, limit, indexInAllTopics);
-        pageCount++;
-        indexInAllTopics -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printTopics(TopicList list) {
-    list.getData().forEach(topic -> LOG.info("Topic {}", topic.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
-
 
   @Test
   public void get_nonExistentTopic_404_notFound() {
@@ -451,23 +363,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     return TestUtils.get(target, Topic.class, authHeaders);
   }
 
-  public static TopicList listTopics(String fields, String serviceParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listTopics(fields, serviceParam, null, null, null, authHeaders);
-  }
-
-  public static TopicList listTopics(String fields, String serviceParam, Integer limitParam,
-                                     String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("topics");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = serviceParam != null ? target.queryParam("service", serviceParam) : target;
-    target = limitParam != null ? target.queryParam("limit", limitParam) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, TopicList.class, authHeaders);
-  }
-
   private void deleteTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("topics/" + id), authHeaders);
 
@@ -494,8 +389,9 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public CreateTopic createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withOwner(owner);
+  public CreateTopic createRequest(TestInfo test, int index, String description, String displayName,
+                                   EntityReference owner) {
+    return create(test, index).withDescription(description).withOwner(owner);
   }
 
   @Override

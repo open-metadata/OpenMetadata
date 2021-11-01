@@ -41,15 +41,15 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -70,19 +70,17 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
-  private static final Logger LOG = LoggerFactory.getLogger(DashboardResourceTest.class);
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static EntityReference SUPERSET_INVALID_SERVICE_REFERENCE;
   public static List<EntityReference> CHART_REFERENCES;
 
   public DashboardResourceTest() {
-    super(Dashboard.class, "dashboards", DashboardResource.FIELDS, true);
+    super(Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS, true);
   }
 
 
@@ -209,95 +207,14 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
       createAndCheckEntity(create(test).withService(new EntityReference().withId(service.getId())
               .withType(service.getType())), adminAuthHeaders());
       // List Dashboards by filtering on service name and ensure right Dashboards are returned in the response
-      DashboardList list = listDashboards("service", service.getName(), adminAuthHeaders());
+      Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
+      ResultList<Dashboard> list = listEntities(queryParams, adminAuthHeaders());
       for (Dashboard db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
         String expectedFQN = service.getName() + "." + db.getName();
         assertEquals(expectedFQN, db.getFullyQualifiedName());
       }
     }
-  }
-
-  @Test
-  public void get_DashboardListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    assertResponse(() -> listDashboards(null, null, -1, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() -> listDashboards(null, null, 0, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() -> listDashboards(null, null, 1000001, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_DashboardListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    assertResponse(() -> listDashboards(null, null, 1, "", "", adminAuthHeaders()),
-            BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_DashboardListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of Dashboards
-    int maxDashboards = 40;
-    for (int i = 0; i < maxDashboards; i++) {
-      createDashboard(create(test, i), adminAuthHeaders());
-    }
-
-    // List all Dashboards
-    DashboardList allDashboards = listDashboards(null, null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allDashboards.getData().size();
-    printDashboards(allDashboards);
-
-    // List limit number Dashboards at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxDashboards; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllDashboards = 0;
-      DashboardList forwardPage;
-      DashboardList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listDashboards(null, null, limit, null, after, adminAuthHeaders());
-        printDashboards(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allDashboards.getData(), forwardPage, limit, indexInAllDashboards);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listDashboards(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allDashboards.getData(), backwardPage, limit, (indexInAllDashboards - limit));
-        }
-
-        indexInAllDashboards += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllDashboards = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listDashboards(null, null, limit, before, null, adminAuthHeaders());
-        printDashboards(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allDashboards.getData(), forwardPage, limit, indexInAllDashboards);
-        pageCount++;
-        indexInAllDashboards -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printDashboards(DashboardList list) {
-    list.getData().forEach(Dashboard -> LOG.info("DB {}", Dashboard.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test
@@ -478,23 +395,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     return TestUtils.get(target, Dashboard.class, authHeaders);
   }
 
-  public static DashboardList listDashboards(String fields, String serviceParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listDashboards(fields, serviceParam, null, null, null, authHeaders);
-  }
-
-  public static DashboardList listDashboards(String fields, String serviceParam, Integer limitParam,
-                                           String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("dashboards");
-    target = fields != null ? target.queryParam("fields", fields): target;
-    target = serviceParam != null ? target.queryParam("service", serviceParam): target;
-    target = limitParam != null ? target.queryParam("limit", limitParam): target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, DashboardList.class, authHeaders);
-  }
-
   private void deleteDashboard(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("dashboards/" + id), authHeaders);
 
@@ -519,8 +419,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override

@@ -3,6 +3,7 @@ package org.openmetadata.catalog.resources;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -32,9 +33,12 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -47,8 +51,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -64,13 +71,16 @@ import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
+  private static final Logger LOG = LoggerFactory.getLogger(EntityResourceTest.class);
   private final Class<T> entityClass;
+  private final Class<? extends ResultList<T>> entityListClass;
   private final String collectionName;
   private final String allFields;
   private final boolean supportsFollowers;
@@ -95,8 +105,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public EntityResourceTest(Class<T> entityClass, String collectionName, String fields, boolean supportsFollowers) {
+  public EntityResourceTest(Class<T> entityClass, Class<? extends ResultList<T>> entityListClass, String collectionName,
+                            String fields, boolean supportsFollowers) {
     this.entityClass = entityClass;
+    this.entityListClass = entityListClass;
     this.collectionName = collectionName;
     this.allFields = fields;
     this.supportsFollowers = supportsFollowers;
@@ -159,7 +171,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Methods to be overridden entity test class
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  public abstract Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) throws URISyntaxException;
+  public final Object createRequest(TestInfo test, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
+    return createRequest(test, 0, description, displayName, owner);
+  }
+
+  public abstract Object createRequest(TestInfo test, int index, String description, String displayName,
+                                       EntityReference owner) throws URISyntaxException;
 
   public abstract void validateCreatedEntity(T createdEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException;
@@ -179,6 +197,88 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create a large number of tables
+    int maxEntities = 40;
+    for (int i = 0; i < maxEntities; i++) {
+      createEntity(createRequest(test, i, null, null, null), adminAuthHeaders());
+    }
+
+    // List all tables and use it for checking pagination
+    ResultList<T> allEntities = listEntities(null, 1000000, null, null,
+            adminAuthHeaders());
+    int totalRecords = allEntities.getData().size();
+    printEntities(allEntities);
+
+    // List tables with limit set from 1 to maxTables size
+    // Each time compare the returned list with allTables list to make sure right results are returned
+    for (int limit = 1; limit < maxEntities; limit++) {
+      String after = null;
+      String before;
+      int pageCount = 0;
+      int indexInAllTables = 0;
+      ResultList<T> forwardPage;
+      ResultList<T> backwardPage;
+      do { // For each limit (or page size) - forward scroll till the end
+        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+        forwardPage = listEntities(null, limit, null, after, adminAuthHeaders());
+        after = forwardPage.getPaging().getAfter();
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
+          assertNull(before);
+        } else {
+          // Make sure scrolling back based on before cursor returns the correct result
+          backwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+        }
+
+        printEntities(forwardPage);
+        indexInAllTables += forwardPage.getData().size();
+        pageCount++;
+      } while (after != null);
+
+      // We have now reached the last page - test backward scroll till the beginning
+      pageCount = 0;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+      do {
+        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+        forwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
+        printEntities(forwardPage);
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+        pageCount++;
+        indexInAllTables -= forwardPage.getData().size();
+      } while (before != null);
+    }
+  }
+
+  @Test
+  public void get_entityListWithInvalidLimit_4xx() {
+    // Limit must be >= 1 and <= 1000,000
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, -1, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+
+    exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 0, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+
+    exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 1000001, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+  }
+
+  @Test
+  public void get_entityListWithInvalidPaginationCursors_4xx() {
+    // Passing both before and after cursors is invalid
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 1, "", "", adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+  }
+
   @Test
   public void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a new entity with PUT
@@ -601,5 +701,28 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     // GET .../users/{userId} shows user as following the entity
     checkUserFollowing(userId, entityId, false, authHeaders);
     return getEntity;
+  }
+
+  public ResultList<T> listEntities(Map<String, String> queryParams, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    return listEntities(queryParams, null, null, null, authHeaders);
+  }
+
+  public ResultList<T> listEntities(Map<String, String> queryParams, Integer limit, String before,
+                              String after, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection();
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
+    return TestUtils.get(target, entityListClass, authHeaders);
+  }
+
+  private void printEntities(ResultList<T> list) {
+    list.getData().forEach(entity -> LOG.info("{} {}", entityClass, getEntityInterface(entity).getFullyQualifiedName()));
+    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 }

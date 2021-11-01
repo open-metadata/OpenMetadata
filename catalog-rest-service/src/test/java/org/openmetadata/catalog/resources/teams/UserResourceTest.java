@@ -76,7 +76,6 @@ import static org.openmetadata.catalog.resources.teams.TeamResourceTest.createTe
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
@@ -85,7 +84,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(User.class, "users", UserResource.FIELDS, false);
+    super(User.class, UserList.class, "users", UserResource.FIELDS, false);
   }
 
   @Test
@@ -264,98 +263,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     exception = assertThrows(HttpResponseException.class, () ->
             getUser(user.getId(), "invalidField", adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
-  }
-
-  @Test
-  public void get_userListWithInvalidLimit_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_userListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listUsers(null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  /**
-   * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList
-   *
-   * The tests and various CASES referenced are base on that.
-   */
-  @Test
-  public void get_userListWithPagination_200(TestInfo test) throws HttpResponseException {
-    // Create a large number of users
-    int maxUsers = 40;
-    for (int i = 0; i < maxUsers; i++) {
-      createUser(create(test, i), adminAuthHeaders());
-    }
-
-    // List all users and use it for checking pagination
-    UserList allUsers = listUsers(null, 1000000, null, null, adminAuthHeaders());
-    int totalRecords = allUsers.getData().size();
-    printUsers(allUsers);
-
-    // List tables with limit set from 1 to maxTables size
-    // Each time compare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < 2; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      UserList forwardPage;
-      UserList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listUsers(null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        printUsers(forwardPage);
-        assertEntityPagination(allUsers.getData(), forwardPage, limit, indexInAllTables);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listUsers(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allUsers.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listUsers(null, limit, before, null, adminAuthHeaders());
-        printUsers(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allUsers.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printUsers(UserList list) {
-    list.getData().forEach(user -> LOG.info("User {}", user.getName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   /**
@@ -575,16 +482,6 @@ public class UserResourceTest extends EntityResourceTest<User> {
     TestUtils.delete(CatalogApplicationTest.getResource("users/" + id), headers);
   }
 
-  public static UserList listUsers(String fields, Integer limit, String before, String after,
-                                   Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("users");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, UserList.class, authHeaders);
-  }
-
   // TODO write following tests
   // list users
   // list users with various fields parameters
@@ -595,8 +492,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName);
   }
 
   @Override
