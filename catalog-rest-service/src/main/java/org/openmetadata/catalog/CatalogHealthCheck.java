@@ -25,6 +25,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import java.io.IOException;
 
 import static org.openmetadata.catalog.resources.teams.UserResource.FIELD_LIST;
+import static org.openmetadata.catalog.resources.teams.UserResource.LOG;
 
 public class CatalogHealthCheck extends HealthCheck {
   private final UserRepository userRepository;
@@ -39,9 +40,10 @@ public class CatalogHealthCheck extends HealthCheck {
   @Override
   protected Result check() throws Exception {
     try {
-      userRepository.listAfter(fields, null, 1, "");
+      userRepository.listAfter(fields, null, 1, null);
       return Result.healthy();
     } catch (IOException e) {
+      LOG.error("Health check error {}", e.getMessage());
       return Result.unhealthy(e.getMessage());
     }
   }
