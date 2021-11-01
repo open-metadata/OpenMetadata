@@ -2,6 +2,7 @@
 OpenMetadata high-level API Table test
 """
 import uuid
+from datetime import datetime
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import (
@@ -15,9 +16,13 @@ from metadata.generated.schema.api.teams.createUser import CreateUserEntityReque
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     Column,
+    ColumnJoins,
+    ColumnProfile,
     DataType,
+    JoinedWithItem,
     Table,
     TableData,
+    TableJoins,
     TableProfile,
 )
 from metadata.generated.schema.entity.services.databaseService import (
@@ -26,6 +31,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.jdbcConnection import JdbcInfo
+from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -242,7 +248,81 @@ class OMetaTableTest(TestCase):
             entity=Table, fqdn=self.entity.fullyQualifiedName
         )
 
-        profile = [TableProfile(profileDate="2018-11-13", columnCount=1, rowCount=3)]
+        profile = [
+            TableProfile(
+                profileDate=datetime(2021, 10, 12),
+                columnCount=1.0,
+                rowCount=3.0,
+                columnProfile=[
+                    ColumnProfile(
+                        name="id",
+                        uniqueCount=3.0,
+                        uniqueProportion=1.0,
+                        nullCount=0.0,
+                        nullProportion=0.0,
+                        min="1",
+                        max="3",
+                        mean="1.5",
+                        median="2",
+                        stddev=None,
+                    )
+                ],
+            )
+        ]
 
         res_profile = self.metadata.ingest_table_profile_data(res, profile)
-        print(res_profile)
+        assert profile == res_profile
+
+    def test_publish_table_usage(self):
+        """
+        We can POST usage data for a Table
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        usage = TableUsageRequest(date="2021-10-20", count=10)
+
+        self.metadata.publish_table_usage(res, usage)
+
+    def test_publish_frequently_joined_with(self):
+        """
+        We can PUT freq Table JOINs
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        another_table = CreateTableEntityRequest(
+            name="another-test",
+            database=self.create_db_entity.id,
+            columns=[Column(name="another_id", dataType=DataType.BIGINT)],
+        )
+        another_res = self.metadata.create_or_update(another_table)
+
+        joins = TableJoins(
+            startDate=datetime.now(),
+            dayCount=1,
+            columnJoins=[
+                ColumnJoins(
+                    columnName="id",
+                    joinedWith=[
+                        JoinedWithItem(
+                            fullyQualifiedName="test-service-table.test-db.another-test.another_id",
+                            joinCount=2,
+                        )
+                    ],
+                )
+            ],
+        )
+
+        self.metadata.publish_frequently_joined_with(res, joins)
+        self.metadata.delete(entity=Table, entity_id=str(another_res.id.__root__))
