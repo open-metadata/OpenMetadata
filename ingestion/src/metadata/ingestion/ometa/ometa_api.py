@@ -144,9 +144,6 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         ):
             return "/tables"
 
-        if issubclass(entity, get_args(Union[Task, self.get_create_entity_type(Task)])):
-            return "/tasks"
-
         if issubclass(
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
