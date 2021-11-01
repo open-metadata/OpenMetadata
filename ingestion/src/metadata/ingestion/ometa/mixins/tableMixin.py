@@ -32,7 +32,6 @@ class OMetaTableMixin:
     ) -> TableData:
         """
         PUT sample data for a table
-        TODO: changed arg from table_id to table, changed name from ingest_sample_data
 
         :param table: Table Entity to update
         :param sample_data: Data to add
@@ -48,7 +47,6 @@ class OMetaTableMixin:
     ) -> List[TableProfile]:
         """
         PUT profile data for a table
-        TODO: changed arg from table_id to table
 
         :param table: Table Entity to update
         :param table_profile: Profile data to add
@@ -66,7 +64,6 @@ class OMetaTableMixin:
     ) -> None:
         """
         POST usage details for a Table
-        TODO: changed function name from publish_usage_for_a_table
 
         :param table: Table Entity to update
         :param table_usage_request: Usage data to add

@@ -328,20 +328,6 @@ class OpenMetadataAPIClient(object):
             after = resp["paging"]["after"] if "after" in resp["paging"] else None
             return TableEntities(tables=tables, total=total, after=after)
 
-    def ingest_sample_data(self, table_id, sample_data):
-        resp = self.client.put(
-            "/tables/{}/sampleData".format(table_id.__root__), data=sample_data.json()
-        )
-        return TableData(**resp["sampleData"])
-
-    def ingest_table_profile_data(self, table_id, table_profile):
-        for profile in table_profile:
-            resp = self.client.put(
-                "/tables/{}/tableProfile".format(table_id.__root__),
-                data=profile.json(),
-            )
-        return [TableProfile(**t) for t in resp["tableProfile"]]
-
     def get_table_by_id(self, table_id: str, fields: [] = ["columns"]) -> Table:
         """Get Table By ID"""
         params = {"fields": ",".join(fields)}
@@ -362,36 +348,10 @@ class OpenMetadataAPIClient(object):
         resp = self.client.get("/tables/name/{}".format(table_name), data=params)
         return Table(**resp)
 
-    def publish_usage_for_a_table(
-        self, table: Table, table_usage_request: TableUsageRequest
-    ) -> None:
-        """publish usage details for a table"""
-        resp = self.client.post(
-            "/usage/table/{}".format(table.id.__root__), data=table_usage_request.json()
-        )
-        logger.debug("published table usage {}".format(resp))
-
-    def publish_frequently_joined_with(
-        self, table: Table, table_join_request: TableJoins
-    ) -> None:
-        """publish frequently joined with for a table"""
-        logger.debug(table_join_request.json())
-        logger.info("table join request {}".format(table_join_request.json()))
-        resp = self.client.put(
-            "/tables/{}/joins".format(table.id.__root__), data=table_join_request.json()
-        )
-        logger.debug("published frequently joined with {}".format(resp))
-
     def list_tags_by_category(self, category: str) -> {}:
         """List all tags"""
         resp = self.client.get("/tags/{}".format(category))
         return [Tag(**d) for d in resp["children"]]
-
-    def compute_percentile(self, entity_type: str, date: str):
-        resp = self.client.post(
-            "/usage/compute.percentile/{}/{}".format(entity_type, date)
-        )
-        logger.debug("published compute percentile {}".format(resp))
 
     def get_messaging_service(self, service_name: str) -> Optional[MessagingService]:
         """Get the Messaging service"""
