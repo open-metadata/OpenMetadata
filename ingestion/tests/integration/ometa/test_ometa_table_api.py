@@ -13,7 +13,13 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
+    Table,
+    TableData,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
@@ -206,3 +212,37 @@ class OMetaTableTest(TestCase):
             ),
             None,
         )
+
+    def test_ingest_sample_data(self):
+        """
+        We can ingest sample TableData
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        sample_data = TableData(columns=["id"], rows=[[1], [2], [3]])
+
+        res_sample = self.metadata.ingest_table_sample_data(res, sample_data)
+        assert res_sample == sample_data
+
+    def test_ingest_table_profile_data(self):
+        """
+        We can ingest profile data TableProfile
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        profile = [TableProfile(profileDate="2018-11-13", columnCount=1, rowCount=3)]
+
+        res_profile = self.metadata.ingest_table_profile_data(res, profile)
+        print(res_profile)
