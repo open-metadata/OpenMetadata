@@ -29,7 +29,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
-import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -67,17 +66,15 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
 public class TeamResourceTest extends EntityResourceTest<Team> {
-  private static final Logger LOG = LoggerFactory.getLogger(TeamResourceTest.class);
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Team.class, "teams", TeamResource.FIELDS, false);
+    super(Team.class, TeamList.class, "teams", TeamResource.FIELDS, false);
   }
 
   @Test
@@ -199,97 +196,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
-  @Test
-  public void get_teamListWithInvalidLimit_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_teamListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  /**
-   * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList
-   *
-   * The tests and various CASES referenced are base on that.
-   */
-  @Test
-  public void get_teamListWithPagination_200(TestInfo test) throws HttpResponseException {
-    // Create a large number of teams
-    int maxTeams = 40;
-    for (int i = 0; i < maxTeams; i++) {
-      createTeam(create(test, i), adminAuthHeaders());
-    }
-
-    // List all teams and use it for checking pagination
-    TeamList allTeams = listTeams(null, 1000000, null, null, adminAuthHeaders());
-    int totalRecords = allTeams.getData().size();
-    printTeams(allTeams);
-
-    // List tables with limit set from 1 to maxTables size
-    // Each time comapare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < maxTeams; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      TeamList forwardPage;
-      TeamList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listTeams(null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTeams.getData(), forwardPage, limit, indexInAllTables);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listTeams(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allTeams.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        printTeams(forwardPage);
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listTeams(null, limit, before, null, adminAuthHeaders());
-        printTeams(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTeams.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printTeams(TeamList list) {
-    list.getData().forEach(team -> LOG.info("Team {}", team.getName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
   /**
    * @see EntityResourceTest#put_addDeleteFollower_200
    * for tests related getting team with entities owned by the team
@@ -424,17 +330,6 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return TestUtils.get(target, Team.class, authHeaders);
   }
 
-  public static TeamList listTeams(String fields, Integer limit, String before, String after,
-                                   Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("teams");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, TeamList.class, authHeaders);
-  }
-
-
   public static Team getTeamByName(String name, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
     WebTarget target = CatalogApplicationTest.getResource("teams/name/" + name);
@@ -495,6 +390,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch,
             Team.class, authHeaders);
   }
+
   private Team patchTeam(String originalJson, Team updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     return patchTeam(updated.getId(), originalJson, updated, authHeaders);
@@ -517,8 +413,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName);
   }
 
   @Override

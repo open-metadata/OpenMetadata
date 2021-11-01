@@ -38,14 +38,14 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,19 +64,17 @@ import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class ChartResourceTest extends EntityResourceTest<Chart> {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResourceTest.class);
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public ChartResourceTest() {
-    super(Chart.class, "charts", ChartResource.FIELDS, true);
+    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true);
   }
 
   @BeforeAll
@@ -177,94 +175,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List charts by filtering on service name and ensure right charts are returned in the response
-      ChartList list = listCharts("service", service.getName(), adminAuthHeaders());
+      Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
+      ResultList<Chart> list = listEntities(queryParams, adminAuthHeaders());
       for (Chart chart : list.getData()) {
         assertEquals(service.getName(), chart.getService().getName());
       }
     }
   }
 
-  @Test
-  public void get_chartListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    assertResponse(() -> listCharts(null, null, -1, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() ->listCharts(null, null, 0, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() -> listCharts(null, null, 1000001, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_chartListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    assertResponse(() -> listCharts(null, null, 1, "", "", adminAuthHeaders()),
-            BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_chartListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of charts
-    int maxCharts = 40;
-    for (int i = 0; i < maxCharts; i++) {
-      createChart(create(test, i), adminAuthHeaders());
-    }
-
-    // List all charts
-    ChartList allCharts = listCharts(null, null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allCharts.getData().size();
-    printCharts(allCharts);
-
-    // List limit number charts at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxCharts; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllCharts = 0;
-      ChartList forwardPage;
-      ChartList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listCharts(null, null, limit, null, after, adminAuthHeaders());
-        printCharts(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allCharts.getData(), forwardPage, limit, indexInAllCharts);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listCharts(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allCharts.getData(), backwardPage, limit, (indexInAllCharts - limit));
-        }
-
-        indexInAllCharts += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllCharts = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listCharts(null, null, limit, before, null, adminAuthHeaders());
-        printCharts(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allCharts.getData(), forwardPage, limit, indexInAllCharts);
-        pageCount++;
-        indexInAllCharts -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printCharts(ChartList list) {
-    list.getData().forEach(chart -> LOG.info("Chart {}", chart.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
 
   @Test
   public void get_nonExistentChart_404_notFound() {
@@ -397,23 +315,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     return TestUtils.get(target, Chart.class, authHeaders);
   }
 
-  public static ChartList listCharts(String fields, String serviceParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listCharts(fields, serviceParam, null, null, null, authHeaders);
-  }
-
-  public static ChartList listCharts(String fields, String serviceParam, Integer limitParam,
-                                     String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("charts");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = serviceParam != null ? target.queryParam("service", serviceParam) : target;
-    target = limitParam != null ? target.queryParam("limit", limitParam) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, ChartList.class, authHeaders);
-  }
-
   private void deleteChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("charts/" + id), authHeaders);
 
@@ -439,8 +340,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override

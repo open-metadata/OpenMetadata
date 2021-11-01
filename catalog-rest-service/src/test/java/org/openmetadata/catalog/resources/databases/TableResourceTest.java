@@ -55,6 +55,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.slf4j.Logger;
@@ -99,7 +100,6 @@ import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
@@ -117,7 +117,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
 
   public TableResourceTest() {
-    super(Table.class, "tables", TableResource.FIELDS, true);
+    super(Table.class, TableList.class, "tables", TableResource.FIELDS, true);
   }
 
   @BeforeAll
@@ -827,31 +827,44 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // 2*1 column tags
     assertEquals(2, getTagUsageCount(USER_BANK_ACCOUNT_TAG_LABEL.getTagFQN(), adminAuthHeaders()));
 
-    TableList tableList = listTables(null, null, adminAuthHeaders()); // List tables
+    ResultList<Table> tableList = listEntities(null, adminAuthHeaders()); // List tables
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), null);
 
     // List tables with databaseFQN as filter
-    TableList tableList1 = listTables(null, DATABASE.getFullyQualifiedName(), adminAuthHeaders());
+    Map<String, String> queryParams = new HashMap<>() {{
+      put("database", DATABASE.getFullyQualifiedName());
+    }};
+    ResultList<Table> tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), null);
 
     // GET .../tables?fields=columns,tableConstraints
-    String fields = "columns,tableConstraints";
-    tableList = listTables(fields, null, adminAuthHeaders());
+    final String fields = "columns,tableConstraints";
+    queryParams = new HashMap<>() {{
+      put("fields", fields);
+    }};
+    tableList = listEntities(queryParams, adminAuthHeaders());
     assertEquals(2, tableList.getData().size());
     assertFields(tableList.getData(), fields);
 
     // List tables with databaseFQN as filter
-    tableList1 = listTables(fields, DATABASE.getFullyQualifiedName(), adminAuthHeaders());
+    queryParams = new HashMap<>() {{
+      put("fields", fields);
+      put("database", DATABASE.getFullyQualifiedName());
+    }};
+    tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
     assertFields(tableList1.getData(), fields);
 
     // GET .../tables?fields=usageSummary,owner,service
-    fields = "usageSummary,owner,database";
-    tableList = listTables(fields, null, adminAuthHeaders());
+    final String fields1 = "usageSummary,owner,database";
+    queryParams = new HashMap<>() {{
+      put("fields", fields1);
+    }};
+    tableList = listEntities(queryParams, adminAuthHeaders());
     assertEquals(2, tableList.getData().size());
-    assertFields(tableList.getData(), fields);
+    assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
       assertEquals(table.getOwner().getId(), USER_OWNER1.getId());
       assertEquals(table.getOwner().getType(), USER_OWNER1.getType());
@@ -860,102 +873,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     }
 
     // List tables with databaseFQN as filter
-    tableList1 = listTables(fields, DATABASE.getFullyQualifiedName(), adminAuthHeaders());
+    queryParams = new HashMap<>() {{
+      put("fields", fields1);
+      put("database", DATABASE.getFullyQualifiedName());
+    }};
+    tableList1 = listEntities(queryParams, adminAuthHeaders());
     assertEquals(tableList.getData().size(), tableList1.getData().size());
-    assertFields(tableList1.getData(), fields);
-  }
-
-  @Test
-  public void get_tableListWithInvalidLimit_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTables(null, null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTables(null, null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTables(null, null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_tableListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTables(null, null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  /**
-   * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList#ResultList
-   *
-   * The tests and various CASES referenced are base on that.
-   */
-  @Test
-  public void get_tableListWithPagination_200(TestInfo test) throws HttpResponseException {
-    // Create a large number of tables
-    int maxTables = 40;
-    for (int i = 0; i < maxTables; i++) {
-      createEntity(create(test, i), adminAuthHeaders());
-    }
-
-    // List all tables and use it for checking pagination
-    TableList allTables = listTables(null, null, 1000000, null, null,
-            adminAuthHeaders());
-    int totalRecords = allTables.getData().size();
-    printTables(allTables);
-
-    // List tables with limit set from 1 to maxTables size
-    // Each time compare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < maxTables; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      TableList forwardPage;
-      TableList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listTables(null, null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTables.getData(), forwardPage, limit, indexInAllTables);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listTables(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allTables.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        printTables(forwardPage);
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listTables(null, null, limit, before, null, adminAuthHeaders());
-        printTables(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTables.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printTables(TableList list) {
-    list.getData().forEach(table -> LOG.info("Table {}", table.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+    assertFields(tableList1.getData(), fields1);
   }
 
   @Test
@@ -1170,22 +1094,6 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return TestUtils.get(target, Table.class, authHeaders);
   }
 
-  public static TableList listTables(String fields, String databaseParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listTables(fields, databaseParam, null, null, null, authHeaders);
-  }
-
-  public static TableList listTables(String fields, String databaseParam, Integer limit, String before, String after,
-                                     Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("tables");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = databaseParam != null ? target.queryParam("database", databaseParam) : target;
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, TableList.class, authHeaders);
-  }
-
   public static CreateTable create(TestInfo test) {
     return create(test, 0);
   }
@@ -1266,8 +1174,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withOwner(owner);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withOwner(owner);
   }
 
   @Override

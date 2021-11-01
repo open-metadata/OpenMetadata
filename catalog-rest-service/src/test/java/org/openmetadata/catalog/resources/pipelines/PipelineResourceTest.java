@@ -35,9 +35,8 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -47,6 +46,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,18 +64,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
-  private static final Logger LOG = LoggerFactory.getLogger(PipelineResourceTest.class);
   public static List<Task> TASKS;
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
   public PipelineResourceTest() {
-    super(Pipeline.class, "pipelines", PipelineResource.FIELDS, true);
+    super(Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true);
   }
 
 
@@ -91,8 +89,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override
@@ -223,97 +221,12 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List Pipelines by filtering on service name and ensure right Pipelines are returned in the response
-      PipelineList list = listPipelines("service", service.getName(), adminAuthHeaders());
+      Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
+      ResultList<Pipeline> list = listEntities(queryParams, adminAuthHeaders());
       for (Pipeline db : list.getData()) {
         assertEquals(service.getName(), db.getService().getName());
       }
     }
-  }
-
-  @Test
-  public void get_PipelineListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listPipelines(null, null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listPipelines(null, null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listPipelines(null, null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_PipelineListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listPipelines(null, null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_PipelineListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of Pipelines
-    int maxPipelines = 40;
-    for (int i = 0; i < maxPipelines; i++) {
-      createPipeline(create(test, i), adminAuthHeaders());
-    }
-
-    // List all Pipelines
-    PipelineList allPipelines = listPipelines(null, null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allPipelines.getData().size();
-    printPipelines(allPipelines);
-
-    // List limit number Pipelines at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxPipelines; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllPipelines = 0;
-      PipelineList forwardPage;
-      PipelineList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listPipelines(null, null, limit, null, after, adminAuthHeaders());
-        printPipelines(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allPipelines.getData(), forwardPage, limit, indexInAllPipelines);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listPipelines(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allPipelines.getData(), backwardPage, limit, (indexInAllPipelines - limit));
-        }
-
-        indexInAllPipelines += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllPipelines = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listPipelines(null, null, limit, before, null, adminAuthHeaders());
-        printPipelines(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allPipelines.getData(), forwardPage, limit, indexInAllPipelines);
-        pageCount++;
-        indexInAllPipelines -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printPipelines(PipelineList list) {
-    list.getData().forEach(Pipeline -> LOG.info("DB {}", Pipeline.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 
   @Test
@@ -510,23 +423,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     WebTarget target = getResource("pipelines/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, Pipeline.class, authHeaders);
-  }
-
-  public static PipelineList listPipelines(String fields, String serviceParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listPipelines(fields, serviceParam, null, null, null, authHeaders);
-  }
-
-  public static PipelineList listPipelines(String fields, String serviceParam, Integer limitParam,
-                                           String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("pipelines");
-    target = fields != null ? target.queryParam("fields", fields): target;
-    target = serviceParam != null ? target.queryParam("service", serviceParam): target;
-    target = limitParam != null ? target.queryParam("limit", limitParam): target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, PipelineList.class, authHeaders);
   }
 
   private void deletePipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
