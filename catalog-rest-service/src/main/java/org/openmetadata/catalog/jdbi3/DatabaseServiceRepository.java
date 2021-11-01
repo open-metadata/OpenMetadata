@@ -31,6 +31,7 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -133,6 +134,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Database service does not support followers");
+    }
 
     @Override
     public EntityReference getEntityReference() {

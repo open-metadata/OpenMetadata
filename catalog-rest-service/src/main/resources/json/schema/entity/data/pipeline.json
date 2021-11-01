@@ -4,6 +4,69 @@
   "title": "Pipeline",
   "description": "This schema defines the Pipeline entity. A pipeline enables the flow of data from source to destination through a series of processing steps. ETL is a type of pipeline where the series of steps Extract, Transform and Load the data.",
   "type": "object",
+  "definitions": {
+    "task": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Task",
+      "properties": {
+        "name": {
+          "description": "Name that identifies this task instance uniquely.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "displayName": {
+          "description": "Display Name that identifies this Task. It could be title or label from the pipeline services.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "description": "A unique name that identifies a pipeline in the format 'ServiceName.PipelineName.TaskName'.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "description": "Description of this Task.",
+          "type": "string"
+        },
+        "taskUrl": {
+          "description": "Task URL to visit/manage. This URL points to respective pipeline service UI.",
+          "type": "string",
+          "format": "uri"
+        },
+        "downstreamTasks": {
+          "description": "All the tasks that are downstream of this task.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "default": null
+        },
+        "taskType": {
+          "description": "Type of the Task. Usually refers to the class it implements.",
+          "type": "string"
+        },
+        "taskSQL": {
+          "description": "SQL used in the task. Can be used to determine the lineage.",
+          "$ref": "../../type/basic.json#/definitions/sqlQuery"
+        },
+        "tags": {
+          "description": "Tags for this task.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ]
+    }
+  },
   "properties" : {
     "id": {
       "description": "Unique identifier that identifies a pipeline instance.",
@@ -62,7 +125,7 @@
       "description": "All the tasks that are part of pipeline.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "#/definitions/task"
       },
       "default": null
     },

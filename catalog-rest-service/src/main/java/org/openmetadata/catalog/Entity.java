@@ -34,7 +34,6 @@ public final class Entity {
   public static final String CHART = "chart";
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
-  public static final String TASK = "task";
   public static final String MODEL = "model";
   public static final String BOTS = "bots";
 

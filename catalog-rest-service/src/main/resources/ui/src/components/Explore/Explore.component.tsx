@@ -115,6 +115,10 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
+  const keyOfPreviousIndex = searchIndex.split(
+    '_'
+  )[0] as keyof ExploreProps['tabCounts'];
+  const previousIndexCount = usePrevious(tabCounts[keyOfPreviousIndex]);
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -194,8 +198,8 @@ const Explore: React.FC<ExploreProps> = ({
     }
   };
 
-  const setCount = (count = 0) => {
-    switch (searchIndex) {
+  const setCount = (count = 0, index = searchIndex) => {
+    switch (index) {
       case SearchIndex.TABLE:
         updateTableCount(count);
 
@@ -367,6 +371,13 @@ const Explore: React.FC<ExploreProps> = ({
           tabsInfo[selectedTab - 1].path
         ),
       });
+
+      if (previousIndexCount) {
+        // setTimeout because we need to reset previous index count after tab change
+        setTimeout(() => {
+          setCount(previousIndexCount as number, previsouIndex as string);
+        }, 100);
+      }
     }
   };
   const getTabs = () => {
