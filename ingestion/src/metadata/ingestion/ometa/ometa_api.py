@@ -198,6 +198,18 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             f"Missing {entity} type when generating suffixes"
         )
 
+    @staticmethod
+    def get_entity_type(
+        entity: Union[Type[T], str],
+    ) -> str:
+        """
+        Given an Entity T, return its type.
+        E.g., Table returns table, Dashboard returns dashboard...
+
+        Also allow to be the identity if we just receive a string
+        """
+        return entity if isinstance(entity, str) else entity.__name__.lower()
+
     def get_module_path(self, entity: Type[T]) -> str:
         """
         Based on the entity, return the module path
@@ -349,6 +361,14 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+
+    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
+        """
+        Compute an entity usage percentile
+        """
+        entity_name = self.get_entity_type(entity)
+        resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
+        logger.debug("published compute percentile {}".format(resp))
 
     def health_check(self) -> bool:
         """

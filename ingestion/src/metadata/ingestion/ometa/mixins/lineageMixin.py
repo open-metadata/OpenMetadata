@@ -97,7 +97,7 @@ class OMetaLineageMixin(Generic[T]):
         :param up_depth: Upstream depth of lineage (default=1, min=0, max=3)"
         :param down_depth: Downstream depth of lineage (default=1, min=0, max=3)
         """
-        entity_name = entity if isinstance(entity, str) else entity.__name__.lower()
+        entity_name = self.get_entity_type(entity)
         search = (
             f"?upstreamDepth={min(up_depth, 3)}&downstreamDepth={min(down_depth, 3)}"
         )
