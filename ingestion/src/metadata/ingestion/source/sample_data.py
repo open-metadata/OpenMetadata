@@ -45,7 +45,6 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
@@ -319,9 +318,6 @@ class SampleDataSource(Source):
         self.pipeline_service_json = json.load(
             open(self.config.sample_data_folder + "/pipelines/service.json", "r")
         )
-        self.tasks = json.load(
-            open(self.config.sample_data_folder + "/pipelines/tasks.json", "r")
-        )
         self.pipelines = json.load(
             open(self.config.sample_data_folder + "/pipelines/pipelines.json", "r")
         )
@@ -417,22 +413,6 @@ class SampleDataSource(Source):
             )
             self.status.scanned("dashboard", dashboard_ev.name)
             yield dashboard_ev
-
-    def ingest_tasks(self) -> Iterable[Task]:
-        for task in self.tasks["tasks"]:
-            task_ev = Task(
-                id=uuid.uuid4(),
-                name=task["name"],
-                displayName=task["displayName"],
-                description=task["description"],
-                taskUrl=task["taskUrl"],
-                taskType=task["taskType"],
-                downstreamTasks=task["downstreamTasks"],
-                service=EntityReference(
-                    id=self.pipeline_service.id, type="pipelineService"
-                ),
-            )
-            yield task_ev
 
     def ingest_pipelines(self) -> Iterable[Dashboard]:
         for pipeline in self.pipelines["pipelines"]:

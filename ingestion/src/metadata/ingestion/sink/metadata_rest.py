@@ -137,7 +137,7 @@ class MetadataRestSink(Sink):
                     id=table_and_db.database.service.id, type="databaseService"
                 ),
             )
-            db = self.client.create_database(db_request)
+            db = self.metadata.create_or_update(db_request)
             table_request = CreateTableEntityRequest(
                 name=table_and_db.table.name,
                 tableType=table_and_db.table.tableType,
@@ -154,10 +154,10 @@ class MetadataRestSink(Sink):
                     table_and_db.table.viewDefinition.__root__
                 )
 
-            created_table = self.client.create_or_update_table(table_request)
+            created_table = self.metadata.create_or_update(table_request)
             if table_and_db.table.sampleData is not None:
-                self.client.ingest_sample_data(
-                    table_id=created_table.id, sample_data=table_and_db.table.sampleData
+                self.metadata.ingest_table_sample_data(
+                    table=created_table, sample_data=table_and_db.table.sampleData
                 )
             if table_and_db.table.tableProfile is not None:
                 for tp in table_and_db.table.tableProfile:
@@ -165,8 +165,8 @@ class MetadataRestSink(Sink):
                         if pd[0] == "columnProfile":
                             for col in pd[1]:
                                 col.name = col.name.replace(".", "_DOT_")
-                self.client.ingest_table_profile_data(
-                    table_id=created_table.id,
+                self.metadata.ingest_table_profile_data(
+                    table=created_table,
                     table_profile=table_and_db.table.tableProfile,
                 )
 
