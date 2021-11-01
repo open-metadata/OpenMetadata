@@ -25,9 +25,8 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -50,7 +49,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
   public MessagingService update(UUID id, String description, List<String> brokers, URI schemaRegistry,
                                  Schedule ingestionSchedule)
           throws IOException {
-    Utils.validateIngestionSchedule(ingestionSchedule);
+    EntityUtil.validateIngestionSchedule(ingestionSchedule);
     MessagingService dbService = dao.messagingServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withIngestionSchedule(ingestionSchedule)
@@ -85,7 +84,7 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
 
   @Override
   public void validate(MessagingService entity) throws IOException {
-    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
