@@ -160,6 +160,11 @@ class MetadataRestSink(Sink):
                     table_id=created_table.id, sample_data=table_and_db.table.sampleData
                 )
             if table_and_db.table.tableProfile is not None:
+                for tp in table_and_db.table.tableProfile:
+                    for pd in tp:
+                        if pd[0] == "columnProfile":
+                            for col in pd[1]:
+                                col.name = col.name.replace(".", "_DOT_")
                 self.client.ingest_table_profile_data(
                     table_id=created_table.id,
                     table_profile=table_and_db.table.tableProfile,
