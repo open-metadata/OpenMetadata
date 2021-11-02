@@ -72,6 +72,7 @@ const DatasetDetailsProps = {
   unfollowTableHandler: jest.fn(),
   usageSummary: {} as TypeUsedToReturnUsageDetailsOfAnEntity,
   users: [],
+  versionHandler: jest.fn(),
 };
 jest.mock('../ManageTab/ManageTab.component', () => {
   return jest.fn().mockReturnValue(<p>ManageTab</p>);

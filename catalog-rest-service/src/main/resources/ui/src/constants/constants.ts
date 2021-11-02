@@ -44,6 +44,7 @@ const PLACEHOLDER_ROUTE_SERVICE_TYPE = ':serviceType';
 const PLACEHOLDER_ROUTE_SEARCHQUERY = ':searchQuery';
 const PLACEHOLDER_ROUTE_TAB = ':tab';
 const PLACEHOLDER_ROUTE_TEAM = ':team';
+const PLAEHOLDER_ROUTE_VERSION = ':version';
 
 export const pagingObject = { after: '', before: '' };
 
@@ -122,6 +123,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
+  DATASET_VERSION: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
@@ -141,6 +143,14 @@ export const getDatasetDetailsPath = (
   path = path.replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN);
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
+};
+export const getDatasetVersionPath = (datasetFQN: string, version: string) => {
+  let path = ROUTES.DATASET_VERSION;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
+    .replace(PLAEHOLDER_ROUTE_VERSION, version);
+
+  return path;
 };
 
 export const getServiceDetailsPath = (

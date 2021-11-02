@@ -51,9 +51,10 @@ type Props = {
   tableColumns: Table['columns'];
   joins: Array<ColumnJoins>;
   searchText?: string;
-  onUpdate: (columns: Table['columns']) => void;
   columnName: string;
   hasEditAccess: boolean;
+  isReadOnly?: boolean;
+  onUpdate?: (columns: Table['columns']) => void;
 };
 
 const EntityTable = ({
@@ -63,6 +64,7 @@ const EntityTable = ({
   owner,
   hasEditAccess,
   joins,
+  isReadOnly = false,
 }: Props) => {
   const columns = React.useMemo(
     () => [
@@ -93,15 +95,21 @@ const EntityTable = ({
     [searchedColumns]
   );
 
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } =
-    useTable(
-      {
-        columns: columns,
-        data,
-        autoResetExpanded: false,
-      },
-      useExpanded
-    );
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows,
+    prepareRow,
+    toggleAllRowsExpanded,
+  } = useTable(
+    {
+      columns,
+      data,
+      autoResetExpanded: false,
+    },
+    useExpanded
+  );
   const [editColumn, setEditColumn] = useState<{
     column: Column;
     index: number;
@@ -249,7 +257,7 @@ const EntityTable = ({
           ...tableCols.slice(indexs[0] + 1),
         ];
 
-        onUpdate(updatedColumns);
+        onUpdate?.(updatedColumns);
       }
 
       setEditColumn(undefined);
@@ -342,7 +350,7 @@ const EntityTable = ({
           ...tableCols.slice(indexs[0] + 1),
         ];
 
-        onUpdate(updatedColumns);
+        onUpdate?.(updatedColumns);
       }
     }
     setEditColumnTag(undefined);
@@ -380,6 +388,7 @@ const EntityTable = ({
 
   useEffect(() => {
     fetchTags();
+    toggleAllRowsExpanded(isReadOnly);
   }, []);
 
   return (
@@ -477,10 +486,8 @@ const EntityTable = ({
                       {cell.column.id === 'tags' && (
                         <div
                           onClick={() => {
-                            if (!editColumnTag) {
+                            if (!editColumnTag && !isReadOnly) {
                               handleEditColumnTag(row.original, row.id);
-                            } else {
-                              // handleTagSelection();
                             }
                           }}>
                           <NonAdminAction
@@ -498,24 +505,26 @@ const EntityTable = ({
                               onSelectionChange={(tags) => {
                                 handleTagSelection(tags);
                               }}>
-                              {cell.value.length ? (
-                                <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                  <SVGIcons
-                                    alt="edit"
-                                    icon="icon-edit"
-                                    title="Edit"
-                                    width="10px"
-                                  />
-                                </button>
-                              ) : (
-                                <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                  <Tags
-                                    className="tw-border-main"
-                                    tag="+ Add tag"
-                                    type="outlined"
-                                  />
-                                </span>
-                              )}
+                              {!isReadOnly ? (
+                                cell.value.length ? (
+                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                    <SVGIcons
+                                      alt="edit"
+                                      icon="icon-edit"
+                                      title="Edit"
+                                      width="10px"
+                                    />
+                                  </button>
+                                ) : (
+                                  <span className="tw-opacity-0 group-hover:tw-opacity-100">
+                                    <Tags
+                                      className="tw-border-main"
+                                      tag="+ Add tag"
+                                      type="outlined"
+                                    />
+                                  </span>
+                                )
+                              ) : null}
                             </TagsContainer>
                           </NonAdminAction>
                         </div>
@@ -523,11 +532,16 @@ const EntityTable = ({
                       {cell.column.id === 'description' && (
                         <div>
                           <div
-                            className="tw-cursor-pointer hover:tw-underline tw-flex"
+                            className={classNames('tw-flex', {
+                              'tw-cursor-pointer hover:tw-underline':
+                                !isReadOnly,
+                            })}
                             data-testid="description"
                             id={`column-description-${index}`}
                             onClick={() => {
-                              handleEditColumn(row.original, row.id);
+                              if (!isReadOnly) {
+                                handleEditColumn(row.original, row.id);
+                              }
                             }}>
                             <div>
                               {cell.value ? (
@@ -540,14 +554,16 @@ const EntityTable = ({
                                 </span>
                               )}
                             </div>
-                            <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                              <SVGIcons
-                                alt="edit"
-                                icon="icon-edit"
-                                title="Edit"
-                                width="10px"
-                              />
-                            </button>
+                            {!isReadOnly ? (
+                              <button className="tw-self-start tw-w-8 tw-h-auto tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                <SVGIcons
+                                  alt="edit"
+                                  icon="icon-edit"
+                                  title="Edit"
+                                  width="10px"
+                                />
+                              </button>
+                            ) : null}
                           </div>
                           {checkIfJoinsAvailable(row.original.name) && (
                             <div className="tw-mt-3">

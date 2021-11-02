@@ -20,7 +20,7 @@ import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
@@ -36,6 +36,7 @@ import DatasetDetails from '../../components/DatasetDetails/DatasetDetails.compo
 import Loader from '../../components/Loader/Loader';
 import {
   getDatabaseDetailsPath,
+  getDatasetVersionPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -57,6 +58,7 @@ import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 
 const DatasetDetailsPage: FunctionComponent = () => {
+  const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const USERId = getCurrentUserId();
   const [tableId, setTableId] = useState('');
@@ -92,6 +94,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
     useState<TypeUsedToReturnUsageDetailsOfAnEntity>(
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
+  const [currentVersion, setCurrentVersion] = useState<string>();
+  const [previousVersion, setPreviousVersion] = useState<string>();
 
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
@@ -108,7 +112,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const descriptionUpdateHandler = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { description } = res.data;
+      const { description, version, changeDescription } = res.data;
+      setCurrentVersion(version);
+      setPreviousVersion(changeDescription.previousVersion);
       setTableDetails(res.data);
       setDescription(description);
     });
@@ -116,7 +122,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   const columnsUpdateHandler = (updatedTable: Table) => {
     saveUpdatedTableData(updatedTable).then((res: AxiosResponse) => {
-      const { columns } = res.data;
+      const { columns, version, changeDescription } = res.data;
+      setCurrentVersion(version);
+      setPreviousVersion(changeDescription.previousVersion);
       setTableDetails(res.data);
       setColumns(columns);
       setTableTags(getTableTags(columns || []));
@@ -127,9 +135,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
     return new Promise<void>((resolve, reject) => {
       saveUpdatedTableData(updatedTable)
         .then((res) => {
+          const { version, changeDescription, owner, tags } = res.data;
+          setCurrentVersion(version);
+          setPreviousVersion(changeDescription.previousVersion);
           setTableDetails(res.data);
-          setOwner(getOwnerFromId(res.data.owner?.id));
-          setTier(getTierFromTableTags(res.data.tags));
+          setOwner(getOwnerFromId(owner?.id));
+          setTier(getTierFromTableTags(tags));
           resolve();
         })
         .catch(() => reject());
@@ -148,6 +159,12 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
       setFollowers(followers);
     });
+  };
+
+  const versionHandler = () => {
+    if (previousVersion) {
+      history.push(getDatasetVersionPath(tableFQN, previousVersion as string));
+    }
   };
 
   useEffect(() => {
@@ -171,9 +188,13 @@ const DatasetDetailsPage: FunctionComponent = () => {
           tags,
           sampleData,
           tableProfile,
+          version,
+          changeDescription,
         } = res.data;
         setTableDetails(res.data);
         setTableId(id);
+        setCurrentVersion(version);
+        setPreviousVersion(changeDescription?.previousVersion);
         setTier(getTierFromTableTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
@@ -263,6 +284,8 @@ const DatasetDetailsPage: FunctionComponent = () => {
           unfollowTableHandler={unfollowTable}
           usageSummary={usageSummary}
           users={AppState.users}
+          version={currentVersion}
+          versionHandler={versionHandler}
         />
       )}
     </>

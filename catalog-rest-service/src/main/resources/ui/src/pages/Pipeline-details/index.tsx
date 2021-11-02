@@ -497,6 +497,7 @@ const MyPipelinePage = () => {
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
+                        entityName={displayName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         owner={owner}
