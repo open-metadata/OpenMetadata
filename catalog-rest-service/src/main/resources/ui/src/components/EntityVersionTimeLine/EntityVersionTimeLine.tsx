@@ -2,25 +2,22 @@ import classNames from 'classnames';
 import { toString } from 'lodash';
 import React from 'react';
 import { EntityHistory } from '../../generated/type/entityHistory';
-import Loader from '../Loader/Loader';
 import './EntityVersionTimeLine.css';
 
 type Props = {
   versionList: EntityHistory;
   currentVersion: string;
   show?: boolean;
-  isLoading: boolean;
   versionHandler: (v: string) => void;
   onBack: () => void;
 };
 
-const EntityVersionTimeLine = ({
+const EntityVersionTimeLine: React.FC<Props> = ({
   versionList,
   currentVersion,
   show = false,
   versionHandler,
   onBack,
-  isLoading,
 }: Props) => {
   const getVersionList = () => {
     const list = versionList.versions?.slice(1) || [];
@@ -82,9 +79,7 @@ const EntityVersionTimeLine = ({
             fill="none"
             stroke="#6B7280"
             viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-            // onClick={() => onCancel(false)}
-          >
+            xmlns="http://www.w3.org/2000/svg">
             <path
               d="M6 18L18 6M6 6l12 12"
               strokeLinecap="round"
@@ -95,11 +90,8 @@ const EntityVersionTimeLine = ({
         </div>
       </header>
       <hr className="tw-mt-3 tw-border-primary-hover-lite" />
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <div className="tw-mt-2">{getVersionList()}</div>
-      )}
+
+      <div className="tw-mt-2">{getVersionList()}</div>
     </div>
   );
 };
