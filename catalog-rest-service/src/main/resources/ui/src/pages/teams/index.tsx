@@ -42,6 +42,7 @@ import {
 } from '../../constants/constants';
 import { Team } from '../../generated/entity/teams/team';
 import { User } from '../../generated/entity/teams/user';
+import { useAuth } from '../../hooks/authHooks';
 import { UserTeam } from '../../interface/team.interface';
 import { getCountBadge } from '../../utils/CommonUtils';
 import SVGIcons from '../../utils/SvgUtils';
@@ -52,6 +53,7 @@ import UserCard from './UserCard';
 const TeamsPage = () => {
   const { team } = useParams() as Record<string, string>;
   const history = useHistory();
+  const { isAuthDisabled, isAdminUser } = useAuth();
   const [teams, setTeams] = useState<Array<Team>>([]);
   const [currentTeam, setCurrentTeam] = useState<Team>();
   const [error, setError] = useState<string>('');
@@ -189,18 +191,20 @@ const TeamsPage = () => {
     if ((currentTeam?.users?.length as number) <= 0) {
       return (
         <div className="tw-flex tw-flex-col tw-items-center tw-place-content-center tw-mt-40 tw-gap-1">
-          <p>There are not any users added yet.</p>
-          <p>Would like to start adding some?</p>
-          <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
-            <Button
-              className="tw-h-8 tw-rounded tw-mb-2"
-              size="small"
-              theme="primary"
-              variant="contained"
-              onClick={() => setIsAddingUsers(true)}>
-              Add new user
-            </Button>
-          </NonAdminAction>
+          <p>There are no users added yet.</p>
+          {isAdminUser || isAuthDisabled ? (
+            <>
+              <p>Would like to start adding some?</p>
+              <Button
+                className="tw-h-8 tw-rounded tw-my-2"
+                size="small"
+                theme="primary"
+                variant="contained"
+                onClick={() => setIsAddingUsers(true)}>
+                Add new user
+              </Button>
+            </>
+          ) : null}
         </div>
       );
     }
