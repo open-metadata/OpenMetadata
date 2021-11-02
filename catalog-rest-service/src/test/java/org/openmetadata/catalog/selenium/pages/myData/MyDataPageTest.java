@@ -41,10 +41,6 @@ public class MyDataPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
-    public void click(WebDriver driver, By by) {
-        wait.until(ExpectedConditions.elementToBeClickable(by));
-        driver.findElement(by).click();
-    }
 
     @BeforeEach
     public void openMetadataWindow() {
