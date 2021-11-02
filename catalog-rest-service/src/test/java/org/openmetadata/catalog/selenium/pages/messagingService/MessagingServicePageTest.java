@@ -133,6 +133,7 @@ public class MessagingServicePageTest {
     @Order(5)
     public void searchMessagingService() throws InterruptedException {
         openMessagingServicePage();
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }

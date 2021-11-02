@@ -143,6 +143,7 @@ public class TableDetailsPageTest {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+        Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
         Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
         Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));

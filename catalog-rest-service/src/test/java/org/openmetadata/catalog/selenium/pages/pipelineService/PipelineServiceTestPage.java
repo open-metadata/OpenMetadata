@@ -116,7 +116,7 @@ public class PipelineServiceTestPage {
     @Order(4)
     public void checkPipelineServiceDetails() throws InterruptedException {
         openPipelineServicePage();
-        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[2]"));
+        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[1]"));
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
         Events.click(webDriver, By.xpath(enterDescription));
