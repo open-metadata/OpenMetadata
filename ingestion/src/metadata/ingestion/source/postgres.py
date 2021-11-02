@@ -14,10 +14,8 @@
 #  limitations under the License.
 
 from collections import namedtuple
-from urllib.parse import urlparse
 
 import psycopg2
-import pymysql  # noqa: F401
 
 # This import verifies that the dependencies are available.
 from metadata.generated.schema.entity.services.databaseService import (
@@ -47,19 +45,7 @@ class PostgresSourceConfig(SQLConnectionConfig):
 class PostgresSource(SQLSource):
     def __init__(self, config, metadata_config, ctx):
         super().__init__(config, metadata_config, ctx)
-        result = urlparse(self.connection_string)
-        username = result.username
-        password = result.password
-        database = result.path[1:]
-        hostname = result.hostname
-        port = result.port
-        self.pgconn = psycopg2.connect(
-            database=database,
-            user=username,
-            password=password,
-            host=hostname,
-            port=port,
-        )
+        self.pgconn = self.engine.raw_connection()
 
     @classmethod
     def create(cls, config_dict, metadata_config_dict, ctx):
