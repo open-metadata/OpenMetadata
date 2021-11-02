@@ -194,7 +194,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableDetails(res.data);
         setTableId(id);
         setCurrentVersion(version);
-        setPreviousVersion(changeDescription.previousVersion);
+        setPreviousVersion(changeDescription?.previousVersion);
         setTier(getTierFromTableTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setFollowers(followers);
