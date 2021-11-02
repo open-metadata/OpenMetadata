@@ -18,8 +18,10 @@ package org.openmetadata.catalog.selenium.initAndIngest;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.logging.Logger;
 
 public class StartServerAndIngestSampleDataTest {
@@ -34,7 +36,13 @@ public class StartServerAndIngestSampleDataTest {
         String absolutePath = scriptDir.getAbsolutePath();
         String[] runScript = {"sh", absolutePath};
         Process processRunScript = Runtime.getRuntime().exec(runScript);
-        processRunScript.waitFor();
-        LOG.info("Server started and Ingested the data");
+        BufferedReader output = new BufferedReader(new InputStreamReader(processRunScript.getInputStream()));
+        String log;
+        while ((log = output.readLine()) != null) {
+            System.out.println(log);
+//            Process processRunScript = Runtime.getRuntime().exec(runScript);
+//            processRunScript.waitFor();
+            LOG.info("Server started and Ingested the data");
+        }
     }
 }
