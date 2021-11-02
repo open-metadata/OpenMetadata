@@ -23,7 +23,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.MethodOrderer;
-import org.openmetadata.catalog.selenium.Events;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -188,6 +188,7 @@ public class DashboardDetailsPageTest {
         webDriver.navigate().refresh();
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
+        Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
     }
 

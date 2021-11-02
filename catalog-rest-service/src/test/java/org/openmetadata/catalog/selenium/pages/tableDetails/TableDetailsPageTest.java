@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.tableDetails;
 
 import com.github.javafaker.Faker;
-import org.openmetadata.catalog.selenium.Events;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -96,6 +96,7 @@ public class TableDetailsPageTest {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys("address1");
         Thread.sleep(2000);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button"))).perform();
@@ -143,7 +144,7 @@ public class TableDetailsPageTest {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-        Thread.sleep(waitTime);
+        Thread.sleep(2000);
         Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
         Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
         Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));

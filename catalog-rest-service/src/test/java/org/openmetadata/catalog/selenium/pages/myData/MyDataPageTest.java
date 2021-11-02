@@ -16,7 +16,7 @@
 
 package org.openmetadata.catalog.selenium.pages.myData;
 
-import org.openmetadata.catalog.selenium.Events;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;

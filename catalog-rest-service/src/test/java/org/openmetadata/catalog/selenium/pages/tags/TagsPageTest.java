@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.tags;
 
 import com.github.javafaker.Faker;
-import org.openmetadata.catalog.selenium.Events;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -103,7 +103,7 @@ public class TagsPageTest {
     @Order(3)
     public void editTagCategoryDescription() throws InterruptedException {
         openTagsPage();
-        Events.click(webDriver,By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName +"')]] "));
+        Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(enterDescription)));
         wait.until(ExpectedConditions.elementToBeClickable(

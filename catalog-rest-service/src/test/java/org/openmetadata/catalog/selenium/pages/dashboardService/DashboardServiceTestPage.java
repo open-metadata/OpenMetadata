@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
-import org.openmetadata.catalog.selenium.Events;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -104,7 +104,7 @@ public class DashboardServiceTestPage {
     @Order(3)
     public void editDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[2]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
         Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
