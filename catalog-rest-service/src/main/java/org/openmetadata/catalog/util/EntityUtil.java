@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog.util;
 
+import org.joda.time.Period;
+import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -39,7 +41,6 @@ import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceRes
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.catalog.resources.tasks.TaskResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -49,6 +50,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.type.Schedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +73,34 @@ public final class EntityUtil {
 
   private EntityUtil() {
 
+  }
+
+  /**
+   * Validate Ingestion Schedule 
+   */
+  public static void validateIngestionSchedule(Schedule ingestion) {
+    if (ingestion == null) {
+      return;
+    }
+    String duration = ingestion.getRepeatFrequency();
+
+    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
+    String[] splits = duration.split("T");
+    if (splits[0].contains("Y") || splits[0].contains("M") ||
+            (splits.length == 2 && splits[1].contains("S"))) {
+      throw new IllegalArgumentException("Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " +
+              "example P{d}DT{h}H{m}M");
+    }
+
+    Period period;
+    try {
+      period = ISOPeriodFormat.standard().parsePeriod(duration);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
+    }
+    if (period.toStandardMinutes().getMinutes() < 60) {
+      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    }
   }
 
   /**
@@ -129,8 +159,6 @@ public final class EntityUtil {
       DashboardResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       ModelResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      TaskResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       PipelineResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
@@ -193,7 +221,7 @@ public final class EntityUtil {
                               EntityReference owner) {
     // Add relationship owner --- owns ---> ownedEntity
     if (owner != null) {
-      LOG.info("Adding owner {}:{} for entity {}", owner.getType(), owner.getId(), ownedEntityId);
+      LOG.info("Adding owner {}:{} for entity {}:{}", owner.getType(), owner.getId(), ownedEntityType, ownedEntityId);
       dao.insert(owner.getId().toString(), ownedEntityId.toString(), owner.getType(), ownedEntityType,
               Relationship.OWNS.ordinal());
     }
@@ -247,8 +275,6 @@ public final class EntityUtil {
       return dao.topicDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.CHART)) {
       return dao.chartDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      return dao.taskDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       return dao.pipelineDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
@@ -273,8 +299,6 @@ public final class EntityUtil {
       return dao.chartDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
       return dao.dashboardDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.TASK)) {
-      return dao.taskDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       return dao.pipelineDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
@@ -465,12 +489,12 @@ public final class EntityUtil {
   public static String getLocalColumnName(String fqn) {
     // Return for fqn=service.database.table.c1 -> c1
     // Return for fqn=service.database.table.c1.c2 -> c1.c2 (note different from just the local name of the column c2)
-    String localColumnName = "";
+    StringBuilder localColumnName = new StringBuilder();
     String[] s = fqn.split("\\.");
     for (int i = 3; i < s.length -1 ; i++) {
-      localColumnName += s[i] + ".";
+      localColumnName.append(s[i]).append(".");
     }
-    localColumnName += s[s.length - 1];
-    return localColumnName;
+    localColumnName.append(s[s.length - 1]);
+    return localColumnName.toString();
   }
 }

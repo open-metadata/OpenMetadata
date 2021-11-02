@@ -26,11 +26,12 @@ import org.openmetadata.catalog.type.JdbcInfo;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -49,7 +50,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   public DatabaseService update(UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
-    Utils.validateIngestionSchedule(ingestionSchedule);
+    EntityUtil.validateIngestionSchedule(ingestionSchedule);
     DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
@@ -83,7 +84,7 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
   @Override
   public void validate(DatabaseService entity) throws IOException {
-    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
@@ -133,6 +134,14 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Database service does not support followers");
+    }
 
     @Override
     public EntityReference getEntityReference() {

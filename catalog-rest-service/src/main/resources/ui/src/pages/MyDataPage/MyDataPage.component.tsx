@@ -94,8 +94,10 @@ const MyDataPage = () => {
   }, []);
 
   return (
-    <div data-testid="my-data-page-conatiner">
-      {countServices && entityCounts && !isLoading ? (
+    <>
+      {!isUndefined(countServices) &&
+      !isUndefined(entityCounts) &&
+      !isLoading ? (
         error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
@@ -110,7 +112,7 @@ const MyDataPage = () => {
       ) : (
         <Loader />
       )}
-    </div>
+    </>
   );
 };
 

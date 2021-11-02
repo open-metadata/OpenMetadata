@@ -21,6 +21,8 @@ class OMetaModelTest(TestCase):
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
+    assert metadata.health_check()
+
     user = metadata.create_or_update(
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
@@ -129,5 +131,10 @@ class OMetaModelTest(TestCase):
         res = self.metadata.list_entities(entity=Model)
         print(res)
         assert not next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
+            ),
+            None,
         )

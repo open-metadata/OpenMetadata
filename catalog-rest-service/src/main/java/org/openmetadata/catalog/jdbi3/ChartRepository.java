@@ -31,7 +31,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -165,19 +164,6 @@ public class ChartRepository extends EntityRepository<Chart> {
     return service;
   }
 
-  @Transaction
-  public Status addFollower(UUID chartId, UUID userId) throws IOException {
-    dao.chartDAO().findEntityById(chartId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), chartId, Entity.CHART, userId, Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(UUID chartId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), chartId, userId);
-  }
-
   public static class ChartEntityInterface implements EntityInterface<Chart> {
     private final Chart entity;
 
@@ -226,6 +212,9 @@ public class ChartRepository extends EntityRepository<Chart> {
     public URI getHref() {
       return entity.getHref();
     }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public EntityReference getEntityReference() {

@@ -122,6 +122,10 @@ class SQLExpressions(BaseModel):
     def escape_metacharacters(value: str):
         return re.sub(r"(\\.)", r"\\\1", value)
 
+    def literal_date(self, tdate: date):
+        date_string = tdate.strftime("%Y-%m-%d")
+        return f"DATE '{date_string}'"
+
     def literal_number(self, value: Number):
         if value is None:
             return None

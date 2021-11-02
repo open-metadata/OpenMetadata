@@ -19,18 +19,15 @@ package org.openmetadata.catalog.jdbi3;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.resources.reports.ReportResource;
-import org.openmetadata.catalog.resources.reports.ReportResource.ReportList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.ResultList;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.GeneralSecurityException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -158,6 +155,14 @@ public class ReportRepository extends EntityRepository<Report> {
 
     @Override
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Report does not support followers");
+    }
 
     @Override
     public EntityReference getEntityReference() {

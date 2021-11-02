@@ -17,6 +17,8 @@ import time
 
 import pytest
 import requests
+import socket
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
@@ -29,11 +31,7 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.client import REST
-
-headers = {"Content-type": "application/json"}
-url = "http://localhost:8585/api/v1/"
-
+from urllib.parse import urlparse
 
 def is_responsive(url):
     try:
@@ -42,6 +40,27 @@ def is_responsive(url):
             return True
     except ConnectionError:
         return False
+
+def is_port_open(url):
+    url_parts = urlparse(url)
+    hostname = url_parts.hostname
+    port = url_parts.port
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((hostname, port))
+        return True
+    except socket.error:
+        return False
+    finally:
+        s.close()
+
+def sleep(timeout_s):
+    print(f"sleeping for {timeout_s} seconds")
+    n = len(str(timeout_s))
+    for i in range(timeout_s, 0, -1):
+        print(f"{i:>{n}}", end="\r", flush=True)
+        time.sleep(1)
+    print(f"{'':>{n}}", end="\n", flush=True)
 
 
 def status(r):
@@ -54,8 +73,8 @@ def status(r):
 def create_delete_table(client):
     databases = client.list_databases()
     columns = [
-        Column(name="id", columnDataType="INT"),
-        Column(name="name", columnDataType="VARCHAR"),
+        Column(name="id", dataType="INT", dataLength=1),
+        Column(name="name", dataType="VARCHAR", dataLength=1),
     ]
     table = CreateTableEntityRequest(
         name="test1", columns=columns, database=databases[0].id
@@ -77,7 +96,7 @@ def create_delete_database(client):
     data = {
         "jdbc": {"connectionUrl": "hive://localhost/default", "driverClass": "jdbc"},
         "name": "temp_local_hive",
-        "serviceType": "HIVE",
+        "serviceType": "Hive",
         "description": "local hive env",
     }
     create_hive_service = CreateDatabaseServiceEntityRequest(**data)
@@ -97,17 +116,16 @@ def create_delete_database(client):
 def hive_service(docker_ip, docker_services):
     """Ensure that Docker service is up and responsive."""
     port = docker_services.port_for("hive-server", 10000)
-    print("HIVE is running on port {}".format(port))
-    time.sleep(120)
-    url = "http://localhost:8585"
-    docker_services.wait_until_responsive(
-        timeout=60.0, pause=0.1, check=lambda: is_responsive(url)
-    )
+    print(f"HIVE is running on port {port}")
+    timeout_s = 120
+    sleep(timeout_s)
     url = "hive://localhost:10000/"
+    docker_services.wait_until_responsive(
+        timeout=timeout_s, pause=0.1, check=lambda: is_port_open(url)
+    )
     engine = create_engine(url)
     inspector = inspect(engine)
     return inspector
-
 
 def test_check_schema(hive_service):
     inspector = hive_service
@@ -139,7 +157,11 @@ def test_read_tables(hive_service):
 
 
 def test_check_table():
-    client = REST("http://localhost:8585/api", "test", "test")
+    is_responsive("http://localhost:8585/api/v1/health-check")
+    metadata_config = MetadataServerConfig.parse_obj(
+        {"api_endpoint": "http://localhost:8585/api", "auth_provider_type": "no-auth"}
+    )
+    client = OpenMetadataAPIClient(metadata_config)
     databases = client.list_databases()
     if len(databases) > 0:
         assert create_delete_table(client)

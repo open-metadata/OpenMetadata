@@ -26,15 +26,17 @@ import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
-import org.openmetadata.catalog.resources.databases.TableResourceTest;
+import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
+import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,16 +65,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 import static org.openmetadata.catalog.util.TestUtils.validateEntityReference;
 
-public class TeamResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TeamResourceTest.class);
+public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+
+  public TeamResourceTest() {
+    super(Team.class, TeamList.class, "teams", TeamResource.FIELDS, false);
+  }
 
   @Test
   public void post_teamWithLongName_400_badRequest(TestInfo test) {
@@ -102,19 +106,19 @@ public class TeamResourceTest extends CatalogApplicationTest {
   public void post_validTeams_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create team with different optional fields
     CreateTeam create = create(test, 1);
-    createAndCheckTeam(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 2).withDisplayName("displayName");
-    createAndCheckTeam(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 3).withDescription("description");
-    createAndCheckTeam(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 4).withProfile(PROFILE);
-    createAndCheckTeam(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
 
     create = create(test, 5).withDisplayName("displayName").withDescription("description").withProfile(PROFILE);
-    createAndCheckTeam(create, adminAuthHeaders());
+    createAndCheckEntity(create, adminAuthHeaders());
   }
 
   @Test
@@ -122,7 +126,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     // Create team with different optional fields
     Map<String, String> authHeaders = authHeaders("test@open-metadata.org");
     CreateTeam create = create(test, 1);
-    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckTeam(create,
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () -> createAndCheckEntity(create,
             authHeaders));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
   }
@@ -137,7 +141,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     List<UUID> users = Arrays.asList(user1.getId(), user2.getId());
     CreateTeam create = create(test).withDisplayName("displayName").withDescription("description")
             .withProfile(PROFILE).withUsers(users);
-    Team team = createAndCheckTeam(create, adminAuthHeaders());
+    Team team = createAndCheckEntity(create, adminAuthHeaders());
 
     // Make sure the user entity has relationship to the team
     user1 = UserResourceTest.getUser(user1.getId(), "teams", authHeaders("test@open-metadata.org"));
@@ -192,99 +196,8 @@ public class TeamResourceTest extends CatalogApplicationTest {
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.invalidField("invalidField"));
   }
 
-  @Test
-  public void get_teamListWithInvalidLimit_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, -1, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 0, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 1000001, null, null, adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_teamListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
-            -> listTeams(null, 1, "", "", adminAuthHeaders()));
-    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
   /**
-   * For cursor based pagination and implementation details:
-   * @see org.openmetadata.catalog.util.ResultList
-   *
-   * The tests and various CASES referenced are base on that.
-   */
-  @Test
-  public void get_teamListWithPagination_200(TestInfo test) throws HttpResponseException {
-    // Create a large number of teams
-    int maxTeams = 40;
-    for (int i = 0; i < maxTeams; i++) {
-      createTeam(create(test, i), adminAuthHeaders());
-    }
-
-    // List all teams and use it for checking pagination
-    TeamList allTeams = listTeams(null, 1000000, null, null, adminAuthHeaders());
-    int totalRecords = allTeams.getData().size();
-    printTeams(allTeams);
-
-    // List tables with limit set from 1 to maxTables size
-    // Each time comapare the returned list with allTables list to make sure right results are returned
-    for (int limit = 1; limit < maxTeams; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllTables = 0;
-      TeamList forwardPage;
-      TeamList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listTeams(null, limit, null, after, adminAuthHeaders());
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTeams.getData(), forwardPage, limit, indexInAllTables);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listTeams(null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allTeams.getData(), backwardPage, limit, (indexInAllTables - limit));
-        }
-
-        printTeams(forwardPage);
-        indexInAllTables += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listTeams(null, limit, before, null, adminAuthHeaders());
-        printTeams(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allTeams.getData(), forwardPage, limit, indexInAllTables);
-        pageCount++;
-        indexInAllTables -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printTeams(TeamList list) {
-    list.getData().forEach(team -> LOG.info("Team {}", team.getName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
-  /**
-   * @see TableResourceTest#put_addDeleteFollower_200
+   * @see EntityResourceTest#put_addDeleteFollower_200
    * for tests related getting team with entities owned by the team
    */
 
@@ -293,7 +206,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
     User user1 = createUser(UserResourceTest.create(test, 1), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
-    Team team = createAndCheckTeam(create, adminAuthHeaders());
+    Team team = createAndCheckEntity(create, adminAuthHeaders());
     deleteTeam(team.getId(), adminAuthHeaders());
 
     // Make sure team is no longer there
@@ -312,7 +225,7 @@ public class TeamResourceTest extends CatalogApplicationTest {
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
-    Team team = createAndCheckTeam(create, adminAuthHeaders());
+    Team team = createAndCheckEntity(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteTeam(team.getId(), authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
@@ -340,7 +253,9 @@ public class TeamResourceTest extends CatalogApplicationTest {
   @Test
   public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
           throws HttpResponseException, JsonProcessingException {
+    //
     // Create table without any attributes
+    //
     Team team = createTeam(create(test), adminAuthHeaders());
     assertNull(team.getDisplayName());
     assertNull(team.getDescription());
@@ -356,79 +271,49 @@ public class TeamResourceTest extends CatalogApplicationTest {
             new UserEntityInterface(user2).getEntityReference());
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
+    //
     // Add previously absent attributes
-    team = patchTeamAttributesAndCheck(team, "displayName", "description", profile, users,
-            adminAuthHeaders(), MINOR_UPDATE);
+    //
+    String originalJson = JsonUtils.pojoToJson(team);
+    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
+    ChangeDescription change = getChangeDescription(team.getVersion())
+            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
+    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    team.getUsers().get(0).setHref(null);
+    team.getUsers().get(1).setHref(null);
 
+    //
     // Replace the attributes
+    //
     users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
             new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
     profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
-    team = patchTeamAttributesAndCheck(team, "displayName1", "description1", profile, users,
-            adminAuthHeaders(), MINOR_UPDATE);
+
+    originalJson = JsonUtils.pojoToJson(team);
+    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
+    change = getChangeDescription(team.getVersion())
+            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
+    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
     // Remove the attributes
-    patchTeamAttributesAndCheck(team, null, null, null, null,
-            adminAuthHeaders(), MINOR_UPDATE);
+    originalJson = JsonUtils.pojoToJson(team);
+    team.withDisplayName(null).withDescription(null).withProfile(null).withUsers(null);
+    change = getChangeDescription(team.getVersion())
+            .withFieldsDeleted(Arrays.asList("displayName", "description", "profile", "users"));
+    patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
-  public void patch_teamAttributes_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  public void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException,
+          JsonProcessingException {
     // Create table without any attributes
     Team team = createTeam(create(test), adminAuthHeaders());
-    assertNull(team.getDisplayName());
-    assertNull(team.getDescription());
-    assertNull(team.getProfile());
-    assertNull(team.getDeleted());
-    assertNull(team.getUsers());
-
-    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
-    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
-
-    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-            new UserEntityInterface(user2).getEntityReference(),
-            new UserEntityInterface(user3).getEntityReference());
-
-    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
-
+    // Patching as a non-admin should is disallowed
+    String originalJson = JsonUtils.pojoToJson(team);
+    team.setDisplayName("newDisplayName");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-            patchTeamAttributesAndCheck(team, "displayName", "description", profile, users,
-                    authHeaders("test@open-metadata.org"), NO_CHANGE));
+            patchTeam(team.getId(), originalJson, team, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
-  }
-//  @Test
-//  public void patch_updateInvalidUsers_404_notFound(TestInfo test) throws HttpResponseException {
-//    CreateTeam create = create(test);
-//    Team team = createAndCheckTeam(create);
-//
-//    // User patch to add team to user relationship to an invalid user
-//    List<UUID> users = Collections.singletonList(UUID.randomUUID() /* invalid userId */);
-//    UpdateTeam update = new UpdateTeam().withUsers(users);
-//    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
-//    updateTeam(team.getId(), update));
-//    assertEquals(Response.Status.NOT_FOUND.getStatusCode(), exception.getStatusCode());
-//  }
-
-  public static Team createAndCheckTeam(CreateTeam create, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Team team = createTeam(create, authHeaders);
-    assertEquals(0.1, team.getVersion());
-    List<EntityReference> expectedUsers = new ArrayList<>();
-    for (UUID teamId : Optional.ofNullable(create.getUsers()).orElse(Collections.emptyList())) {
-      expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
-    }
-
-    assertEquals(team.getName(), create.getName());
-    validateTeam(team, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers, updatedBy);
-
-    // Get the newly created team and validate it
-    Team getTeam = getTeam(team.getId(), "profile,users", authHeaders);
-    assertEquals(team.getName(), create.getName());
-    validateTeam(getTeam, create.getDescription(), create.getDisplayName(), create.getProfile(), expectedUsers,
-            updatedBy);
-    return team;
   }
 
   public static Team createTeam(CreateTeam create, Map<String, String> authHeaders) throws HttpResponseException {
@@ -444,17 +329,6 @@ public class TeamResourceTest extends CatalogApplicationTest {
     target = fields != null ? target.queryParam("fields", fields) : target;
     return TestUtils.get(target, Team.class, authHeaders);
   }
-
-  public static TeamList listTeams(String fields, Integer limit, String before, String after,
-                                   Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("teams");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = limit != null ? target.queryParam("limit", limit) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, TeamList.class, authHeaders);
-  }
-
 
   public static Team getTeamByName(String name, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
@@ -516,33 +390,10 @@ public class TeamResourceTest extends CatalogApplicationTest {
     return TestUtils.patch(CatalogApplicationTest.getResource("teams/" + teamId), patch,
             Team.class, authHeaders);
   }
+
   private Team patchTeam(String originalJson, Team updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
     return patchTeam(updated.getId(), originalJson, updated, authHeaders);
-  }
-
-  private Team patchTeamAttributesAndCheck(Team before, String displayName, String description, Profile profile,
-                                           List<EntityReference> users, Map<String, String> authHeaders, UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Optional.ofNullable(before.getUsers()).orElse(Collections.emptyList()).forEach(t -> t.setHref(null)); // Remove href
-    String tableJson = JsonUtils.pojoToJson(before);
-
-    // Update the table attributes
-    before.setDisplayName(displayName);
-    before.setDescription(description);
-    before.setProfile(profile);
-    before.setUsers(users);
-
-    // Validate information returned in patch response has the updates
-    Team updatedTeam = patchTeam(tableJson, before, authHeaders);
-    validateTeam(updatedTeam, description, displayName, profile, users, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedTeam.getVersion(), updateType);
-
-    // GET the table and Validate information returned
-    Team getTeam = getTeam(before.getId(), "users,profile", authHeaders);
-    validateTeam(getTeam, description, displayName, profile, users, updatedBy);
-    return  getTeam;
   }
 
   public void deleteTeam(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -559,5 +410,72 @@ public class TeamResourceTest extends CatalogApplicationTest {
 
   public static String getTeamName(TestInfo test) {
     return String.format("team_%s", test.getDisplayName());
+  }
+
+  @Override
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName);
+  }
+
+  @Override
+  public void validateCreatedEntity(Team team, Object request, Map<String, String> authHeaders) {
+    CreateTeam createRequest = (CreateTeam) request;
+    validateCommonEntityFields(getEntityInterface(team), createRequest.getDescription(),
+            TestUtils.getPrincipal(authHeaders), null);
+
+    assertEquals(createRequest.getDisplayName(), team.getDisplayName());
+    assertEquals(createRequest.getProfile(), team.getProfile());
+
+    List<EntityReference> expectedUsers = new ArrayList<>();
+    for (UUID teamId : Optional.ofNullable(createRequest.getUsers()).orElse(Collections.emptyList())) {
+      expectedUsers.add(new EntityReference().withId(teamId).withType(Entity.USER));
+    }
+    List<EntityReference> actualUsers = Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList());
+    if (!expectedUsers.isEmpty()) {
+      assertEquals(expectedUsers.size(), actualUsers.size());
+      for (EntityReference user : actualUsers) {
+        TestUtils.validateEntityReference(user);
+        boolean foundUser = false;
+        for (EntityReference expectedEntity : expectedUsers) {
+          if (expectedEntity.getId().equals(user.getId())) {
+            foundUser = true;
+            break;
+          }
+        }
+        assertTrue(foundUser);
+      }
+    }
+    TestUtils.validateEntityReference(team.getOwns());
+  }
+
+  @Override
+  public void validateUpdatedEntity(Team updatedEntity, Object request, Map<String, String> authHeaders) {
+    validateCreatedEntity(updatedEntity, request, authHeaders);
+  }
+
+  @Override
+  public void validatePatchedEntity(Team expected, Team updated, Map<String, String> authHeaders) {
+    validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
+            TestUtils.getPrincipal(authHeaders), null);
+
+    assertEquals(expected.getDisplayName(), updated.getDisplayName());
+    assertEquals(expected.getProfile(), updated.getProfile());
+
+    List<EntityReference> expectedUsers = Optional.ofNullable(expected.getUsers()).orElse(Collections.emptyList());
+    List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());
+    actualUsers.forEach(TestUtils::validateEntityReference);
+    actualUsers.forEach(user -> user.setHref(null));
+
+    // Note ordering is same as server side ordering by ID as string
+    // Patch requests work only if the same ordering of users on the server side
+    actualUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+    expectedUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+    assertEquals(expectedUsers, actualUsers);
+    TestUtils.validateEntityReference(updated.getOwns());
+  }
+
+  @Override
+  public EntityInterface<Team> getEntityInterface(Team entity) {
+    return new TeamEntityInterface(entity);
   }
 }

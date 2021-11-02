@@ -45,7 +45,7 @@ base_requirements = {
     "typing_extensions>=3.7.4"
     "mypy_extensions>=0.4.3",
     "typing-inspect",
-    "pydantic==1.7.4",
+    "pydantic>=1.7.4",
     "pydantic[email]>=1.7.2",
     "google>=3.0.0",
     "google-auth>=1.33.0",
@@ -60,7 +60,6 @@ base_requirements = {
 }
 pii_requirements = {
     "en_core_web_sm@https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.0.0/en_core_web_sm-3.0.0.tar.gz#egg=en_core_web",
-    "pandas~=1.3.1",
     "spacy==3.0.5",
 }
 
@@ -118,13 +117,13 @@ plugins: Dict[str, Set[str]] = {
     "tableau": {"tableau-api-lib==0.1.22"},
     "vertica": {"sqlalchemy-vertica[vertica-python]>=0.0.5"},
     "report-server": report_requirements,
-    "airflow": {"apache-airflow >= 1.10.2", "openmetadata-airflow==1.0"},
+    "airflow": {"apache-airflow >= 1.10.2"},
 }
 
 build_options = {"includes": ["_cffi_backend"]}
 setup(
     name="openmetadata-ingestion",
-    version="0.4.0",
+    version="0.4.1",
     url="https://open-metadata.org/",
     author="OpenMetadata Committers",
     license="Apache License 2.0",

@@ -1,7 +1,8 @@
 """
-OpenMetadata high-level API Database test
+OpenMetadata high-level API Table test
 """
 import uuid
+from datetime import datetime
 from unittest import TestCase
 
 from metadata.generated.schema.api.data.createDatabase import (
@@ -13,13 +14,24 @@ from metadata.generated.schema.api.services.createDatabaseService import (
 )
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnJoins,
+    ColumnProfile,
+    DataType,
+    JoinedWithItem,
+    Table,
+    TableData,
+    TableJoins,
+    TableProfile,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.jdbcConnection import JdbcInfo
+from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
@@ -35,13 +47,15 @@ class OMetaTableTest(TestCase):
     server_config = MetadataServerConfig(api_endpoint="http://localhost:8585/api")
     metadata = OpenMetadata(server_config)
 
+    assert metadata.health_check()
+
     user = metadata.create_or_update(
         data=CreateUserEntityRequest(name="random-user", email="random@user.com"),
     )
     owner = EntityReference(id=user.id, type="user")
 
     service = CreateDatabaseServiceEntityRequest(
-        name="test-service",
+        name="test-service-table",
         serviceType=DatabaseServiceType.MySQL,
         jdbc=JdbcInfo(driverClass="jdbc", connectionUrl="jdbc://localhost"),
     )
@@ -52,6 +66,7 @@ class OMetaTableTest(TestCase):
         """
         Prepare ingredients
         """
+
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
 
         cls.create_db = CreateDatabaseEntityRequest(
@@ -65,7 +80,7 @@ class OMetaTableTest(TestCase):
             id=uuid.uuid4(),
             name="test",
             database=EntityReference(id=cls.create_db_entity.id, type="database"),
-            fullyQualifiedName="test-service.test-db.test",
+            fullyQualifiedName="test-service-table.test-db.test",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
         )
 
@@ -82,19 +97,19 @@ class OMetaTableTest(TestCase):
         """
         _id = str(
             cls.metadata.get_by_name(
-                entity=Table, fqdn="test-service.test-db.test"
+                entity=Table, fqdn="test-service-table.test-db.test"
             ).id.__root__
         )
 
         database_id = str(
             cls.metadata.get_by_name(
-                entity=Database, fqdn="test-service.test-db"
+                entity=Database, fqdn="test-service-table.test-db"
             ).id.__root__
         )
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqdn="test-service"
+                entity=DatabaseService, fqdn="test-service-table"
             ).id.__root__
         )
 
@@ -196,5 +211,118 @@ class OMetaTableTest(TestCase):
         # Then we should not find it
         res = self.metadata.list_entities(entity=Table)
         assert not next(
-            iter(ent for ent in res.entities if ent.name == self.entity.name), None
+            iter(
+                ent
+                for ent in res.entities
+                if ent.fullyQualifiedName == self.entity.fullyQualifiedName
+            ),
+            None,
         )
+
+    def test_ingest_sample_data(self):
+        """
+        We can ingest sample TableData
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        sample_data = TableData(columns=["id"], rows=[[1], [2], [3]])
+
+        res_sample = self.metadata.ingest_table_sample_data(res, sample_data)
+        assert res_sample == sample_data
+
+    def test_ingest_table_profile_data(self):
+        """
+        We can ingest profile data TableProfile
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        profile = [
+            TableProfile(
+                profileDate=datetime(2021, 10, 12),
+                columnCount=1.0,
+                rowCount=3.0,
+                columnProfile=[
+                    ColumnProfile(
+                        name="id",
+                        uniqueCount=3.0,
+                        uniqueProportion=1.0,
+                        nullCount=0.0,
+                        nullProportion=0.0,
+                        min="1",
+                        max="3",
+                        mean="1.5",
+                        median="2",
+                        stddev=None,
+                    )
+                ],
+            )
+        ]
+
+        res_profile = self.metadata.ingest_table_profile_data(res, profile)
+        assert profile == res_profile
+
+    def test_publish_table_usage(self):
+        """
+        We can POST usage data for a Table
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        usage = TableUsageRequest(date="2021-10-20", count=10)
+
+        self.metadata.publish_table_usage(res, usage)
+
+    def test_publish_frequently_joined_with(self):
+        """
+        We can PUT freq Table JOINs
+        """
+
+        self.metadata.create_or_update(data=self.create)
+
+        # First pick up by name
+        res = self.metadata.get_by_name(
+            entity=Table, fqdn=self.entity.fullyQualifiedName
+        )
+
+        another_table = CreateTableEntityRequest(
+            name="another-test",
+            database=self.create_db_entity.id,
+            columns=[Column(name="another_id", dataType=DataType.BIGINT)],
+        )
+        another_res = self.metadata.create_or_update(another_table)
+
+        joins = TableJoins(
+            startDate=datetime.now(),
+            dayCount=1,
+            columnJoins=[
+                ColumnJoins(
+                    columnName="id",
+                    joinedWith=[
+                        JoinedWithItem(
+                            fullyQualifiedName="test-service-table.test-db.another-test.another_id",
+                            joinCount=2,
+                        )
+                    ],
+                )
+            ],
+        )
+
+        self.metadata.publish_frequently_joined_with(res, joins)
+        self.metadata.delete(entity=Table, entity_id=str(another_res.id.__root__))

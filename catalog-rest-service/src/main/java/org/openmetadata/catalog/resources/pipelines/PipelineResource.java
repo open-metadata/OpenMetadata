@@ -33,6 +33,7 @@ import org.openmetadata.catalog.jdbi3.PipelineRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
@@ -95,9 +96,6 @@ public class PipelineResource {
     pipeline.setHref(RestUtil.getHref(uriInfo, PIPELINE_COLLECTION_PATH, pipeline.getId()));
     EntityUtil.addHref(uriInfo, pipeline.getOwner());
     EntityUtil.addHref(uriInfo, pipeline.getService());
-    if (pipeline.getTasks() != null) {
-      EntityUtil.addHref(uriInfo, pipeline.getTasks());
-    }
     EntityUtil.addHref(uriInfo, pipeline.getFollowers());
     return pipeline;
   }
@@ -171,6 +169,22 @@ public class PipelineResource {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(summary = "List pipeline versions", tags = "pipelines",
+          description = "Get a list of all the versions of a pipeline identified by `id`",
+          responses = {@ApiResponse(responseCode = "200", description = "List of pipeline versions",
+                  content = @Content(mediaType = "application/json",
+                          schema = @Schema(implementation = EntityHistory.class)))
+          })
+  public EntityHistory listVersions(@Context UriInfo uriInfo,
+                                    @Context SecurityContext securityContext,
+                                    @Parameter(description = "pipeline Id", schema = @Schema(type = "string"))
+                                    @PathParam("id") String id)
+          throws IOException, ParseException, GeneralSecurityException {
+    return dao.listVersions(id);
+  }
+
+  @GET
   @Path("/{id}")
   @Operation(summary = "Get a pipeline", tags = "pipelines",
           description = "Get a pipeline by `id`.",
@@ -210,6 +224,26 @@ public class PipelineResource {
     return addHref(uriInfo, pipeline);
   }
 
+  @GET
+  @Path("/{id}/versions/{version}")
+  @Operation(summary = "Get a version of the pipeline", tags = "pipelines",
+          description = "Get a version of the pipeline by given `id`",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "pipeline",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = Pipeline.class))),
+                  @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} and version {version} is " +
+                          "not found")
+          })
+  public Pipeline getVersion(@Context UriInfo uriInfo,
+                          @Context SecurityContext securityContext,
+                          @Parameter(description = "Pipeline Id", schema = @Schema(type = "string"))
+                          @PathParam("id") String id,
+                          @Parameter(description = "Pipeline version number in the form `major`.`minor`",
+                                  schema = @Schema(type = "string", example = "0.1 or 1.1"))
+                          @PathParam("version") String version) throws IOException, ParseException {
+    return dao.getVersion(id, version);
+  }
 
   @POST
   @Operation(summary = "Create a pipeline", tags = "pipelines",

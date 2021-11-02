@@ -18,7 +18,8 @@ import logging
 from datetime import datetime
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.entity.data.table import ColumnJoins, TableJoins
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import ColumnJoins, Table, TableJoins
 from metadata.ingestion.api.bulk_sink import BulkSink, BulkSinkStatus
 from metadata.ingestion.api.common import WorkflowContext
 from metadata.ingestion.models.table_queries import (
@@ -28,6 +29,7 @@ from metadata.ingestion.models.table_queries import (
     TableUsageRequest,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -54,7 +56,7 @@ class MetadataUsageBulkSink(BulkSink):
         self.metadata_config = metadata_config
         self.wrote_something = False
         self.file_handler = open(self.config.filename, "r")
-        self.client = OpenMetadataAPIClient(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
         self.status = BulkSinkStatus()
         self.tables_dict = {}
         self.table_join_dict = {}
@@ -62,8 +64,8 @@ class MetadataUsageBulkSink(BulkSink):
         self.today = datetime.today().strftime("%Y-%m-%d")
 
     def __map_tables(self):
-        table_entities = self.client.list_tables("columns")
-        for table in table_entities.tables:
+        table_entities = self.metadata.list_entities(entity=Table)
+        for table in table_entities.entities:
             if table.name.__root__ not in self.tables_dict.keys():
                 self.tables_dict[table.name.__root__] = table
 
@@ -93,9 +95,7 @@ class MetadataUsageBulkSink(BulkSink):
                     date=table_usage.date, count=table_usage.count
                 )
                 try:
-                    self.client.publish_usage_for_a_table(
-                        table_entity, table_usage_request
-                    )
+                    self.metadata.publish_table_usage(table_entity, table_usage_request)
                 except APIError as err:
                     self.status.failures.append(table_usage_request)
                     logger.error(
@@ -111,7 +111,7 @@ class MetadataUsageBulkSink(BulkSink):
                         table_join_request is not None
                         and len(table_join_request.columnJoins) > 0
                     ):
-                        self.client.publish_frequently_joined_with(
+                        self.metadata.publish_frequently_joined_with(
                             table_entity, table_join_request
                         )
                 except APIError as err:
@@ -129,8 +129,8 @@ class MetadataUsageBulkSink(BulkSink):
                     )
                 )
         try:
-            self.client.compute_percentile("table", self.today)
-            self.client.compute_percentile("database", self.today)
+            self.metadata.compute_percentile(Table, self.today)
+            self.metadata.compute_percentile(Database, self.today)
         except APIError:
             logger.error("Failed to publish compute.percentile")
 
@@ -182,4 +182,4 @@ class MetadataUsageBulkSink(BulkSink):
 
     def close(self):
         self.file_handler.close()
-        self.client.close()
+        self.metadata.close()

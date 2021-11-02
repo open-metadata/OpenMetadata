@@ -91,7 +91,7 @@ public class LineageResource {
           @PathParam("id") String id,
           @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
           @QueryParam("upstreamDepth") int upstreamDepth,
-          @Parameter(description = "Upstream depth of lineage (default=1, min=0, max=3)")
+          @Parameter(description = "Downstream depth of lineage (default=1, min=0, max=3)")
           @QueryParam("downstreamDepth") int downStreamDepth) throws IOException {
     upstreamDepth = Math.min(Math.max(upstreamDepth, 0), 3);
     downStreamDepth = Math.min(Math.max(downStreamDepth, 0), 3);

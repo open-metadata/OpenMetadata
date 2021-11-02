@@ -179,6 +179,19 @@ public abstract class EntityRepository<T> {
     return updated;
   }
 
+  @Transaction
+  public Status addFollower(UUID entityId, UUID userId) throws IOException {
+    dao.findEntityById(entityId);
+    return EntityUtil.addFollower(daoCollection.relationshipDAO(), daoCollection.userDAO(), entityId,
+            entityName, userId, Entity.USER) ? Status.CREATED : Status.OK;
+  }
+
+  @Transaction
+  public void deleteFollower(UUID entityId, UUID userId) {
+    EntityUtil.validateUser(daoCollection.userDAO(), userId);
+    EntityUtil.removeFollower(daoCollection.relationshipDAO(), entityId, userId);
+  }
+
   public final String getFullyQualifiedName(T entity) {
     return getEntityInterface(entity).getFullyQualifiedName();
   }
@@ -251,12 +264,12 @@ public abstract class EntityRepository<T> {
       if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
               updatedOwner == null ? null : updatedOwner.getId())) {
         EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
-                updatedOwner, original.getId(), Entity.TABLE);
+                updatedOwner, original.getId(), entityName);
       }
     }
 
     private void updateTags() throws IOException {
-      // Remove current table tags in the database. It will be added back later from the merged tag list.
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
       List<TagLabel> origTags = original.getTags();
       List<TagLabel> updatedTags = updated.getTags();
       EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), original.getFullyQualifiedName());

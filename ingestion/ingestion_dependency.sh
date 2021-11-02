@@ -16,10 +16,11 @@
 # limitations under the License.
 #
 
-mv /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
+while ! wget -O /dev/null -o /dev/null localhost:3306; do sleep 5; done
+export AIRFLOW_HOME=/airflow
 airflow db init
-mkdir /airflow/dags
-mv /ingestion/examples/airflow/dags/*.py /airflow/dags/
+echo "AUTH_ROLE_PUBLIC = 'Admin'" >> /airflow/webserver_config.py
+mv /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
 airflow users create \
     --username admin \
     --firstname Peter \
@@ -27,8 +28,11 @@ airflow users create \
     --role Admin \
     --email spiderman@superhero.org \
     --password admin
-echo "AUTH_ROLE_PUBLIC = 'Admin'" >> /airflow/webserver_config.py
-airflow db check
-airflow webserver --port 8080 &
+airflow webserver --port 8080 -D & 
+(sleep 5; airflow db init)
+(sleep 5; airflow db init)
+(sleep 5; curl -u admin:admin --data '{"dag_run_id":"sample_data"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_data/dagRuns) &
+(sleep 7; curl -u admin:admin --data '{"dag_run_id":"sample_users"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_users/dagRuns) &
+(sleep 12; curl -u admin:admin --data '{"dag_run_id":"sample_usage"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/sample_usage/dagRuns) &
+(sleep 17; curl -u admin:admin --data '{"dag_run_id":"elasticsearch"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/elasticsearch/dagRuns) &
 airflow scheduler
-

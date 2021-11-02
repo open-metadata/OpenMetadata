@@ -44,6 +44,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import (
     MetadataServerConfig,
     OpenMetadataAPIClient,
@@ -87,6 +88,8 @@ class MetadataRestSink(Sink):
         self.wrote_something = False
         self.charts_dict = {}
         self.client = OpenMetadataAPIClient(self.metadata_config)
+        # Let's migrate usages from OpenMetadataAPIClient to OpenMetadata
+        self.metadata = OpenMetadata(self.metadata_config)
         self.api_client = self.client.client
         self.api_team = "/teams"
         self.api_users = "/users"
@@ -134,7 +137,7 @@ class MetadataRestSink(Sink):
                     id=table_and_db.database.service.id, type="databaseService"
                 ),
             )
-            db = self.client.create_database(db_request)
+            db = self.metadata.create_or_update(db_request)
             table_request = CreateTableEntityRequest(
                 name=table_and_db.table.name,
                 tableType=table_and_db.table.tableType,
@@ -151,14 +154,19 @@ class MetadataRestSink(Sink):
                     table_and_db.table.viewDefinition.__root__
                 )
 
-            created_table = self.client.create_or_update_table(table_request)
+            created_table = self.metadata.create_or_update(table_request)
             if table_and_db.table.sampleData is not None:
-                self.client.ingest_sample_data(
-                    table_id=created_table.id, sample_data=table_and_db.table.sampleData
+                self.metadata.ingest_table_sample_data(
+                    table=created_table, sample_data=table_and_db.table.sampleData
                 )
             if table_and_db.table.tableProfile is not None:
-                self.client.ingest_table_profile_data(
-                    table_id=created_table.id,
+                for tp in table_and_db.table.tableProfile:
+                    for pd in tp:
+                        if pd[0] == "columnProfile":
+                            for col in pd[1]:
+                                col.name = col.name.replace(".", "_DOT_")
+                self.metadata.ingest_table_profile_data(
+                    table=created_table,
                     table_profile=table_and_db.table.tableProfile,
                 )
 
@@ -290,7 +298,7 @@ class MetadataRestSink(Sink):
     def write_lineage(self, add_lineage: AddLineage):
         try:
             logger.info(add_lineage)
-            created_lineage = self.client.create_or_update_lineage(add_lineage)
+            created_lineage = self.metadata.add_lineage(add_lineage)
             logger.info(f"Successfully added Lineage {created_lineage}")
             self.status.records_written(f"Lineage: {created_lineage}")
         except (APIError, ValidationError) as err:

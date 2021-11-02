@@ -48,9 +48,14 @@ pytest -s -c /dev/null
 ## Run Hive test
 
 ```text
-cd ingestion
-source env/bin/activate
-cd tests/integration/hive
+python3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
+pip install -r ingestion/requirements.txt
+pip install -e ingestion
+pip install pytest
+pip install pytest-docker
+pip install pyhive thrift sasl thrift_sasl
+cd ingestion/tests/integration/hive
 pytest -s -c /dev/null
 ```
 

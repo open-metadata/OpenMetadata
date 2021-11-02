@@ -1,5 +1,5 @@
 import logging
-from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -21,6 +21,8 @@ from metadata.generated.schema.entity.services.pipelineService import PipelineSe
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.lineageMixin import OMetaLineageMixin
+from metadata.ingestion.ometa.mixins.tableMixin import OMetaTableMixin
 from metadata.ingestion.ometa.openmetadata_rest import (
     Auth0AuthenticationProvider,
     GoogleAuthenticationProvider,
@@ -56,11 +58,13 @@ class EntityList(Generic[T], BaseModel):
     after: str = None
 
 
-class OpenMetadata(Generic[T, C]):
+class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
     """
     Generic interface to the OpenMetadata API
 
-    It is a polymorphism on all our different Entities
+    It is a polymorphism on all our different Entities.
+
+    Specific functionalities to be inherited from Mixins
     """
 
     client: REST
@@ -140,9 +144,6 @@ class OpenMetadata(Generic[T, C]):
         ):
             return "/tables"
 
-        if issubclass(entity, get_args(Union[Task, self.get_create_entity_type(Task)])):
-            return "/tasks"
-
         if issubclass(
             entity, get_args(Union[Topic, self.get_create_entity_type(Topic)])
         ):
@@ -196,6 +197,18 @@ class OpenMetadata(Generic[T, C]):
         raise MissingEntityTypeException(
             f"Missing {entity} type when generating suffixes"
         )
+
+    @staticmethod
+    def get_entity_type(
+        entity: Union[Type[T], str],
+    ) -> str:
+        """
+        Given an Entity T, return its type.
+        E.g., Table returns table, Dashboard returns dashboard...
+
+        Also allow to be the identity if we just receive a string
+        """
+        return entity if isinstance(entity, str) else entity.__name__.lower()
 
     def get_module_path(self, entity: Type[T]) -> str:
         """
@@ -289,26 +302,27 @@ class OpenMetadata(Generic[T, C]):
         Return entity by name or None
         """
 
-        try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/name/{fqdn}")
-            return entity(**resp)
-        except APIError as err:
-            logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for FQDN {fqdn}"
-            )
-            return None
+        return self._get(entity=entity, path=f"name/{fqdn}")
 
     def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
+        return self._get(entity=entity, path=entity_id)
+
+    def _get(self, entity: Type[T], path: str) -> Optional[T]:
+        """
+        Generic GET operation for an entity
+        :param entity: Entity Class
+        :param path: URL suffix by FQDN or ID
+        """
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{entity_id}")
+            resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
             return entity(**resp)
         except APIError as err:
             logger.error(
-                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for ID {entity_id}"
+                f"Error {err.status_code} trying to GET {entity.__class__.__name__} for {path}"
             )
             return None
 
@@ -347,6 +361,20 @@ class OpenMetadata(Generic[T, C]):
 
     def delete(self, entity: Type[T], entity_id: str) -> None:
         self.client.delete(f"{self.get_suffix(entity)}/{entity_id}")
+
+    def compute_percentile(self, entity: Union[Type[T], str], date: str) -> None:
+        """
+        Compute an entity usage percentile
+        """
+        entity_name = self.get_entity_type(entity)
+        resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
+        logger.debug("published compute percentile {}".format(resp))
+
+    def health_check(self) -> bool:
+        """
+        Run endpoint health-check. Return `true` if OK
+        """
+        return self.client.get("/health-check")["status"] == "healthy"
 
     def close(self):
         self.client.close()
