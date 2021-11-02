@@ -104,7 +104,7 @@ const EntityTable = ({
     toggleAllRowsExpanded,
   } = useTable(
     {
-      columns: columns,
+      columns,
       data,
       autoResetExpanded: false,
     },
