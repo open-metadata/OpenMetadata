@@ -36,13 +36,13 @@ public class StartServerAndIngestSampleDataTest {
         String absolutePath = scriptDir.getAbsolutePath();
         String[] runScript = {"sh", absolutePath};
         Process processRunScript = Runtime.getRuntime().exec(runScript);
-        BufferedReader output = new BufferedReader(new InputStreamReader(processRunScript.getInputStream()));
-        String log;
-        while ((log = output.readLine()) != null) {
-            System.out.println(log);
+//        BufferedReader output = new BufferedReader(new InputStreamReader(processRunScript.getInputStream()));
+//        String log;
+//        while ((log = output.readLine()) != null) {
+//            System.out.println(log);
 //            Process processRunScript = Runtime.getRuntime().exec(runScript);
-//            processRunScript.waitFor();
-            LOG.info("Server started and Ingested the data");
-        }
+        processRunScript.waitFor();
+        LOG.info("Server started and Ingested the data");
     }
 }
+
