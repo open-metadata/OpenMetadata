@@ -48,7 +48,7 @@ const EntityPageInfo = ({
   titleLinks,
   isFollowing,
   followHandler,
-  followers = 0,
+  followers,
   extraInfo,
   tier,
   tags,
