@@ -3,15 +3,27 @@ package org.openmetadata.catalog.resources;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
+import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.api.services.CreateDatabaseService;
+import org.openmetadata.catalog.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.catalog.api.services.CreateMessagingService;
 import org.openmetadata.catalog.api.services.CreateMessagingService.MessagingServiceType;
+import org.openmetadata.catalog.api.services.CreatePipelineService;
+import org.openmetadata.catalog.api.services.CreatePipelineService.PipelineServiceType;
+import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
+import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -21,52 +33,85 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.catalog.resources.services.PipelineServiceResourceTest.createService;
+import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
+import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
+import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
+import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
+  private static final Logger LOG = LoggerFactory.getLogger(EntityResourceTest.class);
   private final Class<T> entityClass;
+  private final Class<? extends ResultList<T>> entityListClass;
   private final String collectionName;
   private final String allFields;
+  private final boolean supportsFollowers;
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
   public static EntityReference TEAM_OWNER1;
 
+  public static EntityReference SNOWFLAKE_REFERENCE;
+  public static EntityReference REDSHIFT_REFERENCE;
+  public static EntityReference MYSQL_REFERENCE;
+  public static EntityReference BIGQUERY_REFERENCE;
+
   public static EntityReference KAFKA_REFERENCE;
   public static EntityReference PULSAR_REFERENCE;
+  public static EntityReference AIRFLOW_REFERENCE;
+  public static EntityReference PREFECT_REFERENCE;
+
+  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
+  public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
   public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
-  public EntityResourceTest(Class<T> entityClass, String collectionName, String fields) {
+  public EntityResourceTest(Class<T> entityClass, Class<? extends ResultList<T>> entityListClass, String collectionName,
+                            String fields, boolean supportsFollowers) {
     this.entityClass = entityClass;
+    this.entityListClass = entityListClass;
     this.collectionName = collectionName;
     this.allFields = fields;
+    this.supportsFollowers = supportsFollowers;
   }
 
   @BeforeAll
@@ -77,20 +122,62 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     TEAM1 = TeamResourceTest.createTeam(TeamResourceTest.create(test), adminAuthHeaders());
     TEAM_OWNER1 = new EntityReference().withId(TEAM1.getId()).withType("team");
 
-    CreateMessagingService createService = new CreateMessagingService().withName("kafka")
-            .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
-    MessagingService service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    KAFKA_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
+    // Create snowflake database service
+    CreateDatabaseService createDatabaseService = new CreateDatabaseService()
+            .withName(DatabaseServiceResourceTest.getName(test, 1))
+            .withServiceType(DatabaseServiceType.Snowflake).withJdbc(TestUtils.JDBC_INFO);
+    DatabaseService databaseService = DatabaseServiceResourceTest.createService(createDatabaseService,
+            adminAuthHeaders());
+    SNOWFLAKE_REFERENCE = new EntityReference().withName(databaseService.getName()).withId(databaseService.getId())
+            .withType(Entity.DATABASE_SERVICE);
 
-    createService.withName("pulsar").withServiceType(MessagingServiceType.Pulsar).withBrokers(List.of("192.168.1.1:0"));
-    service = MessagingServiceResourceTest.createService(createService, adminAuthHeaders());
-    PULSAR_REFERENCE = new MessagingServiceEntityInterface(service).getEntityReference();
+    createDatabaseService.withName("redshiftDB").withServiceType(DatabaseServiceType.Redshift);
+    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    REDSHIFT_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService.withName("bigQueryDB").withServiceType(DatabaseServiceType.BigQuery);
+    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    BIGQUERY_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    createDatabaseService.withName("mysqlDB").withServiceType(DatabaseServiceType.MySQL);
+    databaseService = DatabaseServiceResourceTest.createService(createDatabaseService, adminAuthHeaders());
+    MYSQL_REFERENCE = new DatabaseServiceEntityInterface(databaseService).getEntityReference();
+
+    // Create Kafka messaging service
+    CreateMessagingService createMessaging = new CreateMessagingService().withName("kafka")
+            .withServiceType(MessagingServiceType.Kafka).withBrokers(List.of("192.168.1.1:0"));
+    MessagingService messagingService = MessagingServiceResourceTest.createService(createMessaging, adminAuthHeaders());
+    KAFKA_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
+
+    // Create Pulsar messaging service
+    createMessaging.withName("pulsar").withServiceType(MessagingServiceType.Pulsar)
+            .withBrokers(List.of("192.168.1.1:0"));
+    messagingService = MessagingServiceResourceTest.createService(createMessaging, adminAuthHeaders());
+    PULSAR_REFERENCE = new MessagingServiceEntityInterface(messagingService).getEntityReference();
+
+    // Create Airflow pipeline service
+    CreatePipelineService createPipeline = new CreatePipelineService().withName("airflow")
+            .withServiceType(PipelineServiceType.Airflow).withPipelineUrl(new URI("http://localhost:0"));
+    PipelineService pipelineService = createService(createPipeline, adminAuthHeaders());
+    AIRFLOW_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
+
+    // Create Prefect pipeline service
+    createPipeline.withName("prefect").withServiceType(PipelineServiceType.Prefect)
+            .withPipelineUrl(new URI("http://localhost:0"));
+    pipelineService = createService(createPipeline, adminAuthHeaders());
+    PREFECT_REFERENCE = new PipelineServiceEntityInterface(pipelineService).getEntityReference();
   }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Methods to be overridden entity test class
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  public abstract Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) throws URISyntaxException;
+  public final Object createRequest(TestInfo test, String description, String displayName, EntityReference owner)
+          throws URISyntaxException {
+    return createRequest(test, 0, description, displayName, owner);
+  }
+
+  public abstract Object createRequest(TestInfo test, int index, String description, String displayName,
+                                       EntityReference owner) throws URISyntaxException;
 
   public abstract void validateCreatedEntity(T createdEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException;
@@ -110,6 +197,88 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity tests for PUT operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    // Create a large number of tables
+    int maxEntities = 40;
+    for (int i = 0; i < maxEntities; i++) {
+      createEntity(createRequest(test, i, null, null, null), adminAuthHeaders());
+    }
+
+    // List all tables and use it for checking pagination
+    ResultList<T> allEntities = listEntities(null, 1000000, null, null,
+            adminAuthHeaders());
+    int totalRecords = allEntities.getData().size();
+    printEntities(allEntities);
+
+    // List tables with limit set from 1 to maxTables size
+    // Each time compare the returned list with allTables list to make sure right results are returned
+    for (int limit = 1; limit < maxEntities; limit++) {
+      String after = null;
+      String before;
+      int pageCount = 0;
+      int indexInAllTables = 0;
+      ResultList<T> forwardPage;
+      ResultList<T> backwardPage;
+      do { // For each limit (or page size) - forward scroll till the end
+        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+        forwardPage = listEntities(null, limit, null, after, adminAuthHeaders());
+        after = forwardPage.getPaging().getAfter();
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
+          assertNull(before);
+        } else {
+          // Make sure scrolling back based on before cursor returns the correct result
+          backwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
+          assertEntityPagination(allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+        }
+
+        printEntities(forwardPage);
+        indexInAllTables += forwardPage.getData().size();
+        pageCount++;
+      } while (after != null);
+
+      // We have now reached the last page - test backward scroll till the beginning
+      pageCount = 0;
+      indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+      do {
+        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+        forwardPage = listEntities(null, limit, before, null, adminAuthHeaders());
+        printEntities(forwardPage);
+        before = forwardPage.getPaging().getBefore();
+        assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+        pageCount++;
+        indexInAllTables -= forwardPage.getData().size();
+      } while (before != null);
+    }
+  }
+
+  @Test
+  public void get_entityListWithInvalidLimit_4xx() {
+    // Limit must be >= 1 and <= 1000,000
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, -1, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+
+    exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 0, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
+
+    exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 1000001, null, null, adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
+  }
+
+  @Test
+  public void get_entityListWithInvalidPaginationCursors_4xx() {
+    // Passing both before and after cursors is invalid
+    HttpResponseException exception = assertThrows(HttpResponseException.class, ()
+            -> listEntities(null, 1, "", "", adminAuthHeaders()));
+    assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
+  }
+
   @Test
   public void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a new entity with PUT
@@ -153,27 +322,32 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       // Ignore the test - User and team entities can't be owned like other data assets
       return;
     }
+    // Create an entity without owner
     Object request = createRequest(test, "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
-    // Add TEAM_OWNER1 as owner
+    // Set TEAM_OWNER1 as owner using PUT request
     request = createRequest(test, "description", "displayName", TEAM_OWNER1);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
             .withFieldsAdded(Collections.singletonList("owner"));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
+    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
 
-    // Change owner from TEAM_OWNER1 to USER_OWNER1
+    // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(test, "description", "displayName", USER_OWNER1);
     change = getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
+    checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), false);
 
-    // Remove ownership
+    // Remove ownership (from USER_OWNER1) using PUT request
     request = createRequest(test, "description", "displayName", null);
     change = getChangeDescription(entityInterface.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
+    checkOwnerOwns(USER_OWNER1, entityInterface.getId(), false);
   }
 
   @Test
@@ -220,41 +394,94 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertEquals("description", entityInterface.getDescription()); // Description did not change
   }
 
+  @Test
+  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add follower to the entity
+    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
+    addAndCheckFollower(entityId, user1.getId(), CREATED, 1, userAuthHeaders());
+
+    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
+    addAndCheckFollower(entityId, user1.getId(), OK, 1, userAuthHeaders());
+
+    // Add a new follower to the entity
+    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
+    addAndCheckFollower(entityId, user2.getId(), CREATED, 2, userAuthHeaders());
+
+    // Delete followers and make sure they are deleted
+    deleteAndCheckFollower(entityId, user1.getId(), 1, userAuthHeaders());
+    deleteAndCheckFollower(entityId, user2.getId(), 0, userAuthHeaders());
+  }
+
+  @Test
+  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    if (!supportsFollowers) {
+      return; // Entity does not support following
+    }
+    Object request = createRequest(test, "description", "displayName", null);
+    T entity = createAndCheckEntity(request, adminAuthHeaders());
+    UUID entityId = getEntityInterface(entity).getId();
+
+    // Add non existent user as follower to the entity
+    HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+            addAndCheckFollower(entityId, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+
+    // Delete non existent user as follower to the entity
+    exception = assertThrows(HttpResponseException.class, () ->
+            deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
+    assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
+  }
+
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  public final WebTarget getCollection() {
+  protected final WebTarget getCollection() {
     return getResource(collectionName);
   }
 
-  public final WebTarget getResource(UUID id) {
+  protected final WebTarget getResource(UUID id) {
     return getResource(collectionName + "/" + id);
   }
 
-  public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  protected final WebTarget getFollowersCollection(UUID id) {
+    return getResource(collectionName + "/" + id + "/followers");
+  }
+
+  protected final WebTarget getFollowerResource(UUID id, UUID userId) {
+    return getResource(collectionName + "/" + id + "/followers/" + userId);
+  }
+
+  protected final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public final T createEntity(Object createRequest, Map<String, String> authHeaders)
+  protected final T createEntity(Object createRequest, Map<String, String> authHeaders)
           throws HttpResponseException {
     return TestUtils.post(getCollection(), createRequest, entityClass, authHeaders);
   }
 
-  public final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
+  protected final T updateEntity(Object updateRequest, Status status, Map<String, String> authHeaders)
           throws HttpResponseException {
     return TestUtils.put(getCollection(), updateRequest, entityClass, status, authHeaders);
   }
 
-  public final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
+  protected final T patchEntity(UUID id, String originalJson, T updated, Map<String, String> authHeaders)
           throws JsonProcessingException, HttpResponseException {
-    String updatedTableJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedTableJson);
+    String updatedEntityJson = JsonUtils.pojoToJson(updated);
+    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedEntityJson);
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
-  public final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws HttpResponseException {
+  protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws HttpResponseException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -272,7 +499,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return entity;
   }
 
-  public T updateAndCheckEntity(Object request, Status status, Map<String, String> authHeaders,
+  protected final T updateAndCheckEntity(Object request, Status status, Map<String, String> authHeaders,
                                 UpdateType updateType, ChangeDescription changeDescription)
           throws IOException {
     T updated = updateEntity(request, status, authHeaders);
@@ -311,7 +538,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return updated;
   }
 
-  public final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
+  protected final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
                                      UpdateType updateType, ChangeDescription expectedChange)
           throws JsonProcessingException, HttpResponseException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
@@ -328,7 +555,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return returned;
   }
 
-  public final void validateCommonEntityFields(EntityInterface<T> entity, String expectedDescription,
+  protected final void validateCommonEntityFields(EntityInterface<T> entity, String expectedDescription,
                                                String expectedUpdatedByUser, EntityReference expectedOwner) {
     assertNotNull(entity.getId());
     assertNotNull(entity.getHref());
@@ -338,7 +565,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertOwner(expectedOwner, entity.getOwner());
   }
 
-  public final void validateChangeDescription(T updated, UpdateType updateType,
+  protected final void validateChangeDescription(T updated, UpdateType updateType,
                                               ChangeDescription expectedChange) {
     EntityInterface<T> updatedEntityInterface = getEntityInterface(updated);
     if (updateType == UpdateType.CREATED) {
@@ -356,29 +583,29 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     }
   }
 
-  public EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+  protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/" + id + "/versions");
     return TestUtils.get(target, EntityHistory.class, authHeaders);
   }
 
-  public T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {
+  protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/" + id + "/versions/" + version.toString());
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  public void assertFieldLists(List<String> expectedList, List<String> actualList) {
+  protected static void assertFieldLists(List<String> expectedList, List<String> actualList) {
     expectedList.sort(Comparator.comparing(String::toString));
     actualList.sort(Comparator.comparing(String::toString));
     assertIterableEquals(expectedList, actualList);
   }
 
-  public ChangeDescription getChangeDescription(Double previousVersion) {
+  protected ChangeDescription getChangeDescription(Double previousVersion) {
     return new ChangeDescription().withPreviousVersion(previousVersion)
             .withFieldsAdded(new ArrayList<>()).withFieldsUpdated(new ArrayList<>())
             .withFieldsDeleted(new ArrayList<>());
   }
 
-  public static void assertOwner(EntityReference expected, EntityReference actual) {
+  protected static void assertOwner(EntityReference expected, EntityReference actual) {
     if (expected != null) {
       TestUtils.validateEntityReference(actual);
       assertEquals(expected.getId(), actual.getId());
@@ -387,9 +614,115 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertNull(actual);
     }
   }
-  public static void assertService(EntityReference expected, EntityReference actual) {
+  protected static void assertService(EntityReference expected, EntityReference actual) {
     TestUtils.validateEntityReference(actual);
     assertEquals(expected.getId(), actual.getId());
     assertEquals(expected.getType(), actual.getType());
+  }
+
+  protected static void checkOwnerOwns(EntityReference owner, UUID entityId, boolean expectedOwning)
+          throws HttpResponseException {
+    if (owner != null) {
+      UUID ownerId = owner.getId();
+      List<EntityReference> ownsList;
+      if (owner.getType().equals(Entity.USER)) {
+        User user = UserResourceTest.getUser(ownerId, "owns", adminAuthHeaders());
+        ownsList = user.getOwns();
+      } else if (owner.getType().equals(Entity.TEAM)) {
+        Team team = TeamResourceTest.getTeam(ownerId, "owns", adminAuthHeaders());
+        ownsList = team.getOwns();
+      } else {
+        throw new IllegalArgumentException("Invalid owner type " + owner.getType());
+      }
+
+      boolean owning = false;
+      for (EntityReference owns : ownsList) {
+        TestUtils.validateEntityReference(owns);
+        if (owns.getId().equals(entityId)) {
+          owning = true;
+          break;
+        }
+      }
+      assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
+    }
+  }
+
+  public void addAndCheckFollower(UUID entityId, UUID userId, Status status, int totalFollowerCount,
+                                  Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getFollowersCollection(entityId);
+    TestUtils.put(target, userId.toString(), status, authHeaders);
+
+    // GET .../entity/{entityId} returns newly added follower
+    T getEntity = getEntity(entityId, authHeaders);
+    EntityInterface<T> entityInterface = getEntityInterface(getEntity);
+    List<EntityReference> followers = entityInterface.getFollowers();
+
+    assertEquals(totalFollowerCount, followers.size());
+    TestUtils.validateEntityReference(followers);
+    boolean followerFound = false;
+    for (EntityReference follower : followers) {
+      if (follower.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertTrue(followerFound, "Follower added was not found in " + entityClass + " get response");
+
+    // GET .../users/{userId} shows user as following the entity
+    checkUserFollowing(userId, entityId, true, authHeaders);
+  }
+
+  protected void deleteAndCheckFollower(UUID entityId, UUID userId, int totalFollowerCount,
+                                      Map<String, String> authHeaders) throws HttpResponseException {
+    // Delete the follower
+    WebTarget target = getFollowerResource(entityId, userId);
+    TestUtils.delete(target, authHeaders);
+
+    // Get the entity and ensure the deleted follower is not in the followers list
+    T getEntity = checkFollowerDeleted(entityId, userId, authHeaders);
+    assertEquals(totalFollowerCount, getEntityInterface(getEntity).getFollowers().size());
+  }
+
+  public T checkFollowerDeleted(UUID entityId, UUID userId, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    // Get the entity and ensure the deleted follower is not in the followers list
+    T getEntity = getEntity(entityId, authHeaders);
+    List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
+    TestUtils.validateEntityReference(followers);
+    boolean followerFound = false;
+    for (EntityReference follower : followers) {
+      if (follower.getId().equals(userId)) {
+        followerFound = true;
+        break;
+      }
+    }
+    assertFalse(followerFound, "Follower deleted is still found in " + entityClass + " get response");
+
+    // GET .../users/{userId} shows user as following the entity
+    checkUserFollowing(userId, entityId, false, authHeaders);
+    return getEntity;
+  }
+
+  public ResultList<T> listEntities(Map<String, String> queryParams, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    return listEntities(queryParams, null, null, null, authHeaders);
+  }
+
+  public ResultList<T> listEntities(Map<String, String> queryParams, Integer limit, String before,
+                              String after, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getCollection();
+    for (Entry<String, String> entry : Optional.ofNullable(queryParams).orElse(Collections.emptyMap()).entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = before != null ? target.queryParam("before", before) : target;
+    target = after != null ? target.queryParam("after", after) : target;
+    return TestUtils.get(target, entityListClass, authHeaders);
+  }
+
+  private void printEntities(ResultList<T> list) {
+    list.getData().forEach(entity -> LOG.info("{} {}", entityClass, getEntityInterface(entity).getFullyQualifiedName()));
+    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
 }

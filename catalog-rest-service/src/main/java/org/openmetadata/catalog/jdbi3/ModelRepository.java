@@ -31,8 +31,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
@@ -56,20 +56,6 @@ public class ModelRepository extends EntityRepository<Model> {
 
   public static String getFQN(Model model) {
     return (model.getName());
-  }
-
-  @Transaction
-  public Status addFollower(UUID modelId, UUID userId) throws IOException {
-    dao.modelDAO().findEntityById(modelId);
-    return EntityUtil.addFollower(dao.relationshipDAO(), dao.userDAO(), modelId, Entity.MODEL, userId,
-            Entity.USER) ?
-            Status.CREATED : Status.OK;
-  }
-
-  @Transaction
-  public void deleteFollower(UUID modelId, UUID userId) {
-    EntityUtil.validateUser(dao.userDAO(), userId);
-    EntityUtil.removeFollower(dao.relationshipDAO(), modelId, userId);
   }
 
   @Transaction
@@ -248,6 +234,12 @@ public class ModelRepository extends EntityRepository<Model> {
 
     @Override
     public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
     public EntityReference getEntityReference() {

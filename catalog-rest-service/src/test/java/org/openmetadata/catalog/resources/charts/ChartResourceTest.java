@@ -21,73 +21,60 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.entity.teams.User;
-import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
-import javax.ws.rs.core.Response.Status;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
-import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
-import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
-import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
-import static org.openmetadata.catalog.util.TestUtils.checkUserFollowing;
-import static org.openmetadata.catalog.util.TestUtils.userAuthHeaders;
 
 public class ChartResourceTest extends EntityResourceTest<Chart> {
-  private static final Logger LOG = LoggerFactory.getLogger(ChartResourceTest.class);
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public ChartResourceTest() {
-    super(Chart.class, "charts", ChartResource.FIELDS);
+    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true);
   }
 
   @BeforeAll
@@ -188,94 +175,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
       createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
 
       // List charts by filtering on service name and ensure right charts are returned in the response
-      ChartList list = listCharts("service", service.getName(), adminAuthHeaders());
+      Map<String, String> queryParams = new HashMap<>() {{put("service", service.getName());}};
+      ResultList<Chart> list = listEntities(queryParams, adminAuthHeaders());
       for (Chart chart : list.getData()) {
         assertEquals(service.getName(), chart.getService().getName());
       }
     }
   }
 
-  @Test
-  public void get_chartListWithInvalidLimitOffset_4xx() {
-    // Limit must be >= 1 and <= 1000,000
-    assertResponse(() -> listCharts(null, null, -1, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() ->listCharts(null, null, 0, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be greater than or equal to 1]");
-
-    assertResponse(() -> listCharts(null, null, 1000001, null, null, adminAuthHeaders()),
-            BAD_REQUEST, "[query param limit must be less than or equal to 1000000]");
-  }
-
-  @Test
-  public void get_chartListWithInvalidPaginationCursors_4xx() {
-    // Passing both before and after cursors is invalid
-    assertResponse(() -> listCharts(null, null, 1, "", "", adminAuthHeaders()),
-            BAD_REQUEST, "Only one of before or after query parameter allowed");
-  }
-
-  @Test
-  public void get_chartListWithValidLimitOffset_4xx(TestInfo test) throws HttpResponseException {
-    // Create a large number of charts
-    int maxCharts = 40;
-    for (int i = 0; i < maxCharts; i++) {
-      createChart(create(test, i), adminAuthHeaders());
-    }
-
-    // List all charts
-    ChartList allCharts = listCharts(null, null, 1000000, null,
-            null, adminAuthHeaders());
-    int totalRecords = allCharts.getData().size();
-    printCharts(allCharts);
-
-    // List limit number charts at a time at various offsets and ensure right results are returned
-    for (int limit = 1; limit < maxCharts; limit++) {
-      String after = null;
-      String before;
-      int pageCount = 0;
-      int indexInAllCharts = 0;
-      ChartList forwardPage;
-      ChartList backwardPage;
-      do { // For each limit (or page size) - forward scroll till the end
-        LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
-        forwardPage = listCharts(null, null, limit, null, after, adminAuthHeaders());
-        printCharts(forwardPage);
-        after = forwardPage.getPaging().getAfter();
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allCharts.getData(), forwardPage, limit, indexInAllCharts);
-
-        if (pageCount == 0) {  // CASE 0 - First page is being returned. There is no before cursor
-          assertNull(before);
-        } else {
-          // Make sure scrolling back based on before cursor returns the correct result
-          backwardPage = listCharts(null, null, limit, before, null, adminAuthHeaders());
-          assertEntityPagination(allCharts.getData(), backwardPage, limit, (indexInAllCharts - limit));
-        }
-
-        indexInAllCharts += forwardPage.getData().size();
-        pageCount++;
-      } while (after != null);
-
-      // We have now reached the last page - test backward scroll till the beginning
-      pageCount = 0;
-      indexInAllCharts = totalRecords - limit - forwardPage.getData().size();
-      do {
-        LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
-        forwardPage = listCharts(null, null, limit, before, null, adminAuthHeaders());
-        printCharts(forwardPage);
-        before = forwardPage.getPaging().getBefore();
-        assertEntityPagination(allCharts.getData(), forwardPage, limit, indexInAllCharts);
-        pageCount++;
-        indexInAllCharts -= forwardPage.getData().size();
-      } while (before != null);
-    }
-  }
-
-  private void printCharts(ChartList list) {
-    list.getData().forEach(chart -> LOG.info("Chart {}", chart.getFullyQualifiedName()));
-    LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
-  }
 
   @Test
   public void get_nonExistentChart_404_notFound() {
@@ -354,40 +261,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException {
-    Chart chart = createAndCheckEntity(create(test), adminAuthHeaders());
-
-    // Add follower to the chart
-    User user1 = UserResourceTest.createUser(UserResourceTest.create(test, 1), userAuthHeaders());
-    addAndCheckFollower(chart, user1.getId(), CREATED, 1, userAuthHeaders());
-
-    // Add the same user as follower and make sure no errors are thrown and return response is OK (and not CREATED)
-    addAndCheckFollower(chart, user1.getId(), OK, 1, userAuthHeaders());
-
-    // Add a new follower to the chart
-    User user2 = UserResourceTest.createUser(UserResourceTest.create(test, 2), userAuthHeaders());
-    addAndCheckFollower(chart, user2.getId(), CREATED, 2, userAuthHeaders());
-
-    // Delete followers and make sure they are deleted
-    deleteAndCheckFollower(chart, user1.getId(), 1, userAuthHeaders());
-    deleteAndCheckFollower(chart, user2.getId(), 0, userAuthHeaders());
-  }
-
-  @Test
-  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException {
-    Chart chart = createAndCheckEntity(create(test), adminAuthHeaders());
-
-    // Add non existent user as follower to the chart
-    assertResponse(() -> addAndCheckFollower(chart, NON_EXISTENT_ENTITY, CREATED, 1, adminAuthHeaders()),
-            NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-
-    // Delete non existent user as follower to the chart
-    assertResponse(() -> deleteAndCheckFollower(chart, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()),
-            NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
-  }
-
-
-  @Test
   public void delete_nonExistentChart_404() {
     assertResponse(() -> deleteChart(NON_EXISTENT_ENTITY, adminAuthHeaders()), NOT_FOUND,
             entityNotFound(Entity.CHART, NON_EXISTENT_ENTITY));
@@ -442,23 +315,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
     return TestUtils.get(target, Chart.class, authHeaders);
   }
 
-  public static ChartList listCharts(String fields, String serviceParam, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    return listCharts(fields, serviceParam, null, null, null, authHeaders);
-  }
-
-  public static ChartList listCharts(String fields, String serviceParam, Integer limitParam,
-                                     String before, String after, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    WebTarget target = getResource("charts");
-    target = fields != null ? target.queryParam("fields", fields) : target;
-    target = serviceParam != null ? target.queryParam("service", serviceParam) : target;
-    target = limitParam != null ? target.queryParam("limit", limitParam) : target;
-    target = before != null ? target.queryParam("before", before) : target;
-    target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, ChartList.class, authHeaders);
-  }
-
   private void deleteChart(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(getResource("charts/" + id), authHeaders);
 
@@ -483,59 +339,9 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
             .withChartType(ChartType.Area);
   }
 
-  public static void addAndCheckFollower(Chart chart, UUID userId, Status status, int totalFollowerCount,
-                                         Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("charts/%s/followers", chart.getId()));
-    TestUtils.put(target, userId.toString(), status, authHeaders);
-
-    // GET .../charts/{chartId} returns newly added follower
-    Chart getChart = getChart(chart.getId(), "followers", authHeaders);
-    assertEquals(totalFollowerCount, getChart.getFollowers().size());
-    TestUtils.validateEntityReference(getChart.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getChart.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertTrue(followerFound, "Follower added was not found in chart get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, chart.getId(), true, authHeaders);
-  }
-
-  private void deleteAndCheckFollower(Chart chart, UUID userId, int totalFollowerCount,
-                                      Map<String, String> authHeaders) throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource(String.format("charts/%s/followers/%s",
-            chart.getId(), userId));
-    TestUtils.delete(target, authHeaders);
-
-    Chart getChart = checkFollowerDeleted(chart.getId(), userId, authHeaders);
-    assertEquals(totalFollowerCount, getChart.getFollowers().size());
-  }
-
-  public static Chart checkFollowerDeleted(UUID chartId, UUID userId, Map<String, String> authHeaders)
-          throws HttpResponseException {
-    Chart getChart = getChart(chartId, "followers", authHeaders);
-    TestUtils.validateEntityReference(getChart.getFollowers());
-    boolean followerFound = false;
-    for (EntityReference followers : getChart.getFollowers()) {
-      if (followers.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertFalse(followerFound, "Follower deleted is still found in table get response");
-
-    // GET .../users/{userId} shows user as following table
-    checkUserFollowing(userId, chartId, false, authHeaders);
-    return getChart;
-  }
-
   @Override
-  public Object createRequest(TestInfo test, String description, String displayName, EntityReference owner) {
-    return create(test).withDescription(description).withDisplayName(displayName).withOwner(owner);
+  public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {
+    return create(test, index).withDescription(description).withDisplayName(displayName).withOwner(owner);
   }
 
   @Override

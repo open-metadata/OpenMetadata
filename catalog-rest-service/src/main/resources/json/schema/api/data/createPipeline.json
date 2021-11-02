@@ -41,7 +41,7 @@
       "description": "All the tasks that are part of pipeline.",
       "type": "array",
       "items": {
-        "$ref": "../../type/entityReference.json"
+        "$ref": "../../entity/data/pipeline.json#/definitions/task"
       },
       "default": null
     },

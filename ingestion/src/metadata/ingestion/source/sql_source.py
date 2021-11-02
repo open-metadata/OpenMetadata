@@ -177,7 +177,9 @@ class SQLSource(Source):
             query = self.config.query.format(schema, table)
             logger.info(query)
             results = self.connection.execute(query)
-            cols = list(results.keys())
+            cols = []
+            for col in results.keys():
+                cols.append(col.replace(".", "_DOT_"))
             rows = []
             for r in results:
                 row = list(r)
@@ -347,7 +349,8 @@ class SQLSource(Source):
         try:
             for column in columns:
                 if "." in column["name"]:
-                    continue
+                    logger.info(f"Found '.' in {column['name']}")
+                    column["name"] = column["name"].replace(".", "_DOT_")
                 children = None
                 data_type_display = None
                 col_data_length = None
@@ -406,6 +409,11 @@ class SQLSource(Source):
                 if col_data_length is None:
                     col_data_length = 1
                 try:
+                    if col_type == "NULL":
+                        col_type = "VARCHAR"
+                        logger.warning(
+                            f"Unknown type mapped to VARCHAR: {column['name']}"
+                        )
                     om_column = Column(
                         name=column["name"],
                         description=column.get("comment", None),

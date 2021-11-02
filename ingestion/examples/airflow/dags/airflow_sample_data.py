@@ -12,9 +12,10 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-import pathlib
 import json
+import pathlib
 from datetime import timedelta
+
 from airflow import DAG
 
 try:
@@ -22,17 +23,18 @@ try:
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from airflow.utils.dates import days_ago
+
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
     "email": ["username@org.com"],
     "email_on_failure": False,
     "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
+    "retry_delay": timedelta(minutes=2),
+    "execution_timeout": timedelta(minutes=60),
 }
 
 config = """
@@ -57,6 +59,7 @@ config = """
 }
 """
 
+
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
     workflow = Workflow.create(workflow_config)
@@ -72,7 +75,6 @@ with DAG(
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),
     is_paused_upon_creation=False,
-    schedule_interval='*/5 * * * *', 
     catchup=False,
 ) as dag:
     ingest_task = PythonOperator(
