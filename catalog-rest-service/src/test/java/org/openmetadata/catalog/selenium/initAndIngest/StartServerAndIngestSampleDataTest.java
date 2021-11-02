@@ -18,10 +18,8 @@ package org.openmetadata.catalog.selenium.initAndIngest;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.logging.Logger;
 
 public class StartServerAndIngestSampleDataTest {

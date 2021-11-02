@@ -103,8 +103,7 @@ public class TagsPageTest {
     @Order(3)
     public void editTagCategoryDescription() throws InterruptedException {
         openTagsPage();
-        Events.click(webDriver,By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] ")); 
-        // Select the created listed team
+        Events.click(webDriver,By.xpath("//*[text()[contains(.,'" + tagCategoryDisplayName +"')]] "));
         Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(enterDescription)));
         wait.until(ExpectedConditions.elementToBeClickable(

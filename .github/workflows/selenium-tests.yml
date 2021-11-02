@@ -23,7 +23,7 @@ jobs:
         distribution: 'adopt'
 
     - name: Start Server and Ingest Sample Data
-      run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.initAndIngest.StartServerAndIngestSampleDataTest.java" -DfailIfNoTests=false
+      run: ./bin/initAndIngest.sh
 
     - name: Run Page Tests
       run: mvn clean test -Dtest="org.openmetadata.catalog.selenium.pages.**.*.java" -DfailIfNoTests=false

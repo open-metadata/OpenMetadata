@@ -7,7 +7,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class Events {
 
-
     public static void click(WebDriver driver, By by) {
         (new WebDriverWait(driver, 30)).until(ExpectedConditions.elementToBeClickable(by));
         driver.findElement(by).click();
