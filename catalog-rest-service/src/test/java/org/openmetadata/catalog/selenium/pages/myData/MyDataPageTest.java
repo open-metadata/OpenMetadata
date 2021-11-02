@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.selenium.pages.myData;
 
+import org.openmetadata.catalog.selenium.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -40,6 +41,11 @@ public class MyDataPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
+    public void click(WebDriver driver, By by) {
+        wait.until(ExpectedConditions.elementToBeClickable(by));
+        driver.findElement(by).click();
+    }
+
     @BeforeEach
     public void openMetadataWindow() {
         System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
@@ -47,7 +53,7 @@ public class MyDataPageTest {
         options.addArguments("--headless");
         webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofMinutes(1));
+        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
@@ -55,52 +61,39 @@ public class MyDataPageTest {
     @Test
     @Order(1)
     public void checkWhatsNew() {
-        webDriver.findElement(
-                By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")).click(); // What's new page 2
-        webDriver.findElement(
-                By.xpath("//ul[@class='slick-dots testid-dots-button']//li[3]")).click(); // What's new page 3
-        webDriver.findElement(
-                By.xpath("//ul[@class='slick-dots testid-dots-button']//li[4]")).click(); // What's new page 4
-        webDriver.findElement(
-                By.xpath("//ul[@class='slick-dots testid-dots-button']//li[5]")).click(); // What's new page 5
-        webDriver.findElement(By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")).click(); // Change Logs
-        webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
+        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[2]")); // What's new page 2
+        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[3]")); // What's new page 3
+        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[4]")); // What's new page 4
+        Events.click(webDriver, By.xpath("//ul[@class='slick-dots testid-dots-button']//li[5]")); // What's new page 5
+        Events.click(webDriver, By.cssSelector("[data-testid='WhatsNewModalChangeLogs']")); // Change Logs
+        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
     }
 
     @Test
     @Order(2)
     public void checkTabs() {
         checkWhatsNew();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='tab'][id='myDataTab']")))).click(); // My Data
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='tab'][id='followingTab']")))).click(); // Following
+        Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='myDataTab']")); // My Data
+        Events.click(webDriver, By.cssSelector("[data-testid='tab'][id='followingTab']")); // Following
     }
 
     @Test
     @Order(3)
     public void checkOverview() throws InterruptedException {
         checkWhatsNew();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='tables']")));
-        webDriver.findElement(By.cssSelector("[data-testid='tables']")).click(); // Tables
+        Events.click(webDriver, By.cssSelector("[data-testid='tables']")); // Tables
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='topics']")));
-        webDriver.findElement(By.cssSelector("[data-testid='topics']")).click(); // Topics
+        Events.click(webDriver, By.cssSelector("[data-testid='topics']")); // Topics
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='dashboards']")));
-        webDriver.findElement(By.cssSelector("[data-testid='dashboards']")).click(); // Dashboard
+        Events.click(webDriver, By.cssSelector("[data-testid='dashboards']")); // Dashboard
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='pipelines']")));
-        webDriver.findElement(By.cssSelector("[data-testid='pipelines']")).click(); // Pipeline
+        Events.click(webDriver, By.cssSelector("[data-testid='pipelines']")); // Pipeline
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='service']")));
-        webDriver.findElement(By.cssSelector("[data-testid='service']")).click(); // Services
+        Events.click(webDriver, By.cssSelector("[data-testid='service']")); // Services
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='user']")));
-        webDriver.findElement(By.cssSelector("[data-testid='user']")).click(); // Users
+        Events.click(webDriver, By.cssSelector("[data-testid='user']")); // Users
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='terms']")));
-        webDriver.findElement(By.cssSelector("[data-testid='terms']")).click();  // Teams
+        Events.click(webDriver, By.cssSelector("[data-testid='terms']"));  // Teams
     }
 
     @Test
@@ -111,9 +104,7 @@ public class MyDataPageTest {
                 webDriver.findElement(By.cssSelector("[id='searchBox']")))); // Search bar/dim
         webDriver.findElement(By.cssSelector("[id='searchBox']")).sendKeys("dim"); // Search bar/dim
         Thread.sleep(waitTime);
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='data-name']")))); // Search bar/dim
-        webDriver.findElement(By.cssSelector("[data-testid='data-name']")).click(); // Search bar/dim
+        Events.click(webDriver, By.cssSelector("[data-testid='data-name']")); // Search bar/dim
     }
 
 
@@ -122,49 +113,28 @@ public class MyDataPageTest {
     public void checkHeaders() {
         checkWhatsNew();
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
-        webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
+        Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Teams']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Teams']")).click(); // Setting/Teams
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Teams']")); // Setting/Teams
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Tags']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Tags']")).click(); // Setting/Tags
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Tags']")); // Setting/Tags
         webDriver.navigate().back();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
-        webDriver.findElement(By.cssSelector("[data-testid='whatsnew-modal']")).click(); // What's New
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+        Events.click(webDriver, By.cssSelector("[data-testid='whatsnew-modal']")); // What's New
         checkWhatsNew();
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Docs']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Docs']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Docs']"));
         webDriver.switchTo().window(tabs.get(0));
 
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-API']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-API']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-API']"));
         webDriver.navigate().back();
 
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']")).click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Slack']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Slack']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Need Help']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Slack']"));
         webDriver.switchTo().window(tabs.get(0));
     }
 
@@ -172,8 +142,8 @@ public class MyDataPageTest {
     @Order(6)
     public void checkLogout() {
         checkWhatsNew();
-        webDriver.findElement(By.cssSelector("[data-testid='greeting-text']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Logout']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='greeting-text']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Logout']"));
     }
 
     @AfterEach

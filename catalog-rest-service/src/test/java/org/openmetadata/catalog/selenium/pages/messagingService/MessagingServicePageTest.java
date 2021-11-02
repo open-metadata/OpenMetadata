@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.messagingService;
 
 import com.github.javafaker.Faker;
+import org.openmetadata.catalog.selenium.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
@@ -54,7 +55,7 @@ public class MessagingServicePageTest {
         options.addArguments("--headless");
         webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofMinutes(1));
+        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
@@ -62,15 +63,10 @@ public class MessagingServicePageTest {
     @Test
     @Order(1)
     public void openMessagingServicePage() throws InterruptedException {
-        webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("(//button[@data-testid='tab'])[2]")));
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]"));
         Thread.sleep(waitTime);
     }
 
@@ -78,64 +74,59 @@ public class MessagingServicePageTest {
     @Order(2)
     public void addMessagingService() throws InterruptedException {
         openMessagingServicePage();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='add-new-user-button']")));
-        webDriver.findElement(By.cssSelector("[data-testid='add-new-user-button']")).click();
-        webDriver.findElement(By.cssSelector("[value='Kafka']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        Events.click(webDriver, By.cssSelector("[value='Kafka']"));
         webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);
         webDriver.findElement(By.cssSelector("[data-testid='broker-url']")).sendKeys("localhost:9092");
         webDriver.findElement(
                 By.cssSelector("[data-testid='schema-registry']")).sendKeys("http://localhost:8081");
 
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='boldButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='boldButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='italicButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='italicButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='linkButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='linkButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save-button']")));
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
     @Test
     @Order(3)
     public void editMessagingService() throws InterruptedException {
         openMessagingServicePage();
-        webDriver.findElement(By.xpath("(//button[@data-testid='edit-service'])[2]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[2]"));
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
     @Test
     @Order(4)
     public void checkMessagingServiceDetails() throws InterruptedException {
         openMessagingServicePage();
-        webDriver.findElement(By.xpath("(//h6[@data-testid='service-name'])[2]")).click();
+        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[2]"));
         Thread.sleep(waitTime);
-        webDriver.findElement(By.cssSelector("[data-testid='description-edit']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
     @Test
@@ -143,16 +134,17 @@ public class MessagingServicePageTest {
     public void searchMessagingService() throws InterruptedException {
         openMessagingServicePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
-        webDriver.findElement(By.cssSelector("[data-testid='service-name']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
 
     @Test
     @Order(6)
     public void deleteMessagingService() throws InterruptedException {
         openMessagingServicePage();
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
-        webDriver.findElement(By.xpath("(//button[@data-testid='delete-service'])[2]")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
 
