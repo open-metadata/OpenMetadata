@@ -86,7 +86,7 @@ export interface Pipeline {
   /**
    * All the tasks that are part of pipeline.
    */
-  tasks?: EntityReference[];
+  tasks?: Task[];
   /**
    * Last update time corresponding to the new version of the entity.
    */
@@ -208,4 +208,46 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
+}
+
+export interface Task {
+  /**
+   * Description of this Task.
+   */
+  description?: string;
+  /**
+   * Display Name that identifies this Task. It could be title or label from the pipeline
+   * services.
+   */
+  displayName?: string;
+  /**
+   * All the tasks that are downstream of this task.
+   */
+  downstreamTasks?: string[];
+  /**
+   * A unique name that identifies a pipeline in the format
+   * 'ServiceName.PipelineName.TaskName'.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Name that identifies this task instance uniquely.
+   */
+  name: string;
+  /**
+   * Tags for this task.
+   */
+  tags?: TagLabel[];
+  /**
+   * SQL used in the task. Can be used to determine the lineage.
+   */
+  taskSQL?: string;
+  /**
+   * Type of the Task. Usually refers to the class it implements.
+   */
+  taskType?: string;
+  /**
+   * Task URL to visit/manage. This URL points to respective pipeline service UI.
+   */
+  taskUrl?: string;
+  id: any;
 }

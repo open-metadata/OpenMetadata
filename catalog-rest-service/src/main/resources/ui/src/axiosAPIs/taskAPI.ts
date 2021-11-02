@@ -1,5 +1,5 @@
 import { AxiosResponse } from 'axios';
-import { Task } from '../generated/entity/data/task';
+import { Task } from '../generated/entity/data/pipeline';
 import { getURLWithQueryFields } from '../utils/APIUtils';
 import APIClient from './index';
 
