@@ -312,6 +312,7 @@ const DashboardDetails = ({
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
+                        entityName={entityName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         owner={owner}

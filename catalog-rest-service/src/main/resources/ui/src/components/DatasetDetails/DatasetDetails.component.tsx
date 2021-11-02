@@ -342,6 +342,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
+                    entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
                     owner={owner}

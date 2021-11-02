@@ -7,6 +7,7 @@ import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
 
 type Props = {
+  entityName?: string;
   owner?: Table['owner'];
   hasEditAccess?: boolean;
   description: string;
@@ -27,6 +28,7 @@ const Description = ({
   onCancel,
   onDescriptionUpdate,
   isReadOnly = false,
+  entityName,
 }: Props) => {
   return (
     <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-168 tw-relative tw-border tw-border-main tw-rounded-md">
@@ -64,7 +66,7 @@ const Description = ({
         </div>
         {isEdit && (
           <ModalWithMarkdownEditor
-            header={`Edit description for ${name}`}
+            header={`Edit description for ${entityName}`}
             placeholder="Enter Description"
             value={description}
             onCancel={onCancel}
