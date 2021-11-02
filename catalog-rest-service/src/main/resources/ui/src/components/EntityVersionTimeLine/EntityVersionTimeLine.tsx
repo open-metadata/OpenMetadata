@@ -53,7 +53,7 @@ const EntityVersionTimeLine = ({
                 'tw-text-primary-active':
                   toString(currV?.version) === currentVersion,
               })}>
-              v{currV?.version}
+              v{parseFloat(currV?.version).toFixed(1)}
             </p>
             <p className="tw-text-xs">
               <span className="tw-font-normal">{currV?.updatedBy}</span>

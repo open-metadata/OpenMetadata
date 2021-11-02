@@ -166,7 +166,7 @@ const EntityPageInfo = ({
                   <span
                     className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
                     data-testid="getversions">
-                    {version}
+                    {parseFloat(version).toFixed(1)}
                   </span>
                 </span>
               </div>
