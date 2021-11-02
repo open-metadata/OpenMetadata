@@ -93,6 +93,12 @@ const MyDataHeader: FunctionComponent<Props> = ({
         link: `/teams`,
         dataTestId: 'terms',
       },
+      thesaureses: {
+        icon: Icons.TERMS,
+        data: `${entityCounts.thesaurusCount} Thesauruses`,
+        link: `/explore/thesauruses`,
+        dataTestId: 'thesauruses',
+      },
     };
   };
 

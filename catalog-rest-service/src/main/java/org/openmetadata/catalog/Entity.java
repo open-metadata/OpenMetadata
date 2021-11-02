@@ -61,6 +61,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MLMODEL = "mlModel";
   public static final String DBTMODEL = "dbtmodel";
+  public static final String THESAURUS = "thesaurus";
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 

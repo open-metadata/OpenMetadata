@@ -396,6 +396,8 @@ public class ElasticSearchEventHandler implements EventHandler {
       return "pipeline_search_index";
     } else if (type.equalsIgnoreCase("topic")) {
       return "topic_search_index";
+    } else if (type.equalsIgnoreCase("thesaurus")) {
+      return "thesaurus_search_index";
     }
     throw new RuntimeException("Failed to find index doc for type {}".format(type));
   }

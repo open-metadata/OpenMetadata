@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.dbtmodel import DbtModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.thesaurus import Thesaurus
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
@@ -39,6 +40,7 @@ from metadata.ingestion.models.table_metadata import (
     DbtModelESDocument,
     PipelineESDocument,
     TableESDocument,
+    ThesaurusESDocument,
     TopicESDocument,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -48,6 +50,7 @@ from metadata.ingestion.sink.elasticsearch_constants import (
     DBT_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
     TABLE_ELASTICSEARCH_INDEX_MAPPING,
+    THESAURUS_ELASTICSEARCH_INDEX_MAPPING,
     TOPIC_ELASTICSEARCH_INDEX_MAPPING,
 )
 
@@ -61,10 +64,12 @@ class ElasticSearchConfig(ConfigModel):
     es_password: Optional[str] = None
     index_tables: Optional[bool] = True
     index_topics: Optional[bool] = True
+    index_thesauruses: Optional[bool] = True
     index_dashboards: Optional[bool] = True
     index_pipelines: Optional[bool] = True
     index_dbt_models: Optional[bool] = True
     table_index_name: str = "table_search_index"
+    thesaurus_index_name: str = "thesaurus_search_index"
     topic_index_name: str = "topic_search_index"
     dashboard_index_name: str = "dashboard_search_index"
     pipeline_index_name: str = "pipeline_search_index"
@@ -109,6 +114,10 @@ class ElasticsearchSink(Sink):
         if self.config.index_tables:
             self._check_or_create_index(
                 self.config.table_index_name, TABLE_ELASTICSEARCH_INDEX_MAPPING
+            )
+        if self.config.index_thesauruses:
+            self._check_or_create_index(
+                self.config.thesaurus_index_name, THESAURUS_ELASTICSEARCH_INDEX_MAPPING
             )
         if self.config.index_topics:
             self._check_or_create_index(
@@ -160,6 +169,13 @@ class ElasticsearchSink(Sink):
                 index=self.config.table_index_name,
                 id=str(table_doc.table_id),
                 body=table_doc.json(),
+            )
+        if isinstance(record, Thesaurus):
+            thesaurus_doc = self._create_thesaurus_es_doc(record)
+            self.elasticsearch_client.index(
+                index=self.config.thesaurus_index_name,
+                id=str(thesaurus_doc.thesaurus_id),
+                body=thesaurus_doc.json(),
             )
         if isinstance(record, Topic):
             topic_doc = self._create_topic_es_doc(record)
@@ -471,6 +487,61 @@ class ElasticsearchSink(Sink):
             followers=dbt_model_followers,
         )
         return dbt_model_doc
+
+    def _create_thesaurus_es_doc(self, thesaurus: Thesaurus):
+        fqdn = thesaurus.fullyQualifiedName
+        suggest = [
+            {
+                "input": [
+                    thesaurus.displayName if thesaurus.displayName else thesaurus.name
+                ],
+                "weight": 10,
+            }
+        ]
+        tags = set()
+        timestamp = time.time()
+        thesaurus_owner = (
+            str(thesaurus.owner.id.__root__) if thesaurus.owner is not None else ""
+        )
+        thesaurus_followers = []
+        if thesaurus.followers:
+            for follower in thesaurus.followers.__root__:
+                thesaurus_followers.append(str(follower.id.__root__))
+        tier = None
+        for thesaurus_tag in thesaurus.tags:
+            if "Tier" in thesaurus_tag.tagFQN:
+                tier = thesaurus_tag.tagFQN
+            else:
+                tags.add(thesaurus_tag.tagFQN)
+        # tasks: List[Task] = thesaurus.tasks  # TODO Handle Thesaurus words
+        # task_names = []
+        # task_descriptions = []
+        # for task in tasks:
+        #     task_names.append(task.displayName)
+        #     if task.description is not None:
+        #         task_descriptions.append(task.description)
+        #     if tags in task and len(task.tags) > 0:
+        #         for col_tag in task.tags:
+        #             tags.add(col_tag.tagFQN)
+
+        thesaurus_doc = ThesaurusESDocument(
+            thesaurus_id=str(thesaurus.id.__root__),
+            thesaurus_name=thesaurus.displayName
+            if thesaurus.displayName
+            else thesaurus.name,
+            # task_names=task_names,   # TODO Handle Thesaurus words
+            # task_descriptions=task_descriptions,
+            suggest=suggest,
+            description=thesaurus.description,
+            last_updated_timestamp=timestamp,
+            tier=tier,
+            tags=list(tags),
+            fqdn=fqdn,
+            owner=thesaurus_owner,
+            followers=thesaurus_followers,
+        )
+
+        return thesaurus_doc
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []

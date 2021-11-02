@@ -1,0 +1,80 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/data/thesaurus.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Thesaurus",
+    "description": "This schema defines the Thesaurus entity based on SKOS.",
+    "type": "object",
+  
+    "properties" : {
+      "id": {
+        "description": "Unique identifier of a thesaurus instance.",
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "name": {
+        "description": "Name that identifies this thesaurus.",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "fullyQualifiedName": {
+        "description": "A unique name that identifies a thesaurus.",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "displayName": {
+        "description": "Display Name that identifies this thesaurus.",
+        "type": "string"
+      },
+      "version" : {
+        "description": "Metadata version of the entity.",
+        "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+      },
+      "updatedAt" : {
+        "description": "Last update time corresponding to the new version of the entity.",
+        "$ref": "../../type/basic.json#/definitions/dateTime"
+      },
+      "updatedBy" : {
+        "description": "User who made the update.",
+        "type": "string"
+      },
+      "description": {
+        "description": "Description of the thesaurus.",
+        "type": "string"
+      },
+      "skos": {
+        "description": "SKOS data in JSON-LD format",
+        "type": "string"
+      },
+      "href": {
+        "description": "Link to the resource corresponding to this entity.",
+        "$ref": "../../type/basic.json#/definitions/href"
+      },
+      "owner": {
+        "description": "Owner of this thesaurus.",
+        "$ref": "../../type/entityReference.json"
+      },
+      "followers": {
+        "description": "Followers of this thesaurus.",
+        "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+      },
+      "tags": {
+        "description": "Tags for this thesaurus.",
+        "type": "array",
+        "items": {
+          "$ref": "../../type/tagLabel.json"
+        },
+        "default": null
+      },
+      "usageSummary" : {
+        "description": "Latest usage information for this thesaurus.",
+        "$ref": "../../type/usageDetails.json",
+        "default": null
+      },
+      "changeDescription": {
+        "description" : "Change that lead to this version of the entity.",
+        "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+      }
+    },
+    "required": ["id", "name"]
+  }

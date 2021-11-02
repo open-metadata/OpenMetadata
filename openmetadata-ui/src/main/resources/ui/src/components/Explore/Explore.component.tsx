@@ -74,6 +74,7 @@ const Explore: React.FC<ExploreProps> = ({
   updateTopicCount,
   updateDashboardCount,
   updatePipelineCount,
+  updateThesaurusCount,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -196,6 +197,10 @@ const Explore: React.FC<ExploreProps> = ({
         break;
       case SearchIndex.PIPELINE:
         updatePipelineCount(count);
+
+        break;
+      case SearchIndex.THESAURUS:
+        updateThesaurusCount(count);
 
         break;
       default:
@@ -339,6 +344,8 @@ const Explore: React.FC<ExploreProps> = ({
         return getCountBadge(tabCounts.dashboard);
       case SearchIndex.PIPELINE:
         return getCountBadge(tabCounts.pipeline);
+      case SearchIndex.THESAURUS:
+        return getCountBadge(tabCounts.thesaurus);
       default:
         return getCountBadge();
     }

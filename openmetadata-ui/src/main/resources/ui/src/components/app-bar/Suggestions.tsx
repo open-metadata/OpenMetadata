@@ -55,9 +55,18 @@ type PipelineSource = {
   pipeline_name: string;
 } & CommonSource;
 
+type ThesaurusSource = {
+  thesaurus_id: string;
+  thesaurus_name: string;
+} & CommonSource;
+
 type Option = {
   _index: string;
-  _source: TableSource & DashboardSource & TopicSource & PipelineSource;
+  _source: TableSource &
+    DashboardSource &
+    TopicSource &
+    PipelineSource &
+    ThesaurusSource;
 };
 
 const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
@@ -69,6 +78,9 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
   >([]);
   const [pipelineSuggestions, setPipelineSuggestions] = useState<
     PipelineSource[]
+  >([]);
+  const [thesaurusSuggestions, setThesaurusSuggestions] = useState<
+    ThesaurusSource[]
   >([]);
 
   const isMounting = useRef(true);
@@ -94,6 +106,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
         .filter((option) => option._index === SearchIndex.PIPELINE)
         .map((option) => option._source)
     );
+    setThesaurusSuggestions(
+      options
+        .filter((option) => option._index === SearchIndex.THESAURUS)
+        .map((option) => option._source)
+    );
   };
 
   const getGroupLabel = (index: string) => {
@@ -113,6 +130,11 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
       case SearchIndex.PIPELINE:
         label = 'Pipelines';
         icon = Icons.PIPELINE_GREY;
+
+        break;
+      case SearchIndex.THESAURUS:
+        label = 'Thesauruses';
+        icon = Icons.THESAURUS_GREY;
 
         break;
       case SearchIndex.TABLE:
@@ -229,6 +251,24 @@ const Suggestions = ({ searchText, isOpen, setIsOpen }: SuggestionProp) => {
                 serviceType,
                 name,
                 SearchIndex.PIPELINE
+              );
+            })}
+          </>
+        )}
+        {thesaurusSuggestions.length > 0 && (
+          <>
+            {getGroupLabel(SearchIndex.THESAURUS)}
+
+            {thesaurusSuggestions.map((suggestion: ThesaurusSource) => {
+              const fqdn = suggestion.fqdn;
+              const name = suggestion.thesaurus_name;
+              const serviceType = suggestion.service_type;
+
+              return getSuggestionElement(
+                fqdn,
+                serviceType,
+                name,
+                SearchIndex.THESAURUS
               );
             })}
           </>

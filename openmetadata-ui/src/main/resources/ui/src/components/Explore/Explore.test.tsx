@@ -68,10 +68,12 @@ describe('Test Explore component', () => {
           topic: 2,
           dashboard: 8,
           pipeline: 5,
+          thesaurus: 3,
         }}
         updateDashboardCount={mockFunction}
         updatePipelineCount={mockFunction}
         updateTableCount={mockFunction}
+        updateThesaurusCount={mockFunction}
         updateTopicCount={mockFunction}
       />,
       {

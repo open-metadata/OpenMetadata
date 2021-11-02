@@ -20,13 +20,14 @@ import { getCurrentUserId } from '../utils/CommonUtils';
 import { getFilterString } from '../utils/FilterUtils';
 
 export const myDataSearchIndex =
-  'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index';
+  'dashboard_search_index,topic_search_index,table_search_index,pipeline_search_index,thesaurus_search_index';
 
 export const myDataEntityCounts = {
   tableCount: 0,
   topicCount: 0,
   dashboardCount: 0,
   pipelineCount: 0,
+  thesaurusCount: 0,
 };
 
 export const myDataFilterType = [

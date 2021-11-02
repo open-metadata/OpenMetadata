@@ -13,6 +13,7 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Thesaurus } from '../generated/entity/data/thesaurus';
 import { TagLabel } from '../generated/type/tagLabel';
 import { getPartialNameFromFQN } from './CommonUtils';
 import {
@@ -27,7 +28,8 @@ export const getEntityTags = (
   entityDetail: Partial<Table> &
     Partial<Pipeline> &
     Partial<Dashboard> &
-    Partial<Topic>
+    Partial<Topic> &
+    Partial<Thesaurus>
 ): Array<string | undefined> => {
   switch (type) {
     case EntityType.TABLE: {
@@ -52,7 +54,8 @@ export const getEntityOverview = (
   entityDetail: Partial<Table> &
     Partial<Pipeline> &
     Partial<Dashboard> &
-    Partial<Topic>,
+    Partial<Topic> &
+    Partial<Thesaurus>,
   serviceType: string
 ): Array<{
   name: string;
@@ -218,6 +221,7 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
     topicCount: 0,
     dashboardCount: 0,
     pipelineCount: 0,
+    thesaurusCount: 0,
   };
   buckets?.forEach((bucket) => {
     switch (bucket.key) {
@@ -235,6 +239,10 @@ export const getEntityCountByType = (buckets: Array<Bucket>) => {
         break;
       case EntityType.PIPELINE:
         entityCounts.pipelineCount += bucket.doc_count;
+
+        break;
+      case EntityType.THESAURUS:
+        entityCounts.thesaurusCount += bucket.doc_count;
 
         break;
       default:

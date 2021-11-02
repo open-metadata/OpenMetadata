@@ -36,6 +36,7 @@ import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
+import org.openmetadata.catalog.entity.data.Thesaurus;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
@@ -58,6 +59,7 @@ import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServic
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.MlModelRepository.MlModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.DbtModelRepository.DbtModelEntityInterface;
+import org.openmetadata.catalog.jdbi3.ThesaurusRepository.ThesaurusEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
@@ -130,6 +132,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   MlModelDAO mlModelDAO();
+  
+  @CreateSqlObject
+  ThesaurusDAO thesaurusDAO();
 
   @CreateSqlObject
   BotsDAO botsDAO();
@@ -525,6 +530,22 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(DbtModel entity) {
       return new DbtModelEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface ThesaurusDAO extends EntityDAO<Thesaurus>{
+    @Override
+    default String getTableName() { return "thesaurus_entity"; }
+
+    @Override
+    default Class<Thesaurus> getEntityClass() { return Thesaurus.class; }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Thesaurus entity) {
+      return new ThesaurusEntityInterface(entity).getEntityReference();
     }
   }
 

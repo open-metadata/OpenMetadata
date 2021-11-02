@@ -16,7 +16,9 @@
 
 package org.openmetadata.catalog.security;
 
+import com.auth0.jwk.InvalidPublicKeyException;
 import com.auth0.jwk.Jwk;
+import com.auth0.jwk.JwkException;
 import com.auth0.jwk.UrlJwkProvider;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -35,7 +37,9 @@ import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.UriInfo;
 import javax.ws.rs.ext.Provider;
 import java.lang.invoke.MethodHandles;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Calendar;
 
@@ -78,10 +82,42 @@ public class JwtFilter implements ContainerRequestFilter {
       throw new AuthenticationException("Expired token!");
     }
     //Validate JWT with public key
-    final URI uri = new URI(publicKeyUri).normalize();
-    UrlJwkProvider urlJwkProvider = new UrlJwkProvider(uri.toURL());
-    Jwk jwk = urlJwkProvider.get(jwt.getKeyId());
-    Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+    URI uri;
+    try {
+      uri = new URI(publicKeyUri).normalize();
+    } catch (URISyntaxException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      return;
+    }
+    UrlJwkProvider urlJwkProvider;
+    try {
+      urlJwkProvider = new UrlJwkProvider(uri.toURL());
+    } catch (MalformedURLException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      return;
+    }
+    Jwk jwk;
+    try {
+      jwk = urlJwkProvider.get(jwt.getKeyId());
+    } catch (JwkException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      return;
+    }
+    Algorithm algorithm;
+    try {
+      algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
+    } catch (IllegalArgumentException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      return;
+    } catch (InvalidPublicKeyException e) {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+      return;
+    }
     try {
       algorithm.verify(jwt);
     } catch (RuntimeException runtimeException) {

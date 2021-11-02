@@ -35,6 +35,7 @@ export interface ExploreProps {
     topic: number;
     dashboard: number;
     pipeline: number;
+    thesaurus: number;
   };
   searchText: string;
   sortValue: string;
@@ -45,6 +46,7 @@ export interface ExploreProps {
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;
+  updateThesaurusCount: (count: number) => void;
   updateTopicCount: (count: number) => void;
   updateDashboardCount: (count: number) => void;
   updatePipelineCount: (count: number) => void;

@@ -22,6 +22,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.catalog.CatalogApplication;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
@@ -38,6 +39,8 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -69,6 +72,8 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 @Slf4j
 public class PolicyResourceTest extends CatalogApplicationTest {
+    public static final Logger LOG = LoggerFactory.getLogger(CatalogApplication.class);
+
     public static User USER1;
     public static EntityReference USER_OWNER1;
     public static Team TEAM1;
@@ -220,7 +225,7 @@ public class PolicyResourceTest extends CatalogApplicationTest {
             PolicyList forwardPage;
             PolicyList backwardPage;
             do { // For each limit (or page size) - forward scroll till the end
-                log.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
+                LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
                 forwardPage = listPolicies(null, limit, null, after, adminAuthHeaders());
                 printPolicies(forwardPage);
                 after = forwardPage.getPaging().getAfter();
@@ -243,7 +248,7 @@ public class PolicyResourceTest extends CatalogApplicationTest {
             pageCount = 0;
             indexInAllPolicies = totalRecords - limit - forwardPage.getData().size();
             do {
-                log.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
+                LOG.info("Limit {} backward scrollCount {} beforeCursor {}", limit, pageCount, before);
                 forwardPage = listPolicies(null, limit, before, null, adminAuthHeaders());
                 printPolicies(forwardPage);
                 before = forwardPage.getPaging().getBefore();
@@ -255,8 +260,8 @@ public class PolicyResourceTest extends CatalogApplicationTest {
     }
 
     private void printPolicies(PolicyList list) {
-        list.getData().forEach(Policy -> log.info("DB {}", Policy.getFullyQualifiedName()));
-        log.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
+        list.getData().forEach(Policy -> LOG.info("DB {}", Policy.getFullyQualifiedName()));
+        LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
     }
 
     @Test

@@ -137,6 +137,8 @@ public class SearchResource {
       searchSourceBuilder = buildPipelineSearchBuilder(query, from, size);
     } else if (index.equals("dbt_model_search_index")) {
       searchSourceBuilder = buildDbtModelSearchBuilder(query, from, size);
+    } else if (index.equals("thesaurus_search_index")) {
+      searchSourceBuilder = buildThesaurusSearchBuilder(query, from, size);
     } else {
       searchSourceBuilder = buildTableSearchBuilder(query, from, size);
     }
@@ -367,4 +369,30 @@ public class SearchResource {
 
     return searchSourceBuilder;
   }
+
+  private SearchSourceBuilder buildThesaurusSearchBuilder(String query, int from, int size) {
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        HighlightBuilder.Field highlightThesaurusName =
+                new HighlightBuilder.Field("thesaurus_name");
+        highlightThesaurusName.highlighterType("unified");
+        HighlightBuilder.Field highlightDescription =
+                new HighlightBuilder.Field("description");
+        highlightDescription.highlighterType("unified");
+        HighlightBuilder hb = new HighlightBuilder();
+        hb.field(highlightDescription);
+        hb.field(highlightThesaurusName);
+        hb.preTags("<span class=\"text-highlighter\">");
+        hb.postTags("</span>");
+        searchSourceBuilder.query(QueryBuilders.queryStringQuery(query)
+                .field("thesaurus_name", 5.0f)
+                .field("description")
+                .lenient(true))
+                .aggregation(AggregationBuilders.terms("EntityType").field("entity_type"))
+                .aggregation(AggregationBuilders.terms("Tier").field("tier"))
+                .aggregation(AggregationBuilders.terms("Tags").field("tags"))
+                .highlighter(hb)
+                .from(from).size(size);
+    
+        return searchSourceBuilder;
+      }
 }

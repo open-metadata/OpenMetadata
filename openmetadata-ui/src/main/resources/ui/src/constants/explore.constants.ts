@@ -179,4 +179,13 @@ export const tabsInfo = [
     path: 'pipelines',
     icon: Icons.PIPELINE_GREY,
   },
+  {
+    label: 'Thesauruses',
+    index: SearchIndex.THESAURUS,
+    sortingFields: topicSortingFields,
+    sortField: '',
+    tab: 5,
+    path: 'thesauruses',
+    icon: Icons.THESAURUS_GREY,
+  },
 ];

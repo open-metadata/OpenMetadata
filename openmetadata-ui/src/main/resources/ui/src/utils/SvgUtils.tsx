@@ -64,6 +64,8 @@ import IconSlack from '../assets/svg/slack.svg';
 import IconTableGrey from '../assets/svg/table-grey.svg';
 import IconTable from '../assets/svg/table.svg';
 import IconTerns from '../assets/svg/terms.svg';
+import IconThesaurus from '../assets/svg/topic.svg';
+import IconThesaurusGrey from '../assets/svg/topic-grey.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
@@ -147,6 +149,8 @@ export const Icons = {
   PROFILER: 'icon-profiler',
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
+  THESAURUS: 'thesaurus',
+  THESAURUS_GREY: 'thesaurus-grey',
   VERSION: 'icon-version',
   VERSION_WHITE: 'icon-version-white',
   ICON_DEPLOY: 'icon-deploy',
@@ -434,6 +438,14 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.PIPELINE_GREY:
       IconComponent = IconPipelineGrey;
+
+      break;
+    case Icons.THESAURUS:
+      IconComponent = IconThesaurus;
+
+      break;
+    case Icons.THESAURUS_GREY:
+      IconComponent = IconThesaurusGrey;
 
       break;
     case Icons.VERSION:

@@ -213,6 +213,7 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
     topicCount: 0,
     dashboardCount: 0,
     pipelineCount: 0,
+    thesaurusCount: 0,
   };
   buckets?.forEach((bucket) => {
     switch (bucket.key) {
@@ -251,6 +252,8 @@ export const getEntityCountByService = (buckets: Array<Bucket>) => {
 
         break;
       default:
+        entityCounts.thesaurusCount += bucket.doc_count;
+
         break;
     }
   });

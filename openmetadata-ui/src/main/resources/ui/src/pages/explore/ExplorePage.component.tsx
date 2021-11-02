@@ -58,6 +58,7 @@ const ExplorePage: FunctionComponent = () => {
   const [topicCount, setTopicCount] = useState<number>(0);
   const [dashboardCount, setDashboardCount] = useState<number>(0);
   const [pipelineCount, setPipelineCount] = useState<number>(0);
+  const [thesaurusCount, setThesaurusCount] = useState<number>(0);
   const [searchResult, setSearchResult] = useState<ExploreSearchData>();
   const [initialSortField] = useState<string>(
     searchQuery
@@ -85,6 +86,10 @@ const ExplorePage: FunctionComponent = () => {
     setPipelineCount(count);
   };
 
+  const handleThesaurusCount = (count: number) => {
+    setThesaurusCount(count);
+  };
+
   const handlePathChange = (path: string) => {
     AppState.explorePageTab = path;
   };
@@ -95,6 +100,7 @@ const ExplorePage: FunctionComponent = () => {
       SearchIndex.TOPIC,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
+      SearchIndex.THESAURUS,
     ];
 
     const entityCounts = entities.map((entity) =>
@@ -116,6 +122,7 @@ const ExplorePage: FunctionComponent = () => {
           topic,
           dashboard,
           pipeline,
+          thesaurus,
         ]: PromiseSettledResult<SearchResponse>[]) => {
           setTableCount(
             table.status === 'fulfilled'
@@ -129,6 +136,14 @@ const ExplorePage: FunctionComponent = () => {
             topic.status === 'fulfilled'
               ? getTotalEntityCountByService(
                   topic.value.data.aggregations?.['sterms#Service']
+                    ?.buckets as Bucket[]
+                )
+              : 0
+          );
+          setThesaurusCount(
+            thesaurus.status === 'fulfilled'
+              ? getTotalEntityCountByService(
+                  thesaurus.value.data.aggregations?.['sterms#Service']
                     ?.buckets as Bucket[]
                 )
               : 0
@@ -258,10 +273,12 @@ const ExplorePage: FunctionComponent = () => {
             topic: topicCount,
             dashboard: dashboardCount,
             pipeline: pipelineCount,
+            thesaurus: thesaurusCount,
           }}
           updateDashboardCount={handleDashboardCount}
           updatePipelineCount={handlePipelineCount}
           updateTableCount={handleTableCount}
+          updateThesaurusCount={handleThesaurusCount}
           updateTopicCount={handleTopicCount}
         />
       )}
