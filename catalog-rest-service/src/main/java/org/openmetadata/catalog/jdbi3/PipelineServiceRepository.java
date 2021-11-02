@@ -25,9 +25,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -51,7 +51,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   public PipelineService update(UUID id, String description, URI url,
                                  Schedule ingestionSchedule)
           throws IOException {
-    Utils.validateIngestionSchedule(ingestionSchedule);
+    EntityUtil.validateIngestionSchedule(ingestionSchedule);
     PipelineService pipelineService = dao.pipelineServiceDAO().findEntityById(id);
     // Update fields
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
@@ -86,7 +86,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
   @Override
   public void validate(PipelineService entity) throws IOException {
-    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override
