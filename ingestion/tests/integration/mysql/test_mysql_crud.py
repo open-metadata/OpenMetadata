@@ -28,12 +28,12 @@ from metadata.generated.schema.api.data.createTable import CreateTableEntityRequ
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 def is_responsive(url):
@@ -45,8 +45,8 @@ def is_responsive(url):
         return False
 
 
-def create_delete_table(client):
-    databases = client.list_databases()
+def create_delete_table(client: OpenMetadata):
+    databases = client.list_entities(entity=Database).entities
     columns = [
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
@@ -54,7 +54,7 @@ def create_delete_table(client):
     table = CreateTableEntityRequest(
         name="test1", columns=columns, database=databases[0].id
     )
-    created_table = client.create_or_update_table(table)
+    created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
         requests.delete(
             "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
@@ -67,7 +67,7 @@ def create_delete_table(client):
         return 0
 
 
-def create_delete_database(client):
+def create_delete_database(client: OpenMetadata):
     data = {
         "jdbc": {
             "connectionUrl": "mysql://localhost/catalog_db",
@@ -78,15 +78,15 @@ def create_delete_database(client):
         "description": "local mysql env",
     }
     create_mysql_service = CreateDatabaseServiceEntityRequest(**data)
-    mysql_service = client.create_database_service(create_mysql_service)
+    mysql_service = client.create_or_update(create_mysql_service)
     create_database_request = CreateDatabaseEntityRequest(
         name="dwh", service=EntityReference(id=mysql_service.id, type="databaseService")
     )
-    created_database = client.create_database(create_database_request)
+    created_database = client.create_or_update(create_database_request)
     resp = create_delete_table(client)
     print(resp)
-    client.delete_database(created_database.id.__root__)
-    client.delete_database_service(mysql_service.id.__root__)
+    client.delete(entity=Database, entity_id=str(created_database.id.__root__))
+    client.delete(entity=DatabaseService, entity_id=str(mysql_service.id.__root__))
     return resp
 
 
@@ -107,8 +107,7 @@ def test_check_tables(catalog_service):
     metadata_config = MetadataServerConfig.parse_obj(
         {"api_endpoint": catalog_service + "/api", "auth_provider_type": "no-auth"}
     )
-    client = OpenMetadataAPIClient(metadata_config)
-    databases = client.list_databases()
+    client = OpenMetadata(metadata_config)
     assert create_delete_database(client)
 
 
