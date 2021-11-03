@@ -423,7 +423,7 @@ const ServicesPage = () => {
             </div>
             <div className="tw-flex">
               <div className="tw-w-4/12">
-                {searchText || serviceList.length > 0 ? (
+                {searchText || serviceList.length > 10 ? (
                   <Searchbar
                     placeholder={`Search for ${servicesDisplayName[serviceName]}...`}
                     searchValue={searchText}

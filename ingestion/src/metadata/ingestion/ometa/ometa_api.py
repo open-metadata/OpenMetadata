@@ -297,28 +297,36 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         resp = method(self.get_suffix(entity), data=data.json())
         return entity_class(**resp)
 
-    def get_by_name(self, entity: Type[T], fqdn: str) -> Optional[T]:
+    def get_by_name(
+        self, entity: Type[T], fqdn: str, fields: Optional[List[str]] = None
+    ) -> Optional[T]:
         """
         Return entity by name or None
         """
 
-        return self._get(entity=entity, path=f"name/{fqdn}")
+        return self._get(entity=entity, path=f"name/{fqdn}", fields=fields)
 
-    def get_by_id(self, entity: Type[T], entity_id: str) -> Optional[T]:
+    def get_by_id(
+        self, entity: Type[T], entity_id: str, fields: Optional[List[str]] = None
+    ) -> Optional[T]:
         """
         Return entity by ID or None
         """
 
-        return self._get(entity=entity, path=entity_id)
+        return self._get(entity=entity, path=entity_id, fields=fields)
 
-    def _get(self, entity: Type[T], path: str) -> Optional[T]:
+    def _get(
+        self, entity: Type[T], path: str, fields: Optional[List[str]] = None
+    ) -> Optional[T]:
         """
         Generic GET operation for an entity
         :param entity: Entity Class
         :param path: URL suffix by FQDN or ID
+        :param fields: List of fields to return
         """
+        fields_str = "?fields=" + ",".join(fields) if fields else ""
         try:
-            resp = self.client.get(f"{self.get_suffix(entity)}/{path}")
+            resp = self.client.get(f"{self.get_suffix(entity)}/{path}{fields_str}")
             return entity(**resp)
         except APIError as err:
             logger.error(
