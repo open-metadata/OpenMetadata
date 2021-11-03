@@ -177,7 +177,7 @@ class MetadataSource(Source):
                     after=after,
                     limit=self.config.limit_records,
                 )
-                for pipeline in pipeline_entities.pipelines:
+                for pipeline in pipeline_entities.entities:
                     self.status.scanned_dashboard(pipeline.name)
                     yield pipeline
                 if pipeline_entities.after is None:

@@ -396,10 +396,10 @@ class ElasticsearchSink(Sink):
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []
-        if chart_refs is not None:
+        if chart_refs:
             for chart_ref in chart_refs:
                 chart = self.metadata.get_by_id(
-                    entity=Chart, entity_id=str(chart_ref.id.__root__)
+                    entity=Chart, entity_id=str(chart_ref.id.__root__), fields=["tags"]
                 )
                 charts.append(chart)
         return charts
