@@ -184,12 +184,12 @@ public class DashboardDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
         Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-        webDriver.navigate().back();
-        webDriver.navigate().refresh();
-        Thread.sleep(waitTime);
-        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
-        Thread.sleep(waitTime);
-        Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+//        webDriver.navigate().back();
+//        webDriver.navigate().refresh();
+//        Thread.sleep(waitTime);
+//        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
+//        Thread.sleep(waitTime);
+//        Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
     }
 
     @Test
