@@ -57,10 +57,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -280,7 +277,6 @@ class SampleDataSource(Source):
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = OpenMetadataAPIClient(metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.database_service_json = json.load(
             open(self.config.sample_data_folder + "/datasets/service.json", "r")
