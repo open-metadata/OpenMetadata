@@ -57,7 +57,6 @@ class OMetaEndpointTest(TestCase):
 
         # Pipelines
         self.assertEqual(self.metadata.get_suffix(Pipeline), "/pipelines")
-        self.assertEqual(self.metadata.get_suffix(Task), "/tasks")
 
         # Topic
         self.assertEqual(self.metadata.get_suffix(Topic), "/topics")
