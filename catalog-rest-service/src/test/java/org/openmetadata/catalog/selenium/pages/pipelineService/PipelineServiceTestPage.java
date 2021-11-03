@@ -132,8 +132,8 @@ public class PipelineServiceTestPage {
     public void searchPipelineService() throws InterruptedException {
         openPipelineServicePage();
         Thread.sleep(2000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchBox']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
 
@@ -142,7 +142,8 @@ public class PipelineServiceTestPage {
     public void deletePipelineService() throws InterruptedException {
         openPipelineServicePage();
         Thread.sleep(2000);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchBox']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
