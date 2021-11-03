@@ -335,7 +335,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return None
 
     def list_entities(
-        self, entity: Type[T], fields: str = None, after: str = None, limit: int = 1000
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        after: str = None,
+        limit: int = 1000,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -344,7 +348,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         suffix = self.get_suffix(entity)
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
-        url_fields = f"&fields={fields}" if fields else ""
+        url_fields = f"&fields={','.join(fields)}" if fields else ""
 
         resp = self.client.get(f"{suffix}{url_limit}{url_after}{url_fields}")
 
