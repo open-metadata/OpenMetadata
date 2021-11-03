@@ -34,7 +34,12 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.*;
+import org.openmetadata.catalog.type.EntityHistory;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.SQLQuery;
+import org.openmetadata.catalog.type.TableData;
+import org.openmetadata.catalog.type.TableJoins;
+import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
@@ -418,7 +423,7 @@ public class TableResource {
   }
 
   @PUT
-  @Path("/{id}/tableQueries")
+  @Path("/{id}/tableQuery")
   @Operation(summary = "Add table query data", tags = "tables",
           description = "Add table query data to the table.")
   public Table addQuery(@Context UriInfo uriInfo,

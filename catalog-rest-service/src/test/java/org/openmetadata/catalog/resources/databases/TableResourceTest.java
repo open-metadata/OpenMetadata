@@ -1248,7 +1248,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
   public static void putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableQueries");
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableQuery");
     TestUtils.put(target, data, OK, authHeaders);
   }
 
