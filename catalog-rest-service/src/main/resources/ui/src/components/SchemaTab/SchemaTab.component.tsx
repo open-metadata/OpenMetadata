@@ -128,7 +128,7 @@ const SchemaTab: FunctionComponent<Props> = ({
       </div>
       <div className="row">
         <div className="col-sm-12">
-          {checkedValue === 'schema' && columns?.length ? (
+          {checkedValue === 'schema' ? (
             <EntityTable
               columnName={columnName}
               hasEditAccess={Boolean(hasEditAccess)}
