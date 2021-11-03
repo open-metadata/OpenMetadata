@@ -129,26 +129,26 @@ public class DashboardServiceTestPage {
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
-//    @Test
-//    @Order(5)
-//    public void searchDashboardService() throws InterruptedException {
-//        openDashboardServicePage();
-//        Thread.sleep(2000);
-//        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchBox']")));
-//        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(serviceName);
-//        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
-//    }
-//
-//    @Test
-//    @Order(6)
-//    public void deleteDashboardService() throws InterruptedException {
-//        openDashboardServicePage();
-//        Thread.sleep(2000);
-//        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchBox']")));
-//        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(serviceName);
-//        Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
-//        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
-//    }
+    @Test
+    @Order(5)
+    public void searchDashboardService() throws InterruptedException {
+        openDashboardServicePage();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
+    }
+
+    @Test
+    @Order(6)
+    public void deleteDashboardService() throws InterruptedException {
+        openDashboardServicePage();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
+    }
 
     @AfterEach
     public void closeTabs() {
