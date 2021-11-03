@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-while ! wget -O /dev/null -o /dev/null localhost:3306; do sleep 5; done
+while ! wget -O /dev/null -o /dev/null mysql:3306; do sleep 5; done
 export AIRFLOW_HOME=/airflow
 airflow db init
 echo "AUTH_ROLE_PUBLIC = 'Admin'" >> /airflow/webserver_config.py

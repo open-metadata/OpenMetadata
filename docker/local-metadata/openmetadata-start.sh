@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-while ! wget -O /dev/null -o /dev/null localhost:3306; do sleep 5; done
+while ! wget -O /dev/null -o /dev/null mysql:3306; do sleep 5; done
 mv /openmetadata.yaml /openmetadata-*/conf/openmetadata.yaml
 cd /openmetadata-*/
 ./bootstrap/bootstrap_storage.sh migrate

@@ -1,6 +1,6 @@
 FROM openjdk:11
 
-EXPOSE 8585 3306
+EXPOSE 8585
 
 RUN apt-get update -y && \
     apt-get install --no-install-recommends wget -y && \
