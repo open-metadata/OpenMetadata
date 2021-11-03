@@ -516,12 +516,8 @@ const EntityTable = ({
                                     />
                                   </button>
                                 ) : (
-                                  <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                    <Tags
-                                      className="tw-border-main"
-                                      tag="+ Add tag"
-                                      type="outlined"
-                                    />
+                                  <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                    <Tags tag="+ Add tag" type="outlined" />
                                   </span>
                                 )
                               ) : null}
@@ -567,7 +563,7 @@ const EntityTable = ({
                           </div>
                           {checkIfJoinsAvailable(row.original.name) && (
                             <div className="tw-mt-3">
-                              <span className="tw-text-gray-400 tw-mr-1">
+                              <span className="tw-text-grey-muted tw-mr-1">
                                 Frequently joined columns:
                               </span>
                               <span>
