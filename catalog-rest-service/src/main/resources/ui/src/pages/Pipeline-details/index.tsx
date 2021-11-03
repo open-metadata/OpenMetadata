@@ -1,4 +1,4 @@
-import { AxiosPromise, AxiosResponse } from 'axios';
+import { AxiosResponse } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { EntityTags, TableDetail } from 'Models';
@@ -13,10 +13,8 @@ import {
   removeFollower,
 } from '../../axiosAPIs/pipelineAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
-import { getTaskById, updateTask } from '../../axiosAPIs/taskAPI';
 import Description from '../../components/common/description/Description';
 import EntityPageInfo from '../../components/common/entityPageInfo/EntityPageInfo';
-import NonAdminAction from '../../components/common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../../components/common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../../components/common/TabsPane/TabsPane';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
@@ -25,8 +23,6 @@ import Entitylineage from '../../components/EntityLineage/EntityLineage.componen
 import Loader from '../../components/Loader/Loader';
 import ManageTab from '../../components/ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../../components/tags-container/tags-container';
-import Tags from '../../components/tags/tags';
 import {
   getServiceDetailsPath,
   getTeamDetailsPath,
@@ -40,7 +36,6 @@ import { useAuth } from '../../hooks/authHooks';
 import {
   addToRecentViewed,
   getCurrentUserId,
-  getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
@@ -78,8 +73,6 @@ const MyPipelinePage = () => {
   const [pipelineUrl, setPipelineUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
   const [serviceType, setServiceType] = useState<string>('');
-  // const [usage, setUsage] = useState('');
-  // const [weeklyUsageCount, setWeeklyUsageCount] = useState('');
   const [slashedPipelineName, setSlashedPipelineName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
@@ -88,10 +81,7 @@ const MyPipelinePage = () => {
     task: Task;
     index: number;
   }>();
-  const [editTaskTags, setEditTaskTags] = useState<{
-    task: Task;
-    index: number;
-  }>();
+
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
@@ -155,8 +145,6 @@ const MyPipelinePage = () => {
       isLink: true,
       openInNewTab: true,
     },
-    // { key: 'Usage', value: usage },
-    // { key: 'Queries', value: `${weeklyUsageCount} past week` },
   ];
   const fetchTags = () => {
     getTagCategories().then((res) => {
@@ -164,30 +152,6 @@ const MyPipelinePage = () => {
         setTagList(getTaglist(res.data));
       }
     });
-  };
-
-  const fetchTasks = async (tasks: Pipeline['tasks']) => {
-    let tasksData: Task[] = [];
-    let promiseArr: Array<AxiosPromise> = [];
-    if (tasks?.length) {
-      promiseArr = tasks.map((task) =>
-        getTaskById(task.id, ['service', 'tags'])
-      );
-      await Promise.allSettled(promiseArr).then(
-        (res: PromiseSettledResult<AxiosResponse>[]) => {
-          if (res.length) {
-            tasksData = res
-              .filter((task) => task.status === 'fulfilled')
-              .map(
-                (task) =>
-                  (task as PromiseFulfilledResult<AxiosResponse>).value.data
-              );
-          }
-        }
-      );
-    }
-
-    return tasksData;
   };
 
   const setFollowersData = (followers: Array<User>) => {
@@ -203,7 +167,6 @@ const MyPipelinePage = () => {
       'service',
       'followers',
       'tags',
-      'usageSummary',
       'tasks',
     ]).then((res: AxiosResponse) => {
       const {
@@ -217,7 +180,6 @@ const MyPipelinePage = () => {
         displayName,
         tasks,
         pipelineUrl,
-        // usageSummary,
       } = res.data;
       setDisplayName(displayName);
       setPipelineDetails(res.data);
@@ -260,19 +222,7 @@ const MyPipelinePage = () => {
         }
       );
       setPipelineUrl(pipelineUrl);
-      fetchTasks(tasks).then((tasks) => setTasks(tasks));
-      // if (!isNil(usageSummary?.weeklyStats.percentileRank)) {
-      //   const percentile = getUsagePercentile(
-      //     usageSummary.weeklyStats.percentileRank
-      //   );
-      //   setUsage(percentile);
-      // } else {
-      //   setUsage('--');
-      // }
-      // setWeeklyUsageCount(
-      //   usageSummary?.weeklyStats.count.toLocaleString() || '--'
-      // );
-
+      setTasks(tasks);
       setLoading(false);
     });
   };
@@ -379,67 +329,22 @@ const MyPipelinePage = () => {
 
   const onTaskUpdate = (taskDescription: string) => {
     if (editTask) {
+      const updatedTasks = [...(pipelineDetails.tasks || [])];
+
       const updatedTask = {
         ...editTask.task,
         description: taskDescription,
       };
-      const jsonPatch = compare(tasks[editTask.index], updatedTask);
-      updateTask(editTask.task.id, jsonPatch).then((res: AxiosResponse) => {
-        if (res.data) {
-          setTasks((prevTasks) => {
-            const tasks = [...prevTasks];
-            tasks[editTask.index] = res.data;
+      updatedTasks[editTask.index] = updatedTask;
 
-            return tasks;
-          });
-        }
+      const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+      const jsonPatch = compare(pipelineDetails, updatedPipeline);
+      patchPipelineDetails(pipelineId, jsonPatch).then((res: AxiosResponse) => {
+        setTasks(res.data.tasks || []);
       });
       setEditTask(undefined);
     } else {
       setEditTask(undefined);
-    }
-  };
-
-  const handleEditTaskTag = (task: Task, index: number): void => {
-    setEditTaskTags({ task, index });
-  };
-
-  const handleTaskTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editTaskTags) {
-      const prevTags = editTaskTags.task.tags?.filter((tag) =>
-        selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
-      );
-      const newTags = selectedTags
-        .filter(
-          (selectedTag) =>
-            !editTaskTags.task.tags?.some(
-              (tag) => tag.tagFQN === selectedTag.tagFQN
-            )
-        )
-        .map((tag) => ({
-          labelType: 'Manual',
-          state: 'Confirmed',
-          tagFQN: tag.tagFQN,
-        }));
-
-      const updatedTask = {
-        ...editTaskTags.task,
-        tags: [...(prevTags as TagLabel[]), ...newTags],
-      };
-      const jsonPatch = compare(tasks[editTaskTags.index], updatedTask);
-      updateTask(editTaskTags.task.id, jsonPatch).then((res: AxiosResponse) => {
-        if (res.data) {
-          setTasks((prevTasks) => {
-            const tasks = [...prevTasks];
-            tasks[editTaskTags.index] = res.data;
-
-            return tasks;
-          });
-        }
-      });
-      setEditTaskTags(undefined);
-    } else {
-      setEditTaskTags(undefined);
     }
   };
 
@@ -513,7 +418,7 @@ const MyPipelinePage = () => {
                         <tr className="tableHead-row">
                           <th className="tableHead-cell">Task Name</th>
                           <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell tw-w-60">Tags</th>
+                          <th className="tableHead-cell">Task Type</th>
                         </tr>
                       </thead>
                       <tbody className="tableBody">
@@ -567,49 +472,7 @@ const MyPipelinePage = () => {
                                 </button>
                               </div>
                             </td>
-                            <td
-                              className="tw-group tw-relative tableBody-cell"
-                              onClick={() => {
-                                if (!editTaskTags) {
-                                  handleEditTaskTag(task, index);
-                                }
-                              }}>
-                              <NonAdminAction
-                                html={getHtmlForNonAdminAction(Boolean(owner))}
-                                isOwner={hasEditAccess()}
-                                position="left"
-                                trigger="click">
-                                <TagsContainer
-                                  editable={editTaskTags?.index === index}
-                                  selectedTags={task.tags as EntityTags[]}
-                                  tagList={tagList}
-                                  onCancel={() => {
-                                    handleTaskTagSelection();
-                                  }}
-                                  onSelectionChange={(tags) => {
-                                    handleTaskTagSelection(tags);
-                                  }}>
-                                  {task.tags?.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                      <Tags
-                                        className="tw-border-main"
-                                        tag="+ Add tag"
-                                        type="outlined"
-                                      />
-                                    </span>
-                                  )}
-                                </TagsContainer>
-                              </NonAdminAction>
-                            </td>
+                            <td className="tableBody-cell">{task.taskType}</td>
                           </tr>
                         ))}
                       </tbody>
