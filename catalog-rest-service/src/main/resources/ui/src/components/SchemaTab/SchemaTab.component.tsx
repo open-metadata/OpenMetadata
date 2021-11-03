@@ -29,13 +29,14 @@ import SampleDataTable, {
 } from '../SampleDataTable/SampleDataTable.component';
 
 type Props = {
-  owner: Table['owner'];
+  owner?: Table['owner'];
   columns: Table['columns'];
   joins: Array<ColumnJoins>;
-  onUpdate: (columns: Table['columns']) => void;
-  sampleData: TableData;
+  sampleData?: TableData;
   columnName: string;
-  hasEditAccess: boolean;
+  hasEditAccess?: boolean;
+  isReadOnly?: boolean;
+  onUpdate?: (columns: Table['columns']) => void;
 };
 
 const SchemaTab: FunctionComponent<Props> = ({
@@ -46,6 +47,7 @@ const SchemaTab: FunctionComponent<Props> = ({
   columnName,
   hasEditAccess,
   owner,
+  isReadOnly = false,
 }: Props) => {
   const [searchText, setSearchText] = useState('');
   const [checkedValue, setCheckedValue] = useState('schema');
@@ -101,33 +103,36 @@ const SchemaTab: FunctionComponent<Props> = ({
             />
           )}
         </div>
-        <div className="tw-col-span-2 tw-text-right tw-mb-4">
-          <div
-            className="tw-w-60 tw-inline-flex tw-border tw-border-main
+        {!isReadOnly ? (
+          <div className="tw-col-span-2 tw-text-right tw-mb-4">
+            <div
+              className="tw-w-60 tw-inline-flex tw-border tw-border-main
             tw-text-sm tw-rounded-md tw-h-8 tw-bg-white">
-            <button
-              className={getToggleButtonClasses('schema')}
-              data-testid="schema-button"
-              onClick={() => handleToggleChange('schema')}>
-              Schema
-            </button>
-            <button
-              className={getToggleButtonClasses('sample-data')}
-              data-testid="sample-data-button"
-              onClick={() => {
-                handleToggleChange('sample-data');
-              }}>
-              Sample Data
-            </button>
+              <button
+                className={getToggleButtonClasses('schema')}
+                data-testid="schema-button"
+                onClick={() => handleToggleChange('schema')}>
+                Schema
+              </button>
+              <button
+                className={getToggleButtonClasses('sample-data')}
+                data-testid="sample-data-button"
+                onClick={() => {
+                  handleToggleChange('sample-data');
+                }}>
+                Sample Data
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <div className="row">
         <div className="col-sm-12">
           {checkedValue === 'schema' ? (
             <EntityTable
               columnName={columnName}
-              hasEditAccess={hasEditAccess}
+              hasEditAccess={Boolean(hasEditAccess)}
+              isReadOnly={isReadOnly}
               joins={joins}
               owner={owner}
               searchText={lowerCase(searchText)}

@@ -16,7 +16,7 @@ type Tab = {
 };
 type Props = {
   activeTab: number;
-  setActiveTab: (value: number) => void;
+  setActiveTab?: (value: number) => void;
   tabs: Array<Tab>;
   className?: string;
 };
@@ -39,7 +39,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
               <button
                 className={getTabClasses(tab.position, activeTab)}
                 data-testid="tab"
-                onClick={() => setActiveTab(tab.position)}>
+                onClick={() => setActiveTab?.(tab.position)}>
                 <SVGIcons
                   alt={tab.icon.alt}
                   icon={tab.icon.name}
@@ -54,7 +54,7 @@ const TabsPane = ({ activeTab, setActiveTab, tabs, className = '' }: Props) => {
               className={getTabClasses(tab.position, activeTab)}
               data-testid="tab"
               key={tab.position}
-              onClick={() => setActiveTab(tab.position)}>
+              onClick={() => setActiveTab?.(tab.position)}>
               <SVGIcons
                 alt={tab.icon.alt}
                 icon={tab.icon.name}

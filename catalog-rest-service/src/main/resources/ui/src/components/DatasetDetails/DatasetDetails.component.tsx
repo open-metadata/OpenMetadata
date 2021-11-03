@@ -54,6 +54,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
   users,
   usageSummary,
   joins,
+  version,
+  versionHandler,
 }: DatasetDetailsProps) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
@@ -322,6 +324,8 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
           tags={tableTags}
           tier={tier || ''}
           titleLinks={slashedTableName}
+          version={version}
+          versionHandler={versionHandler}
         />
 
         <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
@@ -338,6 +342,7 @@ const DatasetDetails: React.FC<DatasetDetailsProps> = ({
                 <div className="tw-col-span-3">
                   <Description
                     description={description}
+                    entityName={entityName}
                     hasEditAccess={hasEditAccess()}
                     isEdit={isEdit}
                     owner={owner}

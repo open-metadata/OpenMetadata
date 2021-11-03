@@ -30,9 +30,9 @@ type Props = {
   header: string;
   value: string;
   placeholder: string;
-  onSave: (text: string) => void;
+  onSave?: (text: string) => void;
   onSuggest?: (text: string) => void;
-  onCancel: () => void;
+  onCancel?: () => void;
 };
 
 export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
@@ -57,7 +57,7 @@ export const ModalWithMarkdownEditor: FunctionComponent<Props> = ({
 
   const handleSaveData = () => {
     if (markdownRef.current) {
-      onSave(markdownRef.current?.getEditorContent() ?? '');
+      onSave?.(markdownRef.current?.getEditorContent() ?? '');
     }
   };
 

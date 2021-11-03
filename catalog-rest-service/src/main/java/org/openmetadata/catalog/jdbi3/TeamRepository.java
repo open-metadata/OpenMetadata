@@ -48,8 +48,8 @@ public class TeamRepository extends EntityRepository<Team> {
   private final CollectionDAO dao;
 
   public TeamRepository(CollectionDAO dao) {
-    super(Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
-    this.dao = dao;
+      super(Team.class, dao.teamDAO(), dao, TEAM_PATCH_FIELDS, Fields.EMPTY_FIELDS);
+      this.dao = dao;
   }
 
   @Transaction
@@ -151,9 +151,9 @@ public class TeamRepository extends EntityRepository<Team> {
     return users;
   }
 
-  private List<EntityReference> getOwns(String teamId) throws IOException {
-    // Compile entities owned by the team
-    return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()), dao);
+    private List<EntityReference> getOwns(String teamId) throws IOException {
+      // Compile entities owned by the team
+      return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(teamId, OWNS.ordinal()), dao);
   }
 
   public static class TeamEntityInterface implements EntityInterface<Team> {

@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createLocation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Location entity request",
+  "description": "Create Location entity request",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this Location.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the location instance.",
+      "type": "string"
+    },
+    "locationType": {
+      "$ref": "../../entity/data/location.json#/definitions/locationType"
+    },
+    "tags": {
+      "description": "Tags for this chart",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this Location",
+      "$ref": "../../type/entityReference.json"
+    },
+    "service" : {
+      "description": "Link to the pipeline service where this location is used",
+      "$ref" : "../../type/entityReference.json"
+    }
+  },
+  "required": ["name", "service"]
+}

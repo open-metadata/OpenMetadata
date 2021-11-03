@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { isNil } from 'lodash';
+import { isNil, isUndefined } from 'lodash';
 import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { FOLLOWERS_VIEW_CAP, LIST_SIZE } from '../../../constants/constants';
@@ -26,9 +26,8 @@ type ExtraInfo = {
 
 type Props = {
   titleLinks: TitleBreadcrumbProps['titleLinks'];
-  isFollowing: boolean;
-  followHandler: () => void;
-  followers: number;
+  isFollowing?: boolean;
+  followers?: number;
   extraInfo: Array<ExtraInfo>;
   tier: string;
   tags: Array<EntityTags>;
@@ -36,9 +35,13 @@ type Props = {
   tagList?: Array<string>;
   owner?: TableDetail['owner'];
   hasEditAccess?: boolean;
-  tagsHandler?: (selectedTags?: Array<string>) => void;
   followersList: Array<User>;
   entityName: string;
+  version?: string;
+  isVersionSelected?: boolean;
+  followHandler?: () => void;
+  tagsHandler?: (selectedTags?: Array<string>) => void;
+  versionHandler?: () => void;
 };
 
 const EntityPageInfo = ({
@@ -56,6 +59,9 @@ const EntityPageInfo = ({
   tagsHandler,
   followersList = [],
   entityName,
+  version,
+  isVersionSelected,
+  versionHandler,
 }: Props) => {
   const [isEditable, setIsEditable] = useState<boolean>(false);
   const [entityFollowers, setEntityFollowers] =
@@ -134,42 +140,78 @@ const EntityPageInfo = ({
       <div className="tw-flex tw-flex-col">
         <div className="tw-flex tw-flex-initial tw-justify-between tw-items-center">
           <TitleBreadcrumb titleLinks={titleLinks} />
-          <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
-            <span
-              className={classNames(
-                'tw-flex tw-border tw-border-primary tw-rounded',
-                isFollowing ? 'tw-bg-primary tw-text-white' : 'tw-text-primary'
-              )}>
-              <button
-                className={classNames(
-                  'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
-                  isFollowing ? 'tw-border-white' : 'tw-border-primary'
-                )}
-                data-testid="follow-button"
-                onClick={followHandler}>
-                {isFollowing ? (
-                  <>
-                    <i className="fas fa-star" /> Unfollow
-                  </>
-                ) : (
-                  <>
-                    <i className="far fa-star" /> Follow
-                  </>
-                )}
-              </button>
-              <PopOver
-                className="tw-justify-center tw-items-center"
-                html={getFollowers()}
-                position="bottom"
-                theme="light"
-                trigger="click">
+          <div className="tw-flex">
+            {!isUndefined(version) ? (
+              <div
+                className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
+                onClick={versionHandler}>
                 <span
-                  className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
-                  data-testid="getFollowerDetail">
-                  {followers}
+                  className={classNames(
+                    'tw-flex tw-border tw-border-primary tw-rounded',
+                    !isUndefined(isVersionSelected)
+                      ? 'tw-bg-primary tw-text-white'
+                      : 'tw-text-primary'
+                  )}>
+                  <button
+                    className={classNames(
+                      'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+                      !isUndefined(isVersionSelected)
+                        ? 'tw-border-white'
+                        : 'tw-border-primary'
+                    )}
+                    data-testid="version-button">
+                    <SVGIcons alt="version icon" icon="icon-version" /> Versions
+                  </button>
+
+                  <span
+                    className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
+                    data-testid="getversions">
+                    {parseFloat(version).toFixed(1)}
+                  </span>
                 </span>
-              </PopOver>
-            </span>
+              </div>
+            ) : null}
+            {!isUndefined(isFollowing) ? (
+              <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">
+                <span
+                  className={classNames(
+                    'tw-flex tw-border tw-border-primary tw-rounded',
+                    isFollowing
+                      ? 'tw-bg-primary tw-text-white'
+                      : 'tw-text-primary'
+                  )}>
+                  <button
+                    className={classNames(
+                      'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+                      isFollowing ? 'tw-border-white' : 'tw-border-primary'
+                    )}
+                    data-testid="follow-button"
+                    onClick={followHandler}>
+                    {isFollowing ? (
+                      <>
+                        <i className="fas fa-star" /> Unfollow
+                      </>
+                    ) : (
+                      <>
+                        <i className="far fa-star" /> Follow
+                      </>
+                    )}
+                  </button>
+                  <PopOver
+                    className="tw-justify-center tw-items-center"
+                    html={getFollowers()}
+                    position="bottom"
+                    theme="light"
+                    trigger="click">
+                    <span
+                      className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer hover:tw-underline"
+                      data-testid="getFollowerDetail">
+                      {followers}
+                    </span>
+                  </PopOver>
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

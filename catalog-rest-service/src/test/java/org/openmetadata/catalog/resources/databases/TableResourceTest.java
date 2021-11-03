@@ -27,15 +27,20 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
+import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.api.data.CreateTable;
+import org.openmetadata.catalog.api.services.CreateStorageService;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.services.DatabaseService;
+import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
+import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
@@ -57,7 +62,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +82,7 @@ import java.util.UUID;
 import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
@@ -85,7 +90,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
+import static org.openmetadata.catalog.resources.locations.LocationResourceTest.createLocation;
+import static org.openmetadata.catalog.resources.locations.LocationResourceTest.getLocationName;
 import static org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest.createService;
 import static org.openmetadata.catalog.type.ColumnDataType.ARRAY;
 import static org.openmetadata.catalog.type.ColumnDataType.BIGINT;
@@ -96,6 +104,7 @@ import static org.openmetadata.catalog.type.ColumnDataType.INT;
 import static org.openmetadata.catalog.type.ColumnDataType.STRUCT;
 import static org.openmetadata.catalog.util.RestUtil.DATE_FORMAT;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
+import static org.openmetadata.catalog.util.TestUtils.UpdateType;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.NO_CHANGE;
@@ -131,7 +140,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     return new TableResourceTest().createEntity(test, i);
   }
 
-  public static Table createTable(CreateTable createTable, Map<String, String> adminAuthHeaders) throws HttpResponseException {
+  public static Table createTable(CreateTable createTable, Map<String, String> adminAuthHeaders)
+          throws HttpResponseException {
     return new TableResourceTest().createEntity(createTable, adminAuthHeaders);
   }
 
@@ -251,7 +261,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
             .withChildren(new ArrayList<>(singletonList(c2_c_d)));
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
-    Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>",USER_BANK_ACCOUNT_TAG_LABEL)
+    Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>", USER_BANK_ACCOUNT_TAG_LABEL)
             .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
 
     // Test POST operation can create complex types
@@ -266,7 +276,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Test PUT operation
     CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
-    Table table2= updateAndCheckEntity(create2, Status.CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+    Table table2= updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
     // Update without any change
     ChangeDescription change = getChangeDescription(table2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
@@ -980,6 +990,47 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     validateColumns(columns, table.getColumns());
   }
 
+  @Test
+  public void put_addDeleteLocation_200(TestInfo test) throws HttpResponseException {
+    Table table = createAndCheckTable(create(test), adminAuthHeaders());
+
+    // Add location to the table
+    CreateStorageService createService = new CreateStorageService().withName("s3")
+            .withServiceType(CreateStorageService.StorageServiceType.S3);
+    StorageService service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
+    EntityReference serviceRef =
+            new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
+    CreateLocation create = new CreateLocation().withName(getLocationName(test)).withService(serviceRef);
+    Location location = createLocation(create, adminAuthHeaders());
+    addAndCheckLocation(table, location.getId(), CREATED, userAuthHeaders());
+    // Delete location and make sure it is deleted
+    deleteAndCheckLocation(table, userAuthHeaders());
+  }
+
+  private void deleteAndCheckLocation(Table table, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    TestUtils.delete(target, authHeaders);
+    checkLocationDeleted(table.getId(), authHeaders);
+  }
+
+  public static void checkLocationDeleted(UUID tableId, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    Table getTable = getTable(tableId, "location", authHeaders);
+    assertNull(getTable.getLocation());
+  }
+
+  public static void addAndCheckLocation(Table table, UUID locationId, Status status, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource(String.format("tables/%s/location", table.getId()));
+    TestUtils.put(target, locationId.toString(), status, authHeaders);
+
+    // GET .../tables/{tableId} returns newly added follower
+    Table getTable = getTable(table.getId(), "location", authHeaders);
+    TestUtils.validateEntityReference(getTable.getLocation());
+    assertTrue(getTable.getLocation().getId().equals(locationId), "Location added was not found in the table " +
+            "get response");
+  }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
     tableList.forEach(t -> assertFields(t, fieldsParam));
@@ -1065,7 +1116,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     validateColumns(expectedColumn.getChildren(), actualColumn.getChildren());
   }
 
-  private static void validateColumns(List<Column> expectedColumns, List<Column> actualColumns) throws HttpResponseException {
+  private static void validateColumns(List<Column> expectedColumns, List<Column> actualColumns)
+          throws HttpResponseException {
     if (expectedColumns == null && actualColumns == null) {
       return;
     }

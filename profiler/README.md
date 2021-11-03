@@ -20,6 +20,6 @@ python3 -m pip install --upgrade pip wheel setuptools openmetadata-dataprofiler
 #### Generate Redshift Data
 
 ```text
-profiler test -c ./examples/workflows/redshift.json
+openmetadata profiler -c ./examples/workflows/redshift.json
 ```
 

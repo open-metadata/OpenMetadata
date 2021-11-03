@@ -65,6 +65,20 @@ class OMetaModelTest(TestCase):
         self.assertEqual(res_create.id, res.id)
         self.assertEqual(res.owner.id, self.user.id)
 
+        # Getting without owner field does not return it by default
+        res_none = self.metadata.get_by_name(
+            entity=Model, fqdn=self.entity.fullyQualifiedName
+        )
+        self.assertIsNone(res_none.owner)
+
+        # We can request specific fields to be added
+        res_owner = self.metadata.get_by_name(
+            entity=Model,
+            fqdn=self.entity.fullyQualifiedName,
+            fields=["owner", "followers"],
+        )
+        self.assertEqual(res_owner.owner.id, self.user.id)
+
     def test_get_name(self):
         """
         We can fetch a model by name and get it back as Entity
@@ -129,7 +143,7 @@ class OMetaModelTest(TestCase):
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=Model)
-        print(res)
+
         assert not next(
             iter(
                 ent
