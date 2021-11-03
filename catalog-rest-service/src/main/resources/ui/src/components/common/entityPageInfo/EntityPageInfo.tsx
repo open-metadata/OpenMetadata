@@ -131,6 +131,41 @@ const EntityPageInfo = ({
     );
   };
 
+  const getVersionButton = (version: string) => {
+    return (
+      <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2" onClick={versionHandler}>
+        <span
+          className={classNames(
+            'tw-flex tw-border tw-border-primary tw-rounded',
+            !isUndefined(isVersionSelected)
+              ? 'tw-bg-primary tw-text-white'
+              : 'tw-text-primary'
+          )}>
+          <button
+            className={classNames(
+              'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
+              !isUndefined(isVersionSelected)
+                ? 'tw-border-white'
+                : 'tw-border-primary'
+            )}
+            data-testid="version-button">
+            <SVGIcons
+              alt="version icon"
+              icon={isVersionSelected ? 'icon-version-white' : 'icon-version'}
+            />{' '}
+            Versions
+          </button>
+
+          <span
+            className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
+            data-testid="getversions">
+            {parseFloat(version).toFixed(1)}
+          </span>
+        </span>
+      </div>
+    );
+  };
+
   useEffect(() => {
     setEntityFollowers(followersList);
   }, [followersList]);
@@ -142,34 +177,23 @@ const EntityPageInfo = ({
           <TitleBreadcrumb titleLinks={titleLinks} />
           <div className="tw-flex">
             {!isUndefined(version) ? (
-              <div
-                className="tw-flex tw-h-6 tw-ml-2 tw-mt-2"
-                onClick={versionHandler}>
-                <span
-                  className={classNames(
-                    'tw-flex tw-border tw-border-primary tw-rounded',
-                    !isUndefined(isVersionSelected)
-                      ? 'tw-bg-primary tw-text-white'
-                      : 'tw-text-primary'
-                  )}>
-                  <button
-                    className={classNames(
-                      'tw-text-xs tw-border-r tw-font-normal tw-py-1 tw-px-2 tw-rounded-l focus:tw-outline-none',
-                      !isUndefined(isVersionSelected)
-                        ? 'tw-border-white'
-                        : 'tw-border-primary'
-                    )}
-                    data-testid="version-button">
-                    <SVGIcons alt="version icon" icon="icon-version" /> Versions
-                  </button>
-
-                  <span
-                    className="tw-text-xs tw-border-l-0 tw-font-normal tw-py-1 tw-px-2 tw-rounded-r tw-cursor-pointer"
-                    data-testid="getversions">
-                    {parseFloat(version).toFixed(1)}
-                  </span>
-                </span>
-              </div>
+              <>
+                {!isUndefined(isVersionSelected) ? (
+                  <PopOver
+                    html={
+                      <p className="tw-text-xs">
+                        Viewing older version <br />
+                        Go to latest to update details
+                      </p>
+                    }
+                    position="top"
+                    trigger="mouseenter">
+                    {getVersionButton(version)}
+                  </PopOver>
+                ) : (
+                  <>{getVersionButton(version as string)}</>
+                )}
+              </>
             ) : null}
             {!isUndefined(isFollowing) ? (
               <div className="tw-flex tw-h-6 tw-ml-2 tw-mt-2">

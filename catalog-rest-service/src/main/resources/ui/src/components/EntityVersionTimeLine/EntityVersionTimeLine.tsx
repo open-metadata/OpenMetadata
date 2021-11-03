@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { toString } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import './EntityVersionTimeLine.css';
 
@@ -20,50 +20,72 @@ const EntityVersionTimeLine: React.FC<Props> = ({
   onBack,
 }: Props) => {
   const getVersionList = () => {
-    const list = versionList.versions?.slice(1) || [];
+    const list = versionList.versions ?? [];
 
     return list.map((v, i) => {
       const currV = JSON.parse(v);
 
       return (
-        <div
-          className="timeline-content tw-py-2 tw-cursor-pointer"
-          key={i}
-          onClick={() => versionHandler(toString(currV?.version))}>
-          <div className="timeline-wrapper">
-            <span
-              className={classNames('timeline-rounder', {
-                selected: toString(currV?.version) === currentVersion,
-              })}
-            />
-            <span className="timeline-line" />
-            {list.length === i + 1 ? (
-              <>
-                <span className="timeline-line" />
-                <span className="timeline-line" />
-              </>
-            ) : null}
-          </div>
-          <div className="tw-grid tw-gap-0.5">
-            <p
-              className={classNames('tw-text-grey-body tw-font-normal', {
-                'tw-text-primary-active':
-                  toString(currV?.version) === currentVersion,
-              })}>
-              v{parseFloat(currV?.version).toFixed(1)}
-            </p>
-            <p className="tw-text-xs">
-              <span className="tw-font-normal">{currV?.updatedBy}</span>
-              <span className="tw-text-grey-muted"> updated on </span>
-              <span className="tw-font-normal">
-                {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
-                  hour: 'numeric',
-                  minute: 'numeric',
+        <Fragment key={i}>
+          {i === 0 ? (
+            <div className="timeline-content tw-cursor-pointer tw--mb-2.5">
+              <div className="timeline-wrapper">
+                <span className="timeline-line-se" />
+              </div>
+            </div>
+          ) : null}
+          <div
+            className="timeline-content tw-py-2 tw-cursor-pointer"
+            onClick={() => versionHandler(toString(currV?.version))}>
+            <div className="timeline-wrapper">
+              <span
+                className={classNames('timeline-rounder', {
+                  selected: toString(currV?.version) === currentVersion,
                 })}
-              </span>
-            </p>
+              />
+              <span className="timeline-line" />
+            </div>
+            <div className="tw-grid tw-gap-0.5">
+              <p
+                className={classNames('tw-text-grey-body tw-font-normal', {
+                  'tw-text-primary-active':
+                    toString(currV?.version) === currentVersion,
+                })}>
+                v{parseFloat(currV?.version).toFixed(1)}
+              </p>
+              <div className="tw-text-xs tw-font-normal">
+                {currV?.changeDescription?.fieldsAdded?.length ? (
+                  <p>
+                    {currV?.changeDescription?.fieldsAdded?.join(',')} has been
+                    added
+                  </p>
+                ) : null}
+                {currV?.changeDescription?.fieldsUpdated?.length ? (
+                  <p>
+                    {currV?.changeDescription?.fieldsUpdated?.join(',')} has
+                    been updated
+                  </p>
+                ) : null}
+                {currV?.changeDescription?.fieldsDeleted?.length ? (
+                  <p>
+                    {currV?.changeDescription?.fieldsDeleted?.join(',')} has
+                    been deleted
+                  </p>
+                ) : null}
+              </div>
+              <p className="tw-text-xs tw-italic">
+                <span className="tw-font-normal">{currV?.updatedBy}</span>
+                <span className="tw-text-grey-muted"> updated on </span>
+                <span className="tw-font-normal">
+                  {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
+                    hour: 'numeric',
+                    minute: 'numeric',
+                  })}
+                </span>
+              </p>
+            </div>
           </div>
-        </div>
+        </Fragment>
       );
     });
   };
@@ -91,7 +113,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
       </header>
       <hr className="tw-mt-3 tw-border-primary-hover-lite" />
 
-      <div className="tw-mt-2">{getVersionList()}</div>
+      <div className="tw-my-2 tw-pb-9">{getVersionList()}</div>
     </div>
   );
 };
