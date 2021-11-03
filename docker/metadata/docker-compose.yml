@@ -15,7 +15,7 @@
 
 version: "3.9"
 services:
-  db:
+  mysql:
     platform: linux/x86_64
     image: openmetadata/db:latest
     restart: always
@@ -49,7 +49,7 @@ services:
     ports:
       - 8585:8585
     depends_on:
-      - db
+      - mysql
     networks:
       app_net:
         ipv4_address: 172.16.239.13
@@ -60,7 +60,7 @@ services:
   ingestion:
     image: openmetadata/ingestion:latest
     depends_on:
-      - db
+      - mysql
     expose:
       - 8080
     ports:
