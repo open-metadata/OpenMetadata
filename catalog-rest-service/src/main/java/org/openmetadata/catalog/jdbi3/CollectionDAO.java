@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.core.mapper.RowMapper;
@@ -11,6 +27,7 @@ import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Database;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Metrics;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -21,6 +38,7 @@ import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
 import org.openmetadata.catalog.entity.services.PipelineService;
+import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.jdbi3.BotsRepository.BotsEntityInterface;
@@ -31,12 +49,14 @@ import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterfa
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.LocationRepository.LocationEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
+import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
@@ -117,7 +137,13 @@ public interface CollectionDAO {
   MessagingServiceDAO messagingServiceDAO();
 
   @CreateSqlObject
+  StorageServiceDAO storageServiceDAO();
+
+  @CreateSqlObject
   FeedDAO feedDAO();
+
+  @CreateSqlObject
+  LocationDAO locationDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -182,6 +208,22 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(DatabaseService entity) {
       return new DatabaseServiceEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface StorageServiceDAO extends EntityDAO<StorageService> {
+    @Override
+    default String getTableName() { return "storage_service_entity"; }
+
+    @Override
+    default Class<StorageService> getEntityClass() { return StorageService.class; }
+
+    @Override
+    default String getNameColumn() { return "name"; }
+
+    @Override
+    default EntityReference getEntityReference(StorageService entity) {
+      return new StorageServiceEntityInterface(entity).getEntityReference();
     }
   }
 
@@ -513,6 +555,24 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Table entity) {
       return new TableEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface LocationDAO extends EntityDAO<Location> {
+    @Override
+    default String getTableName() {
+      return "location_entity";
+    }
+
+    @Override
+    default Class<Location> getEntityClass() { return Location.class; }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Location entity) {
+      return new LocationEntityInterface(entity).getEntityReference();
     }
   }
 

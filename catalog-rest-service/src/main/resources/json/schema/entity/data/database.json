@@ -59,6 +59,10 @@
       "description": "Link to the database cluster/service where this database is hosted in.",
       "$ref" : "../../type/entityReference.json"
     },
+    "location": {
+      "description": "Reference to the Location that contains this database.",
+      "$ref": "../../type/entityReference.json"
+    },
     "usageSummary" : {
       "description": "Latest usage information for this database.",
       "$ref": "../../type/usageDetails.json",

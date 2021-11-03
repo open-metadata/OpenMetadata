@@ -1,0 +1,105 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/location.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Table",
+  "description": "This schema defines the Location entity. A Location can contain the data of a table or group other sublocation together",
+  "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.Location",
+  "definitions": {
+    "locationType": {
+      "javaType": "org.openmetadata.catalog.type.LocationType",
+      "description": "This schema defines the type used for describing different types of Location.",
+      "type": "string",
+      "enum": [
+        "Bucket",
+        "Prefix",
+        "Database",
+        "Table"
+      ],
+      "javaEnums": [
+        {
+          "name": "Bucket"
+        },
+        {
+          "name": "Prefix"
+        },
+        {
+          "name": "Database"
+        },
+        {
+          "name": "Table"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this location instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of a location without the service. s3://bucket/path1/path2 -> /bucket/path1/path2",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this table. It could be title or label from the source services.",
+      "type": "string"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of a location in the form `serviceName:/name`.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of a location.",
+      "type": "string"
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to this location resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "locationType": {
+      "$ref": "#/definitions/locationType"
+    },
+    "owner": {
+      "description": "Owner of this location.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "followers": {
+      "description": "Followers of this location.",
+      "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
+    },
+    "tags": {
+      "description": "Tags for this location.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "service" : {
+      "description": "Link to the database cluster/service where this database is hosted in.",
+      "$ref" : "../../type/entityReference.json"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "name",
+    "service"
+  ]
+}

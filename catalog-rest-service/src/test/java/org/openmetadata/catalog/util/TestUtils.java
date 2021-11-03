@@ -223,6 +223,10 @@ public final class TestUtils {
       // FullyQualifiedName has "." as separator
       assertTrue(ref.getName().contains("."), "entity name is not fully qualified - " + ref.getName());
     }
+    if (List.of("location")
+            .contains(ref.getName())) {
+      ref.getName().contains(":/"); // FullyQualifiedName has ":/" as separator
+    }
   }
 
   public static void validateEntityReference(List<EntityReference> list) {

@@ -32,6 +32,7 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -95,6 +96,9 @@ public class DatabaseResource {
   public static Database addHref(UriInfo uriInfo, Database db) {
     db.setHref(RestUtil.getHref(uriInfo, DATABASE_COLLECTION_PATH, db.getId()));
     Optional.ofNullable(db.getTables()).orElse(Collections.emptyList()).forEach(t -> TableResource.addHref(uriInfo, t));
+    if (db.getLocation() != null) {
+      LocationResource.addHref(uriInfo, db.getLocation());
+    }
     EntityUtil.addHref(uriInfo, db.getOwner());
     EntityUtil.addHref(uriInfo, db.getService());
     return db;
@@ -121,7 +125,7 @@ public class DatabaseResource {
     }
   }
 
-  static final String FIELDS ="owner,service,tables,usageSummary";
+  static final String FIELDS ="owner,service,tables,usageSummary,location";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
   @GET
@@ -304,6 +308,21 @@ public class DatabaseResource {
     PutResponse<Database> response = dao.createOrUpdate(database);
     Database db = addHref(uriInfo, response.getEntity());
     return Response.status(response.getStatus()).entity(db).build();
+  }
+
+  @DELETE
+  @Path("/{id}/location")
+  @Operation(summary = "Remove the location", tags = "databases",
+          description = "Remove the location")
+  public Database deleteLocation(@Context UriInfo uriInfo,
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the database",
+                                      schema = @Schema(type = "string"))
+                              @PathParam("id") String id) throws IOException, ParseException {
+    Fields fields = new Fields(FIELD_LIST, "location");
+    dao.deleteLocation(id);
+    Database database = dao.get(id, fields);
+    return addHref(uriInfo, database);
   }
 
   @DELETE
