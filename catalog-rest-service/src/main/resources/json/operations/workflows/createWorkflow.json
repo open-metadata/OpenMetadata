@@ -1,0 +1,175 @@
+{
+  "$id": "https://open-metadata.org/operations/workflows/createWorkflow.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "WorkflowConfig",
+  "description": "WorkflowConfig Entity",
+  "type": "object",
+  "definitions": {
+    "task": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.Task",
+      "properties": {
+        "name": {
+          "description": "Name that identifies this task instance uniquely.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "operator": {
+          "description": "Python classname of the operator used in this Task.",
+          "type": "string"
+        },
+        "dependencies": {
+          "description": "All the tasks that are downstream of this task.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "config": {
+          "description": "Task Config.",
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {"type": "string"},
+              {"type": "number"},
+              {"type":  "object"}
+            ]
+          }
+        }
+      },
+      "required": [
+        "name",
+        "operator"
+      ]
+    }
+  },
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this workflow instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "forceDeploy": {
+      "description": "Deploy the workflow by overwriting existing workflow with the same name.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "pauseWorkflow": {
+      "description": "pause the workflow from running once the deploy is finished succesfully.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "description": {
+      "description": "Description of the workflow.",
+      "type": "string"
+    },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline.",
+      "type": "integer",
+      "default": 1
+    },
+    "startDate": {
+      "description": "Start date of the workflow",
+      "type": "string"
+    },
+    "endDate": {
+      "description": "End Date of the workflow",
+      "type": "string"
+    },
+    "workflowTimezone": {
+      "description": "Timezone in which workflow going to be scheduled.",
+      "type": "string",
+      "default": "UTC"
+    },
+    "retries": {
+      "description": "Retry workflow in case of failure",
+      "type": "integer",
+      "default": 1
+    },
+    "retryDelay": {
+      "description": "Delay between retries in seconds.",
+      "type": "integer",
+      "default": 300
+    },
+    "workflowCatchup": {
+      "description": "Workflow catchup for past executions.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the Workflow in cron format.",
+      "type": "string"
+    },
+    "maxActiveRuns": {
+      "description": "Maximum Number of active runs.",
+      "type": "integer",
+      "default": 1
+    },
+    "workflowTimeout": {
+      "description": "Timeout for the workflow in seconds.",
+      "type": "integer",
+      "default": 60
+    },
+    "workflowDefaultView": {
+      "description": "Default view in Airflow.",
+      "type": "string",
+      "default": "tree"
+    },
+    "workflowDefaultViewOrientation": {
+      "description": "Default view Orientation in Airflow.",
+      "type": "string",
+      "default": "LR"
+    },
+    "pythonOperatorLocation": {
+      "description": "File system directory path where managed python operator files are stored.",
+      "type": "string"
+    },
+    "slaMissCallback": {
+      "description": "python method call back on SLA miss.",
+      "type": "string"
+    },
+    "onSuccessCallback": {
+      "description": "callback method on successful execution of the pipeline.",
+      "type": "string"
+    },
+    "onFailureCallback": {
+      "description": "callback method on pipeline execution failure.",
+      "type": "string"
+    },
+    "onSuccessCallbackName": {
+      "description": "python method name to call when the pipeline successfully executes.",
+      "type": "string"
+    },
+    "onSuccessCallbackFile": {
+      "description": "python file where the successful callback method is stored.",
+      "type": "string"
+    },
+    "onFailureCallbackName": {
+      "description": "python method name to call when the pipeline failed executes.",
+      "type": "string"
+    },
+    "onFailureCallbackFile": {
+      "description": "python file where the failure callback method is stored",
+      "type": "string"
+    },
+    "tasks": {
+      "description": "All the tasks that are part of pipeline.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/task"
+      },
+      "default": null
+    },
+    "owner": {
+      "description": "Owner of this database",
+      "type": "string"
+    },
+    "email": {
+      "description": "Email to notify workflow status.",
+      "$ref": "../../schema/type/basic.json#/definitions/email"
+    }
+  },
+  "required": ["name", "owner", "tasks", "startDate"]
+}
