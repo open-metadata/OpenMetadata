@@ -18,8 +18,7 @@ import json
 import logging
 import time
 import uuid
-from typing import List, Optional
-from urllib.error import HTTPError
+from typing import List
 
 import google.auth
 import google.auth.transport.requests
@@ -28,53 +27,15 @@ from jose import jwt
 from pydantic import BaseModel
 
 from metadata.config.common import ConfigModel
-from metadata.generated.schema.api.data.createChart import CreateChartEntityRequest
-from metadata.generated.schema.api.data.createDashboard import (
-    CreateDashboardEntityRequest,
-)
-from metadata.generated.schema.api.data.createDatabase import (
-    CreateDatabaseEntityRequest,
-)
-from metadata.generated.schema.api.data.createPipeline import (
-    CreatePipelineEntityRequest,
-)
-from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
-from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
-from metadata.generated.schema.api.lineage.addLineage import AddLineage
-from metadata.generated.schema.api.services.createDashboardService import (
-    CreateDashboardServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createMessagingService import (
-    CreateMessagingServiceEntityRequest,
-)
-from metadata.generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
-)
-from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import (
-    Table,
-    TableData,
-    TableJoins,
-    TableProfile,
-)
+from metadata.generated.schema.entity.data.table import Table, TableProfile
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
-from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
-from metadata.ingestion.models.table_queries import TableUsageRequest
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 
 logger = logging.getLogger(__name__)
 
