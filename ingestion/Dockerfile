@@ -9,4 +9,5 @@ RUN pip install 'openmetadata-ingestion[sample-data,elasticsearch,mysql]' apache
 COPY ./ingestion /ingestion
 RUN pip install '.[sample-data,elasticsearch,mysql]'
 RUN chmod 755 ingestion_dependency.sh
+EXPOSE 8080
 CMD [ "./ingestion_dependency.sh" ]     

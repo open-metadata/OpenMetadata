@@ -112,7 +112,7 @@ database:
   user: openmetadata_user
   password: openmetadata_password
   # the JDBC URL; the database is called openmetadata_db
-  url: jdbc:mysql://localhost/openmetadata_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
+  url: jdbc:mysql://mysql:3306/openmetadata_db?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC
 
 
 elasticsearch:
