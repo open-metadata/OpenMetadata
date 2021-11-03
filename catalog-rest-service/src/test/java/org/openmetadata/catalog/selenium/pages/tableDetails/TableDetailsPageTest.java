@@ -138,19 +138,19 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     }
 
-    @Test
-    @Order(7)
-    public void basicChecks() throws InterruptedException {
-        openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
-        Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-        Thread.sleep(2000);
-        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
-    }
+//    @Test
+//    @Order(7)
+//    public void basicChecks() throws InterruptedException {
+//        openExplorePage();
+//        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+//        Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+//        Thread.sleep(2000);
+//        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
+//    }
 
     @Test
     @Order(8)
@@ -189,6 +189,7 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
         Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
         Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
+        Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
     }
 

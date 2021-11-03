@@ -100,7 +100,7 @@ public class DashboardDetailsPageTest {
         webDriver.navigate().back();
         webDriver.navigate().refresh();
         Thread.sleep(2000);
-        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PersonalData.Personal']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PersonalData.Personal']"));
     }
 
     @Test

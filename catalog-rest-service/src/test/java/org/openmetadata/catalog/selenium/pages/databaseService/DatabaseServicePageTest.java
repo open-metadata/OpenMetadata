@@ -106,7 +106,7 @@ public class DatabaseServicePageTest {
     @Order(3)
     public void editDatabaseService() throws InterruptedException {
         openDatabaseServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[2]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
         Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
@@ -135,6 +135,8 @@ public class DatabaseServicePageTest {
     @Order(5)
     public void searchDatabaseService() throws InterruptedException {
         openDatabaseServicePage();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
@@ -143,6 +145,7 @@ public class DatabaseServicePageTest {
     @Order(6)
     public void deleteDatabaseService() throws InterruptedException {
         openDatabaseServicePage();
+        Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));

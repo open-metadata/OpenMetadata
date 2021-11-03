@@ -104,7 +104,7 @@ public class MessagingServicePageTest {
     @Order(3)
     public void editMessagingService() throws InterruptedException {
         openMessagingServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[2]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
         Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
@@ -133,6 +133,7 @@ public class MessagingServicePageTest {
     @Order(5)
     public void searchMessagingService() throws InterruptedException {
         openMessagingServicePage();
+        Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
@@ -142,6 +143,7 @@ public class MessagingServicePageTest {
     @Order(6)
     public void deleteMessagingService() throws InterruptedException {
         openMessagingServicePage();
+        Thread.sleep(2000);
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));

@@ -102,7 +102,7 @@ public class PipelineServiceTestPage {
     @Order(3)
     public void editPipelineService() throws InterruptedException {
         openPipelineServicePage();
-        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[2]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
         Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
@@ -131,6 +131,8 @@ public class PipelineServiceTestPage {
     @Order(5)
     public void searchPipelineService() throws InterruptedException {
         openPipelineServicePage();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
         Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
@@ -139,7 +141,8 @@ public class PipelineServiceTestPage {
     @Order(6)
     public void deletePipelineService() throws InterruptedException {
         openPipelineServicePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
         Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
         Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
