@@ -27,10 +27,8 @@ from metadata.ingestion.api.source import Source, SourceStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.processor.pii import ColumnNameScanner
 from metadata.ingestion.source.sample_data import get_database_service_or_create
 from metadata.ingestion.source.sql_source import SQLConnectionConfig
@@ -82,7 +80,7 @@ class SampleEntitySource(Source):
         self.status = SampleEntitySourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = OpenMetadataAPIClient(metadata_config)
+        self.metadata = OpenMetadata(metadata_config)
         self.column_scanner = ColumnNameScanner()
         self.service_name = lambda: self.faker.word()
         self.service_type = lambda: random.choice(
@@ -118,7 +116,7 @@ class SampleEntitySource(Source):
         pass
 
     def __get_tags(self) -> {}:
-        return self.client.list_tags_by_category("user")
+        return self.metadata.list_tags_by_category("user")
 
     def scan(self, text):
         types = set()
@@ -148,7 +146,7 @@ class SampleEntitySource(Source):
             create_service = None
             while True:
                 try:
-                    create_service = self.client.create_database_service(
+                    create_service = self.metadata.create_or_update(
                         CreateDatabaseServiceEntityRequest(**service)
                     )
                     break
@@ -230,7 +228,7 @@ class SampleEntitySource(Source):
                         "password": "admin",
                         "serviceType": "Superset",
                     }
-                    create_service = self.client.create_dashboard_service(
+                    create_service = self.metadata.create_or_update(
                         CreateDashboardServiceEntityRequest(**service)
                     )
                     break
@@ -293,7 +291,7 @@ class SampleEntitySource(Source):
                         "schemaRegistry": "http://localhost:8081",
                         "serviceType": "Kafka",
                     }
-                    create_service = self.client.create_messaging_service(
+                    create_service = self.metadata.create_or_update(
                         CreateMessagingServiceEntityRequest(**service)
                     )
                     break
