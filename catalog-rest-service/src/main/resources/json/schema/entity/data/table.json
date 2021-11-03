@@ -343,6 +343,39 @@
         }
       },
       "additionalProperties": false
+    },
+    "sqlQuery": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.SQLQuery",
+      "description": "This schema defines the type to capture the table's sql queries.",
+      "properties": {
+        "query": {
+          "description": "SQL Query text that matches the table name.",
+          "type": "string"
+        },
+        "duration": {
+          "description": "How long did the query took to run in seconds.",
+          "type": "number"
+        },
+        "user": {
+          "description": "User who ran this query.",
+          "$ref": "../../type/entityReference.json",
+          "default": null
+        },
+        "vote": {
+          "description": "Users can vote up to rank the popular queries.",
+          "type": "number",
+          "default": 1
+        },
+        "checksum": {
+          "description": "Checksum to avoid registering duplicate queries.",
+          "type": "string"
+        },
+        "queryDate": {
+          "description": "Date on which the query ran.",
+          "$ref": "../../type/basic.json#/definitions/date"
+        }
+      }
     }
   },
   "properties": {
@@ -450,6 +483,14 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/tableProfile"
+      },
+      "default": null
+    },
+    "tableQueries": {
+      "description": "List of queries that ran against a table.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/sqlQuery"
       },
       "default": null
     },
