@@ -18,6 +18,7 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -43,6 +44,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
@@ -60,6 +62,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
 import static org.openmetadata.common.utils.CommonUtil.parseDate;
 
@@ -94,6 +97,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setSampleData(fields.contains("sampleData") ? getSampleData(table) : null);
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
+    table.setLocation(fields.contains("location") ? getLocation(table): null);
     return table;
   }
 
@@ -182,6 +186,21 @@ public class TableRepository extends EntityRepository<Table> {
 
     dao.entityExtensionDAO().insert(tableId.toString(), "table.tableProfile", "tableProfile",
             JsonUtils.pojoToJson(updatedProfiles));
+  }
+
+  @Transaction
+  public Status addLocation(UUID tableId, UUID locationId) throws IOException {
+    dao.tableDAO().findEntityById(tableId);
+    dao.locationDAO().findEntityById(locationId);
+    // A table has only one location.
+    dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+    dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    return CREATED;
+  }
+
+  @Transaction
+  public void deleteLocation(String tableId) {
+    dao.relationshipDAO().deleteFrom(tableId, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
 
   @Transaction
@@ -324,6 +343,18 @@ public class TableRepository extends EntityRepository<Table> {
       throw EntityNotFoundException.byMessage(String.format("Database for table %s Not found", tableId));
     }
     return dao.databaseDAO().findEntityReferenceById(UUID.fromString(result.get(0)));
+  }
+
+  private EntityReference getLocation(Table table) throws IOException {
+    // Find database for the table
+    String id = table.getId().toString();
+    List<String> result = dao.relationshipDAO().findTo(id, Relationship.HAS.ordinal(), Entity.LOCATION);
+    if (result.size() == 1) {
+      Location location = dao.locationDAO().findEntityById(UUID.fromString(result.get(0)));
+      return new EntityReference().withName(location.getName()).withId(location.getId()).withType("location");
+    } else {
+      return null;
+    }
   }
 
   private EntityReference getOwner(Table table) throws IOException {
