@@ -46,10 +46,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
