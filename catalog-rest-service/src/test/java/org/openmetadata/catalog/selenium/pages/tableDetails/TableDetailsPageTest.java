@@ -188,9 +188,7 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
         Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-//        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
-//        Thread.sleep(waitTime);
-//        Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+        webDriver.navigate().refresh();
     }
 
     @Test

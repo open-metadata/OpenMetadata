@@ -141,10 +141,8 @@ public class TopicDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
         Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
-//        Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
-//        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Topics
-//        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']"));
-//        Events.click(webDriver, By.cssSelector("[data-testid='table-link']"));
+        webDriver.navigate().back();
+        webDriver.navigate().refresh();
     }
 
     @Test(priority = 8)
