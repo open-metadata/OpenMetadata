@@ -107,6 +107,16 @@ CREATE TABLE IF NOT EXISTS pipeline_service_entity (
     INDEX (updatedAt)
 );
 
+CREATE TABLE IF NOT EXISTS storage_service_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    serviceType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.serviceType') NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(name)
+);
+
 --
 -- Data entities
 --
@@ -224,6 +234,15 @@ CREATE TABLE IF NOT EXISTS chart_entity (
     UNIQUE KEY unique_name(fullyQualifiedName),
     INDEX (updatedBy),
     INDEX (updatedAt)
+);
+
+CREATE TABLE IF NOT EXISTS location_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName)
 );
 
 --

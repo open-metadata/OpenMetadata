@@ -394,7 +394,11 @@ const ServicesPage = () => {
             value: service.collection.name,
           };
         });
-        setIsLoading(false);
+        // Removed "setIsLoading(false)" from here,
+        // If there are service categories available
+        // Loader should wait for each category to fetch list of services
+        // Then only it should stop Loading and show available data or No data template
+        // This is handled in "updateServiceList" method
       } else {
         setIsLoading(false);
       }

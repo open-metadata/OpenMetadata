@@ -32,8 +32,7 @@ import {
   getTeamDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
-import { Pipeline } from '../../generated/entity/data/pipeline';
-import { Task } from '../../generated/entity/data/task';
+import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { TagLabel } from '../../generated/type/tagLabel';
@@ -498,6 +497,7 @@ const MyPipelinePage = () => {
                     <div className="tw-col-span-full">
                       <Description
                         description={description}
+                        entityName={displayName}
                         hasEditAccess={hasEditAccess()}
                         isEdit={isEdit}
                         owner={owner}

@@ -16,6 +16,8 @@
 
 package org.openmetadata.catalog.util;
 
+import org.joda.time.Period;
+import org.joda.time.format.ISOPeriodFormat;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -23,6 +25,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.LocationDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -35,10 +38,12 @@ import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
+import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
 import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
+import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
@@ -48,6 +53,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
+import org.openmetadata.catalog.type.Schedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +76,34 @@ public final class EntityUtil {
 
   private EntityUtil() {
 
+  }
+
+  /**
+   * Validate Ingestion Schedule 
+   */
+  public static void validateIngestionSchedule(Schedule ingestion) {
+    if (ingestion == null) {
+      return;
+    }
+    String duration = ingestion.getRepeatFrequency();
+
+    // ISO8601 duration format is P{y}Y{m}M{d}DT{h}H{m}M{s}S.
+    String[] splits = duration.split("T");
+    if (splits[0].contains("Y") || splits[0].contains("M") ||
+            (splits.length == 2 && splits[1].contains("S"))) {
+      throw new IllegalArgumentException("Ingestion repeatFrequency can only contain Days, Hours, and Minutes - " +
+              "example P{d}DT{h}H{m}M");
+    }
+
+    Period period;
+    try {
+      period = ISOPeriodFormat.standard().parsePeriod(duration);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid ingestion repeatFrequency " + duration, e);
+    }
+    if (period.toStandardMinutes().getMinutes() < 60) {
+      throw new IllegalArgumentException("Ingestion repeatFrequency is too short and must be more than 60 minutes");
+    }
   }
 
   /**
@@ -130,6 +164,8 @@ public final class EntityUtil {
       ModelResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       PipelineResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      LocationResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       DatabaseServiceResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
@@ -138,6 +174,8 @@ public final class EntityUtil {
       DashboardServiceResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
       PipelineServiceResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
+      StorageServiceResource.addHref(uriInfo, ref);
     } else {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
     }
@@ -248,6 +286,8 @@ public final class EntityUtil {
       return dao.pipelineDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       return dao.modelDAO().findEntityReferenceById(id);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      return dao.locationDAO().findEntityReferenceById(id);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
@@ -276,10 +316,11 @@ public final class EntityUtil {
       return dao.userDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.TEAM)) {
       return dao.teamDAO().findEntityReferenceByName(fqn);
+    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
+      return dao.locationDAO().findEntityReferenceByName(fqn);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
-
 
   public static EntityReference validateEntityLink(EntityLink entityLink, CollectionDAO dao)
           throws IOException {

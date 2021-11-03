@@ -24,6 +24,7 @@ import { ROUTES } from '../constants/constants';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetails from '../pages/database-details/index';
 import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.component';
+import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
 import MyPipelinePage from '../pages/Pipeline-details';
@@ -68,11 +69,21 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
       <Route exact component={TagsPage} path={ROUTES.TAGS} />
       <Route component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <Route component={DatasetDetailsPage} path={ROUTES.DATASET_DETAILS} />
+      <Route
+        exact
+        component={DatasetDetailsPage}
+        path={ROUTES.DATASET_DETAILS}
+      />
       <Route component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={DashboardDetailsPage} path={ROUTES.DASHBOARD_DETAILS} />
       <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
+      <Route
+        exact
+        component={EntityVersionPage}
+        path={ROUTES.DATASET_VERSION}
+      />
+
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

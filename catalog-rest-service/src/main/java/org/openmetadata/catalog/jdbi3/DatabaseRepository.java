@@ -29,6 +29,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
+import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -37,6 +38,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class DatabaseRepository extends EntityRepository<Database> {
@@ -63,6 +65,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
       throw EntityNotFoundException.byMessage(entityNotFound(Entity.DATABASE, id));
     }
     dao.relationshipDAO().deleteAll(id.toString());
+  }
+
+  @Transaction
+  public void deleteLocation(String databaseId) {
+    dao.relationshipDAO().deleteFrom(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
   }
 
   @Override
@@ -122,6 +129,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
     database.setTables(fields.contains("tables") ? getTables(database) : null);
     database.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
             database.getId()) : null);
+    database.setLocation(fields.contains("location") ? getLocation(database): null);
     return database;
   }
 
@@ -134,7 +142,21 @@ public class DatabaseRepository extends EntityRepository<Database> {
 
   @Override
   public EntityInterface<Database> getEntityInterface(Database entity) {
-    return new DatabaseEntityInterface(entity);
+      return new DatabaseEntityInterface(entity);
+  }
+
+  private EntityReference getLocation(Database database) throws IOException {
+    if (database == null) {
+      return null;
+    }
+    String databaseId = database.getId().toString();
+    List<String> result = dao.relationshipDAO().findTo(databaseId, Relationship.HAS.ordinal(), Entity.LOCATION);
+    if (result.size() == 1) {
+      String locationId= result.get(0);
+      return dao.locationDAO().findEntityReferenceById(UUID.fromString(locationId));
+    } else {
+      return null;
+    }
   }
 
   private EntityReference getService(Database database) throws IOException {
@@ -148,6 +170,16 @@ public class DatabaseRepository extends EntityRepository<Database> {
     } else {
       throw new IllegalArgumentException(String.format("Invalid service type %s for the database", service.getType()));
     }
+  }
+
+  @Transaction
+  public Status addLocation(UUID databaseId, UUID locationId) throws IOException {
+    dao.databaseDAO().findEntityById(databaseId);
+    dao.locationDAO().findEntityById(locationId);
+    // A database has only one location.
+    dao.relationshipDAO().deleteFrom(databaseId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
+    dao.relationshipDAO().insert(databaseId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
+    return CREATED;
   }
 
   public static class DatabaseEntityInterface implements EntityInterface<Database> {

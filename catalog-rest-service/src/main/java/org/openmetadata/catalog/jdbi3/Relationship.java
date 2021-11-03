@@ -64,6 +64,8 @@ public enum Relationship {
   PARENT_OF("parentOf"),
 
   // {User} --- has ---> {Role}
+  // {Table} --- has ---> {Location}
+  // {Database} --- has ---> {Location}
   HAS("has"),
 
   // {User} --- follows ----> {Table, Database, Metrics...}

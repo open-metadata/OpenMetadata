@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/storageService.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Storage Service",
+  "description": "This schema defines the Storage Service entity, such as S3, GCS, HDFS.",
+  "type": "object",
+  "definitions": {
+    "storageServiceType": {
+      "description": "Type of storage service such as S3, GCS, HDFS...",
+      "type": "string",
+      "enum": [
+        "S3",
+        "GCS",
+        "HDFS"
+      ],
+      "javaEnums": [
+        {
+          "name": "S3"
+        },
+        {
+          "name": "GCS"
+        },
+        {
+          "name": "HDFS"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this storage service instance.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this storage service.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Display Name that identifies this storage service.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Type of storage service such as S3, GCS, HDFS...",
+      "$ref": "#/definitions/storageServiceType"
+    },
+    "description": {
+      "description": "Description of a storage service instance.",
+      "type": "string"
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this storage service.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description" : "Change that lead to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "serviceType",
+    "href"
+  ]
+}

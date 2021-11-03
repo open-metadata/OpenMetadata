@@ -25,9 +25,9 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.openmetadata.catalog.util.Utils;
 
 import java.io.IOException;
 import java.net.URI;
@@ -50,7 +50,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   public DashboardService update(UUID id, String description, URI dashboardUrl, String username, String password,
                                  Schedule ingestionSchedule)
           throws IOException {
-    Utils.validateIngestionSchedule(ingestionSchedule);
+    EntityUtil.validateIngestionSchedule(ingestionSchedule);
     DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
     // Update fields
     dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
@@ -84,7 +84,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
   @Override
   public void validate(DashboardService entity) throws IOException {
-    Utils.validateIngestionSchedule(entity.getIngestionSchedule());
+    EntityUtil.validateIngestionSchedule(entity.getIngestionSchedule());
   }
 
   @Override

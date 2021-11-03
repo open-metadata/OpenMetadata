@@ -24,6 +24,7 @@ public final class Entity {
   public static final String MESSAGING_SERVICE = "messagingService";
   public static final String DASHBOARD_SERVICE = "dashboardService";
   public static final String PIPELINE_SERVICE = "pipelineService";
+  public static final String STORAGE_SERVICE = "storageService";
 
   // Data assets
   public static final String TABLE = "table";
@@ -36,6 +37,7 @@ public final class Entity {
   public static final String TOPIC = "topic";
   public static final String MODEL = "model";
   public static final String BOTS = "bots";
+  public static final String LOCATION = "location";
 
   // Team/user
   public static final String USER = "user";

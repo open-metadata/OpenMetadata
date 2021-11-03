@@ -407,6 +407,10 @@
       "description": "Reference to Database that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
+    "location": {
+      "description": "Reference to the Location that contains this table.",
+      "$ref": "../../type/entityReference.json"
+    },
     "viewDefinition": {
       "description": "View Definition in SQL. Applies to TableType.View only.",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
