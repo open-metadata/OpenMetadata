@@ -517,11 +517,7 @@ const EntityTable = ({
                                   </button>
                                 ) : (
                                   <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                    <Tags
-                                      className=""
-                                      tag="+ Add tag"
-                                      type="outlined"
-                                    />
+                                    <Tags tag="+ Add tag" type="outlined" />
                                   </span>
                                 )
                               ) : null}
