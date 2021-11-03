@@ -5,6 +5,8 @@ export interface MyDataProps {
   error: string;
   countServices: number;
   userDetails: User;
+  rejectedResult: PromiseRejectedResult['reason'][];
+  errorHandler: (error: string) => void;
   searchResult: SearchResponse[] | undefined;
   fetchData: (value: SearchDataFunctionType) => void;
   entityCounts: EntityCounts;

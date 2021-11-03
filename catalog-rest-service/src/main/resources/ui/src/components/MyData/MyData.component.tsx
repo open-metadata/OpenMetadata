@@ -30,8 +30,10 @@ import { MyDataProps } from './MyData.interface';
 
 const MyData: React.FC<MyDataProps> = ({
   error,
+  errorHandler,
   countServices,
   userDetails,
+  rejectedResult,
   searchResult,
   fetchData,
   entityCounts,
@@ -127,6 +129,9 @@ const MyData: React.FC<MyDataProps> = ({
         formatedData.push(...formatDataResponse(res.data.hits.hits));
       });
 
+      if (formatedData.length === 0 && rejectedResult.length > 0) {
+        errorHandler(rejectedResult[0].response?.data?.responseMessage);
+      }
       setTotalNumberOfValues(totalValue);
       setData(formatedData);
     }

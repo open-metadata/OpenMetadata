@@ -39,9 +39,18 @@ const MyDataPage = () => {
   const [countServices, setCountServices] = useState<number>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchResult, setSearchResult] = useState<SearchResponse[]>();
+  const [rejectedResult, setRejectedResult] = useState<
+    PromiseRejectedResult['reason'][]
+  >([]);
   const [entityCounts, setEntityCounts] = useState<EntityCounts>();
 
+  const errorHandler = (error: string) => {
+    setError(error);
+  };
+
   const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
+    setError('');
+
     const entityList = [
       'table_search_index',
       'topic_search_index',
@@ -64,6 +73,7 @@ const MyDataPage = () => {
     Promise.allSettled(entityResponse).then((response) => {
       const fulfilledRes: SearchResponse[] = [];
       const aggregations: Bucket[] = [];
+      const rejectedRes: PromiseRejectedResult['reason'][] = [];
 
       response.forEach((entity) => {
         if (entity.status === 'fulfilled') {
@@ -71,12 +81,15 @@ const MyDataPage = () => {
           aggregations.push(
             ...entity.value.data.aggregations?.['sterms#Service']?.buckets
           );
+        } else {
+          rejectedRes.push(entity.reason);
         }
       });
 
       if (fulfilledRes.length === 0 && response[0].status === 'rejected') {
         setError(response[0].reason.response?.data?.responseMessage);
       }
+      setRejectedResult(rejectedRes);
       setEntityCounts(getEntityCountByService(aggregations));
       setSearchResult(fulfilledRes as unknown as SearchResponse[]);
     });
@@ -111,7 +124,9 @@ const MyDataPage = () => {
           countServices={countServices}
           entityCounts={entityCounts}
           error={error}
+          errorHandler={errorHandler}
           fetchData={fetchData}
+          rejectedResult={rejectedResult}
           searchResult={searchResult}
           userDetails={AppState.userDetails}
         />

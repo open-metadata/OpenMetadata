@@ -69,11 +69,16 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
     return (
       <div className="tw-mb-5">
-        <div className="tw-mb-3">
-          {`We are unable to ${errorText} ElasticSearch for entity indexes.`}
-          <br />
-          Please follow the instructions here to set up Metadata ingestion and
-          index them into ElasticSearch.
+        <div className="tw-mb-3 tw-text-center">
+          <p>
+            <span>Welcome to OpenMetadata. </span>
+            {`We are unable to ${errorText} Elasticsearch for entity indexes.`}
+          </p>
+
+          <p>
+            Please follow the instructions here to set up Metadata ingestion and
+            index them into Elasticsearch.
+          </p>
         </div>
         <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
           {stepsData.map((data) => (
@@ -112,8 +117,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
   return (
     <div className="tw-mt-20 tw-text-base tw-font-normal">
-      <p className="tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-        {`Hi, ${getUserDisplayName()}! Welcome to OpenMetadata.`}
+      <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
+        {`Hi, ${getUserDisplayName()}!`}
       </p>
       {type === 'noData' && noRecordForES()}
       {type === 'error' && elasticSearchError()}
