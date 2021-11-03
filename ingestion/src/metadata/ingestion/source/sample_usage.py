@@ -6,7 +6,7 @@ from typing import Iterable
 from metadata.ingestion.api.source import Source
 from metadata.ingestion.models.table_queries import TableQuery
 
-from ..ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
+from ..ometa.openmetadata_rest import MetadataServerConfig
 from .sample_data import (
     SampleDataSourceConfig,
     SampleDataSourceStatus,
@@ -25,7 +25,6 @@ class SampleUsageSource(Source):
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = OpenMetadataAPIClient(metadata_config)
         self.service_json = json.load(
             open(config.sample_data_folder + "/datasets/service.json", "r")
         )

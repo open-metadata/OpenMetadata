@@ -22,10 +22,15 @@ from elasticsearch import Elasticsearch
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.dashboardService import DashboardService
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.type import entityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -35,10 +40,8 @@ from metadata.ingestion.models.table_metadata import (
     TableESDocument,
     TopicESDocument,
 )
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.ingestion.sink.elasticsearch_constants import (
     DASHBOARD_ELASTICSEARCH_INDEX_MAPPING,
     PIPELINE_ELASTICSEARCH_INDEX_MAPPING,
@@ -88,7 +91,7 @@ class ElasticsearchSink(Sink):
         self.metadata_config = metadata_config
         self.ctx = ctx
         self.status = SinkStatus()
-        self.rest = OpenMetadataAPIClient(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
         self.elasticsearch_doc_type = "_doc"
         http_auth = None
         if self.config.es_username:
@@ -205,9 +208,11 @@ class ElasticsearchSink(Sink):
                 for col_tag in column.tags:
                     tags.add(col_tag.tagFQN)
 
-        database_entity = self.rest.get_database_by_id(table.database.id.__root__)
-        service_entity = self.rest.get_database_service_by_id(
-            database_entity.service.id.__root__
+        database_entity = self.metadata.get_by_id(
+            entity=Database, entity_id=str(table.database.id.__root__)
+        )
+        service_entity = self.metadata.get_by_id(
+            entity=DatabaseService, entity_id=str(database_entity.service.id.__root__)
         )
         table_owner = str(table.owner.id.__root__) if table.owner is not None else ""
         table_followers = []
@@ -250,8 +255,8 @@ class ElasticsearchSink(Sink):
         ]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_messaging_service_by_id(
-            str(topic.service.id.__root__)
+        service_entity = self.metadata.get_by_id(
+            entity=MessagingService, entity_id=str(topic.service.id.__root__)
         )
         topic_owner = str(topic.owner.id.__root__) if topic.owner is not None else ""
         topic_followers = []
@@ -287,8 +292,8 @@ class ElasticsearchSink(Sink):
         suggest = [{"input": [dashboard.displayName], "weight": 10}]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_dashboard_service_by_id(
-            str(dashboard.service.id.__root__)
+        service_entity = self.metadata.get_by_id(
+            entity=DashboardService, entity_id=str(dashboard.service.id.__root__)
         )
         dashboard_owner = (
             str(dashboard.owner.id.__root__) if dashboard.owner is not None else ""
@@ -343,8 +348,8 @@ class ElasticsearchSink(Sink):
         suggest = [{"input": [pipeline.displayName], "weight": 10}]
         tags = set()
         timestamp = time.time()
-        service_entity = self.rest.get_pipeline_service_by_id(
-            str(pipeline.service.id.__root__)
+        service_entity = self.metadata.get_by_id(
+            entity=PipelineService, entity_id=str(pipeline.service.id.__root__)
         )
         pipeline_owner = (
             str(pipeline.owner.id.__root__) if pipeline.owner is not None else ""
@@ -391,19 +396,13 @@ class ElasticsearchSink(Sink):
 
     def _get_charts(self, chart_refs: Optional[List[entityReference.EntityReference]]):
         charts = []
-        if chart_refs is not None:
+        if chart_refs:
             for chart_ref in chart_refs:
-                chart = self.rest.get_chart_by_id(str(chart_ref.id.__root__))
+                chart = self.metadata.get_by_id(
+                    entity=Chart, entity_id=str(chart_ref.id.__root__), fields=["tags"]
+                )
                 charts.append(chart)
         return charts
-
-    def _get_tasks(self, task_refs: Optional[List[entityReference.EntityReference]]):
-        tasks = []
-        if task_refs is not None:
-            for task_ref in task_refs:
-                task = self.rest.get_task_by_id(str(task_ref.id.__root__))
-                tasks.append(task)
-        return tasks
 
     def get_status(self):
         return self.status

@@ -4,10 +4,8 @@ from unittest import TestCase
 
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 
 class WorkflowTest(TestCase):
@@ -59,7 +57,7 @@ class WorkflowTest(TestCase):
         config = MetadataServerConfig.parse_obj(
             workflow_config.get("metadata_server").get("config")
         )
-        client = OpenMetadataAPIClient(config).client
+        client = OpenMetadata(config).client
 
         client.delete(
             f"/services/databaseServices/"

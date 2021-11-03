@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
+from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -45,10 +46,7 @@ from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -87,10 +85,8 @@ class MetadataRestSink(Sink):
         self.status = SinkStatus()
         self.wrote_something = False
         self.charts_dict = {}
-        self.client = OpenMetadataAPIClient(self.metadata_config)
-        # Let's migrate usages from OpenMetadataAPIClient to OpenMetadata
         self.metadata = OpenMetadata(self.metadata_config)
-        self.api_client = self.client.client
+        self.api_client = self.metadata.client
         self.api_team = "/teams"
         self.api_users = "/users"
         self.team_entities = {}
@@ -190,7 +186,7 @@ class MetadataRestSink(Sink):
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
-            created_topic = self.client.create_or_update_topic(topic)
+            created_topic = self.metadata.create_or_update(topic)
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
             self.status.records_written(f"Topic: {created_topic.name.__root__}")
         except (APIError, ValidationError) as err:
@@ -215,7 +211,7 @@ class MetadataRestSink(Sink):
                 chartUrl=chart.url,
                 service=chart.service,
             )
-            created_chart = self.client.create_or_update_chart(chart_request)
+            created_chart = self.metadata.create_or_update(chart_request)
             self.charts_dict[chart.name] = EntityReference(
                 id=created_chart.id, type="chart"
             )
@@ -238,9 +234,7 @@ class MetadataRestSink(Sink):
                 charts=charts,
                 service=dashboard.service,
             )
-            created_dashboard = self.client.create_or_update_dashboard(
-                dashboard_request
-            )
+            created_dashboard = self.metadata.create_or_update(dashboard_request)
             logger.info(
                 f"Successfully ingested dashboard {created_dashboard.displayName}"
             )
@@ -267,7 +261,7 @@ class MetadataRestSink(Sink):
                 downstreamTasks=task.downstreamTasks,
                 service=task.service,
             )
-            created_task = self.client.create_or_update_task(task_request)
+            created_task = self.metadata.create_or_update(task_request)
             logger.info(f"Successfully ingested Task {created_task.displayName}")
             self.status.records_written(f"Task: {created_task.displayName}")
         except (APIError, ValidationError) as err:
@@ -285,7 +279,7 @@ class MetadataRestSink(Sink):
                 tasks=pipeline.tasks,
                 service=pipeline.service,
             )
-            created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
+            created_pipeline = self.metadata.create_or_update(pipeline_request)
             logger.info(
                 f"Successfully ingested Pipeline {created_pipeline.displayName}"
             )
@@ -309,7 +303,14 @@ class MetadataRestSink(Sink):
     def write_model(self, model: Model):
         try:
             logger.info(model)
-            created_model = self.client.create_or_update_model(model)
+            model_request = CreateModelEntityRequest(
+                name=model.name,
+                displayName=model.displayName,
+                description=model.description,
+                algorithm=model.algorithm,
+                dashboard=model.dashboard,
+            )
+            created_model = self.metadata.create_or_update(model_request)
             logger.info(f"Successfully added Model {created_model.displayName}")
             self.status.records_written(f"Model: {created_model.displayName}")
         except (APIError, ValidationError) as err:

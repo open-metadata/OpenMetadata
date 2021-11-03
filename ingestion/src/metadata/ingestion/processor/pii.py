@@ -28,10 +28,8 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.processor import Processor, ProcessorStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import snake_to_camel
 
 
@@ -173,7 +171,7 @@ class PiiProcessor(Processor):
     config: PiiProcessorConfig
     metadata_config: MetadataServerConfig
     status: ProcessorStatus
-    client: OpenMetadataAPIClient
+    metadata: OpenMetadata
 
     def __init__(
         self,
@@ -185,7 +183,7 @@ class PiiProcessor(Processor):
         self.config = config
         self.metadata_config = metadata_config
         self.status = ProcessorStatus()
-        self.client = OpenMetadataAPIClient(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
         self.tags = self.__get_tags()
         self.column_scanner = ColumnNameScanner()
         self.ner_scanner = NERScanner()
@@ -199,7 +197,7 @@ class PiiProcessor(Processor):
         return cls(ctx, config, metadata_config)
 
     def __get_tags(self) -> {}:
-        user_tags = self.client.list_tags_by_category("user")
+        user_tags = self.metadata.list_tags_by_category("user")
         tags_dict = {}
         for tag in user_tags:
             tags_dict[tag.name.__root__] = tag

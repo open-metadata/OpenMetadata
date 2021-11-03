@@ -18,9 +18,10 @@ from dataclasses import dataclass, field
 from typing import Iterable, List, Optional
 
 from metadata.config.common import ConfigModel
+from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.source import Source, SourceStatus
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 from ...generated.schema.entity.data.dashboard import Dashboard
 from ...generated.schema.entity.data.table import Table
@@ -79,7 +80,7 @@ class MetadataSource(Source):
         self.metadata_config = metadata_config
         self.status = MetadataSourceStatus()
         self.wrote_something = False
-        self.client = OpenMetadataAPIClient(self.metadata_config)
+        self.metadata = OpenMetadata(self.metadata_config)
         self.tables = None
         self.topics = None
 
@@ -104,12 +105,21 @@ class MetadataSource(Source):
         if self.config.include_tables:
             after = None
             while True:
-                table_entities = self.client.list_tables(
-                    fields="columns,tableConstraints,usageSummary,owner,database,tags,followers",
+                table_entities = self.metadata.list_entities(
+                    entity=Table,
+                    fields=[
+                        "columns",
+                        "tableConstraints",
+                        "usageSummary",
+                        "owner",
+                        "database",
+                        "tags",
+                        "followers",
+                    ],
                     after=after,
                     limit=self.config.limit_records,
                 )
-                for table in table_entities.tables:
+                for table in table_entities.entities:
                     self.status.scanned_table(table.name.__root__)
                     yield table
                 if table_entities.after is None:
@@ -120,12 +130,13 @@ class MetadataSource(Source):
         if self.config.include_topics:
             after = None
             while True:
-                topic_entities = self.client.list_topics(
-                    fields="owner,service,tags,followers",
+                topic_entities = self.metadata.list_entities(
+                    entity=Topic,
+                    fields=["owner", "service", "tags", "followers"],
                     after=after,
                     limit=self.config.limit_records,
                 )
-                for topic in topic_entities.topics:
+                for topic in topic_entities.entities:
                     self.status.scanned_topic(topic.name.__root__)
                     yield topic
                 if topic_entities.after is None:
@@ -136,28 +147,37 @@ class MetadataSource(Source):
         if self.config.include_dashboards:
             after = None
             while True:
-                dashboard_entities = self.client.list_dashboards(
-                    fields="owner,service,tags,followers,charts,usageSummary",
+                dashboard_entities = self.metadata.list_entities(
+                    entity=Dashboard,
+                    fields=[
+                        "owner",
+                        "service",
+                        "tags",
+                        "followers",
+                        "charts",
+                        "usageSummary",
+                    ],
                     after=after,
                     limit=self.config.limit_records,
                 )
-                for dashboard in dashboard_entities.dashboards:
+                for dashboard in dashboard_entities.entities:
                     self.status.scanned_dashboard(dashboard.name)
                     yield dashboard
                 if dashboard_entities.after is None:
                     break
                 after = dashboard_entities.after
 
-    def fetch_pipeline(self) -> Dashboard:
+    def fetch_pipeline(self) -> Pipeline:
         if self.config.include_pipelines:
             after = None
             while True:
-                pipeline_entities = self.client.list_pipelines(
-                    fields="owner,service,tags,followers,tasks",
+                pipeline_entities = self.metadata.list_entities(
+                    entity=Pipeline,
+                    fields=["owner", "service", "tags", "followers", "tasks"],
                     after=after,
                     limit=self.config.limit_records,
                 )
-                for pipeline in pipeline_entities.pipelines:
+                for pipeline in pipeline_entities.entities:
                     self.status.scanned_dashboard(pipeline.name)
                     yield pipeline
                 if pipeline_entities.after is None:
