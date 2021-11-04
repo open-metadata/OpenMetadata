@@ -24,6 +24,7 @@ public interface EntityInterface<T> {
   Date getUpdatedAt();
   URI getHref();
   List<EntityReference> getFollowers();
+  ChangeDescription getChangeDescription();
 
   EntityReference getEntityReference();
   T getEntity();
@@ -34,7 +35,5 @@ public interface EntityInterface<T> {
   void setDisplayName(String displayName);
   void setUpdateDetails(String updatedBy, Date updatedAt);
   void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
-  default ChangeDescription getChangeDescription() {
-    return null;
-  }
+  void setOwner(EntityReference owner);
 }

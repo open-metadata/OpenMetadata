@@ -13,30 +13,50 @@
       "default" : 0.1,
       "minimum": 0.1
     },
+    "fieldName" : {
+      "description" : "Name of the field of an entity",
+      "type" : "string"
+    },
+    "fieldChange" : {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Name of the entity field that changed",
+          "$ref": "#/definitions/fieldName"
+        },
+        "oldValue": {
+          "description": "Previous value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+        },
+        "newValue": {
+          "description": "New value of the field. Note that this is a JSON string and use the corresponding field type to deserialize it."
+        }
+      },
+      "additionalProperties": false
+    },
     "changeDescription": {
       "description": "Description of the change.",
       "type" : "object",
       "javaType": "org.openmetadata.catalog.type.ChangeDescription",
       "properties": {
         "fieldsAdded" : {
-          "description": "Fields added during the version changes.",
+          "description": "Names of fields added during the version changes.",
           "type" : "array",
           "items" : {
-            "type": "string"
+            "$ref": "#/definitions/fieldChange"
           }
         },
         "fieldsUpdated" : {
-          "description": "Fields modified during the version changes.",
+          "description": "Fields modified during the version changes with old and new values.",
           "type" : "array",
           "items" : {
-            "type": "string"
+            "$ref": "#/definitions/fieldChange"
           }
         },
         "fieldsDeleted" : {
-          "description": "Fields deleted during the version changes.",
+          "description": "Fields deleted during the version changes with old value before deleted.",
           "type" : "array",
           "items" : {
-            "type": "string"
+            "$ref": "#/definitions/fieldChange"
           }
         },
         "previousVersion" : {
@@ -52,7 +72,7 @@
       "type": "string"
     },
     "versions": {
-      "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to the entity schema. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
+      "descriptions" : "All the versions of the entity ordered from the latest to the oldest version. Note the array element object has schema that corresponds to schema of the entity from the `entityType` attribute. For example, if `entityType` is `table`, then the schema of the object in the array is `table.json`.",
       "type" : "array"
     }
   },

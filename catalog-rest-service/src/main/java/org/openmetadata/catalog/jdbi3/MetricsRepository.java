@@ -32,6 +32,7 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class MetricsRepository extends EntityRepository<Metrics> {
@@ -103,7 +104,7 @@ public class MetricsRepository extends EntityRepository<Metrics> {
 
   private EntityReference getService(Metrics metrics) throws IOException { // Get service by metrics Id
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), metrics.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(ref);
+    return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException { // Get service by service Id
@@ -185,6 +186,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.METRICS);
@@ -221,6 +225,9 @@ public class MetricsRepository extends EntityRepository<Metrics> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

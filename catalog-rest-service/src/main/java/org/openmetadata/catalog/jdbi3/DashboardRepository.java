@@ -34,8 +34,11 @@ import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -104,7 +107,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
   private EntityReference getService(Dashboard dashboard) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), dashboard.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(ref);
+    return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
@@ -209,7 +212,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     return charts.isEmpty() ? null : charts;
   }
 
-  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) {
+  public void updateCharts(Dashboard original, Dashboard updated, EntityUpdater updater) throws JsonProcessingException {
     String dashboardId = updated.getId().toString();
 
     // Remove all charts associated with this dashboard
@@ -315,6 +318,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
@@ -336,22 +342,25 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
       updateCharts();
     }
 
-    private void updateCharts() {
+    private void updateCharts() throws JsonProcessingException {
       String dashboardId = updated.getId().toString();
 
       // Remove all charts associated with this dashboard
       dao.relationshipDAO().deleteFrom(dashboardId, Relationship.CONTAINS.ordinal(), "chart");
 
       // Add relationship from dashboard to chart
-      if (updated.getEntity().getCharts() != null) {
-        for (EntityReference chart : updated.getEntity().getCharts()) {
-          dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
-                  Relationship.CONTAINS.ordinal());
-        }
+      List<EntityReference> updatedCharts = Optional.ofNullable(updated.getEntity().getCharts())
+              .orElse(Collections.emptyList());
+      List<EntityReference> origCharts = Optional.ofNullable(original.getEntity().getCharts())
+              .orElse(Collections.emptyList());
+      for (EntityReference chart : updatedCharts) {
+        dao.relationshipDAO().insert(dashboardId, chart.getId().toString(), Entity.DASHBOARD, Entity.CHART,
+                Relationship.CONTAINS.ordinal());
       }
-      List<UUID> origChartIds = EntityUtil.getIDList(original.getEntity().getCharts());
-      List<UUID> updatedChartIds = EntityUtil.getIDList(updated.getEntity().getCharts());
-      recordChange("charts", origChartIds, updatedChartIds);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange("charts", origCharts, updatedCharts, added, deleted, entityReferenceMatch);
     }
   }
 }

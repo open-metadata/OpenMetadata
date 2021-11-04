@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.dashboards;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ import org.openmetadata.catalog.resources.dashboards.DashboardResource.Dashboard
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -48,7 +47,6 @@ import javax.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,7 +78,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static List<EntityReference> CHART_REFERENCES;
 
   public DashboardResourceTest() {
-    super(Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS, true);
+    super(Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS, true, true, true);
   }
 
 
@@ -223,8 +221,10 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add description, and charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "charts"));
+    List<FieldChange> fields = new ArrayList<>();
+    fields.add(new FieldChange().withName("description").withNewValue("newDescription"));
+    fields.add(new FieldChange().withName("charts").withNewValue(CHART_REFERENCES));
+    ChangeDescription change = getChangeDescription(dashboard.getVersion()).withFieldsAdded(fields);
     updateAndCheckEntity(request.withDescription("newDescription").withCharts(CHART_REFERENCES),
             OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
@@ -235,14 +235,16 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
     Dashboard dashboard = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add charts
-    ChangeDescription change = getChangeDescription(dashboard.getVersion()).withFieldsAdded(singletonList("charts"));
+    FieldChange charts = new FieldChange().withName("charts").withNewValue(CHART_REFERENCES);
+    ChangeDescription change = getChangeDescription(dashboard.getVersion()).withFieldsAdded(singletonList(charts));
     dashboard = updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, adminAuthHeaders(),
             MINOR_UPDATE, change);
     validateDashboardCharts(dashboard, CHART_REFERENCES);
 
     // remove a chart
+    charts = new FieldChange().withName("charts").withOldValue(List.of(CHART_REFERENCES.get(0)));
     CHART_REFERENCES.remove(0);
-    change = getChangeDescription(dashboard.getVersion()).withFieldsUpdated(singletonList("charts"));
+    change = getChangeDescription(dashboard.getVersion()).withFieldsDeleted(singletonList(charts));
     updateAndCheckEntity(request.withCharts(CHART_REFERENCES), OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -266,50 +268,6 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
     Dashboard dashboard = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(dashboard, true);
-  }
-
-  @Test
-  public void patch_DashboardAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create Dashboard without description, owner
-    Dashboard dashboard = createDashboard(create(test), adminAuthHeaders());
-    assertNull(dashboard.getDescription());
-    assertNull(dashboard.getOwner());
-    assertNotNull(dashboard.getService());
-
-    List<TagLabel> dashboardTags = singletonList(TIER1_TAG_LABEL);
-
-    //
-    // Add displayName, description, owner when previously they were null
-    //
-    String origJson = JsonUtils.pojoToJson(dashboard);
-    dashboard.withDescription("description").withDisplayName("displayName").withOwner(TEAM_OWNER1).withTags(dashboardTags);
-    ChangeDescription change = getChangeDescription(dashboard.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "displayName", "owner", "tags"));
-    dashboard = patchEntityAndCheck(dashboard, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    dashboard.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-
-    //
-    // Replace displayName, description, tier, owner
-    //
-    dashboardTags = singletonList(USER_ADDRESS_TAG_LABEL);
-    origJson = JsonUtils.pojoToJson(dashboard);
-    dashboard.withDescription("description1").withDisplayName("displayName1").withOwner(USER_OWNER1)
-            .withTags(dashboardTags);
-    change = getChangeDescription(dashboard.getVersion())
-            .withFieldsUpdated(Arrays.asList("description", "displayName", "owner", "tags"));
-    dashboard = patchEntityAndCheck(dashboard, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    dashboard.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    dashboard.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-
-    //
-    // Remove description, tier, owner
-    //
-    origJson = JsonUtils.pojoToJson(dashboard);
-    dashboard.withDescription(null).withDisplayName(null).withOwner(null).withTags(null);
-    change = getChangeDescription(dashboard.getVersion())
-            .withFieldsDeleted(Arrays.asList("description", "displayName", "owner", "tags"));
-    patchEntityAndCheck(dashboard, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
   @Test
@@ -445,5 +403,19 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   @Override
   public EntityInterface<Dashboard> getEntityInterface(Dashboard entity) {
     return new DashboardEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (fieldName.contains("charts")) {
+      List<EntityReference> expectedRefs = (List<EntityReference>) expected;
+      List<EntityReference> actualRefs = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertEquals(expectedRefs, actualRefs);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

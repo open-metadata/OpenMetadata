@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Model;
@@ -242,6 +243,9 @@ public class ModelRepository extends EntityRepository<Model> {
     public List<EntityReference> getFollowers() { return entity.getFollowers(); }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.MODEL);
@@ -276,6 +280,9 @@ public class ModelRepository extends EntityRepository<Model> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -295,11 +302,11 @@ public class ModelRepository extends EntityRepository<Model> {
       updateDashboard(original.getEntity(), updated.getEntity());
     }
 
-    private void updateAlgorithm(Model origModel, Model updatedModel) {
+    private void updateAlgorithm(Model origModel, Model updatedModel) throws JsonProcessingException {
       recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
     }
 
-    private void updateDashboard(Model origModel, Model updatedModel) {
+    private void updateDashboard(Model origModel, Model updatedModel) throws JsonProcessingException {
       // Remove existing dashboards
       removeDashboard(origModel);
 

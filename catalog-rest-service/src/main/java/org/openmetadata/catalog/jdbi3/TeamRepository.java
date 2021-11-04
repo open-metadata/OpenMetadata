@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.Team;
@@ -64,7 +65,6 @@ public class TeamRepository extends EntityRepository<Team> {
     dao.relationshipDAO().deleteAll(id.toString());
   }
 
-  // TODO clean this up
   public List<EntityReference> getUsers(List<UUID> userIds) throws IOException {
     if (userIds == null) {
       return null;
@@ -207,7 +207,7 @@ public class TeamRepository extends EntityRepository<Team> {
     @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.TEAM);
+              .withDisplayName(getDisplayName()).withType(Entity.TEAM).withHref(getHref());
     }
 
     @Override
@@ -237,6 +237,9 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) { }
+
+    @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
@@ -261,7 +264,7 @@ public class TeamRepository extends EntityRepository<Team> {
       updateUsers(original.getEntity(), updated.getEntity());
     }
 
-    private void updateUsers(Team origTeam, Team updatedTeam) {
+    private void updateUsers(Team origTeam, Team updatedTeam) throws JsonProcessingException {
       List<EntityReference> origUsers = Optional.ofNullable(origTeam.getUsers()).orElse(Collections.emptyList());
       List<EntityReference> updatedUsers = Optional.ofNullable(updatedTeam.getUsers()).orElse(Collections.emptyList());
 

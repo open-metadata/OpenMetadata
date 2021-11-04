@@ -148,6 +148,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.PIPELINE_SERVICE);
@@ -180,6 +183,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

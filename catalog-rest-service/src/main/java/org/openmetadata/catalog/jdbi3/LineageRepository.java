@@ -22,8 +22,6 @@ import org.openmetadata.catalog.type.Edge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,7 +45,6 @@ public class LineageRepository {
   @Transaction
   public EntityLineage getByName(String entityType, String fqn, int upstreamDepth, int downstreamDepth)
           throws IOException {
-    // TODO clean this up
     EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao);
     return getLineage(ref, upstreamDepth, downstreamDepth);
   }

@@ -391,6 +391,7 @@ public final class EntityUtil {
       List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
       updatedTagLabels = EntityUtil.mergeTags(updatedTagLabels, derivedTags);
     }
+    updatedTagLabels.sort(Comparator.comparing(TagLabel::getTagFQN));
     return updatedTagLabels;
   }
 

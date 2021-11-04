@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.topics;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -28,18 +27,13 @@ import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.topics.TopicResource.TopicList;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
-import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -49,12 +43,10 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -62,7 +54,7 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   public TopicResourceTest() {
-    super(Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true);
+    super(Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true);
   }
 
   @Test
@@ -200,36 +192,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void patch_topicAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create topic without description, owner
-    Topic topic = createTopic(create(test), adminAuthHeaders());
-    assertNull(topic.getDescription());
-    assertNull(topic.getOwner());
-    assertNotNull(topic.getService());
-    List<TagLabel> topicTags = List.of(TIER1_TAG_LABEL);
-
-    topic = getTopic(topic.getId(), "service,owner,tags", adminAuthHeaders());
-    topic.getService().setHref(null); // href is readonly and not patchable
-
-    // Add description, owner when previously they were null
-    topic = patchTopicAttributesAndCheck(topic, "description", TEAM_OWNER1, topicTags,
-            adminAuthHeaders(), MINOR_UPDATE);
-    topic.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    topic.setService(KAFKA_REFERENCE); // Get rid of href and name returned in the response for service
-    topic.setTags(topicTags);
-    topicTags = List.of(TIER2_TAG_LABEL);
-
-    // Replace description, tier, owner
-    topic = patchTopicAttributesAndCheck(topic, "description1", USER_OWNER1, topicTags,
-            adminAuthHeaders(), MINOR_UPDATE);
-    topic.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    topic.setService(PULSAR_REFERENCE); // Get rid of href and name returned in the response for service
-
-    // Remove description, tier, owner
-    patchTopicAttributesAndCheck(topic, null, null, topicTags, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
   public void delete_emptyTopic_200_ok(TestInfo test) throws HttpResponseException {
     Topic topic = createTopic(create(test), adminAuthHeaders());
     deleteTopic(topic.getId(), adminAuthHeaders());
@@ -276,73 +238,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
             getTopic(topic.getId(), fields, adminAuthHeaders());
     assertNotNull(topic.getOwner());
     assertNotNull(topic.getService());
-  }
-
-  private static Topic validateTopic(Topic topic, String expectedDescription, EntityReference expectedOwner,
-                                     EntityReference expectedService, List<TagLabel> expectedTags,
-                                     String expectedUpdatedBy)
-          throws HttpResponseException {
-    assertNotNull(topic.getId());
-    assertNotNull(topic.getHref());
-    assertEquals(expectedDescription, topic.getDescription());
-    assertEquals(expectedUpdatedBy, topic.getUpdatedBy());
-
-    // Validate owner
-    if (expectedOwner != null) {
-      TestUtils.validateEntityReference(topic.getOwner());
-      assertEquals(expectedOwner.getId(), topic.getOwner().getId());
-      assertEquals(expectedOwner.getType(), topic.getOwner().getType());
-      assertNotNull(topic.getOwner().getHref());
-    }
-
-    // Validate service
-    if (expectedService != null) {
-      TestUtils.validateEntityReference(topic.getService());
-      assertEquals(expectedService.getId(), topic.getService().getId());
-      assertEquals(expectedService.getType(), topic.getService().getType());
-    }
-    TestUtils.validateTags(topic.getFullyQualifiedName(), expectedTags, topic.getTags());
-    return topic;
-  }
-
-  private Topic patchTopicAttributesAndCheck(Topic before, String newDescription,
-                                             EntityReference newOwner,
-                                             List<TagLabel> tags,
-                                             Map<String, String> authHeaders,
-                                             UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String topicJson = JsonUtils.pojoToJson(before);
-
-    // Update the topic attributes
-    before.setDescription(newDescription);
-    before.setOwner(newOwner);
-    before.setTags(tags);
-
-    // Validate information returned in patch response has the updates
-    Topic updateTopic = patchTopic(topicJson, before, authHeaders);
-    validateTopic(updateTopic, before.getDescription(), newOwner, null, tags, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updateTopic.getVersion(), updateType);
-
-    // GET the topic and Validate information returned
-    Topic getTopic = getTopic(before.getId(), "service,owner,tags", authHeaders);
-    validateTopic(getTopic, before.getDescription(), newOwner, null, tags, updatedBy);
-    return updateTopic;
-  }
-
-  private Topic patchTopic(UUID topicId, String originalJson, Topic updatedTopic,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String updateTopicJson = JsonUtils.pojoToJson(updatedTopic);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updateTopicJson);
-    return TestUtils.patch(getResource("topics/" + topicId), patch, Topic.class, authHeaders);
-  }
-
-  private Topic patchTopic(String originalJson,
-                           Topic updatedTopic,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    return patchTopic(updatedTopic.getId(), originalJson, updatedTopic, authHeaders);
   }
 
   public static void getTopic(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
@@ -413,11 +308,16 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());
-    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), expected.getTags());
+    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), updated.getTags());
   }
 
   @Override
   public EntityInterface<Topic> getEntityInterface(Topic entity) {
     return new TopicEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }
