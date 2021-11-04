@@ -63,13 +63,8 @@ public class ReportRepository extends EntityRepository<Report> {
 
   @Override
   public void validate(Report report) throws IOException {
-    // TODO clean this up
     setService(report, report.getService());
     setOwner(report, report.getOwner());
-
-//    String fqn = service.getName() + "." + report.getName();
-//    report.setFullyQualifiedName(fqn);
-//    getService(service);
     EntityUtil.populateOwner(dao.userDAO(), dao.teamDAO(), report.getOwner()); // Validate owner
   }
 
@@ -165,6 +160,9 @@ public class ReportRepository extends EntityRepository<Report> {
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.REPORT);
@@ -197,6 +195,9 @@ public class ReportRepository extends EntityRepository<Report> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.pipelines;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
@@ -31,7 +30,7 @@ import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource.PipelineList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -44,14 +43,12 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -69,11 +66,9 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
   public PipelineResourceTest() {
-    super(Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true);
+    super(Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
   }
 
 
@@ -101,7 +96,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertEquals(createRequest.getDisplayName(), pipeline.getDisplayName());
     assertService(createRequest.getService(), pipeline.getService());
-    validatePipelineTasks(pipeline, createRequest.getTasks());
+    assertEquals(createRequest.getTasks(), pipeline.getTasks());
     TestUtils.validateTags(pipeline.getFullyQualifiedName(), createRequest.getTags(), pipeline.getTags());
   }
 
@@ -116,13 +111,27 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertService(expected.getService(), updated.getService());
-    validatePipelineTasks(updated, expected.getTasks());
+    assertEquals(expected.getTasks(), updated.getTasks());
     TestUtils.validateTags(updated.getFullyQualifiedName(), expected.getTags(), updated.getTags());
   }
 
   @Override
   public EntityInterface<Pipeline> getEntityInterface(Pipeline entity) {
     return new PipelineEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (fieldName.contains("tasks")) {
+      List<Task> expectedTasks = (List<Task>) expected;
+      List<Task> actualTasks = JsonUtils.readObjects(actual.toString(), Task.class);
+      assertEquals(expectedTasks, actualTasks);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 
   @Test
@@ -255,11 +264,11 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add description and tasks
-    ChangeDescription change = getChangeDescription(pipeline.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "tasks"));
-    pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS),
-            OK, adminAuthHeaders(), MINOR_UPDATE, change);
-    validatePipelineTasks(pipeline, TASKS); // TODO clean this up
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
+    updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS), OK, adminAuthHeaders(),
+            MINOR_UPDATE, change);
   }
 
   @Test
@@ -268,8 +277,9 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     Pipeline pipeline = createAndCheckEntity(request, adminAuthHeaders());
 
     // Add tasks and description
-    ChangeDescription change = getChangeDescription(pipeline.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "tasks"));
+    ChangeDescription change = getChangeDescription(pipeline.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
+    change.getFieldsAdded().add(new FieldChange().withName("tasks").withNewValue(TASKS));
     pipeline = updateAndCheckEntity(request.withDescription("newDescription").withTasks(TASKS),
             OK, adminAuthHeaders(), MINOR_UPDATE, change);
 
@@ -303,48 +313,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     Pipeline pipeline = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(pipeline, true);
   }
-
-  @Test
-  public void patch_PipelineAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create Pipeline without description, owner
-    Pipeline pipeline = createPipeline(create(test), adminAuthHeaders());
-    assertNull(pipeline.getDescription());
-    assertNull(pipeline.getOwner());
-    assertNotNull(pipeline.getService());
-
-    pipeline = getPipeline(pipeline.getId(), "service,owner", adminAuthHeaders());
-    pipeline.getService().setHref(null); // href is readonly and not patchable
-    List<TagLabel> pipelineTags = singletonList(TIER_1);
-
-    // Add description, owner and tags when previously they were null
-    String origJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.withDescription("description").withOwner(TEAM_OWNER1).withTags(pipelineTags);
-    ChangeDescription change = getChangeDescription(pipeline.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "owner", "tags"));
-    pipeline = patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    pipeline.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    pipeline.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
-    pipelineTags = singletonList(USER_ADDRESS_TAG_LABEL);
-
-    // Replace description, tags, owner
-    origJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.withDescription("description1").withOwner(USER_OWNER1).withTags(pipelineTags);
-    change = getChangeDescription(pipeline.getVersion())
-            .withFieldsUpdated(Arrays.asList("description", "owner", "tags"));
-    pipeline = patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    pipeline.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    pipeline.setService(AIRFLOW_REFERENCE); // Get rid of href and name returned in the response for service
-
-    // Remove description, tier, owner
-    origJson = JsonUtils.pojoToJson(pipeline);
-    pipeline.withDescription(null).withOwner(null).withTags(null);
-    change = getChangeDescription(pipeline.getVersion())
-            .withFieldsDeleted(Arrays.asList("description", "owner", "tags"));
-    patchEntityAndCheck(pipeline, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  // TODO listing tables test:1
-  // TODO Change service?
 
   @Test
   public void delete_emptyPipeline_200_ok(TestInfo test) throws HttpResponseException {
@@ -401,10 +369,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertNotNull(pipeline.getOwner());
     assertNotNull(pipeline.getService());
     assertNotNull(pipeline.getTasks());
-  }
-
-  private static void validatePipelineTasks(Pipeline pipeline, List<Task> expectedTasks) {
-    assertEquals(expectedTasks, pipeline.getTasks());
   }
 
   public static void getPipeline(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

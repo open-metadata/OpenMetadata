@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,21 +40,17 @@ import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
-import org.openmetadata.common.utils.JsonSchemaUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static java.util.Collections.singletonList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.CREATED;
@@ -84,8 +79,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public static EntityReference SUPERSET_REFERENCE;
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
 
 
   @BeforeAll
@@ -385,31 +378,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
   }
 
   @Test
-  public void patch_ModelAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create Model without description, owner
-    Model model = createModel(create(test), adminAuthHeaders());
-    assertNull(model.getDescription());
-    assertNull(model.getOwner());
-
-    model = getModel(model.getId(), "owner,usageSummary", adminAuthHeaders());
-    List<TagLabel> modelTags = singletonList(TIER_1);
-
-    // Add description, owner when previously they were null
-    model = patchModelAttributesAndCheck(model, "description", TEAM_OWNER1, modelTags,
-            adminAuthHeaders(), MINOR_UPDATE);
-    model.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    modelTags = singletonList(USER_ADDRESS_TAG_LABEL);
-
-    // Replace description, tier, owner
-    model = patchModelAttributesAndCheck(model, "description1", USER_OWNER1, modelTags,
-            adminAuthHeaders(), MINOR_UPDATE);
-    model.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-
-    // Remove description, tier, owner
-    patchModelAttributesAndCheck(model, null, null, modelTags, adminAuthHeaders(), MINOR_UPDATE);
-  }
-
-  @Test
   public void delete_emptyModel_200_ok(TestInfo test) throws HttpResponseException {
     Model model = createModel(create(test), adminAuthHeaders());
     deleteModel(model.getId(), adminAuthHeaders());
@@ -561,44 +529,6 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
     TestUtils.validateTags(model.getFullyQualifiedName(), expectedTags, model.getTags());
     return model;
-  }
-
-  private Model patchModelAttributesAndCheck(Model before, String newDescription, EntityReference newOwner,
-                                             List<TagLabel> tags, Map<String, String> authHeaders,
-                                             UpdateType updateType)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedBy = TestUtils.getPrincipal(authHeaders);
-    String modelJson = JsonUtils.pojoToJson(before);
-
-    // Update the table attributes
-    before.setDescription(newDescription);
-    before.setOwner(newOwner);
-    before.setTags(tags);
-
-    // Validate information returned in patch response has the updates
-    Model updatedModel = patchModel(modelJson, before, authHeaders);
-    validateModel(updatedModel, before.getDescription(), newOwner, tags, updatedBy);
-    TestUtils.validateUpdate(before.getVersion(), updatedModel.getVersion(), updateType);
-
-    // GET the table and Validate information returned
-    Model getModel = getModel(before.getId(), "owner,tags", authHeaders);
-    validateModel(getModel, before.getDescription(), newOwner, tags, updatedBy);
-    return updatedModel;
-  }
-
-  private Model patchModel(UUID modelId, String originalJson, Model updatedModel,
-                                   Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    String updatedModelJson = JsonUtils.pojoToJson(updatedModel);
-    JsonPatch patch = JsonSchemaUtil.getJsonPatch(originalJson, updatedModelJson);
-    return TestUtils.patch(getResource("models/" + modelId), patch, Model.class, authHeaders);
-  }
-
-  private Model patchModel(String originalJson,
-                           Model updatedModel,
-                           Map<String, String> authHeaders)
-          throws JsonProcessingException, HttpResponseException {
-    return patchModel(updatedModel.getId(), originalJson, updatedModel, authHeaders);
   }
 
   public static void getModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {

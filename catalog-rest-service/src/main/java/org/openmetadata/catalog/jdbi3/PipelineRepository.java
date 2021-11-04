@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Pipeline;
@@ -34,11 +35,14 @@ import org.openmetadata.catalog.util.JsonUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -159,7 +163,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private EntityReference getService(Pipeline pipeline) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), pipeline.getId(),
             Entity.PIPELINE_SERVICE);
-    return getService(ref);
+    return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
@@ -280,6 +284,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
@@ -299,7 +306,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
       updateTasks(original.getEntity(), updated.getEntity());
     }
 
-    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) {
+    private void updateTasks(Pipeline origPipeline, Pipeline updatedPipeline) throws JsonProcessingException {
       // Airflow lineage backend gets executed per task in a DAG. This means we will not a get full picture of the
       // pipeline in each call. Hence we may create a pipeline and add a single task when one task finishes in a
       // pipeline in the next task run we may have to update. To take care of this we will merge the tasks
@@ -308,14 +315,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       // TODO this might not provide distinct
       updatedTasks = Stream.concat(origTasks.stream(), updatedTasks.stream()).distinct().collect(Collectors.toList());
-      if (origTasks.isEmpty()) {
-        origTasks = null;
-      }
-      if (updatedTasks.isEmpty()) {
-        updatedTasks = null;
-      }
-      updatedPipeline.setTasks(updatedTasks);
-      recordChange("tasks", origTasks, updatedTasks);
+
+      List<Task> added = new ArrayList<>();
+      List<Task> deleted = new ArrayList<>();
+      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
     }
   }
+
+  public static BiPredicate<Task, Task> taskMatch = (task1, task2)
+          -> task1.getName().equals(task2.getName());
 }

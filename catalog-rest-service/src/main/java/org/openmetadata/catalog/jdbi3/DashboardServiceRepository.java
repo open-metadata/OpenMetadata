@@ -145,6 +145,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DASHBOARD_SERVICE);
@@ -177,6 +180,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

@@ -144,6 +144,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.DATABASE_SERVICE);
@@ -176,6 +179,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

@@ -36,6 +36,7 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
@@ -150,7 +151,7 @@ public class ChartRepository extends EntityRepository<Chart> {
 
   private EntityReference getService(Chart chart) throws IOException {
     EntityReference ref = EntityUtil.getService(dao.relationshipDAO(), chart.getId(), Entity.DASHBOARD_SERVICE);
-    return getService(ref);
+    return getService(Objects.requireNonNull(ref));
   }
 
   private EntityReference getService(EntityReference service) throws IOException {
@@ -249,6 +250,9 @@ public class ChartRepository extends EntityRepository<Chart> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
     public ChangeDescription getChangeDescription() {

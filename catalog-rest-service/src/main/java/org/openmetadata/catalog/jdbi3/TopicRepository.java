@@ -30,7 +30,6 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
-import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -260,6 +259,9 @@ public class TopicRepository extends EntityRepository<Topic> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }

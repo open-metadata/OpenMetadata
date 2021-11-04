@@ -137,6 +137,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         }
 
         @Override
+        public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+        @Override
         public EntityReference getEntityReference() {
             return new EntityReference().withId(getId()).withName(getFullyQualifiedName())
                     .withDescription(getDescription()).withDisplayName(getDisplayName())
@@ -169,6 +172,11 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
             entity.setVersion(newVersion);
             entity.setChangeDescription(changeDescription);
+        }
+
+        @Override
+        public void setOwner(EntityReference owner) {
+
         }
 
         @Override

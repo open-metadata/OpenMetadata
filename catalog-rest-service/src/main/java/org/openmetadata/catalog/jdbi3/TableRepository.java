@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
@@ -44,7 +45,6 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
@@ -61,6 +61,7 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static org.openmetadata.catalog.jdbi3.Relationship.JOINED_WITH;
@@ -644,6 +645,9 @@ public class TableRepository extends EntityRepository<Table> {
     }
 
     @Override
+    public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
     public void setTags(List<TagLabel> tags) {
       entity.setTags(tags);
     }
@@ -663,71 +667,70 @@ public class TableRepository extends EntityRepository<Table> {
       Table updatedTable = updated.getEntity();
       updateConstraints(origTable, updatedTable);
       updateTableType(origTable, updatedTable);
-      updateColumns(origTable.getColumns(), updated.getEntity().getColumns());
+      updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), columnMatch);
     }
 
-    private void updateConstraints(Table origTable, Table updatedTable) {
-      List<TableConstraint> origConstraints = origTable.getTableConstraints();
-      List<TableConstraint> updatedConstraints = updatedTable.getTableConstraints();
-      if (origConstraints != null) {
-        origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
-        origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      }
-      if (updatedConstraints != null) {
-        updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
-        updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      }
+    private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
+      List<TableConstraint> origConstraints = Optional.ofNullable(origTable.getTableConstraints())
+              .orElse(Collections.emptyList());
+      List<TableConstraint> updatedConstraints = Optional.ofNullable(updatedTable.getTableConstraints())
+              .orElse(Collections.emptyList());
 
-      recordChange("tableConstraints", origConstraints, updatedConstraints);
+      origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+
+      updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
+
+      List<TableConstraint> added = new ArrayList<>();
+      List<TableConstraint> deleted = new ArrayList<>();
+      recordListChange("tableConstraints", origConstraints, updatedConstraints, added, deleted,
+              tableConstraintMatch);
     }
 
-    private void updateTableType(Table origTable, Table updatedTable) {
+    private void updateTableType(Table origTable, Table updatedTable) throws JsonProcessingException {
       recordChange("tableType", origTable.getTableType(), updatedTable.getTableType());
     }
 
-    private void updateColumns(List<Column> origColumns, List<Column> updatedColumns) throws IOException {
+    private void updateColumns(String fieldName, List<Column> origColumns, List<Column> updatedColumns,
+                               BiPredicate<Column, Column> columnMatch) throws IOException {
+      List<Column> deletedColumns = new ArrayList<>();
+      List<Column> addedColumns = new ArrayList<>();
+      recordListChange(fieldName, origColumns, updatedColumns, addedColumns, deletedColumns, columnMatch);
+
+      // Delete tags related to deleted columns
+      deletedColumns.forEach(deleted -> EntityUtil.removeTags(dao.tagDAO(), deleted.getFullyQualifiedName()));
+
+      // Add tags related to deleted columns
+      for (Column added : addedColumns) {
+        EntityUtil.applyTags(dao.tagDAO(), added.getTags(), added.getFullyQualifiedName());
+      }
+
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream()
-                .filter(s -> s.getName().equals(updated.getName()) &&
-                        s.getDataType() == updated.getDataType() &&
-                        s.getArrayDataType() == updated.getArrayDataType() &&
-                        Objects.equals(s.getOrdinalPosition(), updated.getOrdinalPosition()))
-                .findAny()
-                .orElse(null);
-        if (stored == null) {
-          changeDescription.getFieldsAdded().add(getColumnField(updated));
-          EntityUtil.applyTags(dao.tagDAO(), updated.getTags(), updated.getFullyQualifiedName());
+        Column stored = origColumns.stream().filter(c -> TableRepository.this.columnMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New column added
           continue;
         }
 
         updateColumnDescription(stored, updated);
-        updateColumnTags(stored, updated);
+        updateTags(stored.getFullyQualifiedName(), fieldName + "." + updated.getName() + ".tags", stored.getTags(),
+                updated.getTags());
         updateColumnConstraint(stored, updated);
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
-          updateColumns(stored.getChildren(), updated.getChildren());
+          String childrenFieldName = fieldName + "." + updated.getName();
+          updateColumns(childrenFieldName, stored.getChildren(), updated.getChildren(), columnMatch);
         }
       }
 
-      for (Column stored : origColumns) {
-        // Find updated column matching name, data type and ordinal position
-        Column updated = updatedColumns.stream()
-                .filter(s -> s.getName().equals(stored.getName()) &&
-                        s.getDataType() == stored.getDataType() &&
-                        s.getArrayDataType() == stored.getArrayDataType() &&
-                        Objects.equals(s.getOrdinalPosition(), stored.getOrdinalPosition()))
-                .findAny()
-                .orElse(null);
-        if (updated == null) {
-          changeDescription.getFieldsDeleted().add(getColumnField(stored));
-          majorVersionChange = true;
-        }
+      if (!deletedColumns.isEmpty()) {
+        majorVersionChange = true;
       }
     }
 
-    private void updateColumnDescription(Column origColumn, Column updatedColumn) {
+    private void updateColumnDescription(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       if (!patchOperation
               && origColumn.getDescription() != null && !origColumn.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
@@ -738,29 +741,29 @@ public class TableRepository extends EntityRepository<Table> {
               origColumn.getDescription(), updatedColumn.getDescription());
     }
 
-    private void updateColumnConstraint(Column origColumn, Column updatedColumn) {
+    private void updateColumnConstraint(Column origColumn, Column updatedColumn) throws JsonProcessingException {
       recordChange(getColumnField(origColumn, "constraint"),
                       origColumn.getConstraint(), updatedColumn.getConstraint());
-    }
-
-    private void updateColumnTags(Column origColumn, Column updatedColumn) throws IOException {
-      if (!patchOperation) {
-        // PUT operation merges tags in the request with what already exists
-        updatedColumn.setTags(EntityUtil.mergeTags(updatedColumn.getTags(), origColumn.getTags()));
-      }
-      recordTagChange(getColumnField(origColumn, "tags"), origColumn.getTags(), updatedColumn.getTags());
-      EntityUtil.applyTags(dao.tagDAO(), updatedColumn.getTags(), updatedColumn.getFullyQualifiedName());
-    }
-
-    private String getColumnField(Column column) {
-      return getColumnField(column, null);
     }
 
     private String getColumnField(Column column, String columnField) {
       // Remove table FQN from column FQN to get the local name
       String localColumnName = EntityUtil.getLocalColumnName(column.getFullyQualifiedName());
-      System.out.println("Local name " + column.getFullyQualifiedName());
-      return "column:" + localColumnName + (columnField == null ? "" : "." + columnField);
+      return "columns." + localColumnName + (columnField == null ? "" : "." + columnField);
     }
   }
+
+  BiPredicate<Column, Column> columnMatch = (column1, column2) -> {
+    /* you CAN compare apples and oranges */
+    return column1.getName().equals(column2.getName()) &&
+            column1.getDataType() == column2.getDataType() &&
+            column1.getArrayDataType() == column2.getArrayDataType() &&
+            Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
+  };
+
+  BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) -> {
+    /* you CAN compare apples and oranges */
+    return constraint1.getConstraintType() == constraint2.getConstraintType() &&
+            constraint1.getColumns().equals(constraint2.getColumns());
+  };
 }

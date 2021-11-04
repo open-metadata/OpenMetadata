@@ -3,7 +3,6 @@ package org.openmetadata.catalog.resources;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
@@ -30,6 +29,7 @@ import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
@@ -61,7 +61,6 @@ import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -84,6 +83,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   private final String collectionName;
   private final String allFields;
   private final boolean supportsFollowers;
+  private final boolean supportsOwner;
+  private final boolean supportsTags;
 
   public static User USER1;
   public static EntityReference USER_OWNER1;
@@ -103,15 +104,16 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
   public static final TagLabel USER_BANK_ACCOUNT_TAG_LABEL = new TagLabel().withTagFQN("User.BankAccount");
   public static final TagLabel TIER1_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier1");
-  public static final TagLabel TIER2_TAG_LABEL = new TagLabel().withTagFQN("Tier.Tier2");
 
   public EntityResourceTest(Class<T> entityClass, Class<? extends ResultList<T>> entityListClass, String collectionName,
-                            String fields, boolean supportsFollowers) {
+                            String fields, boolean supportsFollowers, boolean supportsOwner, boolean supportsTags) {
     this.entityClass = entityClass;
     this.entityListClass = entityListClass;
     this.collectionName = collectionName;
     this.allFields = fields;
     this.supportsFollowers = supportsFollowers;
+    this.supportsOwner = supportsOwner;
+    this.supportsTags = supportsTags;
   }
 
   @BeforeAll
@@ -176,26 +178,31 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return createRequest(test, 0, description, displayName, owner);
   }
 
+  // Create request such as CreateTable, CreateChart returned by concrete implementation
   public abstract Object createRequest(TestInfo test, int index, String description, String displayName,
                                        EntityReference owner) throws URISyntaxException;
 
+  // Entity specific validate for entity create using POST
   public abstract void validateCreatedEntity(T createdEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException;
 
+  // Entity specific validate for entity create using PUT
   public abstract void validateUpdatedEntity(T updatedEntity, Object request, Map<String, String> authHeaders)
           throws HttpResponseException;
 
+  // Entity specific validate for entity create using PATCH
   public abstract void validatePatchedEntity(T expected, T updated, Map<String, String> authHeaders)
           throws HttpResponseException;
 
+  // Get interface to access all common entity attributes
   public abstract EntityInterface<T> getEntityInterface(T entity);
 
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Common entity tests for POST operations
-  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Assert field change in an entity recorded during PUT or POST operations
+  public abstract void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException;
+
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // Common entity tests for PUT operations
+  // Common entity tests for GET operations
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void get_entityListWithPagination_200(TestInfo test) throws HttpResponseException, URISyntaxException {
@@ -279,6 +286,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertResponse(exception, BAD_REQUEST, "Only one of before or after query parameter allowed");
   }
 
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for PUT operations
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   @Test
   public void put_entityCreate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create a new entity with PUT
@@ -311,8 +321,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Update the entity as USER_OWNER1
     request = createRequest(test, "newDescription", null, USER_OWNER1);
+    FieldChange fieldChange = new FieldChange().withName("description").withNewValue("newDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsAdded(Collections.singletonList("description"));
+            .withFieldsAdded(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, authHeaders(USER1.getEmail()), MINOR_UPDATE, change);
   }
 
@@ -328,16 +339,19 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     EntityInterface<T> entityInterface = getEntityInterface(entity);
 
     // Set TEAM_OWNER1 as owner using PUT request
+    FieldChange fieldChange = new FieldChange().withName("owner").withNewValue(TEAM_OWNER1);
     request = createRequest(test, "description", "displayName", TEAM_OWNER1);
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsAdded(Collections.singletonList("owner"));
+            .withFieldsAdded(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(TEAM_OWNER1, entityInterface.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request = createRequest(test, "description", "displayName", USER_OWNER1);
-    change = getChangeDescription(entityInterface.getVersion()).withFieldsUpdated(Collections.singletonList("owner"));
+    fieldChange = new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1);
+    change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsUpdated(Collections.singletonList(fieldChange));
     entity = updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     entityInterface = getEntityInterface(entity);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), true);
@@ -345,7 +359,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Remove ownership (from USER_OWNER1) using PUT request
     request = createRequest(test, "description", "displayName", null);
-    change = getChangeDescription(entityInterface.getVersion()).withFieldsDeleted(Collections.singletonList("owner"));
+    fieldChange = new FieldChange().withName("owner").withOldValue(USER_OWNER1);
+    change = getChangeDescription(entityInterface.getVersion())
+            .withFieldsDeleted(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
     checkOwnerOwns(USER_OWNER1, entityInterface.getId(), false);
   }
@@ -359,8 +375,9 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Update null description with a new description
     request = createRequest(test, "updatedDescription", "displayName", null);
+    FieldChange fieldChange = new FieldChange().withName("description").withNewValue("updatedDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsAdded(Collections.singletonList("description"));
+            .withFieldsAdded(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -373,8 +390,10 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Update empty description with a new description
     request = createRequest(test, "updatedDescription", "displayName", null);
+    FieldChange fieldChange = new FieldChange().withName("description").withOldValue("")
+            .withNewValue("updatedDescription");
     ChangeDescription change = getChangeDescription(entityInterface.getVersion())
-            .withFieldsUpdated(Collections.singletonList("description"));
+            .withFieldsUpdated(Collections.singletonList(fieldChange));
     updateAndCheckEntity(request, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -438,6 +457,102 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
             deleteAndCheckFollower(entityId, NON_EXISTENT_ENTITY, 1, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, CatalogExceptionMessage.entityNotFound("User", NON_EXISTENT_ENTITY));
   }
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Common entity tests for PATCH operations
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  @Test
+  public void patch_entityAttributes_200_ok(TestInfo test) throws IOException, URISyntaxException {
+    // Create chart without description, owner
+    T entity = createEntity(createRequest(test, null, null, null), adminAuthHeaders());
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    assertNull(entityInterface.getDescription());
+    assertNull(entityInterface.getOwner());
+
+    entity = getEntity(entityInterface.getId(), adminAuthHeaders());
+    entityInterface = getEntityInterface(entity);
+
+    //
+    // Add displayName, description, owner, and tags when previously they were null
+    //
+    String origJson = JsonUtils.pojoToJson(entity);
+
+    // Update entity
+    entityInterface.setDescription("description");
+    entityInterface.setDisplayName("displayName");
+
+    // Field changes
+    ChangeDescription change = getChangeDescription(entityInterface.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("description"));
+    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
+    if (supportsOwner) {
+      entityInterface.setOwner(TEAM_OWNER1);
+      change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(TEAM_OWNER1));
+    }
+    if (supportsTags) {
+      entityInterface.setTags(new ArrayList<>());
+      entityInterface.getTags().add(USER_ADDRESS_TAG_LABEL);
+      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(entityInterface.getTags()));
+    }
+
+    entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    entityInterface = getEntityInterface(entity);
+    entityInterface.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
+
+    //
+    // Replace description, add tags tier, owner
+    //
+    origJson = JsonUtils.pojoToJson(entity);
+
+    // Change entity
+    entityInterface.setDescription("description1");
+    entityInterface.setDisplayName("displayName1");
+
+    // Field changes
+    change = getChangeDescription(entityInterface.getVersion());
+    change.getFieldsUpdated().add(new FieldChange().withName("description")
+            .withOldValue("description").withNewValue("description1"));
+    change.getFieldsUpdated().add(new FieldChange().withName("displayName")
+            .withOldValue("displayName").withNewValue("displayName1"));
+    if (supportsOwner) {
+      entityInterface.setOwner(USER_OWNER1);
+      change.getFieldsUpdated().add(new FieldChange().withName("owner").withOldValue(TEAM_OWNER1).withNewValue(USER_OWNER1));
+    }
+
+    if (supportsTags) {
+      entityInterface.getTags().add(TIER1_TAG_LABEL);
+      change.getFieldsAdded().add(new FieldChange().withName("tags").withNewValue(List.of(TIER1_TAG_LABEL)));
+    }
+
+    entity = patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+    entityInterface = getEntityInterface(entity);
+
+    entityInterface.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
+
+    //
+    // Remove description, tier, owner
+    //
+    origJson = JsonUtils.pojoToJson(entity);
+    List<TagLabel> removedTags = entityInterface.getTags();
+
+    entityInterface.setDescription(null);
+    entityInterface.setDisplayName(null);
+    entityInterface.setOwner(null);
+    entityInterface.setTags(null);
+
+    // Field changes
+    change = getChangeDescription(entityInterface.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("description").withOldValue("description1"));
+    change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
+    if (supportsOwner) {
+      change.getFieldsDeleted().add(new FieldChange().withName("owner").withOldValue(USER_OWNER1));
+    }
+    if (supportsTags) {
+      change.getFieldsDeleted().add(new FieldChange().withName("tags").withOldValue(removedTags));
+    }
+
+    patchEntityAndCheck(entity, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
+  }
+
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
@@ -540,7 +655,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   protected final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
                                      UpdateType updateType, ChangeDescription expectedChange)
-          throws JsonProcessingException, HttpResponseException {
+          throws IOException {
     EntityInterface<T> entityInterface = getEntityInterface(updated);
 
     // Validate information returned in patch response has the updates
@@ -566,7 +681,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   protected final void validateChangeDescription(T updated, UpdateType updateType,
-                                              ChangeDescription expectedChange) {
+                                              ChangeDescription expectedChange) throws IOException {
     EntityInterface<T> updatedEntityInterface = getEntityInterface(updated);
     if (updateType == UpdateType.CREATED) {
       return; // PUT operation was used to create an entity. No change description expected.
@@ -593,10 +708,37 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected static void assertFieldLists(List<String> expectedList, List<String> actualList) {
-    expectedList.sort(Comparator.comparing(String::toString));
-    actualList.sort(Comparator.comparing(String::toString));
-    assertIterableEquals(expectedList, actualList);
+  protected final void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
+          throws IOException {
+    expectedList.sort(Comparator.comparing(FieldChange::getName));
+    actualList.sort(Comparator.comparing(FieldChange::getName));
+    assertEquals(expectedList.size(), actualList.size());
+
+    for (int i = 0; i < expectedList.size(); i++) {
+      assertEquals(expectedList.get(i).getName(), actualList.get(i).getName());
+      assertFieldChange(expectedList.get(i).getName(), expectedList.get(i).getNewValue(),
+              actualList.get(i).getNewValue());
+      assertFieldChange(expectedList.get(i).getName(), expectedList.get(i).getOldValue(),
+              actualList.get(i).getOldValue());
+    }
+  }
+
+  protected final void assertCommonFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == actual) {
+      return;
+    }
+    if (fieldName.endsWith("owner")) {
+      EntityReference expectedRef = (EntityReference) expected;
+      EntityReference actualRef = JsonUtils.readValue(actual.toString(), EntityReference.class);
+      assertEquals(expectedRef.getId(), actualRef.getId());
+    } else if (fieldName.endsWith("tags")) {
+      List<TagLabel> expectedTags = (List<TagLabel>) expected;
+      List<TagLabel> actualTags = JsonUtils.readObjects(actual.toString(), TagLabel.class);
+      assertTrue(actualTags.containsAll(expectedTags));
+    } else {
+      // All other fields
+      assertEquals(expected, actual, "Field name " + fieldName);
+    }
   }
 
   protected ChangeDescription getChangeDescription(Double previousVersion) {
