@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -33,7 +34,10 @@ import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
@@ -90,10 +94,28 @@ public class BotsResource {
                                   BotsList.class)))
           })
   public ResultList<Bots> list(@Context UriInfo uriInfo,
-                       @Context SecurityContext securityContext,
-                       @QueryParam("name") String name) throws IOException, GeneralSecurityException, ParseException {
-    ResultList<Bots> list = dao.listAfter(null, name, 10000, null);
+                      @Context SecurityContext securityContext,
+                      @QueryParam("name") String name,
+                      @DefaultValue("10")
+                      @Min(1)
+                      @Max(1000000)
+                      @QueryParam("limit") int limitParam,
+                          @Parameter(description = "Returns list of tables before this cursor",
+                          schema = @Schema(type = "string"))
+                      @QueryParam("before") String before,
+                          @Parameter(description = "Returns list of tables after this cursor",
+                          schema = @Schema(type = "string"))
+                      @QueryParam("after") String after) throws IOException, GeneralSecurityException, ParseException {
+    RestUtil.validateCursors(before, after);
+    
+    ResultList<Bots> list;
+    if (before != null) { // Reverse paging
+      list = dao.listBefore(null, name, limitParam, before);
+    } else { // Forward paging or first page
+      list = dao.listAfter(null, name, limitParam, after);
+    }
     list.getData().forEach(b -> addHref(uriInfo, b));
+    
     return list;
   }
 
