@@ -16,29 +16,20 @@
 
 package org.openmetadata.catalog.resources.services.dashboard;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.api.services.CreateDashboardService;
-import org.openmetadata.catalog.api.services.UpdateDashboardService;
-import org.openmetadata.catalog.entity.services.DashboardService;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.ResultList;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -51,13 +42,27 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+
+import com.google.inject.Inject;
+
+import org.openmetadata.catalog.api.services.CreateDashboardService;
+import org.openmetadata.catalog.api.services.UpdateDashboardService;
+import org.openmetadata.catalog.entity.services.DashboardService;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.DashboardServiceRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.ResultList;
+
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @Path("/v1/services/dashboardServices")
 @Api(value = "Dashboard service collection", tags = "Services -> Dashboard service collection")
@@ -104,9 +109,29 @@ public class DashboardServiceResource {
                           content = @Content(mediaType = "application/json",
                           schema = @Schema(implementation = DashboardServiceList.class)))
           })
-  public ResultList<DashboardService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException, GeneralSecurityException, ParseException {
-    ResultList<DashboardService> list = dao.listAfter(null, null, 10000, null);
+  public ResultList<DashboardService> list(@Context UriInfo uriInfo, 
+                                  @QueryParam("name") String name,
+                                  @DefaultValue("10")
+                                  @Min(1)
+                                  @Max(1000000)
+                                  @QueryParam("limit") int limitParam,
+                                           @Parameter(description = "Returns list of tables before this cursor",
+                                           schema = @Schema(type = "string"))
+                                  @QueryParam("before") String before,
+                                           @Parameter(description = "Returns list of tables after this cursor",
+                                           schema = @Schema(type = "string"))
+                                  @QueryParam("after") String after)
+          throws IOException, GeneralSecurityException, ParseException {
+    RestUtil.validateCursors(before, after);
+
+    ResultList<DashboardService> list;
+    if (before != null) { // Reverse paging
+      list = dao.listBefore(null, null, limitParam, before);
+    } else { // Forward paging or first page
+      list = dao.listAfter(null, null, limitParam, after);
+    }
     list.getData().forEach(d -> addHref(uriInfo, d));
+
     return list;
   }
 
