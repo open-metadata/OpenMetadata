@@ -108,10 +108,10 @@ public class MetricsResource {
                           @Min(1)
                           @Max(1000000)
                           @QueryParam("limit") int limitParam,
-                                  @Parameter(description = "Returns list of tables before this cursor",
+                                  @Parameter(description = "Returns list of metrics before this cursor",
                                   schema = @Schema(type = "string"))
                           @QueryParam("before") String before,
-                                  @Parameter(description = "Returns list of tables after this cursor",
+                                  @Parameter(description = "Returns list of metrics after this cursor",
                                   schema = @Schema(type = "string"))
                           @QueryParam("after") String after) 
             throws IOException, GeneralSecurityException, ParseException {
