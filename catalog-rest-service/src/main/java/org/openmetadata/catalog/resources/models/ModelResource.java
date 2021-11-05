@@ -118,7 +118,7 @@ public class ModelResource {
     }
   }
 
-  static final String FIELDS = "owner,dashboard,algorithm,followers,tags,usageSummary";
+  static final String FIELDS = "owner,dashboard,algorithm,mlFeatures,mlHyperParameters,followers,tags,usageSummary";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -288,7 +288,7 @@ public class ModelResource {
 
   @DELETE
   @Path("/{id}/followers/{userId}")
-  @Operation(summary = "Remove a follower", tags = "model",
+  @Operation(summary = "Remove a follower", tags = "models",
           description = "Remove the user identified `userId` as a follower of the model.")
   public Model deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
@@ -306,7 +306,7 @@ public class ModelResource {
 
   @DELETE
   @Path("/{id}")
-  @Operation(summary = "Delete a Model", tags = "model",
+  @Operation(summary = "Delete a Model", tags = "models",
           description = "Delete a model by `id`.",
           responses = {
                   @ApiResponse(responseCode = "200", description = "OK"),
@@ -321,8 +321,10 @@ public class ModelResource {
     return new Model().withId(UUID.randomUUID()).withName(create.getName())
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription())
-            .withDashboard(create.getDashboard()) //ADDED
-            .withAlgorithm(create.getAlgorithm()) //ADDED
+            .withDashboard(create.getDashboard())
+            .withAlgorithm(create.getAlgorithm())
+            .withMlFeatures(create.getMlFeatures())
+            .withMlHyperParameters(create.getMlHyperParameters())
             .withTags(create.getTags())
             .withOwner(create.getOwner())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
