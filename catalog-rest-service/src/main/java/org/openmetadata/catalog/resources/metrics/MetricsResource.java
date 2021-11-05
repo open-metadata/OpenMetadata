@@ -16,25 +16,20 @@
 
 package org.openmetadata.catalog.resources.metrics;
 
-import com.google.inject.Inject;
-import io.swagger.annotations.Api;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.MetricsRepository;
-import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.security.CatalogAuthorizer;
-import org.openmetadata.catalog.util.EntityUtil.Fields;
-import org.openmetadata.catalog.util.RestUtil;
-import org.openmetadata.catalog.util.RestUtil.PutResponse;
-import org.openmetadata.catalog.util.ResultList;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.Min;
 import javax.ws.rs.Consumes;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -47,14 +42,25 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.text.ParseException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+
+import com.google.inject.Inject;
+
+import org.openmetadata.catalog.entity.data.Metrics;
+import org.openmetadata.catalog.jdbi3.CollectionDAO;
+import org.openmetadata.catalog.jdbi3.MetricsRepository;
+import org.openmetadata.catalog.resources.Collection;
+import org.openmetadata.catalog.security.CatalogAuthorizer;
+import org.openmetadata.catalog.util.EntityUtil.Fields;
+import org.openmetadata.catalog.util.RestUtil;
+import org.openmetadata.catalog.util.RestUtil.PutResponse;
+import org.openmetadata.catalog.util.ResultList;
+
+import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 @Path("/v1/metrics")
 @Api(value = "Metrics collection", tags = "Metrics collection")
@@ -97,11 +103,29 @@ public class MetricsResource {
   public ResultList<Metrics> list(@Context UriInfo uriInfo,
                                   @Parameter(description = "Fields requested in the returned resource",
                                   schema = @Schema(type = "string", example = FIELDS))
-                          @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
-          ParseException {
+                          @QueryParam("fields") String fieldsParam,
+                          @DefaultValue("10")
+                          @Min(1)
+                          @Max(1000000)
+                          @QueryParam("limit") int limitParam,
+                                  @Parameter(description = "Returns list of tables before this cursor",
+                                  schema = @Schema(type = "string"))
+                          @QueryParam("before") String before,
+                                  @Parameter(description = "Returns list of tables after this cursor",
+                                  schema = @Schema(type = "string"))
+                          @QueryParam("after") String after) 
+            throws IOException, GeneralSecurityException, ParseException {
+    RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    ResultList<Metrics> metricsList = dao.listAfter(fields, null, 10000, null);
+
+    ResultList<Metrics> metricsList;
+    if (before != null) { // Reverse paging
+      metricsList = dao.listBefore(fields, null, limitParam, before);
+    } else { // Forward paging or first page
+      metricsList = dao.listAfter(fields, null, limitParam, after);
+    }
     metricsList.getData().forEach(m -> addHref(uriInfo, m));
+    
     return metricsList;
   }
 
