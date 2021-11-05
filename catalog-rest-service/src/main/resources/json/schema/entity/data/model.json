@@ -67,6 +67,7 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MLFeatureSource",
       "description": "This schema defines the sources of a ML Feature.",
+      "additionalProperties": false,
       "properties": {
         "name": {
           "$ref": "#/definitions/featureSourceName"
@@ -96,6 +97,7 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MLFeature",
       "description": "This schema defines the type for a ML Feature used in a Model.",
+      "additionalProperties": false,
       "properties": {
         "name": {
           "$ref": "#/definitions/featureName"
@@ -137,6 +139,7 @@
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MLHyperParameter",
       "description": "This schema defines the type for a ML HyperParameter used in a Model.",
+      "additionalProperties": false,
       "properties": {
         "name": {
           "description": "Hyper parameter name",
