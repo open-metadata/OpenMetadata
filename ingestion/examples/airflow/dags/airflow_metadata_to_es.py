@@ -29,8 +29,6 @@ from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
     "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=2),
     "execution_timeout": timedelta(minutes=60),
@@ -43,7 +41,6 @@ config = """
 def metadata_ingestion_workflow():
     config_file = pathlib.Path("/ingestion/pipelines/metadata_to_es.json")
     workflow_config = load_config_file(config_file)
-
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
@@ -52,7 +49,7 @@ def metadata_ingestion_workflow():
 
 
 with DAG(
-    "elasticsearch",
+    "sample_3_elasticsearch",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),

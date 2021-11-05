@@ -70,7 +70,7 @@ def metadata_ingestion_workflow():
 
 
 with DAG(
-    "sample_data",
+    "sample_1_data",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),

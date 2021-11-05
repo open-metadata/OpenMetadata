@@ -28,9 +28,10 @@ services:
         ipv4_address: 172.16.239.10
 
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.13.2
     environment:
       - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms750m -Xmx750m
     networks:
       app_net:
         ipv4_address: 172.16.239.11
