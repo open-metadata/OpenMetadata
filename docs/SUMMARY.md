@@ -1,6 +1,8 @@
 # Table of contents
 
 * [Introduction](README.md)
+* [Features](features/README.md)
+  * [Asset Discovery](features/asset-discovery.md)
 * [Try OpenMetadata](take-it-for-a-spin.md)
 * [Tutorials](tutorials/README.md)
   * [Tutorial: Data Discovery with OpenMetadata](tutorials/tutorial-data-discovery-with-openmetadata.md)
