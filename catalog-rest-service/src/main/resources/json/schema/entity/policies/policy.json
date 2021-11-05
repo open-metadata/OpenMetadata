@@ -1,0 +1,97 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/data/policy.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Policy",
+  "description": "This schema defines the Policy entity. A Policy defines lifecycle or access control that needs to be applied across different Data Entities.",
+  "type": "object",
+  "definitions": {
+    "policyType": {
+      "javaType": "org.openmetadata.catalog.type.PolicyType",
+      "description": "This schema defines the type used for describing different types of policies.",
+      "type": "string",
+      "enum": [
+        "AccessControl",
+        "Lifecycle"
+      ],
+      "javaEnums": [
+        {
+          "name": "AccessControl"
+        },
+        {
+          "name": "Lifecycle"
+        }
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier that identifies this Policy.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name that identifies this Policy.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "fullyQualifiedName": {
+      "description": "Name that uniquely identifies a Policy.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "displayName": {
+      "description": "Title for this Policy.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Policy, comprehensible to regular users.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this Policy.",
+      "$ref": "../../type/entityReference.json",
+      "default": null
+    },
+    "policyUrl": {
+      "description": "Link to a well documented definition of this Policy.",
+      "type": "string",
+      "format": "uri",
+      "default": null
+    },
+    "href": {
+      "description": "Link to the resource corresponding to this entity.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "policyType": {
+      "$ref": "#/definitions/policyType"
+    },
+    "enabled": {
+      "description": "Is the policy enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "version" : {
+      "description": "Metadata version of the Policy.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the Policy.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "changeDescription": {
+      "description" : "Change that led to this version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "owner",
+    "policyType"
+  ]
+}

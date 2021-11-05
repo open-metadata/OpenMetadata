@@ -256,6 +256,22 @@ CREATE TABLE IF NOT EXISTS thread_entity (
 );
 
 --
+-- Policies related tables
+--
+CREATE TABLE IF NOT EXISTS policy_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.updatedAt', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    timestamp BIGINT,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_name(fullyQualifiedName),
+    INDEX (updatedBy),
+    INDEX (updatedAt)
+);
+
+--
 -- User, Team, and bots
 --
 CREATE TABLE IF NOT EXISTS team_entity (

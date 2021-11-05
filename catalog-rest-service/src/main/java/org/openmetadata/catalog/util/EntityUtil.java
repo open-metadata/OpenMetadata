@@ -25,7 +25,6 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
-import org.openmetadata.catalog.jdbi3.CollectionDAO.LocationDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -39,6 +38,7 @@ import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.resources.locations.LocationResource;
+import org.openmetadata.catalog.resources.policies.PolicyResource;
 import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
@@ -162,6 +162,8 @@ public final class EntityUtil {
       DashboardResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       ModelResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
+      PolicyResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
       PipelineResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
@@ -288,6 +290,8 @@ public final class EntityUtil {
       return dao.modelDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
       return dao.locationDAO().findEntityReferenceById(id);
+    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
+      return dao.policyDAO().findEntityReferenceById(id);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
@@ -312,6 +316,8 @@ public final class EntityUtil {
       return dao.pipelineDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
       return dao.modelDAO().findEntityReferenceByName(fqn);
+    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
+      return dao.policyDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.USER)) {
       return dao.userDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.TEAM)) {
