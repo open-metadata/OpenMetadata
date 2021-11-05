@@ -19,3 +19,13 @@ For more details see the [Asset Discovery](asset-discovery.md) documentation.
 ![](../.gitbook/assets/complex-queries.gif)
 
 For more details on asset metadata properties, please see the [Asset Discovery](asset-discovery.md) documentation.
+
+### Trace data lineage across assets
+
+#### Trace the path of data across tables, pipelines, and dashboards.
+
+![](../.gitbook/assets/lineage-feature.gif)
+
+
+
+###
