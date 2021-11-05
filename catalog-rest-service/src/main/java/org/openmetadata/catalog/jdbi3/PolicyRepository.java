@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
@@ -246,6 +247,16 @@ public class PolicyRepository extends EntityRepository<Policy> {
         public void setTags(List<TagLabel> tags) {
             // Policy does not have tags.
         }
+
+        @Override
+        public void setOwner(EntityReference owner) {
+            // Policy does not have owner
+        }
+
+        @Override
+        public ChangeDescription getChangeDescription() {
+            return entity.getChangeDescription();
+        }
     }
 
     /**
@@ -261,7 +272,7 @@ public class PolicyRepository extends EntityRepository<Policy> {
             updatePolicyUrl(original.getEntity(), updated.getEntity());
         }
 
-        private void updatePolicyUrl(Policy original, Policy updated) {
+        private void updatePolicyUrl(Policy original, Policy updated) throws JsonProcessingException {
             recordChange("policyUrl", original.getPolicyUrl(), updated.getPolicyUrl());
         }
     }
