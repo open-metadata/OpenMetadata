@@ -325,10 +325,12 @@ class MetadataRestSink(Sink):
             self.team_entities[team["name"]] = team["id"]
 
     def _create_team(self, record: User) -> None:
-        metadata_team = MetadataTeam(name=record.team_name, description="Team Name")
+        metadata_team = CreateTeamEntityRequest(
+            name=record.team_name, description="Team Name"
+        )
         try:
-            r = self.api_client.post("/teams", data=metadata_team.to_json())
-            instance_id = r["id"]
+            r = self.metadata.create_or_update(metadata_team)
+            instance_id = r.id.__root__
             self.team_entities[record.team_name] = instance_id
         except Exception as err:
             logger.error(traceback.format_exc())
