@@ -15,6 +15,8 @@
 
 import logging
 from time import sleep
+from datetime import datetime
+
 
 import pytest
 import requests
@@ -56,6 +58,10 @@ def openldap_service(docker_ip, docker_services):
     sleep(10)
     return ldap_connection()
 
+@pytest.fixture(scope="session")
+def datetime_suffix():
+    now = datetime.now()
+    return now.strftime("%Y%m%d%H%M%S")
 
 def test_ldap_connection(openldap_service):
     c = openldap_service
@@ -63,7 +69,7 @@ def test_ldap_connection(openldap_service):
         assert 1
 
 
-def test_insert_user(openldap_service):
+def test_insert_user(openldap_service, datetime_suffix):
     c = openldap_service
     if c[0]:
         user = User(
@@ -71,7 +77,7 @@ def test_insert_user(openldap_service):
             "John",
             "Doe",
             "John Doe",
-            "john_doe",
+            "john_doe" + datetime_suffix,
             "",
             "",
             "",
@@ -92,14 +98,14 @@ def test_insert_user(openldap_service):
         assert 0
 
 
-def test_read_user():
-    assert read_user_by_name("john_doe")[0]
+def test_read_user(datetime_suffix):
+    assert read_user_by_name("john_doe" + datetime_suffix)[0]
 
 
-def test_update_user(openldap_service):
+def test_update_user(openldap_service, datetime_suffix):
     c = openldap_service
     if c[0]:
-        user = read_user_by_name("john_doe")
+        user = read_user_by_name("john_doe" + datetime_suffix)
         user[1]["displayName"] = "Jane Doe"
         metadata_user = MetadataUser(
             name=user[1]["name"],
@@ -110,10 +116,10 @@ def test_update_user(openldap_service):
         r = requests.patch(url, data=metadata_user.to_json(), headers=headers)
 
 
-def test_delete_user(openldap_service):
+def test_delete_user(openldap_service, datetime_suffix):
     c = openldap_service
     if c[0]:
-        r = read_user_by_name("john_doe")
+        r = read_user_by_name("john_doe" + datetime_suffix)
         r = requests.delete(url + "/{}".format(r[1]["id"]))
         r.raise_for_status()
         assert 1
