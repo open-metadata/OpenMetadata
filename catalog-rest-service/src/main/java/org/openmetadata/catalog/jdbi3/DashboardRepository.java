@@ -360,7 +360,7 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("charts", origCharts, updatedCharts, added, deleted, entityReferenceMatch);
+      recordListChange("charts", origCharts, updatedCharts, added, deleted, EntityUtil.entityReferenceMatch);
     }
   }
 }

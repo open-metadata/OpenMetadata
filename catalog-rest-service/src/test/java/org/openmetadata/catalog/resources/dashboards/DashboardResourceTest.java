@@ -388,7 +388,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertService(createRequest.getService(), dashboard.getService());
     validateDashboardCharts(dashboard, createRequest.getCharts());
-    TestUtils.validateTags(dashboard.getFullyQualifiedName(), createRequest.getTags(), dashboard.getTags());
+    TestUtils.assertTags(dashboard.getFullyQualifiedName(), createRequest.getTags(), dashboard.getTags());
   }
 
   @Override

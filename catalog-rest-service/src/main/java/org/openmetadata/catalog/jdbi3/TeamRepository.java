@@ -36,7 +36,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -276,9 +275,8 @@ public class TeamRepository extends EntityRepository<Team> {
                 "team", "user", Relationship.CONTAINS.ordinal());
       }
 
-      // Sort by user Id as string (as done in the database)
-      updatedUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
-      origUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+      updatedUsers.sort(EntityUtil.compareEntityReference);
+      origUsers.sort(EntityUtil.compareEntityReference);
       recordChange("users", origUsers.isEmpty() ? null : origUsers, updatedUsers.isEmpty() ? null : updatedUsers);
     }
   }

@@ -241,7 +241,7 @@ public final class TestUtils {
     return headers;
   }
 
-  public static void validateTags(String fqn, List<TagLabel> expectedList, List<TagLabel> actualList)
+  public static void assertTags(String fqn, List<TagLabel> expectedList, List<TagLabel> actualList)
           throws HttpResponseException {
     if (expectedList == null) {
       return;
@@ -256,8 +256,8 @@ public final class TestUtils {
       updatedExpectedList.addAll(derived);
     }
     updatedExpectedList = updatedExpectedList.stream().distinct().collect(Collectors.toList());
-    updatedExpectedList.sort(Comparator.comparing(TagLabel::getTagFQN));
-    actualList.sort(Comparator.comparing(TagLabel::getTagFQN));
+    updatedExpectedList.sort(EntityUtil.compareTagLabel);
+    actualList.sort(EntityUtil.compareTagLabel);
     assertEquals(updatedExpectedList, actualList);
   }
 

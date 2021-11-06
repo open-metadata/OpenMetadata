@@ -58,7 +58,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiPredicate;
@@ -667,7 +666,7 @@ public class TableRepository extends EntityRepository<Table> {
       Table updatedTable = updated.getEntity();
       updateConstraints(origTable, updatedTable);
       updateTableType(origTable, updatedTable);
-      updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), columnMatch);
+      updateColumns("columns", origTable.getColumns(), updated.getEntity().getColumns(), EntityUtil.columnMatch);
     }
 
     private void updateConstraints(Table origTable, Table updatedTable) throws JsonProcessingException {
@@ -676,16 +675,16 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> updatedConstraints = Optional.ofNullable(updatedTable.getTableConstraints())
               .orElse(Collections.emptyList());
 
-      origConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+      origConstraints.sort(EntityUtil.compareTableConstraint);
       origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
 
-      updatedConstraints.sort(Comparator.comparing(TableConstraint::getConstraintType));
+      updatedConstraints.sort(EntityUtil.compareTableConstraint);
       updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
       recordListChange("tableConstraints", origConstraints, updatedConstraints, added, deleted,
-              tableConstraintMatch);
+              EntityUtil.tableConstraintMatch);
     }
 
     private void updateTableType(Table origTable, Table updatedTable) throws JsonProcessingException {
@@ -709,7 +708,7 @@ public class TableRepository extends EntityRepository<Table> {
       // Carry forward the user generated metadata from existing columns to new columns
       for (Column updated : updatedColumns) {
         // Find stored column matching name, data type and ordinal position
-        Column stored = origColumns.stream().filter(c -> TableRepository.this.columnMatch.test(c, updated)).findAny().orElse(null);
+        Column stored = origColumns.stream().filter(c -> EntityUtil.columnMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           continue;
         }
@@ -753,17 +752,4 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  BiPredicate<Column, Column> columnMatch = (column1, column2) -> {
-    /* you CAN compare apples and oranges */
-    return column1.getName().equals(column2.getName()) &&
-            column1.getDataType() == column2.getDataType() &&
-            column1.getArrayDataType() == column2.getArrayDataType() &&
-            Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
-  };
-
-  BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) -> {
-    /* you CAN compare apples and oranges */
-    return constraint1.getConstraintType() == constraint2.getConstraintType() &&
-            constraint1.getColumns().equals(constraint2.getColumns());
-  };
 }

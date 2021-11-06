@@ -32,6 +32,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
@@ -710,8 +711,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
   protected final void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
           throws IOException {
-    expectedList.sort(Comparator.comparing(FieldChange::getName));
-    actualList.sort(Comparator.comparing(FieldChange::getName));
+    expectedList.sort(EntityUtil.compareFieldChange);
+    actualList.sort(EntityUtil.compareFieldChange);
     assertEquals(expectedList.size(), actualList.size());
 
     for (int i = 0; i < expectedList.size(); i++) {
