@@ -27,13 +27,18 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
+
 
 import java.time.Duration;
 import java.util.ArrayList;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class PipelineDetailsPageTest {
     static WebDriver webDriver;
     static String url = Property.getInstance().getURL();
@@ -44,7 +49,7 @@ public class PipelineDetailsPageTest {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
         System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
         ChromeOptions options = new ChromeOptions();
@@ -56,7 +61,8 @@ public class PipelineDetailsPageTest {
         webDriver.get(url);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openExplorePage() throws InterruptedException {
         Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
         Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
@@ -64,7 +70,8 @@ public class PipelineDetailsPageTest {
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void editDescription() throws InterruptedException {
         openExplorePage();
         Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
@@ -75,7 +82,8 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
-    @Test(priority = 3)
+    @Test
+    @Order(3)
     public void addTag() throws InterruptedException {
         openExplorePage();
         Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
@@ -95,7 +103,8 @@ public class PipelineDetailsPageTest {
         webDriver.navigate().refresh();
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void removeTag() throws InterruptedException {
         openExplorePage();
         Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
@@ -107,7 +116,8 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void editTaskDescription() throws InterruptedException {
         openExplorePage();
         Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
@@ -120,7 +130,8 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
-    @Test(priority = 6)
+    @Test
+    @Order(6)
     public void checkLineage() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(pipelineName);
@@ -133,7 +144,8 @@ public class PipelineDetailsPageTest {
         }
     }
 
-    @Test(priority = 7)
+    @Test
+    @Order(7)
     public void checkManage() throws InterruptedException {
         openExplorePage();
         Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
@@ -151,7 +163,8 @@ public class PipelineDetailsPageTest {
         webDriver.navigate().refresh();
     }
 
-    @Test(priority = 8)
+    @Test
+    @Order(8)
     public void checkBreadCrumb() throws InterruptedException {
         openExplorePage();
         webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(pipelineName);
@@ -168,7 +181,7 @@ public class PipelineDetailsPageTest {
         }
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();
