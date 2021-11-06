@@ -578,6 +578,7 @@ const ServicesPage = () => {
                   <p className="tw-text-lg tw-text-center">
                     <button
                       className="link-text tw-underline"
+                      data-testid="add-service-button"
                       onClick={handleAddService}>
                       Click here
                     </button>{' '}
