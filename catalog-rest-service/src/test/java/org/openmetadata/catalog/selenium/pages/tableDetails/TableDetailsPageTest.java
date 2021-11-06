@@ -138,16 +138,19 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     }
 
-    @Test
-    @Order(7)
-    public void checkFollow() throws InterruptedException {
-        openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
-        Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
-        Thread.sleep(2000);
-        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
-        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
-    }
+//    @Test
+//    @Order(7)
+//    public void basicChecks() throws InterruptedException {
+//        openExplorePage();
+//        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+//        Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
+//        Thread.sleep(2000);
+//        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
+//        Events.click(webDriver, By.cssSelector("[data-testid='sample-data-button']"));
+//    }
 
     @Test
     @Order(8)
@@ -216,7 +219,8 @@ public class TableDetailsPageTest {
         webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         for (int i = 1; i <= 3; i++) { //check topics in service
-            Events.click(webDriver, By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
+            Events.click(
+                    webDriver, By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
             Thread.sleep(waitTime);
             webDriver.navigate().back();
         }
