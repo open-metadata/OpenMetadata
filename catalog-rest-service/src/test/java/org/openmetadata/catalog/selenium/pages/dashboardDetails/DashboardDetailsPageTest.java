@@ -160,7 +160,8 @@ public class DashboardDetailsPageTest {
                 By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span")));
         actions.moveToElement(webDriver.findElement(
                 By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"))).perform();
-        Events.click(webDriver, By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"));
+        Events.click(
+                webDriver, By.xpath("//table[@data-testid='schema-table']//div[@data-testid='tag-conatiner']//span"));
         Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
         Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
