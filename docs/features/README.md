@@ -4,7 +4,7 @@ description: In this section, we present an overview of OpenMetadata features.
 
 # Features
 
-### Search across assets using keyword queries
+### Use keyword queries to search across assets
 
 #### Find assets based on name, description, and component metadata (e.g., column name, description) and containing service
 
@@ -12,7 +12,7 @@ description: In this section, we present an overview of OpenMetadata features.
 
 For more details see the [Asset Discovery](asset-discovery.md) documentation.
 
-### Search across assets using complex queries
+### Use complex queries to search across assets
 
 #### Find assets matching strict criteria on metadata properties and Boolean operators.
 
@@ -28,4 +28,9 @@ For more details on asset metadata properties, please see the [Asset Discovery](
 
 
 
-###
+### Assess data reliability based on profile metadata
+
+#### Understand how many rows are being added to a table daily, unique count ratio, null count ratio, etc.
+
+![](../.gitbook/assets/data-profiler-feature.gif)
+
