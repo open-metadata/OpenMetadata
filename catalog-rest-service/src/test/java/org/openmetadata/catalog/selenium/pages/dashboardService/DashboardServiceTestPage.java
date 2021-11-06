@@ -22,6 +22,7 @@ import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -36,6 +37,7 @@ import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardServiceTestPage {
@@ -74,7 +76,13 @@ public class DashboardServiceTestPage {
     @Order(2)
     public void addDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        Thread.sleep(2000);
+        List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+        if(webElementList.isEmpty()) {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+        } else {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        }
         Events.click(webDriver, By.cssSelector("[value='Looker']"));
         webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);
         webDriver.findElement(By.cssSelector("[data-testid='dashboard-url']"))

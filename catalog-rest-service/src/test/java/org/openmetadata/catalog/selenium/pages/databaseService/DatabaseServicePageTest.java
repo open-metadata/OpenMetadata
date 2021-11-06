@@ -19,9 +19,7 @@ package org.openmetadata.catalog.selenium.pages.databaseService;
 import com.github.javafaker.Faker;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
-import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
@@ -36,6 +34,7 @@ import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DatabaseServicePageTest {
@@ -76,7 +75,13 @@ public class DatabaseServicePageTest {
     @Order(2)
     public void addDatabaseService() throws InterruptedException {
         openDatabaseServicePage();
-        Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        Thread.sleep(2000);
+        List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+        if(webElementList.isEmpty()) {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+        } else {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        }
         Events.click(webDriver, By.cssSelector("[data-testid='selectService']"));
         Events.click(webDriver, By.cssSelector("[value='MySQL']"));
         webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);

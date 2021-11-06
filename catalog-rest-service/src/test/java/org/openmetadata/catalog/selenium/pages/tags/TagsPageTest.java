@@ -159,10 +159,8 @@ public class TagsPageTest {
         Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         // Select the created listed team
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='tags']"))).perform();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='tags']")))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']")))).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 0; i <=1; i++){
             wait.until(ExpectedConditions.elementToBeClickable(
                     webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
