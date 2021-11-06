@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import logging
+import traceback
 from typing import List
 
 from pydantic import ValidationError
@@ -34,6 +35,8 @@ from metadata.generated.schema.api.data.createTable import CreateTableEntityRequ
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -43,7 +46,7 @@ from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
+from metadata.ingestion.models.user import MetadataTeam, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -87,8 +90,6 @@ class MetadataRestSink(Sink):
         self.charts_dict = {}
         self.metadata = OpenMetadata(self.metadata_config)
         self.api_client = self.metadata.client
-        self.api_team = "/teams"
-        self.api_users = "/users"
         self.team_entities = {}
         self._bootstrap_entities()
 
@@ -319,36 +320,41 @@ class MetadataRestSink(Sink):
             self.status.failure(f"Model: {model.name}")
 
     def _bootstrap_entities(self):
-        team_response = self.api_client.get(self.api_team)
+        team_response = self.api_client.get("/teams")
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
 
-    def _create_team(self, record: MetadataUser) -> None:
-        team_name = record.team_name
-        metadata_team = MetadataTeam(team_name, "Team Name")
+    def _create_team(self, record: User) -> None:
+        metadata_team = CreateTeamEntityRequest(
+            name=record.team_name, displayName=record.team_name, description="Team Name"
+        )
         try:
-            r = self.api_client.post(self.api_team, data=metadata_team.to_json())
-            instance_id = r["id"]
-            self.team_entities[team_name] = instance_id
-        except APIError:
-            pass
+            r = self.metadata.create_or_update(metadata_team)
+            instance_id = r.id.__root__
+            self.team_entities[record.team_name] = instance_id
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def write_users(self, record: User):
         if record.team_name not in self.team_entities:
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
-        metadata_user = MetadataUser(
+        metadata_user = CreateUserEntityRequest(
             name=record.github_username,
-            display_name=record.name,
+            displayName=record.name,
             email=record.email,
             teams=teams,
         )
         try:
-            self.api_client.put(self.api_users, data=metadata_user.to_json())
+            self.metadata.create_or_update(metadata_user)
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))
-        except APIError:
-            pass
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def get_status(self):
         return self.status

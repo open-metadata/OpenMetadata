@@ -52,7 +52,6 @@ class OMetaTableMixin:
         :param table_profile: Profile data to add
         """
         for profile in table_profile:
-            print(profile.json())
             resp = self.client.put(
                 f"{self.get_suffix(Table)}/{table.id.__root__}/tableProfile",
                 data=profile.json(),

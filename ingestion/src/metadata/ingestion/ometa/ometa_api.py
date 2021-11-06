@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.tags.tagCategory import Tag
+from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
@@ -161,6 +162,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         if issubclass(entity, Tag):
             return "/tags"
 
+        if issubclass(entity, get_args(Union[Team, self.get_create_entity_type(Team)])):
+            return "/teams"
+
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
 
@@ -222,7 +226,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         if "service" in entity.__name__.lower():
             return self.services_path
 
-        if "user" in entity.__name__.lower():
+        if "user" in entity.__name__.lower() or "team" in entity.__name__.lower():
             return self.teams_path
 
         return self.data_path
