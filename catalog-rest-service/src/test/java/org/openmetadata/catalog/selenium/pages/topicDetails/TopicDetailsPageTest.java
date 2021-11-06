@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.selenium.pages.topicDetails;
 
 import com.github.javafaker.Faker;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
@@ -42,151 +43,122 @@ public class TopicDetailsPageTest {
 
     @BeforeMethod
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
         webDriver = new ChromeDriver();
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
+        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
 
     @Test(priority = 1)
     public void openExplorePage() throws InterruptedException {
-        webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
-        webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click(); // Topics
+        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+        Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Topics
         Thread.sleep(waitTime);
     }
 
     @Test(priority = 2)
     public void checkTabs() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
         Thread.sleep(waitTime);
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[6]")).click();
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Thread.sleep(waitTime);
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click();
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[3]")).click();
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
     }
 
     @Test(priority = 3)
     public void checkFollow() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[last()]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[6]")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Thread.sleep(waitTime);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='follow-button']")));
-        webDriver.findElement(By.cssSelector("[data-testid='follow-button']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='getFollowerDetail']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='follow-button']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='getFollowerDetail']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='getFollowerDetail']"));
     }
 
     @Test(priority = 4)
     public void addTags() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[6]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[6]")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Thread.sleep(waitTime);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='tags']")));
-        webDriver.findElement(By.cssSelector("[data-testid='tags']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='associatedTagName']")));
-        webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 0; i <=1; i++){
             wait.until(ExpectedConditions.elementToBeClickable(
                             webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
                     .sendKeys("P");
-            wait.until(ExpectedConditions.elementToBeClickable(
-                    webDriver.findElement(By.cssSelector("[data-testid='list-item']")))).click();
+            Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         }
-        webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
-        wait.until(ExpectedConditions.elementToBeClickable(
-                By.cssSelector("[data-testid='checkbox'][id='PersonalData.Personal']")));
-        webDriver.findElement(By.cssSelector("[data-testid='checkbox'][id='PersonalData.Personal']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='appbar-item'][id='explore']")); // Explore
+        Events.click(webDriver, By.cssSelector("[data-testid='checkbox'][id='PersonalData.Personal']"));
     }
 
     @Test(priority = 5)
     public void removeTag() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[1]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[1]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='tag-conatiner']")));
-        webDriver.findElement(By.cssSelector("[data-testid='tag-conatiner']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='remove']")))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='remove']")))).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='saveAssociatedTag']")))).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[1]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='tag-conatiner']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='remove']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
     }
 
     @Test(priority = 6)
     public void editDescription() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[6]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[6]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='edit-description']")));
-        webDriver.findElement(By.cssSelector("[data-testid='edit-description']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
         webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save']")));
-        webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
     @Test(priority = 7)
     public void checkManage() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[last()]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[last()]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//button[@data-testid='tab'])[3]"))); // Manage
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[3]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='owner-dropdown']"))); // Owner
-        webDriver.findElement(By.cssSelector("[data-testid='owner-dropdown']")).click(); // Owner
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.cssSelector("[data-testid='searchInputText']"))));
         webDriver.findElement(By.cssSelector("[data-testid='searchInputText']")).sendKeys("Cloud");
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Select User/Team
-        webDriver.findElement(By.cssSelector("[data-testid='card-list']")).click(); // Select Tier
-        webDriver.findElement(By.cssSelector("[data-testid='saveManageTab']")).click(); // Save
-        webDriver.findElement(By.cssSelector("[data-testid='appbar-item'][id='explore']")).click(); // Explore
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[2]")).click(); // Topics
-        wait.until(ExpectedConditions.elementToBeClickable(
-                By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']")));
-        webDriver.findElement(By.cssSelector("[data-testid='checkbox'][id='Tier.Tier1']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='table-link']")));
-        webDriver.findElement(By.cssSelector("[data-testid='table-link']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
+        Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
+        Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
+        webDriver.navigate().back();
+        webDriver.navigate().refresh();
     }
 
     @Test(priority = 8)
     public void checkBreadCrumb() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='sortBy']")).click(); // Sort By
-        webDriver.findElement(By.cssSelector("[data-testid='list-item']")).click(); // Last Updated
-        wait.until(ExpectedConditions.elementToBeClickable(By.xpath("(//a[@data-testid='table-link'])[6]")));
-        webDriver.findElement(By.xpath("(//a[@data-testid='table-link'])[6]")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='sortBy']")); // Sort By
+        Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='breadcrumb-link']")));
-        webDriver.findElement(By.cssSelector("[data-testid='breadcrumb-link']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='description-edit']")));
-        webDriver.findElement(By.cssSelector("[data-testid='description-edit']")).click(); // edit description
+        Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
         webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save']")));
-        webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         for (int i = 1; i <= 3; i++) { //check topics in service
-            wait.until(ExpectedConditions.elementToBeClickable(
-                    By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")));
-            webDriver.findElement(
-                    By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")).click(); // topics
+            Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // topics
             Thread.sleep(waitTime);
             webDriver.navigate().back();
         }

@@ -477,6 +477,13 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
           <version>${maven-surefire.version}</version>
+          <configuration>
+            <includes>
+              <include>org.openmetadata.catalog.resources.**.*.java</include>
+              <include>org.openmetadata.catalog.util.*.java</include>
+              <include>org.openmetadata.catalog.EnumBackwardCompatibilityTest</include>
+            </includes>
+          </configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
