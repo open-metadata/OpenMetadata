@@ -123,7 +123,7 @@ public class DatabaseServiceResource {
     RestUtil.validateCursors(before, after);
 
     ResultList<DatabaseService> list;
-    if(before == null) {
+    if(before != null) {
       list = dao.listBefore(null, null, limitParam, before);
     }
     else {
