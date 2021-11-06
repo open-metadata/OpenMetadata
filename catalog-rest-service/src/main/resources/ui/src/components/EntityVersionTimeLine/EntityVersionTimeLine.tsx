@@ -42,6 +42,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 className={classNames('timeline-rounder', {
                   selected: toString(currV?.version) === currentVersion,
                 })}
+                data-testid="select-version"
               />
               <span className="timeline-line" />
             </div>
