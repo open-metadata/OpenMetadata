@@ -558,11 +558,11 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Common entity functionality for tests
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  protected final WebTarget getCollection() {
+  protected WebTarget getCollection() {
     return getResource(collectionName);
   }
 
-  protected final WebTarget getResource(UUID id) {
+  protected WebTarget getResource(UUID id) {
     return getResource(collectionName + "/" + id);
   }
 

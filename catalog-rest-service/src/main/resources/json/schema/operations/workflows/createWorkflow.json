@@ -168,7 +168,7 @@
     },
     "email": {
       "description": "Email to notify workflow status.",
-      "$ref": "../../schema/type/basic.json#/definitions/email"
+      "$ref": "../../type/basic.json#/definitions/email"
     }
   },
   "required": ["name", "owner", "tasks", "startDate"]

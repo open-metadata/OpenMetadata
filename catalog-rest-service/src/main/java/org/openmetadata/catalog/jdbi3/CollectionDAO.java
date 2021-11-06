@@ -63,6 +63,7 @@ import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
 import org.openmetadata.catalog.jdbi3.TopicRepository.TopicEntityInterface;
 import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
+import org.openmetadata.catalog.operations.workflows.Ingestion;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.UsageDetails;
@@ -128,6 +129,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   PolicyDAO policyDAO();
+
+  @CreateSqlObject
+  IngestionDAO ingestionDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -596,6 +600,24 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(Location entity) {
       return new LocationEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface IngestionDAO extends EntityDAO<Ingestion> {
+    @Override
+    default String getTableName() { return "ingestion_entity"; }
+
+    @Override
+    default Class<Ingestion> getEntityClass() {
+      return Ingestion.class;
+    }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Ingestion entity) {
+      return new IngestionRepository.IngestionEntityInterface(entity).getEntityReference();
     }
   }
 

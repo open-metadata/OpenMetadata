@@ -1,0 +1,96 @@
+{
+  "$id": "https://open-metadata.org/api/operations/workflows/ingestion.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Ingestion Entity Request",
+  "description": "Ingestion Config is used to setup a Airflow Ingestion pipeline.",
+  "type": "object",
+  "properties" : {
+    "name": {
+      "description": "Name that identifies this ingestion instance uniquely.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Ingestion.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the workflow.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this Ingestion.",
+      "$ref": "../../../type/entityReference.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with the Ingestion.",
+      "type": "array",
+      "items": {
+        "$ref": "../../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "forceDeploy": {
+      "description": "Deploy the workflow by overwriting existing workflow with the same name.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "pauseWorkflow": {
+      "description": "pause the workflow from running once the deploy is finished successfully.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "concurrency": {
+      "description": "Concurrency of the Pipeline.",
+      "type": "integer",
+      "default": 1
+    },
+    "startDate": {
+      "description": "Start date of the workflow.",
+      "$ref": "../../../type/basic.json#/definitions/date"
+    },
+    "endDate": {
+      "description": "End Date of the workflow.",
+      "$ref": "../../../type/basic.json#/definitions/date"
+    },
+    "workflowTimezone": {
+      "description": "Timezone in which workflow going to be scheduled.",
+      "type": "string",
+      "default": "UTC"
+    },
+    "retries": {
+      "description": "Retry workflow in case of failure",
+      "type": "integer",
+      "default": 1
+    },
+    "retryDelay": {
+      "description": "Delay between retries in seconds.",
+      "type": "integer",
+      "default": 300
+    },
+    "workflowCatchup": {
+      "description": "Workflow catchup for past executions.",
+      "type": "boolean",
+      "default": "false"
+    },
+    "scheduleInterval": {
+      "description": "Scheduler Interval for the Workflow in cron format.",
+      "type": "string"
+    },
+    "workflowTimeout": {
+      "description": "Timeout for the workflow in seconds.",
+      "type": "integer",
+      "default": 60
+    },
+    "service" : {
+      "description": "Link to the database service where this database is hosted in.",
+      "$ref" : "../../../type/entityReference.json"
+    },
+    "connectorConfig": {
+      "$ref": "../../../operations/workflows/ingestion.json#/definitions/connectorConfig"
+    }
+  },
+  "required": ["name", "service","startDate", "connectorConfig"]
+}
