@@ -147,7 +147,7 @@ class MetadataTeam(JsonSerializable):
     Catalog Team Model
     """
 
-    def __init__(self, name: str, display_name: str, description: str = "") -> None:
+    def __init__(self, name: str, description: str = "") -> None:
         """ """
         self.name = name.replace(" ", "_")
         self.display_name = name
