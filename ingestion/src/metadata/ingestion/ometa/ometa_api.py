@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union, get_args
+from typing import Generic, List, Optional, Type, TypeVar, Union, get_args
 
 from pydantic import BaseModel
 
@@ -12,12 +12,12 @@ from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.report import Report
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.tags.tagCategory import Tag
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
@@ -157,6 +157,9 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
 
         if issubclass(entity, Report):
             return "/reports"
+
+        if issubclass(entity, Tag):
+            return "/tags"
 
         if issubclass(entity, get_args(Union[User, self.get_create_entity_type(User)])):
             return "/users"
@@ -335,7 +338,11 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
             return None
 
     def list_entities(
-        self, entity: Type[T], fields: str = None, after: str = None, limit: int = 1000
+        self,
+        entity: Type[T],
+        fields: Optional[List[str]] = None,
+        after: str = None,
+        limit: int = 1000,
     ) -> EntityList[T]:
         """
         Helps us paginate over the collection
@@ -344,7 +351,7 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         suffix = self.get_suffix(entity)
         url_limit = f"?limit={limit}"
         url_after = f"&after={after}" if after else ""
-        url_fields = f"&fields={fields}" if fields else ""
+        url_fields = f"&fields={','.join(fields)}" if fields else ""
 
         resp = self.client.get(f"{suffix}{url_limit}{url_after}{url_fields}")
 
@@ -377,6 +384,13 @@ class OpenMetadata(OMetaLineageMixin, OMetaTableMixin, Generic[T, C]):
         entity_name = self.get_entity_type(entity)
         resp = self.client.post(f"/usage/compute.percentile/{entity_name}/{date}")
         logger.debug("published compute percentile {}".format(resp))
+
+    def list_tags_by_category(self, category: str) -> List[Tag]:
+        """
+        List all tags
+        """
+        resp = self.client.get(f"{self.get_suffix(Tag)}/{category}")
+        return [Tag(**d) for d in resp["children"]]
 
     def health_check(self) -> bool:
         """

@@ -27,7 +27,7 @@ from metadata.generated.schema.api.services.createMessagingService import (
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
-from metadata.ingestion.ometa.openmetadata_rest import OpenMetadataAPIClient
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
 def get_start_and_end(duration):
@@ -48,8 +48,8 @@ def snake_to_camel(s):
 
 
 def get_database_service_or_create(config, metadata_config) -> DatabaseService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_database_service(config.service_name)
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DatabaseService, fqdn=config.service_name)
     if service is not None:
         return service
     else:
@@ -62,7 +62,7 @@ def get_database_service_or_create(config, metadata_config) -> DatabaseService:
             "description": "",
             "serviceType": config.get_service_type(),
         }
-        created_service = client.create_database_service(
+        created_service = metadata.create_or_update(
             CreateDatabaseServiceEntityRequest(**service)
         )
         return created_service
@@ -75,19 +75,18 @@ def get_messaging_service_or_create(
     brokers: List[str],
     metadata_config,
 ) -> MessagingService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_messaging_service(service_name)
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=MessagingService, fqdn=service_name)
     if service is not None:
         return service
     else:
-        create_messaging_service_request = CreateMessagingServiceEntityRequest(
-            name=service_name,
-            serviceType=message_service_type,
-            brokers=brokers,
-            schemaRegistry=schema_registry_url,
-        )
-        created_service = client.create_messaging_service(
-            create_messaging_service_request
+        created_service = metadata.create_or_update(
+            CreateMessagingServiceEntityRequest(
+                name=service_name,
+                serviceType=message_service_type,
+                brokers=brokers,
+                schemaRegistry=schema_registry_url,
+            )
         )
         return created_service
 
@@ -100,20 +99,19 @@ def get_dashboard_service_or_create(
     dashboard_url: str,
     metadata_config,
 ) -> DashboardService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_dashboard_service(service_name)
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DashboardService, fqdn=service_name)
     if service is not None:
         return service
     else:
-        create_dashboard_service_request = CreateDashboardServiceEntityRequest(
-            name=service_name,
-            serviceType=dashboard_service_type,
-            username=username,
-            password=password,
-            dashboardUrl=dashboard_url,
-        )
-        created_service = client.create_dashboard_service(
-            create_dashboard_service_request
+        created_service = metadata.create_or_update(
+            CreateDashboardServiceEntityRequest(
+                name=service_name,
+                serviceType=dashboard_service_type,
+                username=username,
+                password=password,
+                dashboardUrl=dashboard_url,
+            )
         )
         return created_service
 

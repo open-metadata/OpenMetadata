@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.databases;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -28,16 +27,14 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.databases.DatabaseResource.DatabaseList;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -51,14 +48,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
-    super(Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false);
+    super(Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
   }
 
   @BeforeAll
@@ -201,48 +197,6 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Test
-  public void patch_databaseAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create database without description, owner
-    Database database = createDatabase(create(test), adminAuthHeaders());
-    assertNull(database.getDescription());
-    assertNull(database.getOwner());
-    assertNotNull(database.getService());
-
-    database = getDatabase(database.getId(), "service,owner,usageSummary", adminAuthHeaders());
-    database.getService().setHref(null); // href is readonly and not patchable
-
-    //
-    // Add description, owner when previously they were null
-    //
-    String origJson = JsonUtils.pojoToJson(database);
-    database.withDescription("description").withOwner(TEAM_OWNER1);
-    ChangeDescription change = getChangeDescription(database.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "owner"));
-    database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    database.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
-
-    //
-    // Replace description, tier, owner
-    //
-    origJson = JsonUtils.pojoToJson(database);
-    database.withDescription("description1").withOwner(USER_OWNER1);
-    change = getChangeDescription(database.getVersion()).withFieldsUpdated(Arrays.asList("description", "owner"));
-    database = patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    database.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    database.setService(SNOWFLAKE_REFERENCE); // Get rid of href and name returned in the response for service
-
-    // Remove description, tier, owner
-    origJson = JsonUtils.pojoToJson(database);
-    database.withDescription(null).withOwner(null);
-    change = getChangeDescription(database.getVersion()).withFieldsDeleted(Arrays.asList("description", "owner"));
-    patchEntityAndCheck(database, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  // TODO listing tables test:1
-  // TODO Change service?
-
-  @Test
   public void delete_emptyDatabase_200_ok(TestInfo test) throws HttpResponseException {
     Database database = createDatabase(create(test), adminAuthHeaders());
     deleteDatabase(database.getId(), adminAuthHeaders());
@@ -373,5 +327,10 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   @Override
   public EntityInterface<Database> getEntityInterface(Database entity) {
     return new DatabaseEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

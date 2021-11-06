@@ -1,11 +1,13 @@
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -24,11 +26,15 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 
 /**
  * Interface used for accessing the concrete entity DAOs such as table, dashboard etc.
@@ -230,7 +236,7 @@ public abstract class EntityRepository<T> {
       updateDescription();
       updateDisplayName();
       updateOwner();
-      updateTags();
+      updateTags(updated.getFullyQualifiedName(), "tags", original.getTags(), updated.getTags());
       entitySpecificUpdate();
     }
 
@@ -238,7 +244,7 @@ public abstract class EntityRepository<T> {
       // Default implementation. Override this to add any entity specific field updates
     }
 
-    private void updateDescription() {
+    private void updateDescription() throws JsonProcessingException {
       if (!patchOperation &&
               original.getDescription() != null && !original.getDescription().isEmpty()) {
         // Update description only when stored is empty to retain user authored descriptions
@@ -248,7 +254,7 @@ public abstract class EntityRepository<T> {
       recordChange("description", original.getDescription(), updated.getDescription());
     }
 
-    private void updateDisplayName() {
+    private void updateDisplayName() throws JsonProcessingException {
       if (!patchOperation &&
               original.getDisplayName() != null && !original.getDisplayName().isEmpty()) {
         // Update displayName only when stored is empty to retain user authored descriptions
@@ -258,28 +264,49 @@ public abstract class EntityRepository<T> {
       recordChange("displayName", original.getDisplayName(), updated.getDisplayName());
     }
 
-    private void updateOwner() {
+    private void updateOwner() throws JsonProcessingException {
       EntityReference origOwner = original.getOwner();
       EntityReference updatedOwner = updated.getOwner();
-      if (recordChange("owner", origOwner == null ? null : origOwner.getId(),
-              updatedOwner == null ? null : updatedOwner.getId())) {
+      if (origOwner == null && updatedOwner == null) {
+        return;
+      }
+
+      UUID origId = origOwner == null ? null : origOwner.getId();
+      UUID updatedId = updatedOwner == null ? null : updatedOwner.getId();
+      if (Objects.equals(origId, updatedId)) {
+        return; // No change
+      }
+
+      if (recordChange("owner", origOwner == null ? null : JsonUtils.pojoToJson(origOwner),
+              updatedOwner == null ? null : JsonUtils.pojoToJson(updatedOwner))) {
         EntityUtil.updateOwner(daoCollection.relationshipDAO(), origOwner,
                 updatedOwner, original.getId(), entityName);
       }
     }
 
-    private void updateTags() throws IOException {
+    protected void updateTags(String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags)
+            throws IOException {
       // Remove current entity tags in the database. It will be added back later from the merged tag list.
-      List<TagLabel> origTags = original.getTags();
-      List<TagLabel> updatedTags = updated.getTags();
-      EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), original.getFullyQualifiedName());
-      if (!patchOperation) {
-        // PUT operation merges tags in the request with what already exists
-        updated.setTags(EntityUtil.mergeTags(updatedTags, origTags));
+      origTags = Optional.ofNullable(origTags).orElse(Collections.emptyList());
+      updatedTags = Optional.ofNullable(updatedTags).orElse(Collections.emptyList());
+      if (origTags.isEmpty() && updatedTags.isEmpty()) {
+        return; // Nothing to update
       }
 
-      recordTagChange("tags", origTags, updatedTags);
-      EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, updated.getFullyQualifiedName());
+      // Remove current entity tags in the database. It will be added back later from the merged tag list.
+      EntityUtil.removeTagsByPrefix(daoCollection.tagDAO(), fqn);
+      if (!patchOperation) {
+        // PUT operation merges tags in the request with what already exists
+        List<TagLabel> mergedTags = EntityUtil.mergeTags(updatedTags, origTags);
+        updatedTags.clear();
+        updatedTags.addAll(mergedTags);
+      }
+
+      List<TagLabel> addedTags = new ArrayList<>();
+      List<TagLabel> deletedTags = new ArrayList<>();
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      updatedTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, fqn);
     }
 
 
@@ -304,51 +331,76 @@ public abstract class EntityRepository<T> {
               !changeDescription.getFieldsDeleted().isEmpty();
     }
 
-    public final boolean recordChange(String field, Object orig, Object updated) {
+    public final boolean recordChange(String field, Object orig, Object updated) throws JsonProcessingException {
+      return recordChange(field, orig, updated, false);
+    }
+
+    public final boolean recordChange(String field, Object orig, Object updated, boolean jsonValue)
+            throws JsonProcessingException {
       if (orig == null && updated == null) {
         return false;
       }
+      FieldChange fieldChange = new FieldChange().withName(field)
+              .withOldValue(jsonValue ? JsonUtils.pojoToJson(orig) : orig)
+              .withNewValue(jsonValue ? JsonUtils.pojoToJson(updated) : updated);
       if (orig == null) {
-        changeDescription.getFieldsAdded().add(field);
+        changeDescription.getFieldsAdded().add(fieldChange);
         return true;
       } else if (updated == null) {
-        changeDescription.getFieldsDeleted().add(field);
+        changeDescription.getFieldsDeleted().add(fieldChange);
         return true;
       } else if (!orig.equals(updated)) {
-        changeDescription.getFieldsUpdated().add(field);
+        changeDescription.getFieldsUpdated().add(fieldChange);
         return true;
       }
       return false;
     }
 
-    public final boolean recordTagChange(String field, List<TagLabel> origTags, List<TagLabel> updatedTags) {
-      if (origTags == null || origTags.isEmpty()) {
-        origTags = null;
-      } else {
-        origTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+    public final <K> void recordListChange(String field, List<K> origList, List<K> updatedList, List<K> addedItems,
+                                           List<K> deletedItems, BiPredicate<K, K> typeMatch)
+            throws JsonProcessingException {
+      for (K stored : origList) {
+        // Find updated column matching name, data type and ordinal position
+        K updated = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
+        if (updated == null) {
+          deletedItems.add(stored);
+        }
       }
-      if (updatedTags == null || updatedTags.isEmpty()) {
-        updatedTags = null;
-      } else {
-        updatedTags.sort(Comparator.comparing(TagLabel::getTagFQN));
-      }
-      return recordChange(field,origTags, updatedTags);
-    }
 
-    private void storeOldVersion() throws IOException {
-      // TODO move this into a single place
-      String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
-      daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
-              JsonUtils.pojoToJson(original.getEntity()));
+      // Carry forward the user generated metadata from existing columns to new columns
+      for (K updated : updatedList) {
+        // Find stored column matching name, data type and ordinal position
+        K stored = origList.stream().filter(c -> typeMatch.test(c, updated)).findAny().orElse(null);
+        if (stored == null) { // New column added
+          addedItems.add(updated);
+        }
+      }
+      if (!addedItems.isEmpty()) {
+        FieldChange fieldChange = new FieldChange().withName(field).withNewValue(JsonUtils.pojoToJson(addedItems));
+        changeDescription.getFieldsAdded().add(fieldChange);
+      }
+      if (!deletedItems.isEmpty()) {
+        FieldChange fieldChange = new FieldChange().withName(field).withOldValue(JsonUtils.pojoToJson(deletedItems));
+        changeDescription.getFieldsDeleted().add(fieldChange);
+      }
     }
 
     public final void store() throws IOException, ParseException {
       if (updateVersion(original.getVersion())) {
         // Store the old version
-        storeOldVersion();
+        String extensionName = EntityUtil.getVersionExtension(entityName, original.getVersion());
+        daoCollection.entityExtensionDAO().insert(original.getId().toString(), extensionName, entityName,
+                JsonUtils.pojoToJson(original.getEntity()));
+
         // Store the new version
         EntityRepository.this.store(updated.getEntity(), true);
       }
     }
   }
+
+  public static BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2)
+          -> ref1.getId().equals(ref2.getId());
+
+  public static BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2)
+          -> tag1.getTagFQN().equals(tag2.getTagFQN());
 }

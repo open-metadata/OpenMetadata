@@ -39,6 +39,9 @@ public final class Entity {
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
+  // Policies
+  public static final String POLICY = "policy";
+
   // Team/user
   public static final String USER = "user";
   public static final String TEAM = "team";

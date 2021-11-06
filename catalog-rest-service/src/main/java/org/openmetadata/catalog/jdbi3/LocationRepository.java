@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
@@ -27,18 +28,16 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 public class LocationRepository extends EntityRepository<Location> {
-    private static final Logger LOG = LoggerFactory.getLogger(LocationRepository.class);
     // Location fields that can be patched in a PATCH request
     private static final Fields LOCATION_PATCH_FIELDS = new Fields(LocationResource.FIELD_LIST,
             "owner,service,tags");
@@ -149,7 +148,7 @@ public class LocationRepository extends EntityRepository<Location> {
 
     private EntityReference getService(Location location) throws IOException {
         EntityReference ref =  EntityUtil.getService(dao.relationshipDAO(), location.getId(), Entity.STORAGE_SERVICE);
-        return getService(ref);
+        return getService(Objects.requireNonNull(ref));
     }
 
     private EntityReference getService(EntityReference service) throws IOException {
@@ -170,11 +169,6 @@ public class LocationRepository extends EntityRepository<Location> {
         }
     }
 
-    private void setOwner(Location location, EntityReference owner) {
-        EntityUtil.setOwner(dao.relationshipDAO(), location.getId(), Entity.LOCATION, owner);
-        location.setOwner(owner);
-    }
-    
     private void applyTags(Location location) throws IOException {
         // Add location level tags by adding tag to location relationship
         EntityUtil.applyTags(dao.tagDAO(), location.getTags(), location.getFullyQualifiedName());
@@ -183,11 +177,6 @@ public class LocationRepository extends EntityRepository<Location> {
 
     private List<TagLabel> getTags(String fqn) {
         return dao.tagDAO().getTags(fqn);
-    }
-
-    private void updateOwner(Location location, EntityReference origOwner, EntityReference newOwner) {
-        EntityUtil.updateOwner(dao.relationshipDAO(), origOwner, newOwner, location.getId(), Entity.LOCATION);
-        location.setOwner(newOwner);
     }
 
     public static class LocationEntityInterface implements EntityInterface<Location> {
@@ -282,6 +271,9 @@ public class LocationRepository extends EntityRepository<Location> {
         }
 
         @Override
+        public void setOwner(EntityReference owner) { entity.setOwner(owner);}
+
+        @Override
         public void setTags(List<TagLabel> tags) {
             entity.setTags(tags);
         }
@@ -302,7 +294,7 @@ public class LocationRepository extends EntityRepository<Location> {
             updateLocationType(origLocation, updatedLocation);
         }
 
-        private void updateLocationType(Location origLocation, Location updatedLocation) {
+        private void updateLocationType(Location origLocation, Location updatedLocation) throws JsonProcessingException {
             recordChange("locationType", origLocation.getLocationType(), updatedLocation.getLocationType());
         }
 

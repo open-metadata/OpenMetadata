@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import React, { useState } from 'react';
+import React from 'react';
 import { getTeamDetailsPath } from '../../constants/constants';
 import { ColumnJoins } from '../../generated/entity/data/table';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
@@ -25,10 +25,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   backHandler,
   versionHandler,
 }: DatasetVersionProp) => {
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(true);
-  const versionDrawerHandler = () => {
-    setIsDrawerOpen((prevState) => !prevState);
-  };
   const extraInfo = [
     {
       key: 'Owner',
@@ -65,8 +61,9 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         {isVersionLoading ? (
           <Loader />
         ) : (
-          <div className={classNames({ 'version-data': isDrawerOpen })}>
+          <div className={classNames('version-data')}>
             <EntityPageInfo
+              isVersionSelected
               entityName={currentVersionData.name}
               extraInfo={extraInfo}
               followersList={[]}
@@ -74,7 +71,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               tier={tier || ''}
               titleLinks={slashedTableName}
               version={version}
-              versionHandler={versionDrawerHandler}
+              versionHandler={backHandler}
             />
             <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow ">
               <TabsPane activeTab={1} className="tw-flex-initial" tabs={tabs} />
@@ -106,8 +103,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
         )}
 
         <EntityVersionTimeLine
+          show
           currentVersion={version}
-          show={isDrawerOpen}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

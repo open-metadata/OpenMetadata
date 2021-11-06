@@ -13,12 +13,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import socket
 import time
+from typing import List
+from urllib.parse import urlparse
 
 import pytest
 import requests
-import socket
-from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig, OpenMetadataAPIClient
 from sqlalchemy.engine import create_engine
 from sqlalchemy.inspection import inspect
 
@@ -29,9 +30,13 @@ from metadata.generated.schema.api.data.createTable import CreateTableEntityRequ
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceEntityRequest,
 )
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.type.entityReference import EntityReference
-from urllib.parse import urlparse
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+
 
 def is_responsive(url):
     try:
@@ -40,6 +45,7 @@ def is_responsive(url):
             return True
     except ConnectionError:
         return False
+
 
 def is_port_open(url):
     url_parts = urlparse(url)
@@ -53,6 +59,7 @@ def is_port_open(url):
         return False
     finally:
         s.close()
+
 
 def sleep(timeout_s):
     print(f"sleeping for {timeout_s} seconds")
@@ -70,8 +77,7 @@ def status(r):
         return 0
 
 
-def create_delete_table(client):
-    databases = client.list_databases()
+def create_delete_table(client: OpenMetadata, databases: List[Database]):
     columns = [
         Column(name="id", dataType="INT", dataLength=1),
         Column(name="name", dataType="VARCHAR", dataLength=1),
@@ -79,20 +85,16 @@ def create_delete_table(client):
     table = CreateTableEntityRequest(
         name="test1", columns=columns, database=databases[0].id
     )
-    created_table = client.create_or_update_table(table)
+    created_table = client.create_or_update(table)
     if table.name.__root__ == created_table.name.__root__:
-        requests.delete(
-            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
-        )
+        client.delete(entity=Table, entity_id=str(created_table.id.__root__))
         return 1
     else:
-        requests.delete(
-            "http://localhost:8585/api/v1/tables/{}".format(created_table.id.__root__)
-        )
+        client.delete(entity=Table, entity_id=str(created_table.id.__root__))
         return 0
 
 
-def create_delete_database(client):
+def create_delete_database(client: OpenMetadata, databases: List[Database]):
     data = {
         "jdbc": {"connectionUrl": "hive://localhost/default", "driverClass": "jdbc"},
         "name": "temp_local_hive",
@@ -100,15 +102,15 @@ def create_delete_database(client):
         "description": "local hive env",
     }
     create_hive_service = CreateDatabaseServiceEntityRequest(**data)
-    hive_service = client.create_database_service(create_hive_service)
+    hive_service = client.create_or_update(create_hive_service)
     create_database_request = CreateDatabaseEntityRequest(
         name="dwh", service=EntityReference(id=hive_service.id, type="databaseService")
     )
-    created_database = client.create_database(create_database_request)
-    resp = create_delete_table(client)
+    created_database = client.create_or_update(create_database_request)
+    resp = create_delete_table(client, databases)
     print(resp)
-    client.delete_database(created_database.id.__root__)
-    client.delete_database_service(hive_service.id.__root__)
+    client.delete(entity=Database, entity_id=str(created_database.id.__root__))
+    client.delete(entity=DatabaseService, entity_id=str(hive_service.id.__root__))
     return resp
 
 
@@ -126,6 +128,7 @@ def hive_service(docker_ip, docker_services):
     engine = create_engine(url)
     inspector = inspect(engine)
     return inspector
+
 
 def test_check_schema(hive_service):
     inspector = hive_service
@@ -161,9 +164,9 @@ def test_check_table():
     metadata_config = MetadataServerConfig.parse_obj(
         {"api_endpoint": "http://localhost:8585/api", "auth_provider_type": "no-auth"}
     )
-    client = OpenMetadataAPIClient(metadata_config)
-    databases = client.list_databases()
+    client = OpenMetadata(metadata_config)
+    databases = client.list_entities(entity=Database).entities
     if len(databases) > 0:
-        assert create_delete_table(client)
+        assert create_delete_table(client, databases)
     else:
-        assert create_delete_database(client)
+        assert create_delete_database(client, databases)

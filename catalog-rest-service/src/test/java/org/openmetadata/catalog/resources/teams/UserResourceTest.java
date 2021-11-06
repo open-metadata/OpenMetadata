@@ -34,6 +34,7 @@ import org.openmetadata.catalog.resources.databases.TableResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResource.UserList;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
@@ -41,8 +42,6 @@ import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
@@ -80,11 +79,10 @@ import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class UserResourceTest extends EntityResourceTest<User> {
-  public static final Logger LOG = LoggerFactory.getLogger(UserResourceTest.class);
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(User.class, UserList.class, "users", UserResource.FIELDS, false);
+    super(User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
   }
 
   @Test
@@ -176,10 +174,15 @@ public class UserResourceTest extends EntityResourceTest<User> {
     User user = updateAndCheckEntity(create, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
 
     // Update the user information using PUT
-    ChangeDescription change = getChangeDescription(user.getVersion())
-            .withFieldsAdded(Collections.singletonList("displayName"))
-            .withFieldsUpdated(Collections.singletonList("email"));
+    String oldEmail = create.getEmail();
+    String oldDisplayName = create.getDisplayName();
     CreateUser update = create.withEmail("test1@email.com").withDisplayName("displayName1");
+
+    ChangeDescription change = getChangeDescription(user.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("displayName").withOldValue(oldDisplayName)
+            .withNewValue("displayName1"));
+    change.getFieldsUpdated().add(new FieldChange().withName("email").withOldValue(oldEmail)
+            .withNewValue("test1@email.com"));
     updateAndCheckEntity(update, OK, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -311,8 +314,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws HttpResponseException,
-          JsonProcessingException {
+  public void patch_userAttributes_as_admin_200_ok(TestInfo test) throws IOException {
     // Create user without any attributes - ***Note*** isAdmin by default is false.
     User user = createUser(create(test), adminAuthHeaders());
     assertNull(user.getDisplayName());
@@ -321,38 +323,53 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertNull(user.getDeactivated());
     assertNull(user.getTimezone());
 
-    Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
-    Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
-    Team team3 = createTeam(TeamResourceTest.create(test, 3), adminAuthHeaders());
-    List<EntityReference> teams = Arrays.asList(new TeamEntityInterface(team1).getEntityReference(),
-            new TeamEntityInterface(team2).getEntityReference());
+    EntityReference team1 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 1),
+            adminAuthHeaders())).getEntityReference().withHref(null);
+    EntityReference team2 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 2),
+            adminAuthHeaders())).getEntityReference().withHref(null);
+    EntityReference team3 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 3),
+            adminAuthHeaders())).getEntityReference().withHref(null);
+    List<EntityReference> teams = Arrays.asList(team1, team2);
     Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
     //
     // Add previously absent attributes
     //
     String origJson = JsonUtils.pojoToJson(user);
-    user.withTeams(teams).withTimezone("America/Los_Angeles").withDisplayName("displayName")
+
+    String timezone = "America/Los_Angeles";
+    user.withTeams(teams).withTimezone(timezone).withDisplayName("displayName")
             .withProfile(profile).withIsBot(false).withIsAdmin(false);
-    ChangeDescription change = getChangeDescription(user.getVersion())
-            .withFieldsAdded(Arrays.asList("teams", "timezone", "displayName", "profile","isBot"));
+
+    ChangeDescription change = getChangeDescription(user.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(teams));
+    change.getFieldsAdded().add(new FieldChange().withName("timezone").withNewValue(timezone));
+    change.getFieldsAdded().add(new FieldChange().withName("displayName").withNewValue("displayName"));
+    change.getFieldsAdded().add(new FieldChange().withName("profile").withNewValue(profile));
+    change.getFieldsAdded().add(new FieldChange().withName("isBot").withNewValue(false));
     user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    user.getTeams().get(0).setHref(null);
-    user.getTeams().get(1).setHref(null);
 
     //
     // Replace the attributes
     //
-    teams = Arrays.asList(new TeamEntityInterface(team1).getEntityReference(),
-            new TeamEntityInterface(team3).getEntityReference()); // team2 dropped and team3 is added
-    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
+    String timezone1 = "Canada/Eastern";
+    List<EntityReference> teams1 = Arrays.asList(team1, team3); // team2 dropped and team3 is added
+    Profile profile1 = new Profile().withImages(new ImageList().withImage(URI.create("http://image2.com")));
 
     origJson = JsonUtils.pojoToJson(user);
-    user.withTeams(teams).withTimezone("Canada/Eastern").withDisplayName("displayName")
-            .withProfile(profile).withIsBot(true).withIsAdmin(false);
-    // Note non-empty display field is not updated below
-    change = getChangeDescription(user.getVersion())
-            .withFieldsUpdated(Arrays.asList("teams", "timezone", "profile", "isBot"));
+    user.withTeams(teams1).withTimezone(timezone1).withDisplayName("displayName1")
+            .withProfile(profile1).withIsBot(true).withIsAdmin(false);
+
+    change = getChangeDescription(user.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(List.of(team2)));
+    change.getFieldsAdded().add(new FieldChange().withName("teams").withNewValue(List.of(team3)));
+    change.getFieldsUpdated().add(new FieldChange().withName("timezone").withOldValue(timezone)
+            .withNewValue(timezone1));
+    change.getFieldsUpdated().add(new FieldChange().withName("displayName").withOldValue("displayName")
+            .withNewValue("displayName1"));
+    change.getFieldsUpdated().add(new FieldChange().withName("profile").withOldValue(profile).withNewValue(profile1));
+    change.getFieldsUpdated().add(new FieldChange().withName("isBot").withOldValue(false).withNewValue(true));
+
     user = patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
 
     //
@@ -361,8 +378,14 @@ public class UserResourceTest extends EntityResourceTest<User> {
     origJson = JsonUtils.pojoToJson(user);
     user.withTeams(null).withTimezone(null).withDisplayName(null).withProfile(null)
             .withIsBot(null).withIsAdmin(false);
-    change = getChangeDescription(user.getVersion())
-            .withFieldsDeleted(Arrays.asList("teams", "timezone", "displayName", "profile", "isBot"));
+
+    // Note non-empty display field is not deleted
+    change = getChangeDescription(user.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("teams").withOldValue(teams1));
+    change.getFieldsDeleted().add(new FieldChange().withName("timezone").withOldValue(timezone1));
+    change.getFieldsDeleted().add(new FieldChange().withName("displayName").withOldValue("displayName1"));
+    change.getFieldsDeleted().add(new FieldChange().withName("profile").withOldValue(profile1));
+    change.getFieldsDeleted().add(new FieldChange().withName("isBot").withOldValue(true).withNewValue(null));
     patchEntityAndCheck(user, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
   }
 
@@ -539,7 +562,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
   @Override
   public void validatePatchedEntity(User expected, User updated, Map<String, String> authHeaders) {
-    validateCommonEntityFields(getEntityInterface(expected), null,
+    validateCommonEntityFields(getEntityInterface(expected), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), null);
 
     assertEquals(expected.getName(), expected.getName());
@@ -568,5 +591,23 @@ public class UserResourceTest extends EntityResourceTest<User> {
   @Override
   public EntityInterface<User> getEntityInterface(User entity) {
     return new UserEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    if (expected == null && actual == null) {
+      return;
+    }
+    if (fieldName.equals("profile")) {
+      Profile expectedProfile = (Profile) expected;
+      Profile actualProfile = JsonUtils.readValue(actual.toString(), Profile.class);
+      assertEquals(expectedProfile, actualProfile);
+    } else if (fieldName.equals("teams")) {
+        List<EntityReference> expectedTeams = (List<EntityReference>) expected;
+        List<EntityReference> actualTeams = JsonUtils.readObjects(actual.toString(), EntityReference.class);
+        assertEquals(expectedTeams, actualTeams);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

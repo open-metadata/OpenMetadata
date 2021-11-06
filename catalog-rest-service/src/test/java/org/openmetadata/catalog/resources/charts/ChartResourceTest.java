@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.charts;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -32,21 +31,17 @@ import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServic
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.charts.ChartResource.ChartList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ChartType;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
-import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -56,13 +51,11 @@ import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.ENTITY_ALREADY_EXISTS;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.util.TestUtils.LONG_ENTITY_NAME;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -70,11 +63,9 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference SUPERSET_REFERENCE;
   public static EntityReference LOOKER_REFERENCE;
-  public static final TagLabel USER_ADDRESS_TAG_LABEL = new TagLabel().withTagFQN("User.Address");
-  public static final TagLabel TIER_1 = new TagLabel().withTagFQN("Tier.Tier1");
 
   public ChartResourceTest() {
-    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true);
+    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
   }
 
   @BeforeAll
@@ -207,49 +198,6 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Test
-  public void patch_chartAttributes_200_ok(TestInfo test) throws HttpResponseException, JsonProcessingException {
-    // Create chart without description, owner
-    Chart chart = createChart(create(test), adminAuthHeaders());
-    assertNull(chart.getDescription());
-    assertNull(chart.getOwner());
-    assertNotNull(chart.getService());
-    List<TagLabel> chartTags = List.of(USER_ADDRESS_TAG_LABEL);
-
-    chart = getChart(chart.getId(), "service,owner,tags", adminAuthHeaders());
-    chart.getService().setHref(null); // href is readonly and not patchable
-
-    //
-    // Add displayName, description, owner when previously they were null
-    //
-    String origJson = JsonUtils.pojoToJson(chart);
-    chart.withDescription("description").withDisplayName("displayName").withOwner(TEAM_OWNER1).withTags(chartTags);
-    ChangeDescription change = getChangeDescription(chart.getVersion())
-            .withFieldsAdded(Arrays.asList("description", "displayName", "owner", "tags"));
-    chart = patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    chart.setOwner(TEAM_OWNER1); // Get rid of href and name returned in the response for owner
-    chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-    chartTags = List.of(USER_ADDRESS_TAG_LABEL, TIER_1);
-
-    //
-    // Replace description, tier, owner
-    //
-    origJson = JsonUtils.pojoToJson(chart);
-    chart.withDescription("description1").withDisplayName("displayName1").withOwner(USER_OWNER1).withTags(chartTags);
-    change = getChangeDescription(chart.getVersion())
-            .withFieldsUpdated(Arrays.asList("description", "displayName", "owner", "tags"));
-    chart = patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    chart.setOwner(USER_OWNER1); // Get rid of href and name returned in the response for owner
-    chart.setService(SUPERSET_REFERENCE); // Get rid of href and name returned in the response for service
-
-    // Remove description, tier, owner
-    origJson = JsonUtils.pojoToJson(chart);
-    chart.withDescription(null).withDisplayName(null).withOwner(null).withTags(null);
-    change = getChangeDescription(chart.getVersion())
-            .withFieldsDeleted(Arrays.asList("description", "displayName", "owner", "tags"));
-    patchEntityAndCheck(chart, origJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
-
-  @Test
   public void delete_emptyChart_200_ok(TestInfo test) throws HttpResponseException {
     Chart chart = createChart(create(test), adminAuthHeaders());
     deleteChart(chart.getId(), adminAuthHeaders());
@@ -367,5 +315,10 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   @Override
   public EntityInterface<Chart> getEntityInterface(Chart chart) {
     return new ChartEntityInterface(chart);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

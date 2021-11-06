@@ -19,10 +19,8 @@ from metadata.config.common import ConfigModel
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.user import MetadataUser
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +44,7 @@ class LdapRestUsersSink(Sink):
         self.metadata_config = metadata_config
         self.status = SinkStatus()
         self.api_users = "/users"
-        self.rest = OpenMetadataAPIClient(metadata_config).client
+        self.rest = OpenMetadata(metadata_config).client
 
     @classmethod
     def create(

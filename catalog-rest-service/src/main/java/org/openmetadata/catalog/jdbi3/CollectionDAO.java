@@ -34,6 +34,7 @@ import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
+import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.entity.services.MessagingService;
@@ -55,6 +56,7 @@ import org.openmetadata.catalog.jdbi3.MetricsRepository.MetricsEntityInterface;
 import org.openmetadata.catalog.jdbi3.ModelRepository.ModelEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineRepository.PipelineEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.jdbi3.PolicyRepository.PolicyEntityInterface;
 import org.openmetadata.catalog.jdbi3.ReportRepository.ReportEntityInterface;
 import org.openmetadata.catalog.jdbi3.StorageServiceRepository.StorageServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.TableRepository.TableEntityInterface;
@@ -123,6 +125,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   BotsDAO botsDAO();
+
+  @CreateSqlObject
+  PolicyDAO policyDAO();
 
   @CreateSqlObject
   DatabaseServiceDAO dbServiceDAO();
@@ -521,6 +526,24 @@ public interface CollectionDAO {
     @Override
     default EntityReference getEntityReference(PipelineService entity) {
       return new PipelineServiceEntityInterface(entity).getEntityReference();
+    }
+  }
+
+  interface PolicyDAO extends EntityDAO<Policy> {
+    @Override
+    default String getTableName() { return "policy_entity"; }
+
+    @Override
+    default Class<Policy> getEntityClass() {
+      return Policy.class;
+    }
+
+    @Override
+    default String getNameColumn() { return "fullyQualifiedName"; }
+
+    @Override
+    default EntityReference getEntityReference(Policy entity) {
+      return new PolicyEntityInterface(entity).getEntityReference();
     }
   }
 

@@ -95,7 +95,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
       {} as TypeUsedToReturnUsageDetailsOfAnEntity
     );
   const [currentVersion, setCurrentVersion] = useState<string>();
-  const [previousVersion, setPreviousVersion] = useState<string>();
+  const [, setPreviousVersion] = useState<string>();
 
   const activeTabHandler = (tabValue: number) => {
     setActiveTab(tabValue);
@@ -162,9 +162,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   };
 
   const versionHandler = () => {
-    if (previousVersion) {
-      history.push(getDatasetVersionPath(tableFQN, previousVersion as string));
-    }
+    history.push(getDatasetVersionPath(tableFQN, currentVersion as string));
   };
 
   useEffect(() => {

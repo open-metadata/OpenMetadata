@@ -16,6 +16,7 @@
 
 package org.openmetadata.catalog.jdbi3;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.teams.User;
@@ -244,7 +245,7 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
-              .withDisplayName(getDisplayName()).withType(Entity.USER);
+              .withDisplayName(getDisplayName()).withType(Entity.USER).withHref(getHref());
     }
 
     @Override
@@ -257,7 +258,7 @@ public class UserRepository extends EntityRepository<User> {
     public void setDescription(String description) { entity.setDescription(description);}
 
     @Override
-    public void setDisplayName(String displayName) { }
+    public void setDisplayName(String displayName) { entity.setDisplayName(displayName);}
 
     @Override
     public void setUpdateDetails(String updatedBy, Date updatedAt) {
@@ -270,6 +271,9 @@ public class UserRepository extends EntityRepository<User> {
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
@@ -293,14 +297,14 @@ public class UserRepository extends EntityRepository<User> {
         throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
-      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile());
+      recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);
       recordChange("timezone", original.getEntity().getTimezone(), updated.getEntity().getTimezone());
       recordChange("isBot", original.getEntity().getIsBot(), updated.getEntity().getIsBot());
       recordChange("isAdmin", original.getEntity().getIsAdmin(), updated.getEntity().getIsAdmin());
       recordChange("email", original.getEntity().getEmail(), updated.getEntity().getEmail());
     }
 
-    private void updateTeams(User origUser, User updatedUser) {
+    private void updateTeams(User origUser, User updatedUser) throws JsonProcessingException {
       // Remove teams from original and add teams from updated
       dao.relationshipDAO().deleteTo(origUser.getId().toString(), CONTAINS.ordinal(), "team");
       assignTeams(updatedUser, updatedUser.getTeams());
@@ -311,7 +315,10 @@ public class UserRepository extends EntityRepository<User> {
       // Sort by team Id as string (as done in the database)
       origTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
       updatedTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
-      recordChange("teams", origTeams.isEmpty() ? null : origTeams, updatedTeams.isEmpty() ? null : updatedTeams);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange("teams", origTeams, updatedTeams, added, deleted, entityReferenceMatch);
     }
   }
 }
