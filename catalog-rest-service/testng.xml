@@ -42,7 +42,6 @@
             <class name="org.openmetadata.catalog.selenium.pages.tableDetails.TableDetailsPageTest"/>
             <class name="org.openmetadata.catalog.selenium.pages.topicDetails.TopicDetailsPageTest"/>
             <class name="org.openmetadata.catalog.selenium.pages.dashboardDetails.DashboardDetailsPageTest"/>
-            <class name="org.openmetadata.catalog.selenium.pages.pipelineDetails.PipelineDetailsPageTest"/>
         </classes>
     </test>
 </suite>

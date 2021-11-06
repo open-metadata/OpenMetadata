@@ -54,7 +54,7 @@ public class PipelineDetailsPageTest {
         System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
         ChromeOptions options = new ChromeOptions();
         options.addArguments("--headless");
-        webDriver = new ChromeDriver();
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
         wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
         webDriver.manage().window().maximize();

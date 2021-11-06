@@ -54,8 +54,6 @@ public class PipelineServiceTestPage {
     public void openMetadataWindow() {
         System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
         ChromeOptions options = new ChromeOptions();
-        options.addArguments("--no-sandbox");
-        options.addArguments("--disable-dev-shm-usage");
         options.addArguments("--headless");
         webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
