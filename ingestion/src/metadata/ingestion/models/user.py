@@ -116,7 +116,7 @@ class MetadataUser(JsonSerializable):
         display_name: str,
         email: str,
         timezone: str = "PST",
-        isBot: bool = False,
+        is_bot: bool = False,
         teams: [] = None,
         **kwargs: Any
     ) -> None:
@@ -125,7 +125,7 @@ class MetadataUser(JsonSerializable):
         self.display_name = display_name
         self.email = email
         self.timezone = timezone
-        self.isBot = isBot
+        self.is_bot = is_bot
         self.teams = teams
         if kwargs:
             self.attrs = copy.deepcopy(kwargs)

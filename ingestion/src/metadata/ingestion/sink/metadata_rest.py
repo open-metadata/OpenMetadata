@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import logging
+import traceback
 from typing import List
 
 from pydantic import ValidationError
@@ -330,8 +331,10 @@ class MetadataRestSink(Sink):
             r = self.api_client.post(self.api_team, data=metadata_team.to_json())
             instance_id = r["id"]
             self.team_entities[team_name] = instance_id
-        except APIError:
-            pass
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def write_users(self, record: User):
         if record.team_name not in self.team_entities:
@@ -347,8 +350,10 @@ class MetadataRestSink(Sink):
             self.api_client.put(self.api_users, data=metadata_user.to_json())
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))
-        except APIError:
-            pass
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def get_status(self):
         return self.status
