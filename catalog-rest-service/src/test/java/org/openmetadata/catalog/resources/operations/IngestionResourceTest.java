@@ -39,7 +39,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.CREATED;
 import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
@@ -195,14 +194,8 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
 
         // Create Ingestion for each service and test APIs
         for (EntityReference service : differentServices) {
-            createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
-
-            // List Ingestion by filtering on service name and ensure right Ingestion are returned in the response
-            Map<String, String> queryParams = new HashMap<>(){{put("service", service.getName());}};
-            ResultList<Ingestion> list = listEntities(queryParams, adminAuthHeaders());
-            for (Ingestion db : list.getData()) {
-                assertEquals(service.getName(), db.getService().getName());
-            }
+            Ingestion ingestion = createAndCheckEntity(create(test).withService(service), adminAuthHeaders());
+            assertEquals(service.getName(), ingestion.getService().getName());
         }
     }
 
@@ -226,14 +219,14 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
 
     @Test
     public void put_IngestionUpdate_200(TestInfo test) throws IOException {
-        CreateIngestion request = create(test).withService(BIGQUERY_REFERENCE).withDescription(null);
+        CreateIngestion request = create(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
         Ingestion ingestion = createAndCheckEntity(request, adminAuthHeaders());
 
         // Add description and tasks
         ChangeDescription change = getChangeDescription(ingestion.getVersion());
         change.getFieldsAdded().add(new FieldChange().withName("description").withNewValue("newDescription"));
-        change.getFieldsAdded().add(new FieldChange().withName("connectorConfig").withNewValue(INGESTION_CONFIG));
-        updateAndCheckEntity(request.withDescription("newDescription").withConnectorConfig(INGESTION_CONFIG),
+        change.getFieldsAdded().add(new FieldChange().withName("owner").withNewValue(USER_OWNER1));
+        updateAndCheckEntity(request.withDescription("newDescription").withOwner(USER_OWNER1),
                 OK, adminAuthHeaders(), MINOR_UPDATE, change);
     }
 

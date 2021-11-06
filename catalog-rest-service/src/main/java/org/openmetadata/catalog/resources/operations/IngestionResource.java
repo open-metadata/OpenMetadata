@@ -80,6 +80,7 @@ public class IngestionResource {
     public static Ingestion addHref(UriInfo uriInfo, Ingestion ingestion) {
         ingestion.setHref(RestUtil.getHref(uriInfo, INGESTION_COLLECTION_PATH, ingestion.getId()));
         EntityUtil.addHref(uriInfo, ingestion.getOwner());
+        EntityUtil.addHref(uriInfo, ingestion.getService());
         return ingestion;
     }
 
@@ -108,8 +109,8 @@ public class IngestionResource {
 
     @GET
     @Valid
-    @Operation(summary = "List Ingestions", tags = "ingestions",
-            description = "Get a list of ingestions. Use `fields` parameter to get only necessary fields. " +
+    @Operation(summary = "List Ingestion Workflows", tags = "ingestion",
+            description = "Get a list of ingestion workflows. Use `fields` parameter to get only necessary fields. " +
                     " Use cursor-based pagination to limit the number " +
                     "entries in the list using `limit` and `before` or `after` query params.",
             responses = {
@@ -150,7 +151,7 @@ public class IngestionResource {
 
     @GET
     @Path("/{id}/versions")
-    @Operation(summary = "List ingestion versions", tags = "ingestion",
+    @Operation(summary = "List ingestion workflow versions", tags = "ingestion",
             description = "Get a list of all the versions of a ingestion identified by `id`",
             responses = {@ApiResponse(responseCode = "200", description = "List of ingestion versions",
                     content = @Content(mediaType = "application/json",
@@ -166,8 +167,8 @@ public class IngestionResource {
 
     @GET
     @Path("/{id}")
-    @Operation(summary = "Get a ingestion", tags = "ingestions",
-            description = "Get a ingestion by `id`.",
+    @Operation(summary = "Get a ingestion workflow", tags = "ingestion",
+            description = "Get a ingestion workflow by `id`.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "The ingestion",
                             content = @Content(mediaType = "application/json",
@@ -207,7 +208,7 @@ public class IngestionResource {
 
     @GET
     @Path("/name/{fqn}")
-    @Operation(summary = "Get a ingestion by name", tags = "ingestions",
+    @Operation(summary = "Get a ingestion by name", tags = "ingestion",
             description = "Get a ingestion by fully qualified name.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "The ingestion",
@@ -227,7 +228,7 @@ public class IngestionResource {
 
 
     @POST
-    @Operation(summary = "Create a Ingestion", tags = "ingestions",
+    @Operation(summary = "Create a Ingestion", tags = "ingestion",
             description = "Create a new Ingestion.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "The ingestion",
@@ -245,7 +246,7 @@ public class IngestionResource {
 
     @PATCH
     @Path("/{id}")
-    @Operation(summary = "Update a ingestion", tags = "ingestions",
+    @Operation(summary = "Update a ingestion", tags = "ingestion",
             description = "Update an existing ingestion using JsonPatch.",
             externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                     url = "https://tools.ietf.org/html/rfc6902"))
@@ -269,7 +270,7 @@ public class IngestionResource {
     }
 
     @PUT
-    @Operation(summary = "Create or update a ingestion", tags = "ingestions",
+    @Operation(summary = "Create or update a ingestion", tags = "ingestion",
             description = "Create a new ingestion, if it does not exist or update an existing ingestion.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "The ingestion",

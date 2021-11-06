@@ -45,9 +45,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 public class IngestionRepository extends EntityRepository<Ingestion> {
   private static final Logger LOG = LoggerFactory.getLogger(IngestionRepository.class);
   private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,service,tags");
+          "owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS = new Fields(IngestionResource.FIELD_LIST,
-          "owner,service,tags");
+          "owner,tags");
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
