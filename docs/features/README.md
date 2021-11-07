@@ -4,7 +4,7 @@ description: In this section, we present an overview of OpenMetadata features.
 
 # Features
 
-### Use keyword queries to search across assets
+### Search across all assets
 
 #### Find assets based on name, description, and component metadata (e.g., column name, description) and containing service
 
@@ -14,7 +14,7 @@ For more details see the [Asset Discovery](asset-discovery.md) documentation.
 
 
 
-### Use complex queries to search across assets
+### Use complex queries
 
 #### Find assets matching strict criteria on metadata properties and Boolean operators.
 
