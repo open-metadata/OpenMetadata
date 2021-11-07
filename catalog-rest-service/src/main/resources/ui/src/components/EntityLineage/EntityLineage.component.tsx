@@ -385,7 +385,7 @@ const Entitylineage: FunctionComponent<{ entityLineage: EntityLineage }> = ({
           <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
             <span>
               Lineage is currently supported for Airflow. To enable lineage
-              collection from Airflow, Please follow the docs
+              collection from Airflow, Please follow the documentation
             </span>
             <Link
               className="tw-ml-1"
