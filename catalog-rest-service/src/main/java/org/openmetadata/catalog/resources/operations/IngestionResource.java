@@ -1,3 +1,19 @@
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one or more
+ *  contributor license agreements. See the NOTICE file distributed with
+ *  this work for additional information regarding copyright ownership.
+ *  The ASF licenses this file to You under the Apache License, Version 2.0
+ *  (the "License"); you may not use this file except in compliance with
+ *  the License. You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.catalog.resources.operations;
 
 import com.google.inject.Inject;
@@ -11,7 +27,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
-import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
@@ -114,9 +129,9 @@ public class IngestionResource {
                     " Use cursor-based pagination to limit the number " +
                     "entries in the list using `limit` and `before` or `after` query params.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "List of ingestions",
+                    @ApiResponse(responseCode = "200", description = "List of ingestion workflows",
                             content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = org.openmetadata.catalog.resources.operations.IngestionResource.IngestionList.class)))
+                                    schema = @Schema(implementation = IngestionList.class)))
             })
     public ResultList<Ingestion> list(@Context UriInfo uriInfo,
                                   @Context SecurityContext securityContext,
@@ -193,8 +208,8 @@ public class IngestionResource {
                     @ApiResponse(responseCode = "200", description = "ingestion",
                             content = @Content(mediaType = "application/json",
                                     schema = @Schema(implementation = Ingestion.class))),
-                    @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} and version {version} is " +
-                            "not found")
+                    @ApiResponse(responseCode = "404", description = "Ingestion for instance {id} and version  " +
+                            "{version} is not found")
             })
     public Ingestion getVersion(@Context UriInfo uriInfo,
                                @Context SecurityContext securityContext,
