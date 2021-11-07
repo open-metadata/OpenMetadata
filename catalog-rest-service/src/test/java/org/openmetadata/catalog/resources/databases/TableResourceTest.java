@@ -346,7 +346,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     c2_c_d = c2_c.getChildren().get(0);
     c2_c_d.setTags(singletonList(USER_BANK_ACCOUNT_TAG_LABEL)); // c2.c.d new tag added
     table1 = patchEntity(table1.getId(), tableJson, table1, adminAuthHeaders());
-    validateColumns(Arrays.asList(c1, c2), table1.getColumns());
+    assertColumns(Arrays.asList(c1, c2), table1.getColumns());
   }
 
   @Test
@@ -586,7 +586,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
       // getTable and ensure the following column joins are correct
       table1 = getTable(table1.getId(), "joins", adminAuthHeaders());
-      validateColumnJoins(expectedJoins1, table1.getJoins());
+      assertColumnJoins(expectedJoins1, table1.getJoins());
 
       // getTable and ensure the following column joins are correct
       table2 = getTable(table2.getId(), "joins", adminAuthHeaders());
@@ -600,7 +600,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
               // table2.c3 is joined with table1.c1 with join count 30
               new ColumnJoin().withColumnName("c3").withJoinedWith(singletonList(
                       new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      validateColumnJoins(expectedJoins2, table2.getJoins());
+      assertColumnJoins(expectedJoins2, table2.getJoins());
 
       // getTable and ensure the following column joins
       table3 = getTable(table3.getId(), "joins", adminAuthHeaders());
@@ -614,7 +614,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
               // table3.c3 is joined with table1.c1 with join count 30
               new ColumnJoin().withColumnName("c3").withJoinedWith(singletonList(
                       new JoinedWith().withFullyQualifiedName(t1c3).withJoinCount(30 * i))));
-      validateColumnJoins(expectedJoins3, table3.getJoins());
+      assertColumnJoins(expectedJoins3, table3.getJoins());
 
       // Report again for the previous day and make sure aggregate counts are correct
       table1Joins = new TableJoins().withDayCount(1).withStartDate(RestUtil.today(-1))
@@ -666,7 +666,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertResponse(exception, BAD_REQUEST, "Date range can only include past 30 days starting today");
   }
 
-  public void validateColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
+  public void assertColumnJoins(List<ColumnJoin> expected, TableJoins actual) throws ParseException {
     // Table reports last 30 days of aggregated join count
     assertEquals(actual.getStartDate(), getDateStringByOffset(DATE_FORMAT, RestUtil.today(0), -30));
     assertEquals(actual.getDayCount(), 30);
@@ -1010,7 +1010,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     String originalJson = JsonUtils.pojoToJson(table);
     table.setColumns(columns);
     table = patchEntityAndCheck(table, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    validateColumns(columns, table.getColumns());
+    assertColumns(columns, table.getColumns());
   }
 
   @Test
@@ -1123,7 +1123,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
 
-  private static void validateColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
+  private static void assertColumn(Column expectedColumn, Column actualColumn) throws HttpResponseException {
     assertNotNull(actualColumn.getFullyQualifiedName());
     assertEquals(expectedColumn.getName(), actualColumn.getName());
     assertEquals(expectedColumn.getDescription(), actualColumn.getDescription());
@@ -1133,13 +1133,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     if (expectedColumn.getDataTypeDisplay() != null) {
       assertEquals(expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT), actualColumn.getDataTypeDisplay());
     }
-    TestUtils.validateTags(actualColumn.getFullyQualifiedName(), expectedColumn.getTags(), actualColumn.getTags());
+    TestUtils.assertTags(actualColumn.getFullyQualifiedName(), expectedColumn.getTags(), actualColumn.getTags());
 
     // Check the nested columns
-    validateColumns(expectedColumn.getChildren(), actualColumn.getChildren());
+    assertColumns(expectedColumn.getChildren(), actualColumn.getChildren());
   }
 
-  private static void validateColumns(List<Column> expectedColumns, List<Column> actualColumns)
+  private static void assertColumns(List<Column> expectedColumns, List<Column> actualColumns)
           throws HttpResponseException {
     if (expectedColumns == null && actualColumns == null) {
       return;
@@ -1148,7 +1148,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertNotNull(expectedColumns);
     assertEquals(expectedColumns.size(), actualColumns.size());
     for (int i = 0; i < expectedColumns.size(); i++) {
-      validateColumn(expectedColumns.get(i), actualColumns.get(i));
+      assertColumn(expectedColumns.get(i), actualColumns.get(i));
     }
   }
 
@@ -1262,10 +1262,10 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Entity specific validation
     assertEquals(createRequest.getTableType(), createdEntity.getTableType());
-    validateColumns(createRequest.getColumns(), createdEntity.getColumns());
+    assertColumns(createRequest.getColumns(), createdEntity.getColumns());
     validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
     assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
-    TestUtils.validateTags(createdEntity.getFullyQualifiedName(), createRequest.getTags(), createdEntity.getTags());
+    TestUtils.assertTags(createdEntity.getFullyQualifiedName(), createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
   }
 
@@ -1282,10 +1282,10 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Entity specific validation
     assertEquals(expected.getTableType(), patched.getTableType());
-    validateColumns(expected.getColumns(), patched.getColumns());
+    assertColumns(expected.getColumns(), patched.getColumns());
     validateDatabase(expected.getDatabase().getId(), patched.getDatabase());
     assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
-    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
+    TestUtils.assertTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
     TestUtils.validateEntityReference(expected.getFollowers());
   }
 
@@ -1316,7 +1316,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);
-      validateColumns(expectedRefs, actualRefs);
+      assertColumns(expectedRefs, actualRefs);
     } else if (fieldName.endsWith("tableType")) {
       TableType expectedTableType = (TableType) expected;
       TableType actualTableType = TableType.fromValue(actual.toString());

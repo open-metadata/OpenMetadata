@@ -25,6 +25,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
+import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
@@ -47,10 +48,14 @@ import org.openmetadata.catalog.resources.services.storage.StorageServiceResourc
 import org.openmetadata.catalog.resources.teams.TeamResource;
 import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.resources.topics.TopicResource;
+import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.type.TagLabel.LabelType;
+import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
 import org.openmetadata.catalog.type.Schedule;
@@ -66,13 +71,53 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public final class EntityUtil {
   private static final Logger LOG = LoggerFactory.getLogger(EntityUtil.class);
+
+  //
+  // Comparators used for sorting list based on the given type
+  //
+
+  // Note ordering is same as server side ordering by ID as string to ensure PATCH operations work
+  public static final Comparator<EntityReference> compareEntityReference =
+          Comparator.comparing(entityReference -> entityReference.getId().toString());
+  public static final Comparator<EntityVersionPair> compareVersion =
+          Comparator.comparing(EntityVersionPair::getVersion);
+  public static final Comparator<TagLabel> compareTagLabel =
+          Comparator.comparing(TagLabel::getTagFQN);
+  public static final Comparator<FieldChange> compareFieldChange =
+          Comparator.comparing(FieldChange::getName);
+  public static final Comparator<TableConstraint> compareTableConstraint =
+          Comparator.comparing(TableConstraint::getConstraintType);
+
+  //
+  // Matchers used for matching two items in a list
+  //
+  public static BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2) ->
+          ref1.getId().equals(ref2.getId());
+
+  public static BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2) ->
+          tag1.getTagFQN().equals(tag2.getTagFQN());
+
+  public static BiPredicate<Task, Task> taskMatch = (task1, task2) ->
+          task1.getName().equals(task2.getName());
+
+  public static BiPredicate<Column, Column> columnMatch = (column1, column2) ->
+          column1.getName().equals(column2.getName()) &&
+          column1.getDataType() == column2.getDataType() &&
+          column1.getArrayDataType() == column2.getArrayDataType() &&
+          Objects.equals(column1.getOrdinalPosition(), column2.getOrdinalPosition());
+
+  public static BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch = (constraint1, constraint2) ->
+          constraint1.getConstraintType() == constraint2.getConstraintType() &&
+          constraint1.getColumns().equals(constraint2.getColumns());
 
   private EntityUtil() {
 
@@ -200,7 +245,7 @@ public final class EntityUtil {
     if (ids.size() > 1) {
       LOG.warn("Possible database issues - multiple owners {} found for entity {}", ids, id);
     }
-    return ids.isEmpty() ? null : EntityUtil.populateOwner(userDAO, teamDAO, ids.get(0));
+    return ids.isEmpty() ? null : populateOwner(userDAO, teamDAO, ids.get(0));
   }
 
   public static EntityReference populateOwner(UserDAO userDAO, TeamDAO teamDAO,
@@ -395,9 +440,9 @@ public final class EntityUtil {
 
       // Apply derived tags
       List<TagLabel> derivedTags = getDerivedTags(tagLabel, tag);
-      updatedTagLabels = EntityUtil.mergeTags(updatedTagLabels, derivedTags);
+      updatedTagLabels = mergeTags(updatedTagLabels, derivedTags);
     }
-    updatedTagLabels.sort(Comparator.comparing(TagLabel::getTagFQN));
+    updatedTagLabels.sort(compareTagLabel);
     return updatedTagLabels;
   }
 
@@ -485,7 +530,7 @@ public final class EntityUtil {
     if (refList == null) {
       return null;
     }
-    return refList.stream().sorted(Comparator.comparing(EntityReference::getId)).map(EntityReference::getId)
+    return refList.stream().sorted(compareEntityReference).map(EntityReference::getId)
             .collect(Collectors.toList());
   }
 
@@ -514,4 +559,5 @@ public final class EntityUtil {
     localColumnName.append(s[s.length - 1]);
     return localColumnName.toString();
   }
+
 }

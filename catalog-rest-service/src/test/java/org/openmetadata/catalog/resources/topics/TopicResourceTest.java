@@ -295,7 +295,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     validateCommonEntityFields(getEntityInterface(topic), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
     assertService(createRequest.getService(), topic.getService());
-    TestUtils.validateTags(topic.getFullyQualifiedName(), createRequest.getTags(), topic.getTags());
+    TestUtils.assertTags(topic.getFullyQualifiedName(), createRequest.getTags(), topic.getTags());
   }
 
   @Override
@@ -308,7 +308,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());
-    TestUtils.validateTags(expected.getFullyQualifiedName(), expected.getTags(), updated.getTags());
+    TestUtils.assertTags(expected.getFullyQualifiedName(), expected.getTags(), updated.getTags());
   }
 
   @Override

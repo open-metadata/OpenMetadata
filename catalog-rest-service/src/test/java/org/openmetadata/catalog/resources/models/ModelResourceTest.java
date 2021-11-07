@@ -527,7 +527,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
       assertNotNull(model.getOwner().getHref());
     }
 
-    TestUtils.validateTags(model.getFullyQualifiedName(), expectedTags, model.getTags());
+    TestUtils.assertTags(model.getFullyQualifiedName(), expectedTags, model.getTags());
     return model;
   }
 

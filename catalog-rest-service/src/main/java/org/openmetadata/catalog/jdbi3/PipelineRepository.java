@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -318,10 +317,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
       List<Task> added = new ArrayList<>();
       List<Task> deleted = new ArrayList<>();
-      recordListChange("tasks", origTasks, updatedTasks, added, deleted, taskMatch);
+      recordListChange("tasks", origTasks, updatedTasks, added, deleted, EntityUtil.taskMatch);
     }
   }
 
-  public static BiPredicate<Task, Task> taskMatch = (task1, task2)
-          -> task1.getName().equals(task2.getName());
 }

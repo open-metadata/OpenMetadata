@@ -33,6 +33,7 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
@@ -462,10 +463,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     actualUsers.forEach(TestUtils::validateEntityReference);
     actualUsers.forEach(user -> user.setHref(null));
 
-    // Note ordering is same as server side ordering by ID as string
-    // Patch requests work only if the same ordering of users on the server side
-    actualUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
-    expectedUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+    actualUsers.sort(EntityUtil.compareEntityReference);
+    expectedUsers.sort(EntityUtil.compareEntityReference);
     assertEquals(expectedUsers, actualUsers);
     TestUtils.validateEntityReference(updated.getOwns());
   }

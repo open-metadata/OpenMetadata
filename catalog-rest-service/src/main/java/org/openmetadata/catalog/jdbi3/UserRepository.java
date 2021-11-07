@@ -37,7 +37,6 @@ import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -312,13 +311,12 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> origTeams = Optional.ofNullable(origUser.getTeams()).orElse(Collections.emptyList());
       List<EntityReference> updatedTeams = Optional.ofNullable(updatedUser.getTeams()).orElse(Collections.emptyList());
 
-      // Sort by team Id as string (as done in the database)
-      origTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
-      updatedTeams.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+      origTeams.sort(EntityUtil.compareEntityReference);
+      updatedTeams.sort(EntityUtil.compareEntityReference);
 
       List<EntityReference> added = new ArrayList<>();
       List<EntityReference> deleted = new ArrayList<>();
-      recordListChange("teams", origTeams, updatedTeams, added, deleted, entityReferenceMatch);
+      recordListChange("teams", origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
     }
   }
 }

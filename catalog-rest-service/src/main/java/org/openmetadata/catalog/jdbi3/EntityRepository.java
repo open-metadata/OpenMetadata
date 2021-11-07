@@ -27,7 +27,6 @@ import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -139,7 +138,7 @@ public abstract class EntityRepository<T> {
     T latest = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
     String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityName);
     List<EntityVersionPair> oldVersions = daoCollection.entityExtensionDAO().getEntityVersions(id, extensionPrefix);
-    oldVersions.sort(Comparator.comparing(EntityVersionPair::getVersion).reversed());
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
 
     final List<Object> allVersions = new ArrayList<>();
     allVersions.add(JsonUtils.pojoToJson(latest));
@@ -162,7 +161,6 @@ public abstract class EntityRepository<T> {
     }
     // Update the existing entity
     setFields(original, putFields);
-    validate(updated);
 
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
     entityUpdater.update();
@@ -304,8 +302,8 @@ public abstract class EntityRepository<T> {
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
-      updatedTags.sort(Comparator.comparing(TagLabel::getTagFQN));
+      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, EntityUtil.tagLabelMatch);
+      updatedTags.sort(EntityUtil.compareTagLabel);
       EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, fqn);
     }
 
@@ -360,16 +358,15 @@ public abstract class EntityRepository<T> {
                                            List<K> deletedItems, BiPredicate<K, K> typeMatch)
             throws JsonProcessingException {
       for (K stored : origList) {
-        // Find updated column matching name, data type and ordinal position
+        // If an entry in the original list is not in updated list, then it is deleted during update
         K updated = updatedList.stream().filter(c -> typeMatch.test(c, stored)).findAny().orElse(null);
         if (updated == null) {
           deletedItems.add(stored);
         }
       }
 
-      // Carry forward the user generated metadata from existing columns to new columns
       for (K updated : updatedList) {
-        // Find stored column matching name, data type and ordinal position
+        // If an entry in the updated list is not in original list, then it is added during update
         K stored = origList.stream().filter(c -> typeMatch.test(c, updated)).findAny().orElse(null);
         if (stored == null) { // New column added
           addedItems.add(updated);
@@ -398,9 +395,4 @@ public abstract class EntityRepository<T> {
     }
   }
 
-  public static BiPredicate<EntityReference, EntityReference> entityReferenceMatch = (ref1, ref2)
-          -> ref1.getId().equals(ref2.getId());
-
-  public static BiPredicate<TagLabel, TagLabel> tagLabelMatch = (tag1, tag2)
-          -> tag1.getTagFQN().equals(tag2.getTagFQN());
 }
