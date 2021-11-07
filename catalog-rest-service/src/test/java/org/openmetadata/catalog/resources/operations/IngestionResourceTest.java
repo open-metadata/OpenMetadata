@@ -374,7 +374,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
 
     @Override
     protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-        WebTarget target = getOperationsResource( "ingestion/" + id + "/versions");
+        WebTarget target = getOperationsResource("ingestion/" + id + "/versions");
         return TestUtils.get(target, EntityHistory.class, authHeaders);
     }
 
