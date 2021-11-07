@@ -2,7 +2,7 @@ import importlib
 import pathlib
 from unittest import TestCase
 
-from metadata.config.common import load_config_file
+from metadata.config.common import load_config_file, ConfigurationError
 from metadata.ingestion.api.workflow import Workflow
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
@@ -70,9 +70,8 @@ class WorkflowTest(TestCase):
         self.assertEqual(ingestionData is not None, True)
 
     def test_execute_4xx(self):
+        config_file = pathlib.Path("/tmp/mysql_test123")
         try:
-            file_path = "/tmp/mysql_test123"
-            with open(file_path) as ingestionFile:
-                ingestionFile.read()
-        except FileNotFoundError:
-            self.assertRaises(FileNotFoundError)
+            workflow_config = load_config_file(config_file)
+        except ConfigurationError:
+            self.assertRaises(ConfigurationError)
