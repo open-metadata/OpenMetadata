@@ -186,8 +186,8 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
       ) : (
         <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
           <span>
-            Data Profiler optional configuration in Ingestion. Please enable the
-            data profiler by following the documentation
+            Data Profiler is an optional configuration in Ingestion. Please
+            enable the data profiler by following the documentation
           </span>
           <Link
             className="tw-ml-1"
