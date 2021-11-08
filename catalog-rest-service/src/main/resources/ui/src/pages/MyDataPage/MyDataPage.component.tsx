@@ -51,14 +51,14 @@ const MyDataPage = () => {
   const fetchData = (value: SearchDataFunctionType, fetchService = false) => {
     setError('');
 
-    const entityList = [
+    const entityIndexList = [
       'table_search_index',
       'topic_search_index',
       'dashboard_search_index',
       'pipeline_search_index',
     ];
 
-    const entityResponse = entityList.map((entity) =>
+    const entityResponse = entityIndexList.map((entity) =>
       searchData(
         value.queryString,
         value.from,
