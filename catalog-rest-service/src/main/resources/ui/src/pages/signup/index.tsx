@@ -135,10 +135,13 @@ const Signup = () => {
   };
   const errorMsg = (value: string) => {
     return (
-      <div className="tw-mt-1">
-        <strong className="tw-text-red-500 tw-text-xs tw-italic">
-          {value}
-        </strong>
+      <div
+        className="tw-notification tw-bg-error tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+        data-testid="toast">
+        <div className="tw-font-semibold tw-flex-shrink-0">
+          <SVGIcons alt="info" icon="error" title="Info" width="16px" />
+        </div>
+        <div className="tw-font-semibold tw-px-1">{value}</div>
       </div>
     );
   };
