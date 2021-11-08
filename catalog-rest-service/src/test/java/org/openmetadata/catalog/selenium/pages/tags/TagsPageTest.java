@@ -182,7 +182,8 @@ public class TagsPageTest {
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
-        Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), tagCategoryDisplayName + "." + tagDisplayName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"),
+                tagCategoryDisplayName + "." + tagDisplayName);
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
         Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
