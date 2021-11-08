@@ -4,7 +4,158 @@
   "title": "Model",
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
-
+  "definitions": {
+    "featureType": {
+      "javaType": "org.openmetadata.catalog.type.MLFeatureDataType",
+      "description": "This enum defines the type of data stored in a ML Feature.",
+      "type": "string",
+      "enum": [
+        "numerical",
+        "categorical"
+      ],
+      "javaEnums": [
+        {
+          "name": "Numerical"
+        },
+        {
+          "name": "Categorical"
+        }
+      ]
+    },
+    "featureSourceDataType": {
+      "javaType": "org.openmetadata.catalog.type.FeatureSourceDataType",
+      "description": "This enum defines the type of data of a ML Feature source.",
+      "type": "string",
+      "enum": [
+        "integer",
+        "number",
+        "string",
+        "array",
+        "date",
+        "timestamp",
+        "object",
+        "boolean"
+      ]
+    },
+    "featureName": {
+      "description": "Local name (not fully qualified name) of the ML Feature.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "featureSourceName": {
+      "description": "Local name (not fully qualified name) of a ML Feature source",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[^.]*$"
+    },
+    "fullyQualifiedFeatureSourceName": {
+      "description": "Fully qualified name of the ML Feature Source that includes `serviceName.[databaseName].tableName/fileName/apiName.columnName[.nestedColumnName]`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "fullyQualifiedFeatureName": {
+      "description": "Fully qualified name of the ML Feature that includes `modelName.featureName`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "featureSource": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MLFeatureSource",
+      "description": "This schema defines the sources of a ML Feature.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/featureSourceName"
+        },
+        "dataType": {
+          "description": "Data type of the source (int, date etc.).",
+          "$ref": "#/definitions/featureSourceDataType"
+        },
+        "description": {
+          "description": "Description of the feature source.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "$ref": "#/definitions/fullyQualifiedFeatureSourceName"
+        },
+        "tags": {
+          "description": "Tags associated with the feature source.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        }
+      }
+    },
+    "mlFeature": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MLFeature",
+      "description": "This schema defines the type for a ML Feature used in a Model.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/definitions/featureName"
+        },
+        "dataType": {
+          "description": "Data type of the column (numerical vs. categorical).",
+          "$ref": "#/definitions/featureType"
+        },
+        "description": {
+          "description": "Description of the ML Feature.",
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "$ref": "#/definitions/fullyQualifiedFeatureName"
+        },
+        "featureSources": {
+          "description": "Columns used to create the ML Feature",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/featureSource"
+          },
+          "default": null
+        },
+        "featureAlgorithm": {
+          "description": "Description of the algorithm used to compute the feature, e.g., PCA, bucketing...",
+          "type": "string"
+        },
+        "tags": {
+          "description": "Tags associated with the feature.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/tagLabel.json"
+          },
+          "default": null
+        }
+      }
+    },
+    "mlHyperParameter": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.MLHyperParameter",
+      "description": "This schema defines the type for a ML HyperParameter used in a Model.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Hyper parameter name",
+          "type": "string"
+        },
+        "value": {
+          "description": "Hyper parameter value",
+          "type": "string"
+        },
+        "description": {
+          "description": "Description of the Hyper Parameter.",
+          "type": "string"
+        }
+      }
+    }
+  },
   "properties" : {
     "id": {
       "description": "Unique identifier of a model instance.",
@@ -26,18 +177,6 @@
       "description": "Display Name that identifies this model.",
       "type": "string"
     },
-    "version" : {
-      "description": "Metadata version of the entity.",
-      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
-    },
-    "updatedAt" : {
-      "description": "Last update time corresponding to the new version of the entity.",
-      "$ref": "../../type/basic.json#/definitions/dateTime"
-    },
-    "updatedBy" : {
-      "description": "User who made the update.",
-      "type": "string"
-    },
     "description": {
       "description": "Description of the model, what it is, and how to use it.",
       "type": "string"
@@ -45,6 +184,22 @@
     "algorithm": {
       "description": "Algorithm used to train the model.",
       "type": "string"
+    },
+    "mlFeatures": {
+      "description": "Features used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/mlFeature"
+      },
+      "default": null
+    },
+    "mlHyperParameters": {
+      "description": "Hyper Parameters used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/mlHyperParameter"
+      },
+      "default": null
     },
     "dashboard" : {
       "description": "Performance Dashboard URL to track metric evolution.",
@@ -74,6 +229,18 @@
       "description": "Latest usage information for this model.",
       "$ref": "../../type/usageDetails.json",
       "default": null
+    },
+    "version" : {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt" : {
+      "description": "Last update time corresponding to the new version of the entity.",
+      "$ref": "../../type/basic.json#/definitions/dateTime"
+    },
+    "updatedBy" : {
+      "description": "User who made the update.",
+      "type": "string"
     },
     "changeDescription": {
       "description" : "Change that lead to this version of the entity.",

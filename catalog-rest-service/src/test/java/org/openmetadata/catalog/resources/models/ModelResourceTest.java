@@ -27,6 +27,11 @@ import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.type.FeatureSourceDataType;
+import org.openmetadata.catalog.type.MLFeature;
+import org.openmetadata.catalog.type.MLFeatureDataType;
+import org.openmetadata.catalog.type.MLFeatureSource;
+import org.openmetadata.catalog.type.MLHyperParameter;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
@@ -47,6 +52,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -79,6 +86,39 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public static EntityReference SUPERSET_REFERENCE;
   public static Dashboard DASHBOARD;
   public static EntityReference DASHBOARD_REFERENCE;
+  public static List<MLFeature> ML_FEATURES = Arrays.asList(
+          new MLFeature()
+                  .withName("age")
+                  .withDataType(MLFeatureDataType.Numerical)
+                  .withFeatureSources(
+                          Collections.singletonList(
+                                  new MLFeatureSource()
+                                          .withName("age")
+                                          .withDataType(FeatureSourceDataType.INTEGER)
+                                          .withFullyQualifiedName("my_service.my_db.my_table.age")
+                          )
+                  ),
+          new MLFeature()
+                  .withName("persona")
+                  .withDataType(MLFeatureDataType.Categorical)
+                  .withFeatureSources(
+                          Arrays.asList(
+                                  new MLFeatureSource()
+                                          .withName("age")
+                                          .withDataType(FeatureSourceDataType.INTEGER)
+                                          .withFullyQualifiedName("my_service.my_db.my_table.age"),
+                                  new MLFeatureSource()
+                                          .withName("education")
+                                          .withDataType(FeatureSourceDataType.STRING)
+                                          .withFullyQualifiedName("my_api.education")
+                          )
+                  )
+          .withFeatureAlgorithm("PCA")
+  );
+  public static List<MLHyperParameter> ML_HYPERPARAMS = Arrays.asList(
+          new MLHyperParameter().withName("regularisation").withValue("0.5"),
+          new MLHyperParameter().withName("random").withValue("hello")
+  );
 
 
   @BeforeAll
@@ -465,6 +505,15 @@ public class ModelResourceTest extends CatalogApplicationTest {
     assertNotNull(model.getAlgorithm()); // Provided as default field
     assertNull(model.getDashboard());
 
+    // .../models?fields=mlFeatures,mlHyperParameters
+    fields = "mlFeatures,mlHyperParameters";
+    model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
+            getModel(model.getId(), fields, adminAuthHeaders());
+    assertNotNull(model.getAlgorithm()); // Provided as default field
+    assertNotNull(model.getMlFeatures());
+    assertNotNull(model.getMlHyperParameters());
+    assertNull(model.getDashboard());
+
     // .../models?fields=owner,algorithm
     fields = "owner,algorithm";
     model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
@@ -577,11 +626,13 @@ public class ModelResourceTest extends CatalogApplicationTest {
   }
 
   public static CreateModel create(TestInfo test) {
-    return new CreateModel().withName(getModelName(test)).withAlgorithm(ALGORITHM);
+    return new CreateModel().withName(getModelName(test)).withAlgorithm(ALGORITHM)
+            .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
   }
 
   public static CreateModel create(TestInfo test, int index) {
-    return new CreateModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM);
+    return new CreateModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
+            .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
   }
 
 }

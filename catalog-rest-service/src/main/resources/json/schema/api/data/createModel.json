@@ -23,6 +23,22 @@
       "description": "Algorithm used to train the model",
       "type": "string"
     },
+    "mlFeatures": {
+      "description": "Features used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/model.json#/definitions/mlFeature"
+      },
+      "default" : null
+    },
+    "mlHyperParameters": {
+      "description": "Hyper Parameters used to train the ML Model.",
+      "type": "array",
+      "items": {
+        "$ref": "../../entity/data/model.json#/definitions/mlHyperParameter"
+      },
+      "default" : null
+    },
     "dashboard" : {
       "description": "Performance Dashboard URL to track metric evolution",
       "$ref" : "../../type/entityReference.json"

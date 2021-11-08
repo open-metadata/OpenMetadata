@@ -44,9 +44,9 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 public class ModelRepository extends EntityRepository<Model> {
   private static final Logger LOG = LoggerFactory.getLogger(ModelRepository.class);
   private static final Fields MODEL_UPDATE_FIELDS = new Fields(ModelResource.FIELD_LIST,
-          "owner,dashboard,tags");
+          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
   private static final Fields MODEL_PATCH_FIELDS = new Fields(ModelResource.FIELD_LIST,
-          "owner,dashboard,tags");
+          "owner,dashboard,mlHyperParameters,mlFeatures,tags");
   private final CollectionDAO dao;
 
   public ModelRepository(CollectionDAO dao) {
@@ -80,6 +80,8 @@ public class ModelRepository extends EntityRepository<Model> {
     model.setDisplayName(model.getDisplayName());
     model.setOwner(fields.contains("owner") ? getOwner(model) : null);
     model.setDashboard(fields.contains("dashboard") ? getDashboard(model) : null);
+    model.setMlFeatures(fields.contains("mlFeatures") ? model.getMlFeatures(): null);
+    model.setMlHyperParameters(fields.contains("mlHyperParameters") ? model.getMlHyperParameters(): null);
     model.setFollowers(fields.contains("followers") ? getFollowers(model) : null);
     model.setTags(fields.contains("tags") ? getTags(model.getFullyQualifiedName()) : null);
     model.setUsageSummary(fields.contains("usageSummary") ? EntityUtil.getLatestUsage(dao.usageDAO(),
@@ -300,10 +302,20 @@ public class ModelRepository extends EntityRepository<Model> {
     public void entitySpecificUpdate() throws IOException {
       updateAlgorithm(original.getEntity(), updated.getEntity());
       updateDashboard(original.getEntity(), updated.getEntity());
+      updateMlFeatures(original.getEntity(), updated.getEntity());
+      updateMlHyperParameters(original.getEntity(), updated.getEntity());
     }
 
     private void updateAlgorithm(Model origModel, Model updatedModel) throws JsonProcessingException {
       recordChange("algorithm", origModel.getAlgorithm(), updatedModel.getAlgorithm());
+    }
+
+    private void updateMlFeatures(Model origModel, Model updatedModel) throws JsonProcessingException {
+      recordChange("mlFeatures", origModel.getMlFeatures(), updatedModel.getMlFeatures());
+    }
+
+    private void updateMlHyperParameters(Model origModel, Model updatedModel) throws JsonProcessingException {
+      recordChange("mlHyperParameters", origModel.getMlHyperParameters(), updatedModel.getMlHyperParameters());
     }
 
     private void updateDashboard(Model origModel, Model updatedModel) throws JsonProcessingException {
