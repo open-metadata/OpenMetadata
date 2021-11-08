@@ -34,6 +34,9 @@ const EntityVersionPage: FunctionComponent = () => {
   const [currentVersionData, setCurrentVersionData] = useState<Table>(
     {} as Table
   );
+  const [previousVersionData, setPreviousVersionData] = useState<Table>(
+    {} as Table
+  );
   const [latestVersion, setLatestVersion] = useState<string>();
   const { version, datasetFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsloading] = useState<boolean>(false);
@@ -116,6 +119,12 @@ const EntityVersionPage: FunctionComponent = () => {
           body: msg ?? `Error while fetching ${datasetFQN} versions`,
         });
       });
+  };
+
+  const fetchPreviousVersion = (id: string, v: number) => {
+    getTableVersion(id, v.toString()).then((vRes: AxiosResponse) => {
+      setPreviousVersionData(vRes.data);
+    });
   };
 
   const fetchCurrentVersion = () => {
@@ -226,6 +235,15 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [version]);
 
   useEffect(() => {
+    if (currentVersionData.changeDescription?.previousVersion) {
+      fetchPreviousVersion(
+        currentVersionData.id,
+        currentVersionData.changeDescription?.previousVersion
+      );
+    }
+  }, [currentVersionData]);
+
+  useEffect(() => {
     isMounted.current = true;
   }, []);
 
@@ -240,6 +258,7 @@ const EntityVersionPage: FunctionComponent = () => {
           datasetFQN={datasetFQN}
           isVersionLoading={isVersionLoading}
           owner={owner}
+          previousVersionData={previousVersionData}
           slashedTableName={slashedTableName}
           tier={tier as string}
           version={version}

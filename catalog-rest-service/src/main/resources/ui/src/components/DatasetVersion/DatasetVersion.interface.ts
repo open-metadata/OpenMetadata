@@ -5,6 +5,7 @@ import { TitleBreadcrumbProps } from '../common/title-breadcrumb/title-breadcrum
 export interface DatasetVersionProp {
   version: string;
   currentVersionData: Table;
+  previousVersionData: Table;
   isVersionLoading: boolean;
   owner: Table['owner'];
   tier: string;

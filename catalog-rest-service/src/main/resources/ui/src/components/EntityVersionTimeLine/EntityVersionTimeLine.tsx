@@ -57,20 +57,26 @@ const EntityVersionTimeLine: React.FC<Props> = ({
               <div className="tw-text-xs tw-font-normal">
                 {currV?.changeDescription?.fieldsAdded?.length ? (
                   <p>
-                    {currV?.changeDescription?.fieldsAdded?.join(',')} has been
-                    added
+                    {currV?.changeDescription?.fieldsAdded
+                      ?.map((v: { name: string }) => v.name)
+                      ?.join(',')}{' '}
+                    has been added
                   </p>
                 ) : null}
                 {currV?.changeDescription?.fieldsUpdated?.length ? (
                   <p>
-                    {currV?.changeDescription?.fieldsUpdated?.join(',')} has
-                    been updated
+                    {currV?.changeDescription?.fieldsUpdated
+                      ?.map((v: { name: string }) => v.name)
+                      ?.join(',')}{' '}
+                    has been updated
                   </p>
                 ) : null}
                 {currV?.changeDescription?.fieldsDeleted?.length ? (
                   <p>
-                    {currV?.changeDescription?.fieldsDeleted?.join(',')} has
-                    been deleted
+                    {currV?.changeDescription?.fieldsDeleted
+                      ?.map((v: { name: string }) => v.name)
+                      ?.join(',')}{' '}
+                    has been deleted
                   </p>
                 ) : null}
               </div>

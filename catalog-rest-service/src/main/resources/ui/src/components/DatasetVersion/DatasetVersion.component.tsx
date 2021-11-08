@@ -24,6 +24,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   versionList,
   backHandler,
   versionHandler,
+  previousVersionData,
 }: DatasetVersionProp) => {
   const extraInfo = [
     {
@@ -81,6 +82,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                     <Description
                       isReadOnly
                       description={currentVersionData.description || ''}
+                      previousDescription={previousVersionData.description}
                     />
                   </div>
 
