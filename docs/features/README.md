@@ -54,3 +54,10 @@ For more details on asset metadata properties, please see the [Asset Discovery](
 
 ![](../.gitbook/assets/data-profiler-feature.gif)
 
+
+
+### Connectors for many popular services
+
+#### Integrate your database, dashboard, messaging, and pipeline services with OpenMetadata.
+
+![](../.gitbook/assets/connectors-feature.gif)
