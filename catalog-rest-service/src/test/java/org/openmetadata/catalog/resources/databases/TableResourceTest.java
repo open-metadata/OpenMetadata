@@ -41,6 +41,10 @@ import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
+
+import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.SQLQuery;
+import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -51,12 +55,12 @@ import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
 import org.openmetadata.catalog.type.TableConstraint;
-import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
+
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -813,6 +817,35 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
+  public void put_tableQueries_200(TestInfo test) throws HttpResponseException {
+    Table table = createAndCheckEntity(create(test), adminAuthHeaders());
+    SQLQuery query = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-08")
+            .withDuration(600.0);
+    putTableQueriesData(table.getId(), query, adminAuthHeaders());
+    table = getTable(table.getId(), "tableQueries", adminAuthHeaders());
+    // first result should be the latest date
+    assertEquals(query.getQuery(), table.getTableQueries().get(0).getQuery());
+    SQLQuery query1 = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-09")
+            .withDuration(200.0).withVote(2.0);
+    // try updating the same query again
+    putTableQueriesData(table.getId(), query1, adminAuthHeaders());
+    table = getTable(table.getId(), "tableQueries", adminAuthHeaders());
+    assertEquals(table.getTableQueries().size(), 1);
+    assertEquals(query1.getQuery(), table.getTableQueries().get(0).getQuery());
+    assertEquals(query1.getVote(), table.getTableQueries().get(0).getVote());
+
+    SQLQuery query2= new SQLQuery().withQuery("select * from users;").withQueryDate("2021-09-09")
+            .withDuration(200.0).withVote(5.0);
+    putTableQueriesData(table.getId(), query2, adminAuthHeaders());
+    table = getTable(table.getId(), "tableQueries", adminAuthHeaders());
+    assertEquals(table.getTableQueries().size(), 2);
+    // query2 with the highest vote should be the first result.
+    assertEquals(query2.getQuery(), table.getTableQueries().get(0).getQuery());
+    assertEquals(query2.getVote(), table.getTableQueries().get(0).getVote());
+
+  }
+
+  @Test
   public void get_nonExistentTable_404_notFound() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getTable(NON_EXISTENT_ENTITY, adminAuthHeaders()));
@@ -1213,6 +1246,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     TestUtils.put(target, data, OK, authHeaders);
   }
 
+  public static void putTableQueriesData(UUID tableId, SQLQuery data, Map<String, String> authHeaders)
+          throws HttpResponseException {
+    WebTarget target = CatalogApplicationTest.getResource("tables/" + tableId + "/tableQuery");
+    TestUtils.put(target, data, OK, authHeaders);
+  }
 
   private void deleteTable(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     TestUtils.delete(CatalogApplicationTest.getResource("tables/" + id), authHeaders);
@@ -1247,6 +1285,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       assertEquals(tableProfile, storedProfile);
     }
   }
+
 
   @Override
   public Object createRequest(TestInfo test, int index, String description, String displayName, EntityReference owner) {

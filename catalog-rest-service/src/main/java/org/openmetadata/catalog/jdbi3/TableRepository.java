@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.apache.commons.codec.binary.Hex;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.data.Location;
@@ -35,6 +36,7 @@ import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
+import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
@@ -45,9 +47,12 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import javax.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -98,6 +103,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
     table.setTableProfile(fields.contains("tableProfile") ? getTableProfile(table) : null);
     table.setLocation(fields.contains("location") ? getLocation(table): null);
+    table.setTableQueries(fields.contains("tableQueries") ? getQueries(table): null);
     return table;
   }
 
@@ -196,6 +202,29 @@ public class TableRepository extends EntityRepository<Table> {
     dao.relationshipDAO().deleteFrom(tableId.toString(), Relationship.HAS.ordinal(), Entity.LOCATION);
     dao.relationshipDAO().insert(tableId.toString(), locationId.toString(), Entity.DATABASE, Entity.LOCATION, Relationship.HAS.ordinal());
     return CREATED;
+  }
+
+  @Transaction
+  public void addQuery(UUID tableId, SQLQuery query) throws IOException {
+    // Validate the request content
+    try {
+       byte[] checksum = MessageDigest.getInstance("MD5").digest(query.getQuery().getBytes());
+       query.setChecksum(Hex.encodeHexString(checksum));
+    } catch(NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
+    Table table = dao.tableDAO().findEntityById(tableId);
+    List<SQLQuery> storedQueries = getQueries(table);
+    Map<String, SQLQuery> storedMapQueries = new HashMap<>();
+    if (storedQueries != null) {
+      for (SQLQuery q : storedQueries) {
+        storedMapQueries.put(q.getChecksum(), q);
+      }
+    }
+    storedMapQueries.put(query.getChecksum(), query);
+    List<SQLQuery> updatedProfiles = new ArrayList<>(storedMapQueries.values());
+    dao.entityExtensionDAO().insert(tableId.toString(), "table.tableQueries", "sqlQuery",
+            JsonUtils.pojoToJson(updatedProfiles));
   }
 
   @Transaction
@@ -549,6 +578,18 @@ public class TableRepository extends EntityRepository<Table> {
               Comparator.reverseOrder()));
     }
     return tableProfiles;
+  }
+
+  private List<SQLQuery> getQueries(Table table) throws IOException {
+    List<SQLQuery> tableQueries =
+            JsonUtils.readObjects(dao.entityExtensionDAO().getExtension(table.getId().toString(),
+                            "table.tableQueries"),
+                    SQLQuery.class);
+    if (tableQueries != null) {
+      tableQueries.sort(Comparator.comparing(SQLQuery::getVote,
+              Comparator.reverseOrder()));
+    }
+    return tableQueries;
   }
 
   public static class TableEntityInterface implements EntityInterface<Table> {

@@ -36,6 +36,7 @@ import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
@@ -121,7 +122,7 @@ public class TableResource {
   }
 
   static final String FIELDS = "columns,tableConstraints,usageSummary,owner," +
-          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile,location";
+          "database,tags,followers,joins,sampleData,viewDefinition,tableProfile,location,tableQueries";
   public static final List<String> FIELD_LIST = Arrays.asList(FIELDS.replaceAll(" ", "")
           .split(","));
 
@@ -419,6 +420,21 @@ public class TableResource {
     Status status = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
     Table table = dao.get(id, fields);
     return Response.status(status).entity(table).build();
+  }
+
+  @PUT
+  @Path("/{id}/tableQuery")
+  @Operation(summary = "Add table query data", tags = "tables",
+          description = "Add table query data to the table.")
+  public Table addQuery(@Context UriInfo uriInfo,
+                               @Context SecurityContext securityContext,
+                               @Parameter(description = "Id of the table", schema = @Schema(type = "string"))
+                               @PathParam("id") String id, SQLQuery sqlQuery) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    Fields fields = new Fields(FIELD_LIST, "tableQueries");
+    dao.addQuery(UUID.fromString(id), sqlQuery);
+    Table table = dao.get(id, fields);
+    return addHref(uriInfo, table);
   }
 
   @DELETE
