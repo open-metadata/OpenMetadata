@@ -236,7 +236,7 @@
   }
 
   .side-panel {
-    @apply tw-border-r tw-border-separator;
+    @apply tw-border-r tw-border-separator tw-transition-all tw-duration-300;
   }
   .side-panel .seperator,
   .horz-separator {

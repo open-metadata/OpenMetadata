@@ -504,7 +504,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainer leftPanelContent={!connectionError && fetchLeftPanel()}>
+    <PageContainer leftPanelContent={Boolean(!error) && fetchLeftPanel()}>
       <div className="container-fluid" data-testid="fluid-container">
         {!connectionError && getTabs()}
         {error ? (
