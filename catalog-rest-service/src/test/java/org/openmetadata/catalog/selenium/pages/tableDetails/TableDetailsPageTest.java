@@ -72,7 +72,7 @@ public class TableDetailsPageTest {
     @Order(2)
     public void checkTabs() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]")); // Lineage
@@ -83,10 +83,10 @@ public class TableDetailsPageTest {
     @Order(3)
     public void editDescription() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -94,14 +94,14 @@ public class TableDetailsPageTest {
     @Order(4)
     public void searchColumnAndEditDescription() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys("address1");
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchbar']"), "address1");
         Thread.sleep(2000);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']//button"))).perform();
         Events.click(webDriver, By.xpath("//div[@data-testid='description']//button"));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -109,16 +109,14 @@ public class TableDetailsPageTest {
     @Order(5)
     public void addTagsToColumn() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Thread.sleep(waitTime);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
         Events.click(webDriver, By.xpath("//div[@data-testid='tag-conatiner']//span"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 0; i <=1; i++){
-            wait.until(ExpectedConditions.elementToBeClickable(
-                            webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
-                    .sendKeys("P");
+            Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
             Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         }
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
@@ -128,7 +126,7 @@ public class TableDetailsPageTest {
     @Order(6)
     public void removeTagsFromColumn() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Thread.sleep(waitTime);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='tag-conatiner']//span"))).perform();
@@ -142,7 +140,7 @@ public class TableDetailsPageTest {
 //    @Order(7)
 //    public void basicChecks() throws InterruptedException {
 //        openExplorePage();
-//        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+//        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
 //        Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
 //        Thread.sleep(2000);
 //        Events.click(webDriver, By.cssSelector("[data-testid='follow-button']"));
@@ -156,7 +154,7 @@ public class TableDetailsPageTest {
     @Order(8)
     public void checkProfiler() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]")); // Profiler
         for (int i =1; i<=4; i++) {
@@ -181,9 +179,7 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
         Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='searchInputText']"))));
-        webDriver.findElement(By.cssSelector("[data-testid='searchInputText']")).sendKeys("Cloud");
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), "Cloud");
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
         Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
@@ -195,7 +191,7 @@ public class TableDetailsPageTest {
     @Order(10)
     public void checkLineage() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(tableName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), tableName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name']"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
         for (int i=1; i<=3; i++) {
@@ -212,11 +208,11 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)[1]")); // database
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit-button']")); // edit description
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         for (int i = 1; i <= 3; i++) { //check topics in service
             Events.click(
@@ -234,7 +230,7 @@ public class TableDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
         Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
         Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
         Events.click(webDriver, By.xpath("(//span[@data-testid='select-version'])[2]"));

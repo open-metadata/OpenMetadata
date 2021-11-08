@@ -76,12 +76,9 @@ public class TeamsPageTest {
     public void createTeam() throws InterruptedException {
         openTeamsPage();
         Events.click(webDriver, By.cssSelector("[data-testid='add-teams']")); // add team
-        webDriver.findElement(By.name("name")).sendKeys(faker.name().firstName()); // name
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.name("displayName")))).sendKeys(teamDisplayName); // displayname
-        webDriver.findElement(
-                By.xpath(enterDescription))
-                .sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.name("name"), faker.name().firstName()); // name
+        Events.sendKeys(webDriver, By.name("displayName"), teamDisplayName); // displayname
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
         Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
         Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
@@ -111,8 +108,7 @@ public class TeamsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 By.xpath(enterDescription)));
-        webDriver.findElement(By.xpath(enterDescription))
-                .sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -129,9 +125,7 @@ public class TeamsPageTest {
         Events.click(webDriver, By.xpath("//div[@data-testid='search-container']//div//div[10]//div//div//h6"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[4]")); // Manage
         Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='searchInputText']"))));
-        webDriver.findElement(By.cssSelector("[data-testid='searchInputText']")).sendKeys(teamDisplayName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), teamDisplayName);
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
         Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
