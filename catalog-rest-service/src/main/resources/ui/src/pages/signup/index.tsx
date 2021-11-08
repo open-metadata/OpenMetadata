@@ -16,6 +16,7 @@
 */
 
 import { AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { UserProfile } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
@@ -55,6 +56,7 @@ const Signup = () => {
     email: appState.newUser.email || '',
   });
   const [teams, setTeams] = useState<Array<Team>>([]);
+  const [teamError, setTeamError] = useState<boolean>(false);
 
   const history = useHistory();
 
@@ -99,14 +101,27 @@ const Signup = () => {
 
   const onSubmitHandler = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (details.name && details.displayName) {
-      createNewUser({
-        ...details,
-        teams: selectedTeams as Array<string>,
-        profile: {
-          images: getImages(appState.newUser.picture ?? ''),
-        },
-      });
+    if (teams.length) {
+      setTeamError(!selectedTeams.length);
+      if (details.name && details.displayName && selectedTeams.length > 0) {
+        createNewUser({
+          ...details,
+          teams: selectedTeams as Array<string>,
+          profile: {
+            images: getImages(appState.newUser.picture ?? ''),
+          },
+        });
+      }
+    } else {
+      if (details.name && details.displayName) {
+        createNewUser({
+          ...details,
+          teams: selectedTeams as Array<string>,
+          profile: {
+            images: getImages(appState.newUser.picture ?? ''),
+          },
+        });
+      }
     }
   };
 
@@ -118,12 +133,29 @@ const Signup = () => {
       };
     });
   };
+  const errorMsg = (value: string) => {
+    return (
+      <div
+        className="tw-notification tw-bg-error tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+        data-testid="toast">
+        <div className="tw-font-semibold tw-flex-shrink-0">
+          <SVGIcons alt="info" icon="error" title="Info" width="16px" />
+        </div>
+        <div className="tw-font-semibold tw-px-1">{value}</div>
+      </div>
+    );
+  };
 
   useEffect(() => {
     getTeams().then((res: AxiosResponse) => {
       setTeams(res?.data?.data || []);
     });
   }, []);
+  useEffect(() => {
+    if (selectedTeams.length) {
+      setTeamError(false);
+    }
+  }, [selectedTeams]);
 
   return (
     <>
@@ -147,7 +179,7 @@ const Signup = () => {
                 <form action="." method="POST" onSubmit={onSubmitHandler}>
                   <div className="tw-mb-4">
                     <label
-                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       htmlFor="displayName">
                       Full name
                     </label>
@@ -167,7 +199,7 @@ const Signup = () => {
                   </div>
                   <div className="tw-mb-4">
                     <label
-                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       htmlFor="name">
                       Username
                     </label>
@@ -187,7 +219,7 @@ const Signup = () => {
                   </div>
                   <div className="tw-mb-4">
                     <label
-                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2 required-field"
                       htmlFor="email">
                       Email
                     </label>
@@ -207,18 +239,44 @@ const Signup = () => {
                   </div>
                   <div className="tw-mb-4">
                     <label
-                      className="tw-block tw-text-body tw-text-grey-body tw-mb-2"
+                      className={classNames(
+                        'tw-block tw-text-body tw-text-grey-body tw-mb-2',
+                        {
+                          'required-field': teams.length,
+                        }
+                      )}
                       htmlFor="email">
                       Select teams
                     </label>
                     <DropDown
-                      className="tw-bg-white"
+                      className={classNames('tw-bg-white', {
+                        'tw-bg-gray-100 tw-cursor-not-allowed':
+                          teams.length === 0,
+                      })}
                       dropDownList={getTeamsData(teams)}
                       label="Select..."
                       selectedItems={selectedTeams as Array<string>}
                       type="checkbox"
                       onSelect={(_e, value) => selectedTeamsHandler(value)}
                     />
+                    {teamError && errorMsg('Atleast one team is required')}
+                    {teams.length === 0 ? (
+                      <div
+                        className="tw-notification tw-bg-info tw-mt-2 tw-justify-start tw-w-full tw-p-2"
+                        data-testid="toast">
+                        <div className="tw-font-semibold tw-flex-shrink-0">
+                          <SVGIcons
+                            alt="info"
+                            icon="info"
+                            title="Info"
+                            width="16px"
+                          />
+                        </div>
+                        <div className="tw-font-semibold tw-px-1">
+                          There is no team available.
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="tw-flex tw-my-7 tw-justify-end">
                     <Button

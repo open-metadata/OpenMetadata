@@ -73,6 +73,7 @@ const DropDown: React.FC<DropDownProp> = ({
                 : `tw-justify-center tw-nav`
             } ${className}`}
             data-testid="menu-button"
+            disabled={dropDownList.length === 0}
             id={`menu-button-${label}`}
             type="button"
             onClick={() => setIsOpen((isOpen) => !isOpen)}>
