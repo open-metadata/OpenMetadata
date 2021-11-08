@@ -14,7 +14,15 @@ For more details see the [Asset Discovery](asset-discovery.md) documentation.
 
 
 
-### Use complex queries
+### Filter data assets based on importance; identify owners
+
+#### User Tier tags and usage data to identify the relative importance of assets. Identify owners to locate key contacts for follow up questions.
+
+![](../.gitbook/assets/asset-importance-owners.gif)
+
+
+
+### Use complex queries to pinpoint assets
 
 #### Find assets matching strict criteria on metadata properties and Boolean operators.
 
