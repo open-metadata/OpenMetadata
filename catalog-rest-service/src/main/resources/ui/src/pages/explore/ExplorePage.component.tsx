@@ -27,7 +27,7 @@ import {
   UrlParams,
 } from '../../components/Explore/explore.interface';
 import Loader from '../../components/Loader/Loader';
-import { ERROR500, PAGE_SIZE } from '../../constants/constants';
+import { PAGE_SIZE } from '../../constants/constants';
 import {
   emptyValue,
   getCurrentIndex,
@@ -39,11 +39,9 @@ import {
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
-import useToastContext from '../../hooks/useToastContext';
 import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
-  const showToast = useToastContext();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingForData, setIsLoadingForData] = useState(true);
   const [error, setError] = useState<string>('');
@@ -175,10 +173,6 @@ const ExplorePage: FunctionComponent = () => {
       )
       .catch((err: AxiosError) => {
         setError(err.response?.data?.responseMessage);
-        showToast({
-          variant: 'error',
-          body: err.response?.data?.responseMessage ?? ERROR500,
-        });
         setIsLoadingForData(false);
       });
   };

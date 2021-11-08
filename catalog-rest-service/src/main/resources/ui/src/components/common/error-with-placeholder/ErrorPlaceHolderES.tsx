@@ -1,7 +1,7 @@
+import { uniqueId } from 'lodash';
 import { observer } from 'mobx-react';
 import React from 'react';
 import AppState from '../../../AppState';
-import NoDataFoundPlaceHolder from '../../../assets/img/no-data-placeholder.png';
 import { useAuth } from '../../../hooks/authHooks';
 
 type Props = {
@@ -9,6 +9,36 @@ type Props = {
   errorMessage?: string;
   query?: string;
 };
+
+const stepsData = [
+  {
+    step: 1,
+    title: 'Ingest Sample Data',
+    description:
+      'Run sample data to ingest sample entities into your OpenMetadata',
+    link: 'https://docs.open-metadata.org/install/metadata-ingestion/ingest-sample-data',
+  },
+  {
+    step: 2,
+    title: 'Start Elasticsearch Docker',
+    description: 'Run ingestion to index entities into OpenMetadata',
+    link: 'https://docs.open-metadata.org/install/metadata-ingestion/ingest-sample-data#index-sample-data-into-elasticsearch',
+  },
+  {
+    step: 3,
+    title: 'Install Service Connectors',
+    description:
+      'There are a lot of connectors available here to index data from your services. Please checkout our connectors',
+    link: 'https://docs.open-metadata.org/install/metadata-ingestion/connectors',
+  },
+  {
+    step: 4,
+    title: 'More Help',
+    description:
+      'If you are still running into issues, please reach out to us on slack',
+    link: 'https://slack.open-metadata.org',
+  },
+];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
   const { isAuthDisabled } = useAuth();
@@ -35,42 +65,64 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query = '' }: Props) => {
 
   const elasticSearchError = () => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];
+    const errorText = errorMessage && index ? `find ${index} in` : 'access';
 
-    return errorMessage && index ? (
-      <p className="tw-max-w-sm tw-text-center">
-        OpenMetadata requires index
-        <span className="tw-text-primary tw-font-medium tw-mx-1">
-          {index}
-        </span>{' '}
-        to exist while running Elasticsearch. Please check your Elasticsearch
-        indexes
-      </p>
-    ) : (
-      <p className="tw-max-w-sm tw-text-center">
-        OpenMetadata requires Elasticsearch 7+ running and configured in
-        <span className="tw-text-primary tw-font-medium tw-mx-1">
-          openmetadata.yaml.
-        </span>
-        Please check the configuration and make sure the Elasticsearch is
-        running.
-      </p>
+    return (
+      <div className="tw-mb-5">
+        <div className="tw-mb-3 tw-text-center">
+          <p>
+            <span>Welcome to OpenMetadata. </span>
+            {`We are unable to ${errorText} Elasticsearch for entity indexes.`}
+          </p>
+
+          <p>
+            Please follow the instructions here to set up Metadata ingestion and
+            index them into Elasticsearch.
+          </p>
+        </div>
+        <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-mt-5">
+          {stepsData.map((data) => (
+            <div
+              className="tw-card tw-flex tw-flex-col tw-justify-between tw-p-5"
+              key={uniqueId()}>
+              <div>
+                <div className="tw-flex tw-mb-2">
+                  <div className="tw-rounded-full tw-flex tw-justify-center tw-items-center tw-h-10 tw-w-10 tw-border-2 tw-border-primary tw-text-lg tw-font-bold tw-text-primary">
+                    {data.step}
+                  </div>
+                </div>
+
+                <h6
+                  className="tw-text-base tw-text-grey-body tw-font-medium"
+                  data-testid="service-name">
+                  {data.title}
+                </h6>
+
+                <p className="tw-text-grey-body tw-pb-1 tw-text-sm tw-mb-5">
+                  {data.description}
+                </p>
+              </div>
+
+              <p>
+                <a href={data.link} rel="noopener noreferrer" target="_blank">
+                  Click here &gt;&gt;
+                </a>
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     );
   };
 
   return (
-    <>
-      <div className="tw-flex tw-flex-col tw-mt-24 tw-place-items-center">
-        {' '}
-        <img src={NoDataFoundPlaceHolder} width={200} />
-      </div>
-      <div className="tw-flex tw-flex-col tw-items-center tw-mt-10 tw-text-base tw-font-normal">
-        <p className="tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
-          {`Hi, ${getUserDisplayName()}!`}
-        </p>
-        {type === 'noData' && noRecordForES()}
-        {type === 'error' && elasticSearchError()}
-      </div>
-    </>
+    <div className="tw-mt-10 tw-text-base tw-font-normal">
+      <p className="tw-text-center tw-text-lg tw-font-bold tw-mb-1 tw-text-primary">
+        {`Hi, ${getUserDisplayName()}!`}
+      </p>
+      {type === 'noData' && noRecordForES()}
+      {type === 'error' && elasticSearchError()}
+    </div>
   );
 };
 

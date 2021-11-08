@@ -112,6 +112,7 @@ const Explore: React.FC<ExploreProps> = ({
   const [fieldList, setFieldList] =
     useState<Array<{ name: string; value: string }>>(tableSortingFields);
   const [isEntityLoading, setIsEntityLoading] = useState(true);
+  const [connectionError] = useState(error.includes('Connection refused'));
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
@@ -503,9 +504,9 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   return (
-    <PageContainer leftPanelContent={fetchLeftPanel()}>
+    <PageContainer leftPanelContent={Boolean(!error) && fetchLeftPanel()}>
       <div className="container-fluid" data-testid="fluid-container">
-        {getTabs()}
+        {!connectionError && getTabs()}
         {error ? (
           <ErrorPlaceHolderES errorMessage={error} type="error" />
         ) : (
