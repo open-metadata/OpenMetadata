@@ -146,6 +146,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.MESSAGING_SERVICE);
@@ -178,6 +181,9 @@ public class MessagingServiceRepository extends EntityRepository<MessagingServic
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

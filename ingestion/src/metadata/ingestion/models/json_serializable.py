@@ -27,9 +27,11 @@ class JsonSerializable(object, metaclass=abc.ABCMeta):
 
     @staticmethod
     def snake_to_camel(s):
+        # change property names like first_name to firstName
+        # property names that are already in camelCase like isBot are unchanged
         a = s.split("_")
-        a[0] = a[0].lower()
         if len(a) > 1:
+            a[0] = a[0].lower()
             a[1:] = [u.title() for u in a[1:]]
         return "".join(a)
 

@@ -65,6 +65,7 @@ import IconTerns from '../assets/svg/terms.svg';
 import IconTopicGrey from '../assets/svg/topic-grey.svg';
 import IconTopic from '../assets/svg/topic.svg';
 import IconUser from '../assets/svg/user.svg';
+import IconVersionWhite from '../assets/svg/version-white.svg';
 import IconVersion from '../assets/svg/version.svg';
 import IconWarning from '../assets/svg/warning.svg';
 
@@ -144,6 +145,7 @@ export const Icons = {
   PIPELINE: 'pipeline',
   PIPELINE_GREY: 'pipeline-grey',
   VERSION: 'icon-version',
+  VERSION_WHITE: 'icon-version-white',
 };
 
 const SVGIcons: FunctionComponent<Props> = ({
@@ -428,6 +430,10 @@ const SVGIcons: FunctionComponent<Props> = ({
       break;
     case Icons.VERSION:
       IconComponent = IconVersion;
+
+      break;
+    case Icons.VERSION_WHITE:
+      IconComponent = IconVersionWhite;
 
       break;
 

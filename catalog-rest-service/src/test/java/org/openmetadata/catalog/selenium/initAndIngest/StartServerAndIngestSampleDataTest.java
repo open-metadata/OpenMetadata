@@ -16,7 +16,7 @@
 
 package org.openmetadata.catalog.selenium.initAndIngest;
 
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,3 +38,4 @@ public class StartServerAndIngestSampleDataTest {
         LOG.info("Server started and Ingested the data");
     }
 }
+

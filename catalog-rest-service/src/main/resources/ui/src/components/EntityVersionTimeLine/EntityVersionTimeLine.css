@@ -6,7 +6,6 @@
   top: 56px;
   right: 0;
   width: 330px;
-  z-index: 200;
   overflow-y: auto;
   padding: 16px;
   border-left: 1px solid #d9ceee;
@@ -49,6 +48,13 @@
   display: block;
   width: 2px;
   height: 100%;
+  background-color: #d9ceee;
+  transform: translate(8px, 0);
+}
+.timeline-line-se {
+  display: block;
+  width: 2px;
+  height: 15px;
   background-color: #d9ceee;
   transform: translate(8px, 0);
 }

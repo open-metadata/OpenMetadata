@@ -1,0 +1,41 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createPolicy.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Policy Entity Request",
+  "description": "Create Policy Entity Request",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Policy.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "displayName": {
+      "description": "Title for this Policy.",
+      "type": "string"
+    },
+    "description": {
+      "description": "A short description of the Policy, comprehensible to regular users.",
+      "type": "string"
+    },
+    "owner": {
+      "description": "Owner of this Policy.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "policyUrl": {
+      "description": "Link to a well documented definition of this Policy.",
+      "type": "string",
+      "format": "uri"
+    },
+    "policyType": {
+      "$ref": "../../entity/policies/policy.json#/definitions/policyType"
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "owner",
+    "policyType"
+  ]
+}

@@ -118,6 +118,9 @@ public class BotsRepository extends EntityRepository<Bots>{
     }
 
     @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
+
+    @Override
     public EntityReference getEntityReference() {
       return new EntityReference().withId(getId()).withName(getFullyQualifiedName()).withDescription(getDescription())
               .withDisplayName(getDisplayName()).withType(Entity.BOTS);
@@ -150,6 +153,9 @@ public class BotsRepository extends EntityRepository<Bots>{
       entity.setVersion(newVersion);
       entity.setChangeDescription(changeDescription);
     }
+
+    @Override
+    public void setOwner(EntityReference owner) { }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

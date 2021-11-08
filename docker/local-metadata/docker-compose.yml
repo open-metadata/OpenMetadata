@@ -15,7 +15,7 @@
 
 version: "3.9"
 services:
-  db:
+  mysql:
     build:
       context: .
       dockerfile: Dockerfile_mysql
@@ -55,7 +55,7 @@ services:
     ports:
       - 8585:8585
     depends_on:
-      - db
+      - mysql
     networks:
       app_net:
         ipv4_address: 172.16.239.13
@@ -68,7 +68,7 @@ services:
       context: ../../.
       dockerfile: ingestion/Dockerfile
     depends_on:
-      - db
+      - mysql
     expose:
       - 8080
     ports:

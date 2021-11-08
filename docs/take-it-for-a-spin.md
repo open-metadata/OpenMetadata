@@ -16,4 +16,6 @@ We want our users to get the experience of OpenMetadata with the least effort ðŸ
 
 Don't limit yourself to just the callouts. Try other things too. We would love to get your feedback.
 
+Note that the Superset dashboards have `admin` as username and password.
+
 ![](../.gitbook/assets/openmetadata-sandbox.png)

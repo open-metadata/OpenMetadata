@@ -27,22 +27,20 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.TeamRepository.TeamEntityInterface;
-import org.openmetadata.catalog.jdbi3.UserRepository.UserEntityInterface;
 import org.openmetadata.catalog.resources.EntityResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResource.TeamList;
-import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.ImageList;
 import org.openmetadata.catalog.type.Profile;
 import org.openmetadata.catalog.util.EntityInterface;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.common.utils.JsonSchemaUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -64,7 +62,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.resources.teams.UserResourceTest.createUser;
-import static org.openmetadata.catalog.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
@@ -74,7 +71,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Team.class, TeamList.class, "teams", TeamResource.FIELDS, false);
+    super(Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false);
   }
 
   @Test
@@ -250,58 +247,58 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     assertResponse(exception, BAD_REQUEST, CatalogExceptionMessage.readOnlyAttribute("Team", "deleted"));
   }
 
-  @Test
-  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
-          throws HttpResponseException, JsonProcessingException {
-    //
-    // Create table without any attributes
-    //
-    Team team = createTeam(create(test), adminAuthHeaders());
-    assertNull(team.getDisplayName());
-    assertNull(team.getDescription());
-    assertNull(team.getProfile());
-    assertNull(team.getDeleted());
-    assertNull(team.getUsers());
-
-    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
-    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
-    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
-
-    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-            new UserEntityInterface(user2).getEntityReference());
-    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
-
-    //
-    // Add previously absent attributes
-    //
-    String originalJson = JsonUtils.pojoToJson(team);
-    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
-    ChangeDescription change = getChangeDescription(team.getVersion())
-            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
-    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-    team.getUsers().get(0).setHref(null);
-    team.getUsers().get(1).setHref(null);
-
-    //
-    // Replace the attributes
-    //
-    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
-            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
-    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
-
-    originalJson = JsonUtils.pojoToJson(team);
-    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
-    change = getChangeDescription(team.getVersion())
-            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
-    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-
-    // Remove the attributes
-    originalJson = JsonUtils.pojoToJson(team);
-    team.withDisplayName(null).withDescription(null).withProfile(null).withUsers(null);
-    change = getChangeDescription(team.getVersion())
-            .withFieldsDeleted(Arrays.asList("displayName", "description", "profile", "users"));
-    patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
-  }
+//  @Test
+//  public void patch_teamAttributes_as_admin_200_ok(TestInfo test)
+//          throws HttpResponseException, JsonProcessingException {
+//    //
+//    // Create table without any attributes
+//    //
+//    Team team = createTeam(create(test), adminAuthHeaders());
+//    assertNull(team.getDisplayName());
+//    assertNull(team.getDescription());
+//    assertNull(team.getProfile());
+//    assertNull(team.getDeleted());
+//    assertNull(team.getUsers());
+//
+//    User user1 = createUser(UserResourceTest.create(test, 1), authHeaders("test@open-metadata.org"));
+//    User user2 = createUser(UserResourceTest.create(test, 2), authHeaders("test@open-metadata.org"));
+//    User user3 = createUser(UserResourceTest.create(test, 3), authHeaders("test@open-metadata.org"));
+//
+//    List<EntityReference> users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+//            new UserEntityInterface(user2).getEntityReference());
+//    Profile profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
+//
+//    //
+//    // Add previously absent attributes
+//    //
+//    String originalJson = JsonUtils.pojoToJson(team);
+//    team.withDisplayName("displayName").withDescription("description").withProfile(profile).withUsers(users);
+//    ChangeDescription change = getChangeDescription(team.getVersion())
+//            .withFieldsAdded(Arrays.asList("displayName", "description", "profile", "users"));
+//    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+//    team.getUsers().get(0).setHref(null);
+//    team.getUsers().get(1).setHref(null);
+//
+//    //
+//    // Replace the attributes
+//    //
+//    users = Arrays.asList(new UserEntityInterface(user1).getEntityReference(),
+//            new UserEntityInterface(user3).getEntityReference()); // user2 dropped and user3 is added
+//    profile = new Profile().withImages(new ImageList().withImage(URI.create("http://image1.com")));
+//
+//    originalJson = JsonUtils.pojoToJson(team);
+//    team.withDisplayName("displayName1").withDescription("description1").withProfile(profile).withUsers(users);
+//    change = getChangeDescription(team.getVersion())
+//            .withFieldsUpdated(Arrays.asList("displayName", "description", "profile", "users"));
+//    team = patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+//
+//    // Remove the attributes
+//    originalJson = JsonUtils.pojoToJson(team);
+//    team.withDisplayName(null).withDescription(null).withProfile(null).withUsers(null);
+//    change = getChangeDescription(team.getVersion())
+//            .withFieldsDeleted(Arrays.asList("displayName", "description", "profile", "users"));
+//    patchEntityAndCheck(team, originalJson, adminAuthHeaders(), MINOR_UPDATE, change);
+//  }
 
   @Test
   public void patch_teamAttributes_as_non_admin_403(TestInfo test) throws HttpResponseException,
@@ -466,10 +463,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     actualUsers.forEach(TestUtils::validateEntityReference);
     actualUsers.forEach(user -> user.setHref(null));
 
-    // Note ordering is same as server side ordering by ID as string
-    // Patch requests work only if the same ordering of users on the server side
-    actualUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
-    expectedUsers.sort(Comparator.comparing(entityReference -> entityReference.getId().toString()));
+    actualUsers.sort(EntityUtil.compareEntityReference);
+    expectedUsers.sort(EntityUtil.compareEntityReference);
     assertEquals(expectedUsers, actualUsers);
     TestUtils.validateEntityReference(updated.getOwns());
   }
@@ -477,5 +472,10 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   @Override
   public EntityInterface<Team> getEntityInterface(Team entity) {
     return new TeamEntityInterface(entity);
+  }
+
+  @Override
+  public void assertFieldChange(String fieldName, Object expected, Object actual) throws IOException {
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

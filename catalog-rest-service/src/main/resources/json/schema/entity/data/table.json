@@ -86,7 +86,8 @@
         "UNIQUE",
         "PRIMARY_KEY"
       ],
-      "default": null
+      "default": null,
+      "additionalProperties": false
     },
     "tableConstraint": {
       "type": "object",
@@ -110,6 +111,7 @@
         }
       }
     },
+    "additionalProperties": false,
     "columnName": {
       "description": "Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.",
       "type": "string",
@@ -312,7 +314,8 @@
           "description": "Standard deviation of a column.",
           "type": "number"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "tableProfile": {
       "type": "object",
@@ -459,5 +462,6 @@
     "id",
     "name",
     "columns"
-  ]
+  ],
+  "additionalProperties": false
 }

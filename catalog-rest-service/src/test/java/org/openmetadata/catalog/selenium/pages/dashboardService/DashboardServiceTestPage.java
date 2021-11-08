@@ -17,21 +17,29 @@
 package org.openmetadata.catalog.selenium.pages.dashboardService;
 
 import com.github.javafaker.Faker;
+import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.Test;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.List;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DashboardServiceTestPage {
     static WebDriver webDriver;
     static String url = Property.getInstance().getURL();
@@ -42,109 +50,115 @@ public class DashboardServiceTestPage {
     static Actions actions;
     static WebDriverWait wait;
 
-    @BeforeMethod
+    @BeforeEach
     public void openMetadataWindow() {
-        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/macM1/chromedriver");
-        webDriver = new ChromeDriver();
+        System.setProperty("webdriver.chrome.driver", "src/test/resources/drivers/linux/chromedriver");
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless");
+        webDriver = new ChromeDriver(options);
         actions = new Actions(webDriver);
-        wait = new WebDriverWait(webDriver, Duration.ofSeconds(5));
+        wait = new WebDriverWait(webDriver, Duration.ofSeconds(30));
         webDriver.manage().window().maximize();
         webDriver.get(url);
     }
 
-    @Test(priority = 1)
+    @Test
+    @Order(1)
     public void openDashboardServicePage() throws InterruptedException {
-        webDriver.findElement(By.cssSelector("[data-testid='closeWhatsNew']")).click(); // Close What's new
-        wait.until(ExpectedConditions.presenceOfElementLocated(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")));
-        webDriver.findElement(
-                By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")).click(); // Setting
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='menu-item-Services']")));
-        webDriver.findElement(By.cssSelector("[data-testid='menu-item-Services']")).click(); // Setting/Services
-        webDriver.findElement(By.xpath("(//button[@data-testid='tab'])[3]")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='closeWhatsNew']")); // Close What's new
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting
+        Events.click(webDriver, By.cssSelector("[data-testid='menu-item-Services']")); // Setting/Services
+        Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
         Thread.sleep(waitTime);
     }
 
-    @Test(priority = 2)
+    @Test
+    @Order(2)
     public void addDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='add-new-user-button']")));
-        webDriver.findElement(By.cssSelector("[data-testid='add-new-user-button']")).click();
-        webDriver.findElement(By.cssSelector("[value='Looker']")).click();
+        Thread.sleep(2000);
+        List<WebElement> webElementList = webDriver.findElements(By.cssSelector("[data-testid='add-new-user-button']"));
+        if(webElementList.isEmpty()) {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-service-button']"));
+        } else {
+            Events.click(webDriver, By.cssSelector("[data-testid='add-new-user-button']"));
+        }
+        Events.click(webDriver, By.cssSelector("[value='Looker']"));
         webDriver.findElement(By.cssSelector("[data-testid='name']")).sendKeys(serviceName);
         webDriver.findElement(By.cssSelector("[data-testid='dashboard-url']"))
                 .sendKeys("http://localhost:8080");
         webDriver.findElement(By.cssSelector("[data-testid='username']")).sendKeys(faker.name().firstName());
         webDriver.findElement(By.cssSelector("[data-testid='password']")).sendKeys(faker.name().firstName());
 
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='boldButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='boldButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='italicButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='italicButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='linkButton']")));
-        webDriver.findElement(By.cssSelector("[data-testid='linkButton']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='save-button']")));
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
-    @Test(priority = 3)
+    @Test
+    @Order(3)
     public void editDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        webDriver.findElement(By.xpath("(//button[@data-testid='edit-service'])[2]")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.xpath("(//button[@data-testid='edit-service'])[1]"));
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='ingestion-switch']")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='ingestion-switch']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
-    @Test(priority = 4)
+    @Test
+    @Order(4)
     public void checkDashboardServiceDetails() throws InterruptedException {
         openDashboardServicePage();
-        webDriver.findElement(By.xpath("(//h6[@data-testid='service-name'])[2]")).click();
+        Events.click(webDriver, By.xpath("(//h6[@data-testid='service-name'])[1]"));
         Thread.sleep(waitTime);
-        webDriver.findElement(By.cssSelector("[data-testid='description-edit']")).click();
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='description-edit']"));
+        Events.click(webDriver, By.xpath(enterDescription));
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
         wait.until(ExpectedConditions.elementToBeClickable(
                 webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
-        webDriver.findElement(By.cssSelector("[data-testid='save']")).click();
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
-    @Test(priority = 5)
+    @Test
+    @Order(5)
     public void searchDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys("sample");
-        webDriver.findElement(By.cssSelector("[data-testid='service-name']")).click();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.click(webDriver, By.cssSelector("[data-testid='service-name']"));
     }
 
-    @Test(priority = 6)
+    @Test
+    @Order(6)
     public void deleteDashboardService() throws InterruptedException {
         openDashboardServicePage();
-        webDriver.findElement(By.xpath("(//button[@data-testid='delete-service'])[2]")).click();
-        webDriver.findElement(By.cssSelector("[data-testid='save-button']")).click();
+        Thread.sleep(2000);
+        wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='searchbar']")));
+        webDriver.findElement(By.cssSelector("[data-testid='searchbar']")).sendKeys(serviceName);
+        Events.click(webDriver, By.cssSelector("[data-testid='delete-service']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='save-button']"));
     }
 
-    @AfterMethod
+    @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
         String originalHandle = webDriver.getWindowHandle();

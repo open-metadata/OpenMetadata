@@ -167,6 +167,9 @@ class SQLSource(Source):
     ):
         pass
 
+    def type_of_column_name(self, sa_type, table_name: str, column_name: str):
+        return sa_type
+
     def standardize_schema_table_names(
         self, schema: str, table: str
     ) -> Tuple[str, str]:
@@ -409,6 +412,12 @@ class SQLSource(Source):
                 if col_data_length is None:
                     col_data_length = 1
                 try:
+                    if col_type == "NULL":
+                        col_type = self.type_of_column_name(
+                            col_type,
+                            column_name=column["name"],
+                            table_name=dataset_name,
+                        )
                     if col_type == "NULL":
                         col_type = "VARCHAR"
                         logger.warning(

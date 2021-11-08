@@ -57,10 +57,7 @@ from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
 from metadata.ingestion.models.user import User
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -79,64 +76,64 @@ class InvalidSampleDataException(Exception):
 
 
 def get_database_service_or_create(service_json, metadata_config) -> DatabaseService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_database_service(service_json["name"])
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DatabaseService, fqdn=service_json["name"])
     if service is not None:
         return service
     else:
-        created_service = client.create_database_service(
+        created_service = metadata.create_or_update(
             CreateDatabaseServiceEntityRequest(**service_json)
         )
         return created_service
 
 
 def get_messaging_service_or_create(service_json, metadata_config) -> MessagingService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_messaging_service(service_json["name"])
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=MessagingService, fqdn=service_json["name"])
     if service is not None:
         return service
     else:
-        created_service = client.create_messaging_service(
+        created_service = metadata.create_or_update(
             CreateMessagingServiceEntityRequest(**service_json)
         )
         return created_service
 
 
 def get_dashboard_service_or_create(service_json, metadata_config) -> DashboardService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_dashboard_service(service_json["name"])
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=DashboardService, fqdn=service_json["name"])
     if service is not None:
         return service
     else:
-        created_service = client.create_dashboard_service(
+        created_service = metadata.create_or_update(
             CreateDashboardServiceEntityRequest(**service_json)
         )
         return created_service
 
 
 def get_pipeline_service_or_create(service_json, metadata_config) -> PipelineService:
-    client = OpenMetadataAPIClient(metadata_config)
-    service = client.get_pipeline_service(service_json["name"])
+    metadata = OpenMetadata(metadata_config)
+    service = metadata.get_by_name(entity=PipelineService, fqdn=service_json["name"])
     if service is not None:
         return service
     else:
-        created_service = client.create_pipeline_service(
+        created_service = metadata.create_or_update(
             CreatePipelineServiceEntityRequest(**service_json)
         )
         return created_service
 
 
 def get_lineage_entity_ref(edge, metadata_config) -> EntityReference:
-    client = OpenMetadataAPIClient(metadata_config)
+    metadata = OpenMetadata(metadata_config)
     fqn = edge["fqn"]
     if edge["type"] == "table":
-        table = client.get_table_by_name(fqn)
+        table = metadata.get_by_name(entity=Table, fqdn=fqn)
         return EntityReference(id=table.id, type="table")
     elif edge["type"] == "pipeline":
-        pipeline = client.get_pipeline_by_name(edge["fqn"])
+        pipeline = metadata.get_by_name(entity=Pipeline, fqdn=fqn)
         return EntityReference(id=pipeline.id, type="pipeline")
     elif edge["type"] == "dashboard":
-        dashboard = client.get_dashboard_by_name(fqn)
+        dashboard = metadata.get_by_name(entity=Dashboard, fqdn=fqn)
         return EntityReference(id=dashboard.id, type="dashboard")
 
 
@@ -280,7 +277,6 @@ class SampleDataSource(Source):
         self.status = SampleDataSourceStatus()
         self.config = config
         self.metadata_config = metadata_config
-        self.client = OpenMetadataAPIClient(metadata_config)
         self.metadata = OpenMetadata(metadata_config)
         self.database_service_json = json.load(
             open(self.config.sample_data_folder + "/datasets/service.json", "r")

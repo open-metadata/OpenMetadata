@@ -15,7 +15,7 @@
 
 version: "3.9"
 services:
-  db:
+  mysql:
     platform: linux/x86_64
     image: mysql:latest
     restart: always

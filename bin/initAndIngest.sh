@@ -15,8 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+#cd ..
+echo "Maven clean package"
 mvn -DskipTests clean package
+echo "Docker compose up"
 cd docker/local-metadata/
-docker-compose up -d
+docker-compose up -d --build
 while ! wget -O /dev/null -o /dev/null localhost:8585/api/v1/teams/name/Finance; do sleep 5; done

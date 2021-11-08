@@ -14,6 +14,7 @@
 #  limitations under the License.
 
 import logging
+import traceback
 from typing import List
 
 from pydantic import ValidationError
@@ -26,6 +27,7 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
+from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
@@ -33,6 +35,8 @@ from metadata.generated.schema.api.data.createTable import CreateTableEntityRequ
 from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
+from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
+from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.entity.data.model import Model
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -42,13 +46,10 @@ from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
 from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
 from metadata.ingestion.models.table_metadata import Chart, Dashboard
-from metadata.ingestion.models.user import MetadataTeam, MetadataUser, User
+from metadata.ingestion.models.user import MetadataTeam, User
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.openmetadata_rest import (
-    MetadataServerConfig,
-    OpenMetadataAPIClient,
-)
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +88,8 @@ class MetadataRestSink(Sink):
         self.status = SinkStatus()
         self.wrote_something = False
         self.charts_dict = {}
-        self.client = OpenMetadataAPIClient(self.metadata_config)
-        # Let's migrate usages from OpenMetadataAPIClient to OpenMetadata
         self.metadata = OpenMetadata(self.metadata_config)
-        self.api_client = self.client.client
-        self.api_team = "/teams"
-        self.api_users = "/users"
+        self.api_client = self.metadata.client
         self.team_entities = {}
         self._bootstrap_entities()
 
@@ -190,7 +187,7 @@ class MetadataRestSink(Sink):
 
     def write_topics(self, topic: CreateTopicEntityRequest) -> None:
         try:
-            created_topic = self.client.create_or_update_topic(topic)
+            created_topic = self.metadata.create_or_update(topic)
             logger.info(f"Successfully ingested topic {created_topic.name.__root__}")
             self.status.records_written(f"Topic: {created_topic.name.__root__}")
         except (APIError, ValidationError) as err:
@@ -215,7 +212,7 @@ class MetadataRestSink(Sink):
                 chartUrl=chart.url,
                 service=chart.service,
             )
-            created_chart = self.client.create_or_update_chart(chart_request)
+            created_chart = self.metadata.create_or_update(chart_request)
             self.charts_dict[chart.name] = EntityReference(
                 id=created_chart.id, type="chart"
             )
@@ -238,9 +235,7 @@ class MetadataRestSink(Sink):
                 charts=charts,
                 service=dashboard.service,
             )
-            created_dashboard = self.client.create_or_update_dashboard(
-                dashboard_request
-            )
+            created_dashboard = self.metadata.create_or_update(dashboard_request)
             logger.info(
                 f"Successfully ingested dashboard {created_dashboard.displayName}"
             )
@@ -267,7 +262,7 @@ class MetadataRestSink(Sink):
                 downstreamTasks=task.downstreamTasks,
                 service=task.service,
             )
-            created_task = self.client.create_or_update_task(task_request)
+            created_task = self.metadata.create_or_update(task_request)
             logger.info(f"Successfully ingested Task {created_task.displayName}")
             self.status.records_written(f"Task: {created_task.displayName}")
         except (APIError, ValidationError) as err:
@@ -285,7 +280,7 @@ class MetadataRestSink(Sink):
                 tasks=pipeline.tasks,
                 service=pipeline.service,
             )
-            created_pipeline = self.client.create_or_update_pipeline(pipeline_request)
+            created_pipeline = self.metadata.create_or_update(pipeline_request)
             logger.info(
                 f"Successfully ingested Pipeline {created_pipeline.displayName}"
             )
@@ -309,7 +304,14 @@ class MetadataRestSink(Sink):
     def write_model(self, model: Model):
         try:
             logger.info(model)
-            created_model = self.client.create_or_update_model(model)
+            model_request = CreateModelEntityRequest(
+                name=model.name,
+                displayName=model.displayName,
+                description=model.description,
+                algorithm=model.algorithm,
+                dashboard=model.dashboard,
+            )
+            created_model = self.metadata.create_or_update(model_request)
             logger.info(f"Successfully added Model {created_model.displayName}")
             self.status.records_written(f"Model: {created_model.displayName}")
         except (APIError, ValidationError) as err:
@@ -318,36 +320,41 @@ class MetadataRestSink(Sink):
             self.status.failure(f"Model: {model.name}")
 
     def _bootstrap_entities(self):
-        team_response = self.api_client.get(self.api_team)
+        team_response = self.api_client.get("/teams")
         for team in team_response["data"]:
             self.team_entities[team["name"]] = team["id"]
 
-    def _create_team(self, record: MetadataUser) -> None:
-        team_name = record.team_name
-        metadata_team = MetadataTeam(team_name, "Team Name")
+    def _create_team(self, record: User) -> None:
+        metadata_team = CreateTeamEntityRequest(
+            name=record.team_name, displayName=record.team_name, description="Team Name"
+        )
         try:
-            r = self.api_client.post(self.api_team, data=metadata_team.to_json())
-            instance_id = r["id"]
-            self.team_entities[team_name] = instance_id
-        except APIError:
-            pass
+            r = self.metadata.create_or_update(metadata_team)
+            instance_id = r.id.__root__
+            self.team_entities[record.team_name] = instance_id
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def write_users(self, record: User):
         if record.team_name not in self.team_entities:
             self._create_team(record)
         teams = [self.team_entities[record.team_name]]
-        metadata_user = MetadataUser(
+        metadata_user = CreateUserEntityRequest(
             name=record.github_username,
-            display_name=record.name,
+            displayName=record.name,
             email=record.email,
             teams=teams,
         )
         try:
-            self.api_client.put(self.api_users, data=metadata_user.to_json())
+            self.metadata.create_or_update(metadata_user)
             self.status.records_written(record.github_username)
             logger.info("Sink: {}".format(record.github_username))
-        except APIError:
-            pass
+        except Exception as err:
+            logger.error(traceback.format_exc())
+            logger.error(traceback.print_exc())
+            logger.error(err)
 
     def get_status(self):
         return self.status
