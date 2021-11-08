@@ -148,6 +148,11 @@ const Signup = () => {
       setTeams(res?.data?.data || []);
     });
   }, []);
+  useEffect(() => {
+    if (selectedTeams.length) {
+      setTeamError(false);
+    }
+  }, [selectedTeams]);
 
   return (
     <>
