@@ -22,10 +22,6 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: password
-    healthcheck:
-      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      timeout: 20s
-      retries: 10
     expose:
       - 3306
     networks:
@@ -73,8 +69,7 @@ services:
       context: ../../.
       dockerfile: ingestion/Dockerfile
     depends_on:
-      mysql:
-        condition: service_healthy
+      - mysql
     expose:
       - 8080
     ports:
