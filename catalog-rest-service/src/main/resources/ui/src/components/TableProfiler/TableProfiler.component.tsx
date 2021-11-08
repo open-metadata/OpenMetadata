@@ -1,5 +1,6 @@
 import classNames from 'classnames';
 import React, { Fragment, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Table, TableProfile } from '../../generated/entity/data/table';
 import TableProfilerGraph from './TableProfilerGraph.component';
 
@@ -184,7 +185,19 @@ const TableProfiler = ({ tableProfiles, columns }: Props) => {
         </table>
       ) : (
         <div className="tw-mt-4 tw-ml-4 tw-flex tw-justify-center tw-font-medium tw-items-center tw-border tw-border-main tw-rounded-md tw-p-8">
-          No profiler data available
+          <span>
+            Data Profiler is an optional configuration in Ingestion. Please
+            enable the data profiler by following the documentation
+          </span>
+          <Link
+            className="tw-ml-1"
+            target="_blank"
+            to={{
+              pathname:
+                'https://docs.open-metadata.org/openmetadata/connectors',
+            }}>
+            here
+          </Link>
         </div>
       )}
     </>

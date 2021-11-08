@@ -205,6 +205,43 @@ public class TableDetailsPageTest {
         }
     }
 
+    @Test
+    @Order(11)
+    public void checkBreadCrumb() throws InterruptedException {
+        openExplorePage();
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
+        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+        Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)[1]")); // database
+        Events.click(webDriver, By.cssSelector("[data-testid='description-edit-button']")); // edit description
+        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+        for (int i = 1; i <= 3; i++) { //check topics in service
+            Events.click(
+                    webDriver, By.xpath("(//tr[@data-testid='tabale-column']//td[1]/a)" + "[" + i + "]")); // tables
+            Thread.sleep(waitTime);
+            webDriver.navigate().back();
+        }
+    }
+
+    @Test
+    @Order(12)
+    public void checkVersion() throws InterruptedException {
+        openExplorePage();
+        Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
+        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.click(webDriver, By.cssSelector("[data-testid='save']"));
+        Events.click(webDriver, By.cssSelector("[data-testid='version-button']"));
+        Events.click(webDriver, By.xpath("(//span[@data-testid='select-version'])[2]"));
+        Events.click(webDriver, By.xpath("(//span[@data-testid='select-version'])[1]"));
+        Events.click(webDriver, By.cssSelector("[data-testid='closeDrawer']"));
+    }
+
     @AfterEach
     public void closeTabs() {
         ArrayList<String> tabs = new ArrayList<>(webDriver.getWindowHandles());
