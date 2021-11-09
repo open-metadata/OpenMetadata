@@ -12,7 +12,6 @@ type Props = {
   owner?: Table['owner'];
   hasEditAccess?: boolean;
   description: string;
-  previousDescription?: string;
   isEdit?: boolean;
   onDescriptionEdit?: () => void;
   onCancel?: () => void;
@@ -31,9 +30,8 @@ const Description = ({
   onDescriptionUpdate,
   isReadOnly = false,
   entityName,
-  previousDescription = '',
 }: Props) => {
-  const diff = diffWords(previousDescription, description);
+  const diff = diffWords('', description);
   // eslint-disable-next-line
   const result = diff.map((part: any, index: any) => {
     return (
