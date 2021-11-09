@@ -46,7 +46,8 @@
         },
         {
           "name": "mssql"
-        }, {
+        },
+        {
           "name": "looker"
         },
         {
@@ -198,7 +199,7 @@
       "default": 300
     },
     "workflowCatchup": {
-      "description": "Workflow catchup for past executions.",
+      "description": "Run past executions if the start date is in the past.",
       "type": "boolean",
       "default": "false"
     },

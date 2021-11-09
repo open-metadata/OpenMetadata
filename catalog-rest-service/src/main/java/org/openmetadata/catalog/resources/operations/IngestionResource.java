@@ -29,7 +29,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
 import org.openmetadata.catalog.ingestion.AirflowRESTClient;
-import org.openmetadata.catalog.ingestion.AirflowUtils;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
@@ -370,7 +369,6 @@ public class IngestionResource {
 
     private void deploy(Ingestion ingestion) {
         if (ingestion.getForceDeploy()) {
-            if (airflowRESTClient != null)
             airflowRESTClient.deploy(ingestion, config);
         }
     }
