@@ -64,6 +64,10 @@ export interface Table {
    */
   joins?: TableJoins;
   /**
+   * Reference to the Location that contains this table.
+   */
+  location?: EntityReference;
+  /**
    * Name of a table. Expected to be unique within a database.
    */
   name: string;
@@ -83,6 +87,10 @@ export interface Table {
    * Data profile for a table.
    */
   tableProfile?: TableProfile[];
+  /**
+   * List of queries that ran against a table.
+   */
+  tableQueries?: SQLQuery[];
   tableType?: TableType;
   /**
    * Tags for this table.
@@ -117,18 +125,35 @@ export interface Table {
  */
 export interface ChangeDescription {
   /**
-   * Fields added during the version changes.
+   * Names of fields added during the version changes.
    */
-  fieldsAdded?: string[];
+  fieldsAdded?: FieldChange[];
   /**
-   * Fields deleted during the version changes.
+   * Fields deleted during the version changes with old value before deleted.
    */
-  fieldsDeleted?: string[];
+  fieldsDeleted?: FieldChange[];
   /**
-   * Fields modified during the version changes.
+   * Fields modified during the version changes with old and new values.
    */
-  fieldsUpdated?: string[];
+  fieldsUpdated?: FieldChange[];
   previousVersion?: number;
+}
+
+export interface FieldChange {
+  /**
+   * Name of the entity field that changed
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
 }
 
 /**
@@ -296,7 +321,11 @@ export enum State {
  *
  * Followers of this table.
  *
+ * Reference to the Location that contains this table.
+ *
  * Owner of this table.
+ *
+ * User who ran this query.
  */
 export interface EntityReference {
   /**
@@ -458,6 +487,36 @@ export interface ColumnProfile {
    * Proportion of number of unique values in a column.
    */
   uniqueProportion?: number;
+}
+
+/**
+ * This schema defines the type to capture the table's sql queries.
+ */
+export interface SQLQuery {
+  /**
+   * Checksum to avoid registering duplicate queries.
+   */
+  checksum?: string;
+  /**
+   * How long did the query took to run in seconds.
+   */
+  duration?: number;
+  /**
+   * SQL Query text that matches the table name.
+   */
+  query?: string;
+  /**
+   * Date on which the query ran.
+   */
+  queryDate?: Date;
+  /**
+   * User who ran this query.
+   */
+  user?: EntityReference;
+  /**
+   * Users can vote up to rank the popular queries.
+   */
+  vote?: number;
 }
 
 /**
