@@ -27,7 +27,7 @@ import DatasetDetailsPage from '../pages/DatasetDetailsPage/DatasetDetailsPage.c
 import EntityVersionPage from '../pages/EntityVersionPage/EntityVersionPage.component';
 import ExplorePage from '../pages/explore/ExplorePage.component';
 import MyDataPage from '../pages/MyDataPage/MyDataPage.component';
-import MyPipelinePage from '../pages/Pipeline-details';
+import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import ReportsPage from '../pages/reports';
 import Scorecard from '../pages/scorecard';
 import ServicePage from '../pages/service';
@@ -76,7 +76,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
       <Route component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
       <Route component={DashboardDetailsPage} path={ROUTES.DASHBOARD_DETAILS} />
-      <Route component={MyPipelinePage} path={ROUTES.PIPELINE_DETAILS} />
+      <Route component={PipelineDetailsPage} path={ROUTES.PIPELINE_DETAILS} />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Route
         exact

@@ -41,6 +41,7 @@ export interface ExploreProps {
   tab: string;
   error: string;
   searchQuery: string;
+  fetchCount: () => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;
