@@ -41,6 +41,10 @@ export interface ExploreProps {
   tab: string;
   error: string;
   searchQuery: string;
+  getInitialData: () => void;
+  getInitialCount: () => void;
+  handleIsLoading: (value: boolean) => void;
+  handleIsLoadingForData: (value: boolean) => void;
   handlePathChange: (path: string) => void;
   handleSearchText: (text: string) => void;
   updateTableCount: (count: number) => void;

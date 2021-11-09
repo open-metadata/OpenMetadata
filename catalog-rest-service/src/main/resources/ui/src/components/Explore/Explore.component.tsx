@@ -73,6 +73,10 @@ const Explore: React.FC<ExploreProps> = ({
   updateTopicCount,
   updateDashboardCount,
   updatePipelineCount,
+  getInitialData,
+  getInitialCount,
+  handleIsLoading,
+  handleIsLoadingForData,
 }: ExploreProps) => {
   const location = useLocation();
   const history = useHistory();
@@ -99,10 +103,6 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
-  const keyOfPreviousIndex = searchIndex.split(
-    '_'
-  )[0] as keyof ExploreProps['tabCounts'];
-  const previousIndexCount = usePrevious(tabCounts[keyOfPreviousIndex]);
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -356,12 +356,12 @@ const Explore: React.FC<ExploreProps> = ({
         ),
       });
 
-      if (previousIndexCount) {
-        // setTimeout because we need to reset previous index count after tab change
-        setTimeout(() => {
-          setCount(previousIndexCount as number, previsouIndex as string);
-        }, 100);
-      }
+      // if (previousIndexCount) {
+      //   // setTimeout because we need to reset previous index count after tab change
+      //   setTimeout(() => {
+      //     setCount(previousIndexCount as number, previsouIndex as string);
+      //   }, 100);
+      // }
     }
   };
   const getTabs = () => {
@@ -413,6 +413,17 @@ const Explore: React.FC<ExploreProps> = ({
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
   }, [tab]);
+
+  useEffect(() => {
+    if (!isMounting.current) {
+      if (location.pathname === '/explore') {
+        handleIsLoading(true);
+        handleIsLoadingForData(true);
+        getInitialData();
+      }
+      getInitialCount();
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     if (getFilterString(filters)) {

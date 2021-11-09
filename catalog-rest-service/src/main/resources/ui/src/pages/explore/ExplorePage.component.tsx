@@ -179,11 +179,7 @@ const ExplorePage: FunctionComponent = () => {
       });
   };
 
-  useEffect(() => {
-    fetchCounts();
-  }, [searchText]);
-
-  useEffect(() => {
+  const getInitialData = () => {
     fetchData([
       {
         queryString: searchText,
@@ -222,6 +218,14 @@ const ExplorePage: FunctionComponent = () => {
         searchIndex: getCurrentIndex(tab),
       },
     ]);
+  };
+
+  useEffect(() => {
+    fetchCounts();
+  }, [searchText]);
+
+  useEffect(() => {
+    getInitialData();
   }, []);
 
   return (
@@ -232,6 +236,12 @@ const ExplorePage: FunctionComponent = () => {
         <Explore
           error={error}
           fetchData={fetchData}
+          getInitialCount={fetchCounts}
+          getInitialData={getInitialData}
+          handleIsLoading={(value: boolean) => setIsLoading(value)}
+          handleIsLoadingForData={(value: boolean) =>
+            setIsLoadingForData(value)
+          }
           handlePathChange={handlePathChange}
           handleSearchText={handleSearchText}
           searchQuery={searchQuery}
