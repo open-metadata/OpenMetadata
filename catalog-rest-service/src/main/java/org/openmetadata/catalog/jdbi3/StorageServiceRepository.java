@@ -20,12 +20,14 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.StorageService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -40,17 +42,18 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
     private final CollectionDAO dao;
     
     public StorageServiceRepository(CollectionDAO dao) {
-        super(StorageService.class, dao.storageServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+        super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
+                Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
         this.dao = dao;
     }
     
-    public StorageService update(UUID id, String description)
+    public StorageService update(UriInfo uriInfo, UUID id, String description)
             throws IOException {
         StorageService storageService = dao.storageServiceDAO().findEntityById(id);
         // Update fields
         storageService.withDescription(description);
         dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-        return storageService;
+        return withHref(uriInfo, storageService);
     }
 
     @Transaction
@@ -178,6 +181,9 @@ public class StorageServiceRepository extends EntityRepository<StorageService> {
         public void setOwner(EntityReference owner) {
 
         }
+
+        @Override
+        public StorageService withHref(URI href) { return entity.withHref(href); }
 
         @Override
         public void setTags(List<TagLabel> tags) { }

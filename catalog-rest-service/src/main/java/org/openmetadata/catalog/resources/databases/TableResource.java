@@ -26,12 +26,12 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTable;
 import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TableRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -40,7 +40,6 @@ import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -83,24 +82,15 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "tables")
 public class TableResource {
-  private static final String TABLE_COLLECTION_PATH = "v1/tables/";
+  public static final String COLLECTION_PATH = "v1/tables/";
   private final TableRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, TABLE_COLLECTION_PATH, ref.getId()));
-  }
-
   public static Table addHref(UriInfo uriInfo, Table table) {
-    table.setHref(RestUtil.getHref(uriInfo, TABLE_COLLECTION_PATH, table.getId()));
-    if (table.getDatabase() != null) {
-      DatabaseResource.addHref(uriInfo, table.getDatabase());
-    }
-    if (table.getLocation() != null) {
-      LocationResource.addHref(uriInfo, table.getLocation());
-    }
-    EntityUtil.addHref(uriInfo, table.getOwner());
-    EntityUtil.addHref(uriInfo, table.getFollowers());
+    Entity.withHref(uriInfo, table.getDatabase());
+    Entity.withHref(uriInfo, table.getLocation());
+    Entity.withHref(uriInfo, table.getOwner());
+    Entity.withHref(uriInfo, table.getFollowers());
     return table;
   }
 
@@ -161,9 +151,9 @@ public class TableResource {
 
     ResultList<Table> tables;
     if (before != null) { // Reverse paging
-      tables = dao.listBefore(fields, databaseParam, limitParam, before);
+      tables = dao.listBefore(uriInfo, fields, databaseParam, limitParam, before);
     } else { // Forward paging or first page
-      tables = dao.listAfter(fields, databaseParam, limitParam, after);
+      tables = dao.listAfter(uriInfo, fields, databaseParam, limitParam, after);
     }
     tables.getData().forEach(t -> addHref(uriInfo, t));
     return tables;
@@ -203,7 +193,7 @@ public class TableResource {
                            schema = @Schema(type = "string", example = FIELDS))
                    @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
   
   @GET
@@ -225,7 +215,7 @@ public class TableResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                          @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(fqn, fields));
+    return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
   }
 
   @GET
@@ -263,7 +253,7 @@ public class TableResource {
                          @Valid CreateTable create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Table table = getTable(securityContext, create);
-    table = addHref(uriInfo, dao.create(validateNewTable(table)));
+    table = addHref(uriInfo, dao.create(uriInfo, validateNewTable(table)));
     return Response.created(table.getHref()).entity(table).build();
   }
 
@@ -281,9 +271,9 @@ public class TableResource {
                                  @Valid CreateTable create) throws IOException, ParseException {
     Table table = getTable(securityContext, create);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    PutResponse<Table> response = dao.createOrUpdate(validateNewTable(table));
-    table = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(table).build();
+    PutResponse<Table> response = dao.createOrUpdate(uriInfo, validateNewTable(table));
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PATCH
@@ -305,9 +295,9 @@ public class TableResource {
                                              "]")}))
                              JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(table));
-    table = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    table = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, table);
   }
 
@@ -343,10 +333,8 @@ public class TableResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-    Table table = dao.get(id, fields);
-    return Response.status(status).entity(table).build();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id), UUID.fromString(userId)).toResponse();
   }
 
   @PUT
@@ -367,7 +355,7 @@ public class TableResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "joins");
     dao.addJoins(UUID.fromString(id), joins);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
   }
 
@@ -382,7 +370,7 @@ public class TableResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "sampleData");
     dao.addSampleData(UUID.fromString(id), tableData);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
   }
 
@@ -397,7 +385,7 @@ public class TableResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "tableProfile");
     dao.addTableProfileData(UUID.fromString(id), tableProfile);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
   }
 
@@ -418,7 +406,7 @@ public class TableResource {
                                       String locationId) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "location");
     Status status = dao.addLocation(UUID.fromString(id), UUID.fromString(locationId));
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return Response.status(status).entity(table).build();
   }
 
@@ -441,7 +429,7 @@ public class TableResource {
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "tables",
           description = "Remove the user identified `userId` as a follower of the table.")
-  public Table deleteFollower(@Context UriInfo uriInfo,
+  public Response deleteFollower(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
                                  @Parameter(description = "Id of the table",
                                          schema = @Schema(type = "string"))
@@ -449,10 +437,8 @@ public class TableResource {
                                  @Parameter(description = "Id of the user being removed as follower",
                                          schema = @Schema(type = "string"))
                                  @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-    Table table = dao.get(id, fields);
-    return addHref(uriInfo, table);
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
@@ -466,7 +452,7 @@ public class TableResource {
                               @PathParam("id") String id) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "location");
     dao.deleteLocation(id);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
   }
 

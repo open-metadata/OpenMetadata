@@ -65,11 +65,6 @@ public class ReportResource {
   public static final String COLLECTION_PATH = "/v1/bots/";
   private final ReportRepository dao;
 
-  private static Report addHref(UriInfo uriInfo, Report report) {
-    report.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, report.getId()));
-    return report;
-  }
-
   @Inject
   public ReportResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ReportRepository must not be null");
@@ -100,9 +95,7 @@ public class ReportResource {
                          @QueryParam("fields") String fieldsParam) throws IOException, GeneralSecurityException,
           ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    ResultList<Report> list = dao.listAfter(fields, null, 10000, null);
-    list.getData().forEach(r -> addHref(uriInfo, r));
-    return list;
+    return dao.listAfter(uriInfo, fields, null, 10000, null);
   }
 
   @GET
@@ -120,7 +113,7 @@ public class ReportResource {
                              schema = @Schema(type = "string", example = FIELDS))
                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return dao.get(uriInfo, id, fields);
   }
 
   @POST
@@ -136,7 +129,7 @@ public class ReportResource {
                          @Context SecurityContext securityContext,
                          @Valid Report report) throws IOException, ParseException {
     addToReport(securityContext, report);
-    addHref(uriInfo, dao.create(report));
+    dao.create(uriInfo, report);
     return Response.created(report.getHref()).entity(report).build();
   }
 
@@ -153,9 +146,8 @@ public class ReportResource {
                                  @Context SecurityContext securityContext,
                                  @Valid Report report) throws IOException, ParseException {
     addToReport(securityContext, report);
-    PutResponse<Report> response = dao.createOrUpdate(report);
-    addHref(uriInfo, report);
-    return Response.status(response.getStatus()).entity(report).build();
+    PutResponse<Report> response = dao.createOrUpdate(uriInfo, report);
+    return response.toResponse();
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

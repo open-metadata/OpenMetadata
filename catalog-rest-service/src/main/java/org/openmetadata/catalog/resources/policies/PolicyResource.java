@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.policies.CreatePolicy;
 import org.openmetadata.catalog.entity.policies.Policy;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -33,8 +34,6 @@ import org.openmetadata.catalog.jdbi3.PolicyRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -78,13 +77,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "policies")
 public class PolicyResource {
-    public static final String POLICY_COLLECTION_PATH = "v1/policies/";
+    public static final String COLLECTION_PATH = "v1/policies/";
     private final PolicyRepository dao;
     private final CatalogAuthorizer authorizer;
-
-    public static void addHref(UriInfo uriInfo, EntityReference ref) {
-        ref.withHref(RestUtil.getHref(uriInfo, POLICY_COLLECTION_PATH, ref.getId()));
-    }
 
     public static List<Policy> addHref(UriInfo uriInfo, List<Policy> policies) {
         Optional.ofNullable(policies).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -92,8 +87,7 @@ public class PolicyResource {
     }
 
     public static Policy addHref(UriInfo uriInfo, Policy policy) {
-        policy.setHref(RestUtil.getHref(uriInfo, POLICY_COLLECTION_PATH, policy.getId()));
-        EntityUtil.addHref(uriInfo, policy.getOwner());
+        Entity.withHref(uriInfo, policy.getOwner());
         return policy;
     }
 
@@ -154,9 +148,9 @@ public class PolicyResource {
 
         ResultList<Policy> policies;
         if (before != null) { // Reverse paging
-            policies = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
+            policies = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
         } else { // Forward paging or first page
-            policies = dao.listAfter(fields, null, limitParam, after);
+            policies = dao.listAfter(uriInfo, fields, null, limitParam, after);
         }
         addHref(uriInfo, policies.getData());
         return policies;
@@ -179,7 +173,7 @@ public class PolicyResource {
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        return addHref(uriInfo, dao.get(id, fields));
+        return addHref(uriInfo, dao.get(uriInfo, id, fields));
     }
 
     @GET
@@ -198,7 +192,7 @@ public class PolicyResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        Policy policy = dao.getByName(fqn, fields);
+        Policy policy = dao.getByName(uriInfo, fqn, fields);
         return addHref(uriInfo, policy);
     }
 
@@ -225,7 +219,7 @@ public class PolicyResource {
                 .withPolicyType(create.getPolicyType())
                 .withUpdatedBy(securityContext.getUserPrincipal().getName())
                 .withUpdatedAt(new Date());
-        policy = addHref(uriInfo, dao.create(policy));
+        policy = addHref(uriInfo, dao.create(uriInfo, policy));
         return Response.created(policy.getHref()).entity(policy).build();
     }
 
@@ -247,9 +241,9 @@ public class PolicyResource {
                                                             "]")}))
                                             JsonPatch patch) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, FIELDS);
-        Policy policy = dao.get(id, fields);
+        Policy policy = dao.get(uriInfo, id, fields);
         SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(policy));
-        policy = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        policy = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
         return addHref(uriInfo, policy);
     }
 
@@ -276,9 +270,9 @@ public class PolicyResource {
                 .withUpdatedBy(securityContext.getUserPrincipal().getName())
                 .withUpdatedAt(new Date());
 
-        PutResponse<Policy> response = dao.createOrUpdate(policy);
-        policy = addHref(uriInfo, response.getEntity());
-        return Response.status(response.getStatus()).entity(policy).build();
+        PutResponse<Policy> response = dao.createOrUpdate(uriInfo, policy);
+        addHref(uriInfo, response.getEntity());
+        return response.toResponse();
     }
 
     @DELETE

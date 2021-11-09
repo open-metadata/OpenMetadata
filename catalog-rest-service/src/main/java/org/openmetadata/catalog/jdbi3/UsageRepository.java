@@ -35,25 +35,22 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
-import static org.openmetadata.catalog.util.EntityUtil.getEntityReference;
-
 public class UsageRepository {
   private static final Logger LOG = LoggerFactory.getLogger(UsageRepository.class);
+  private final CollectionDAO dao;
 
   public UsageRepository(CollectionDAO dao) { this.dao = dao; }
 
-  private final CollectionDAO dao;
-
   @Transaction
   public EntityUsage get(String entityType, String id, String date, int days) throws IOException {
-    EntityReference ref = getEntityReference(entityType, UUID.fromString(id), dao);
+    EntityReference ref = Entity.getEntityReference(entityType, UUID.fromString(id));
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(id, date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
 
   @Transaction
   public EntityUsage getByName(String entityType, String fqn, String date, int days) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fqn, dao);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fqn);
     List<UsageDetails> usageDetails = dao.usageDAO().getUsageById(ref.getId().toString(), date, days - 1);
     return new EntityUsage().withUsage(usageDetails).withEntity(ref);
   }
@@ -61,13 +58,13 @@ public class UsageRepository {
   @Transaction
   public void create(String entityType, String id, DailyCount usage) throws IOException {
     // Validate data entity for which usage is being collected
-    getEntityReference(entityType, UUID.fromString(id), dao);
+    Entity.getEntityReference(entityType, UUID.fromString(id));
     addUsage(entityType, id, usage);
   }
 
   @Transaction
   public void createByName(String entityType, String fullyQualifiedName, DailyCount usage) throws IOException {
-    EntityReference ref = EntityUtil.getEntityReferenceByName(entityType, fullyQualifiedName, dao);
+    EntityReference ref = Entity.getEntityReferenceByName(entityType, fullyQualifiedName);
     addUsage(entityType, ref.getId().toString(), usage);
     LOG.info("Usage successfully posted by name");
   }

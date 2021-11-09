@@ -28,10 +28,6 @@
       "description": "Name of the user who made the API request.",
       "type": "string"
     },
-    "dateTime": {
-      "description": "Date when the API call is made.",
-      "$ref": "basic.json#/definitions/dateTime"
-    },
     "entityId": {
       "description": "Identifier of entity that was modified by the operation.",
       "$ref": "basic.json#/definitions/uuid"
@@ -39,6 +35,10 @@
     "entityType": {
       "description": "Type of Entity that is modified by the operation.",
       "type": "string"
+    },
+    "dateTime": {
+      "description": "Date when the API call is made.",
+      "$ref": "basic.json#/definitions/dateTime"
     }
   },
   "required": ["method", "responseCode", "path", "userName", "entityId", "entityType"]

@@ -55,7 +55,7 @@ public class UserRepository extends EntityRepository<User> {
 
 
   public UserRepository(CollectionDAO dao) {
-    super(User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
+    super(UserResource.COLLECTION_PATH, User.class, dao.userDAO(), dao, USER_PATCH_FIELDS, USER_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -140,12 +140,11 @@ public class UserRepository extends EntityRepository<User> {
       ownedEntities.addAll(dao.relationshipDAO().findTo(team.getId().toString(), OWNS.ordinal()));
     }
     // Populate details in entity reference
-    return EntityUtil.getEntityReference(ownedEntities, dao);
+    return EntityUtil.populateEntityReferences(ownedEntities);
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.getEntityReference(dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()),
-            dao);
+    return EntityUtil.populateEntityReferences(dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
   }
 
   private User validateUser(UUID userId) throws IOException {
@@ -273,6 +272,9 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public User withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }

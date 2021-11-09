@@ -31,8 +31,6 @@ import org.openmetadata.catalog.jdbi3.StorageServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -63,23 +61,10 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
 public class StorageServiceResource {
+    public static final String COLLECTION_PATH = "v1/services/storageServices/";
     private final StorageServiceRepository dao;
     private final CatalogAuthorizer authorizer;
 
-    public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
-        return service.withHref(RestUtil.getHref(uriInfo, "v1/services/storageServices/", service.getId()));
-    }
-    
-    private static List<StorageService> addHref(UriInfo uriInfo, List<StorageService> instances) {
-        instances.forEach(i -> addHref(uriInfo, i));
-        return instances;
-    }
-    
-    private static StorageService addHref(UriInfo uriInfo, StorageService storageService) {
-        storageService.setHref(RestUtil.getHref(uriInfo, "v1/services/storageServices/",
-                storageService.getId()));
-        return storageService;
-    }
 
     @Inject
     public StorageServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
@@ -104,9 +89,7 @@ public class StorageServiceResource {
             })
     public ResultList<StorageService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException,
             ParseException {
-        ResultList<StorageService> list = dao.listAfter(null, null, 10000, null);
-        list.getData().forEach(d -> addHref(uriInfo, d));
-        return list;
+        return dao.listAfter(uriInfo, null, null, 10000, null);
     }
 
     @GET
@@ -122,7 +105,7 @@ public class StorageServiceResource {
     public StorageService get(@Context UriInfo uriInfo,
                                @Context SecurityContext securityContext,
                                @PathParam("id") String id) throws IOException, ParseException {
-        return addHref(uriInfo, dao.get(id, null));
+        return dao.get(uriInfo, id, null);
     }
 
     @GET
@@ -138,7 +121,7 @@ public class StorageServiceResource {
     public StorageService getByName(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
                                      @PathParam("name") String name) throws IOException, ParseException {
-        return addHref(uriInfo, dao.getByName(name, null));
+        return dao.getByName(uriInfo, name, null);
     }
     
     @POST
@@ -159,7 +142,7 @@ public class StorageServiceResource {
                 .withServiceType(create.getServiceType()).withUpdatedBy(securityContext.getUserPrincipal().getName())
                 .withUpdatedAt(new Date());
 
-        addHref(uriInfo, dao.create(databaseService));
+        dao.create(uriInfo, databaseService);
         return Response.created(databaseService.getHref()).entity(databaseService).build();
     }
     
@@ -179,7 +162,7 @@ public class StorageServiceResource {
                            @PathParam("id") String id,
                            @Valid UpdateStorageService update) throws IOException {
         SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-        StorageService databaseService = addHref(uriInfo, dao.update(UUID.fromString(id), update.getDescription()));
+        StorageService databaseService = dao.update(uriInfo, UUID.fromString(id), update.getDescription());
         return Response.ok(databaseService).build();
     }
     

@@ -16,17 +16,40 @@
 
 package org.openmetadata.catalog;
 
-public final class Entity {
-  // Entity names
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.jdbi3.EntityDAO;
+import org.openmetadata.catalog.jdbi3.EntityRepository;
+import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.util.EntityInterface;
 
+import javax.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+public final class Entity {
+  private static final Map<String, EntityDAO<?>> daoMap = new HashMap<>();
+  private static final Map<String, EntityRepository> entityRepositoryMap = new HashMap<>();
+
+  //
   // Services
+  //
   public static final String DATABASE_SERVICE = "databaseService";
   public static final String MESSAGING_SERVICE = "messagingService";
   public static final String DASHBOARD_SERVICE = "dashboardService";
   public static final String PIPELINE_SERVICE = "pipelineService";
   public static final String STORAGE_SERVICE = "storageService";
 
+  //
   // Data assets
+  //
   public static final String TABLE = "table";
   public static final String DATABASE = "database";
   public static final String METRICS = "metrics";
@@ -39,10 +62,14 @@ public final class Entity {
   public static final String BOTS = "bots";
   public static final String LOCATION = "location";
 
+  //
   // Policies
+  //
   public static final String POLICY = "policy";
 
+  //
   // Team/user
+  //
   public static final String USER = "user";
   public static final String TEAM = "team";
 
@@ -50,7 +77,67 @@ public final class Entity {
   public static final String INGESTION = "ingestion";
 
   private Entity() {
+  }
 
+  public static void registerEntity(String entity, EntityDAO<?> dao,
+                                    EntityRepository<?> entityRepository) {
+    System.out.println("Registering entity " + entity);
+    daoMap.put(entity.toLowerCase(Locale.ROOT), dao);
+    entityRepositoryMap.put(entity, entityRepository);
+  }
+
+  public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
+    EntityDAO<?> dao = daoMap.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    return dao.findEntityReferenceById(id);
+  }
+
+  public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
+    EntityDAO<?> dao = daoMap.get(entity);
+    if (dao == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
+    }
+    return dao.findEntityReferenceByName(fqn);
+  }
+
+  public static EntityReference getEntityReference(Object entity) {
+    String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    EntityRepository entityRepository = entityRepositoryMap.get(entityName);
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+    }
+    return entityRepository.getEntityInterface(entity).getEntityReference();
+  }
+
+  public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
+    Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> withHref(uriInfo, ref));
+  }
+
+  public static EntityReference withHref(UriInfo uriInfo, EntityReference ref) {
+    if (ref == null) {
+      return null;
+    }
+    String entityName = ref.getType().toLowerCase(Locale.ROOT);
+    EntityRepository<?> entityRepository = entityRepositoryMap.get(entityName);
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+    }
+    URI href = entityRepository.getHref(uriInfo, ref.getId());
+    return ref.withHref(href);
+  }
+
+  public static EntityInterface getEntityInterface(Object entity) {
+    if (entity == null) {
+      return null;
+    }
+    String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    EntityRepository entityRepository = entityRepositoryMap.get(entityName);
+    if (entityRepository == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
+    }
+    return entityRepository.getEntityInterface(entity);
   }
 }
 

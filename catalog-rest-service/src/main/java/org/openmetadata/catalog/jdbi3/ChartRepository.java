@@ -19,6 +19,7 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.Bots;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
@@ -30,7 +31,9 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -47,7 +50,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -255,9 +258,10 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
+    public Chart withHref(URI href) { return entity.withHref(href); }
+
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

@@ -6,36 +6,29 @@
   "type": "object",
 
   "definitions": {
-    "operation" : {
-      "method": {
-        "description": "HTTP Method used in a call.",
-        "type": "string",
-        "enum": [
-          "POST",
-          "PUT",
-          "PATCH",
-          "DELETE"
-        ]
-      },
-      "path": {
-        "description": "Requested API Path.",
-        "type": "string"
-      },
-      "responseCode": {
-        "description": "HTTP response code for the api requested.",
-        "type": "integer"
-      }
-    },
     "eventType" :{
       "description": "Type of event",
       "type": "string",
       "enum": [
-        "ENTITY_CREATED",
-        "ENTITY_UPDATED",
-        "ENTITY_DELETED",
-        "ENTITY_FOLLOWED",
-        "ENTITY_UNFOLLOWED"
+        "entityCreated",
+        "entityUpdated",
+        "entityDeleted"
       ]
+    },
+    "versionChange" : {
+      "description": "Details of version change for `entityCreated`, `entityUpdated`, and `entityDeleted` events",
+      "type" : "object",
+      "properties": {
+        "oldVersion" : {
+          "$ref" : "entityHistory.json#/definitions/entityVersion"
+        },
+        "newVersion" : {
+          "$ref" : "entityHistory.json#/definitions/entityVersion"
+        },
+        "entity" : {
+          "description": "JSON coded string for the entity using the schema corresponding to `entityType` that includes the current value of entity with `changeDescription` attribute that provides details on fields added, updated, and deleted."
+        }
+      }
     }
   },
   "properties" : {
@@ -46,22 +39,34 @@
       "description": "Entity type that changed. Use the schema of this entity to process the entity attribute.",
       "type": "string"
     },
-    "entity" : {
-      "description": "Entity that changed."
+    "entityId": {
+      "description": "Identifier of entity that was modified by the operation.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "previousVersion" : {
+      "description" : "Version of the entity before this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`",
+      "$ref" : "entityHistory.json#/definitions/entityVersion"
+    },
+    "currentVersion" : {
+      "description" : "Current version of the entity after this change. Note that not all changes result in entity version change. When entity version is not changed, `previousVersion` is same as `currentVersion`",
+      "$ref" : "entityHistory.json#/definitions/entityVersion"
     },
     "userName": {
       "description": "Name of the user whose activity resulted in the change.",
       "type": "string"
     },
-    "operation" : {
-      "description": "API operation that was result of user activity resulted in the change.",
-      "$ref": "#/definitions/operation"
-    },
     "dateTime": {
       "description": "Date and time when the change was made.",
       "$ref": "basic.json#/definitions/dateTime"
+    },
+    "changeDescription" : {
+      "description": "For `eventType` `entityUpdated` this field captures details about what fields were added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is null.",
+      "$ref" : "entityHistory.json#/definitions/changeDescription"
+    },
+    "entity" : {
+      "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`"
     }
   },
-  "required": ["eventType", "entity", "userName", "operation", "dateTime"],
+  "required": ["eventType", "entityType", "entityId", "dateTime"],
   "additionalProperties": false
 }

@@ -18,8 +18,12 @@ package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.Bots;
+import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.services.DatabaseService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.bots.BotsResource;
+import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.JdbcInfo;
@@ -29,7 +33,9 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -41,21 +47,23 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 
 
 public class DatabaseServiceRepository extends EntityRepository<DatabaseService> {
+  public static final String COLLECTION_PATH = "v1/services/databaseServices";
   private final CollectionDAO dao;
 
   public DatabaseServiceRepository(CollectionDAO dao) {
-    super(DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(DatabaseServiceResource.COLLECTION_PATH, DatabaseService.class, dao.dbServiceDAO(), dao, Fields.EMPTY_FIELDS,
+            Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
-  public DatabaseService update(UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
+  public DatabaseService update(UriInfo uriInfo, UUID id, String description, JdbcInfo jdbc, Schedule ingestionSchedule)
           throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
     DatabaseService dbService = dao.dbServiceDAO().findEntityById(id);
     // Update fields
     dbService.withDescription(description).withJdbc((jdbc)).withIngestionSchedule(ingestionSchedule);
     dao.dbServiceDAO().update(id, JsonUtils.pojoToJson(dbService));
-    return dbService;
+    return withHref(uriInfo, dbService);
   }
 
   @Transaction
@@ -182,6 +190,9 @@ public class DatabaseServiceRepository extends EntityRepository<DatabaseService>
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public DatabaseService withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

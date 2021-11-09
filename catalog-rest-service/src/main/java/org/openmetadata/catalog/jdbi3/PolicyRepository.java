@@ -49,7 +49,8 @@ public class PolicyRepository extends EntityRepository<Policy> {
     private final CollectionDAO dao;
 
     public PolicyRepository(CollectionDAO dao) {
-        super(Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS, POLICY_UPDATE_FIELDS);
+        super(PolicyResource.COLLECTION_PATH, Policy.class, dao.policyDAO(), dao, POLICY_PATCH_FIELDS,
+                POLICY_UPDATE_FIELDS);
         this.dao = dao;
     }
 
@@ -252,6 +253,9 @@ public class PolicyRepository extends EntityRepository<Policy> {
         public void setOwner(EntityReference owner) {
             // Policy does not have owner
         }
+
+        @Override
+        public Policy withHref(URI href) { return entity.withHref(href); }
 
         @Override
         public ChangeDescription getChangeDescription() {

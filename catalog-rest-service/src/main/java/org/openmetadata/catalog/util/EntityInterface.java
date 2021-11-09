@@ -4,6 +4,7 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
+import javax.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.util.Date;
 import java.util.List;
@@ -36,4 +37,5 @@ public interface EntityInterface<T> {
   void setUpdateDetails(String updatedBy, Date updatedAt);
   void setChangeDescription(Double newVersion, ChangeDescription changeDescription);
   void setOwner(EntityReference owner);
+  T withHref(URI href);
 }

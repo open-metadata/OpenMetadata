@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
@@ -35,8 +36,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -80,13 +79,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "charts")
 public class ChartResource {
-  private static final String CHART_COLLECTION_PATH = "v1/charts/";
+  public static final String COLLECTION_PATH = "v1/charts/";
   private final ChartRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, ref.getId()));
-  }
 
   public static List<Chart> addHref(UriInfo uriInfo, List<Chart> charts) {
     Optional.ofNullable(charts).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -94,11 +89,10 @@ public class ChartResource {
   }
 
   public static Chart addHref(UriInfo uriInfo, Chart chart) {
-    chart.setHref(RestUtil.getHref(uriInfo, CHART_COLLECTION_PATH, chart.getId()));
-    EntityUtil.addHref(uriInfo, chart.getOwner());
-    EntityUtil.addHref(uriInfo, chart.getService());
-    EntityUtil.addHref(uriInfo, chart.getFollowers());
-
+    chart.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, chart.getId()));
+    Entity.withHref(uriInfo, chart.getOwner());
+    Entity.withHref(uriInfo, chart.getService());
+    Entity.withHref(uriInfo, chart.getFollowers());
     return chart;
   }
 
@@ -158,9 +152,9 @@ public class ChartResource {
 
     ResultList<Chart> charts;
     if (before != null) { // Reverse paging
-      charts = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
+      charts = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      charts = dao.listAfter(fields, serviceParam, limitParam, after);
+      charts = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
     addHref(uriInfo, charts.getData());
     return charts;
@@ -198,7 +192,7 @@ public class ChartResource {
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
@@ -217,7 +211,7 @@ public class ChartResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Chart chart = dao.getByName(fqn, fields);
+    Chart chart = dao.getByName(uriInfo, fqn, fields);
     addHref(uriInfo, chart);
     return Response.ok(chart).build();
   }
@@ -256,7 +250,7 @@ public class ChartResource {
                          @Valid CreateChart create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Chart chart = getChart(securityContext, create);
-    chart = addHref(uriInfo, dao.create(chart));
+    chart = addHref(uriInfo, dao.create(uriInfo, chart));
     return Response.created(chart.getHref()).entity(chart).build();
   }
 
@@ -278,10 +272,10 @@ public class ChartResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Chart chart = dao.get(id, fields);
+    Chart chart = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new ChartEntityInterface(chart).getEntityReference());
-    chart = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    chart = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, chart);
   }
 
@@ -298,9 +292,9 @@ public class ChartResource {
                                  @Valid CreateChart create) throws IOException, ParseException {
 
     Chart chart = getChart(securityContext, create);
-    PutResponse<Chart> response = dao.createOrUpdate(chart);
-    chart = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(chart).build();
+    PutResponse<Chart> response = dao.createOrUpdate(uriInfo, chart);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -318,17 +312,15 @@ public class ChartResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-    Chart chart = addHref(uriInfo, dao.get(id, fields));
-    return Response.status(status).entity(chart).build();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(),
+            UUID.fromString(id), UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "charts",
           description = "Remove the user identified `userId` as a follower of the chart.")
-  public Chart deleteFollower(@Context UriInfo uriInfo,
+  public Response deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the chart",
                                       schema = @Schema(type = "string"))
@@ -336,9 +328,8 @@ public class ChartResource {
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-    return addHref(uriInfo, dao.get(id, fields));
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
 

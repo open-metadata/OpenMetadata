@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateLocation;
 import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Location;
@@ -35,14 +36,10 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -80,20 +77,14 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "locations")
 public class LocationResource {
-    private static final Logger LOG = LoggerFactory.getLogger(LocationResource.class);
-    private static final String LOCATION_COLLECTION_PATH = "v1/locations/";
+    public static final String COLLECTION_PATH = "v1/locations/";
     private final LocationRepository dao;
     private final CatalogAuthorizer authorizer;
 
-    public static void addHref(UriInfo uriInfo, EntityReference ref) {
-        ref.withHref(RestUtil.getHref(uriInfo, LOCATION_COLLECTION_PATH, ref.getId()));
-    }
-
     public static Location addHref(UriInfo uriInfo, Location location) {
-        location.setHref(RestUtil.getHref(uriInfo, LOCATION_COLLECTION_PATH, location.getId()));
-        EntityUtil.addHref(uriInfo, location.getOwner());
-        EntityUtil.addHref(uriInfo, location.getService());
-        EntityUtil.addHref(uriInfo, location.getFollowers());
+        Entity.withHref(uriInfo, location.getOwner());
+        Entity.withHref(uriInfo, location.getService());
+        Entity.withHref(uriInfo, location.getFollowers());
         return location;
     }
 
@@ -155,9 +146,9 @@ public class LocationResource {
 
         ResultList<Location> locations;
         if (before != null) { // Reverse paging
-            locations = dao.listBefore(fields, fqnPrefixParam, limitParam, before); // Ask for one extra entry
+            locations = dao.listBefore(uriInfo, fields, fqnPrefixParam, limitParam, before); // Ask for one extra entry
         } else { // Forward paging or first page
-            locations = dao.listAfter(fields, fqnPrefixParam, limitParam, after);
+            locations = dao.listAfter(uriInfo, fields, fqnPrefixParam, limitParam, after);
         }
         locations.getData().forEach(l -> addHref(uriInfo, l));
         return locations;
@@ -197,7 +188,7 @@ public class LocationResource {
                                 schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        return addHref(uriInfo, dao.get(id, fields));
+        return addHref(uriInfo, dao.get(uriInfo, id, fields));
     }
 
     @GET
@@ -219,7 +210,7 @@ public class LocationResource {
                                       schema = @Schema(type = "string", example = FIELDS))
                               @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        return addHref(uriInfo, dao.getByName(fqn, fields));
+        return addHref(uriInfo, dao.getByName(uriInfo, fqn, fields));
     }
 
     @GET
@@ -257,7 +248,7 @@ public class LocationResource {
                            @Valid CreateLocation create) throws IOException, ParseException {
         SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
         Location location = getLocation(securityContext, create);
-        location = addHref(uriInfo, dao.create(location));
+        location = addHref(uriInfo, dao.create(uriInfo, location));
         return Response.created(location.getHref()).entity(location).build();
     }
 
@@ -275,9 +266,9 @@ public class LocationResource {
                                    @Valid CreateLocation create) throws IOException, ParseException {
         Location location = getLocation(securityContext, create);
         SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
-        PutResponse<Location> response = dao.createOrUpdate(validateNewLocation(location));
-        location = addHref(uriInfo, response.getEntity());
-        return Response.status(response.getStatus()).entity(location).build();
+        PutResponse<Location> response = dao.createOrUpdate(uriInfo, validateNewLocation(location));
+        addHref(uriInfo, response.getEntity());
+        return response.toResponse();
     }
 
     @PATCH
@@ -298,9 +289,9 @@ public class LocationResource {
                                                   "]")}))
                                   JsonPatch patch) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, FIELDS);
-        Location location = dao.get(id, fields);
+        Location location = dao.get(uriInfo, id, fields);
         SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext, dao.getOwnerReference(location));
-        location = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+        location = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
         return addHref(uriInfo, location);
     }
 
@@ -337,17 +328,15 @@ public class LocationResource {
                                 @Parameter(description = "Id of the user to be added as follower",
                                         schema = @Schema(type = "string"))
                                         String userId) throws IOException, ParseException {
-        Fields fields = new Fields(FIELD_LIST, "followers");
-        Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-        Location location = dao.get(id, fields);
-        return Response.status(status).entity(location).build();
+        return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+                UUID.fromString(userId)).toResponse();
     }
 
     @DELETE
     @Path("/{id}/followers/{userId}")
     @Operation(summary = "Remove a follower", tags = "locations",
             description = "Remove the user identified `userId` as a follower of the location.")
-    public Location deleteFollower(@Context UriInfo uriInfo,
+    public Response deleteFollower(@Context UriInfo uriInfo,
                                    @Context SecurityContext securityContext,
                                    @Parameter(description = "Id of the location",
                                            schema = @Schema(type = "string"))
@@ -355,10 +344,8 @@ public class LocationResource {
                                    @Parameter(description = "Id of the user being removed as follower",
                                            schema = @Schema(type = "string"))
                                    @PathParam("userId") String userId) throws IOException, ParseException {
-        Fields fields = new Fields(FIELD_LIST, "followers");
-        dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-        Location location = dao.get(id, fields);
-        return addHref(uriInfo, location);
+        return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+                UUID.fromString(userId)).toResponse();
     }
 
     public static Location validateNewLocation(Location location) {

@@ -40,7 +40,7 @@ public class CatalogHealthCheck extends HealthCheck {
   @Override
   protected Result check() throws Exception {
     try {
-      userRepository.listAfter(fields, null, 1, null);
+      userRepository.listAfter(null, fields, null, 1, null);
       return Result.healthy();
     } catch (IOException e) {
       LOG.error("Health check error {}", e.getMessage());

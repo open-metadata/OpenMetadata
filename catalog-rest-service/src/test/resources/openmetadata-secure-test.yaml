@@ -143,6 +143,7 @@ authenticationConfiguration:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
+    - "org.openmetadata.catalog.events.ChangeEventHandler"
 
 airflowConfiguration:
   apiEndpoint: "http://localhost:8080"

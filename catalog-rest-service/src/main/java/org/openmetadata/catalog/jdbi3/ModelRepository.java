@@ -19,8 +19,11 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.data.Dashboard;
+import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.models.ModelResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
@@ -29,9 +32,11 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -50,7 +55,7 @@ public class ModelRepository extends EntityRepository<Model> {
   private final CollectionDAO dao;
 
   public ModelRepository(CollectionDAO dao) {
-    super(Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
+    super(ModelResource.COLLECTION_PATH, Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -283,6 +288,9 @@ public class ModelRepository extends EntityRepository<Model> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Model withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

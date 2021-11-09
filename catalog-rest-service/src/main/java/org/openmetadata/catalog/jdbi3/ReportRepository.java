@@ -38,7 +38,8 @@ public class ReportRepository extends EntityRepository<Report> {
   private final CollectionDAO dao;
 
   public ReportRepository(CollectionDAO dao) {
-    super(Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS, REPORT_UPDATE_FIELDS);
+    super(ReportResource.COLLECTION_PATH, Report.class, dao.reportDAO(), dao, Fields.EMPTY_FIELDS,
+            REPORT_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -198,6 +199,9 @@ public class ReportRepository extends EntityRepository<Report> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Report withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

@@ -48,7 +48,8 @@ public class LocationRepository extends EntityRepository<Location> {
     private final CollectionDAO dao;
 
     public LocationRepository(CollectionDAO dao) {
-        super(Location.class, dao.locationDAO(), dao, LOCATION_PATCH_FIELDS, LOCATION_UPDATE_FIELDS);
+        super(LocationResource.COLLECTION_PATH, Location.class, dao.locationDAO(), dao, LOCATION_PATCH_FIELDS,
+                LOCATION_UPDATE_FIELDS);
         this.dao = dao;
     }
 
@@ -135,7 +136,7 @@ public class LocationRepository extends EntityRepository<Location> {
     public EntityUpdater getUpdater(Location original, Location updated, boolean patchOperation) throws IOException {
         return new LocationRepository.LocationUpdater(original, updated, patchOperation);
     }
-    
+
     public EntityReference getOwner(Location location) throws IOException {
         return location != null ? EntityUtil.populateOwner(location.getId(), dao.relationshipDAO(), dao.userDAO(),
                 dao.teamDAO()) : null;
@@ -274,11 +275,12 @@ public class LocationRepository extends EntityRepository<Location> {
         public void setOwner(EntityReference owner) { entity.setOwner(owner);}
 
         @Override
-        public void setTags(List<TagLabel> tags) {
-            entity.setTags(tags);
-        }
+        public Location withHref(URI href) { return entity.withHref(href); }
+
+        @Override
+        public void setTags(List<TagLabel> tags) { entity.setTags(tags); }
     }
-    
+
     /**
      * Handles entity updated from PUT and POST operation.
      */
