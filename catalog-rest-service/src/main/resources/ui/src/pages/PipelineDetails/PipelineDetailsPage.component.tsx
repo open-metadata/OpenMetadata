@@ -1,5 +1,6 @@
 import { AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
+import { observer } from 'mobx-react';
 import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -239,4 +240,4 @@ const PipelineDetailsPage = () => {
   );
 };
 
-export default PipelineDetailsPage;
+export default observer(PipelineDetailsPage);
