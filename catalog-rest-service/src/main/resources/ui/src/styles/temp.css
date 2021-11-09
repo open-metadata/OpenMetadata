@@ -694,9 +694,10 @@ body .list-option.rdw-option-active {
 /* Diff style */
 
 .diff-added {
-  background: #e6ffed;
+  background: rgba(0, 131, 118, 0.2);
+  color: #008376;
 }
 .diff-removed {
-  background: #e6ffed;
+  color: #008376;
   text-decoration: line-through;
 }
