@@ -2,7 +2,7 @@
 
 * [Introduction](README.md)
 * [Features](features/README.md)
-  * [Asset Discovery](features/asset-discovery.md)
+  * [Discover Your Data](features/discover-your-data.md)
 * [Roadmap](roadmap.md)
 * [Try OpenMetadata](take-it-for-a-spin.md)
 * [Tutorials](tutorials/README.md)
