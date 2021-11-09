@@ -1,8 +1,19 @@
 import classNames from 'classnames';
-import React from 'react';
-import { getTeamDetailsPath } from '../../constants/constants';
-import { ColumnJoins } from '../../generated/entity/data/table';
+import { diffWords } from 'diff';
+import { cloneDeep, isEqual, isUndefined } from 'lodash';
+import React, { useEffect, useState } from 'react';
+import ReactDOMServer from 'react-dom/server';
+import {
+  ChangeDescription,
+  ColumnJoins,
+  Table,
+} from '../../generated/entity/data/table';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
+import {
+  getDiffByFieldName,
+  getDiffValue,
+} from '../../utils/EntityVersionUtils';
+import { getOwnerFromId } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
@@ -25,19 +36,125 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   backHandler,
   versionHandler,
 }: DatasetVersionProp) => {
-  const extraInfo = [
-    {
-      key: 'Owner',
-      value:
-        owner?.type === 'team'
-          ? getTeamDetailsPath(owner?.name || '')
-          : owner?.name || '',
-      placeholderText: owner?.displayName || '',
-      isLink: owner?.type === 'team',
-      openInNewTab: false,
-    },
-    { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
-  ];
+  const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
+    currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const getExtraInfo = () => {
+    const ownerDiff = getDiffByFieldName('owner', changeDescription);
+    const oldOwner = getOwnerFromId(
+      JSON.parse(ownerDiff?.oldValue ?? '{}')?.id
+    );
+    const newOwner = getOwnerFromId(
+      JSON.parse(ownerDiff?.newValue ?? '{}')?.id
+    );
+    const ownerPlaceHolder = owner?.name || owner?.displayName || '';
+
+    const tagsDiff = getDiffByFieldName('tags', changeDescription);
+    const newTier = [...JSON.parse(tagsDiff?.newValue ?? '[]')].find((t) =>
+      (t?.tagFQN as string).startsWith('Tier')
+    );
+
+    const oldTier = [...JSON.parse(tagsDiff?.oldValue ?? '[]')].find((t) =>
+      (t?.tagFQN as string).startsWith('Tier')
+    );
+
+    const extraInfo = [
+      {
+        key: 'Owner',
+        value: !isUndefined(ownerDiff)
+          ? getDiffValue(
+              oldOwner?.displayName || oldOwner?.name || '',
+              newOwner?.displayName || newOwner?.name || ''
+            )
+          : ownerPlaceHolder
+          ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
+          : '',
+      },
+      {
+        key: 'Tier',
+        value:
+          !isUndefined(newTier) || !isUndefined(oldTier)
+            ? getDiffValue(
+                oldTier?.tagFQN?.split('.')[1] || '',
+                newTier?.tagFQN?.split('.')[1] || ''
+              )
+            : tier
+            ? tier.split('.')[1]
+            : '',
+      },
+    ];
+
+    return extraInfo;
+  };
+
+  const getDescriptionDiff = (
+    oldDescription: string | undefined,
+    newDescription: string | undefined,
+    latestDescription: string | undefined
+  ) => {
+    if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
+      const diff = diffWords(oldDescription ?? '', newDescription ?? '');
+      // eslint-disable-next-line
+      const result: Array<string> = diff.map((part: any, index: any) => {
+        return ReactDOMServer.renderToString(
+          <span
+            className={classNames(
+              { 'diff-added': part.added },
+              { 'diff-removed': part.removed }
+            )}
+            key={index}>
+            {part.value}
+          </span>
+        );
+      });
+
+      return result.join('');
+    } else {
+      return oldDescription || newDescription || latestDescription || '';
+    }
+  };
+
+  const getTableDescription = () => {
+    const descriptionDiff = getDiffByFieldName(
+      'description',
+      changeDescription
+    );
+    const oldDescription = descriptionDiff?.oldValue;
+    const newDescription = descriptionDiff?.newValue;
+
+    return getDescriptionDiff(
+      oldDescription,
+      newDescription,
+      currentVersionData.description
+    );
+  };
+
+  const updatedColumns = (): Table['columns'] => {
+    const colList = cloneDeep(currentVersionData.columns);
+    const columnsDiff = getDiffByFieldName('columns', changeDescription);
+    const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
+    const oldDescription = columnsDiff?.oldValue;
+    const newDescription = columnsDiff?.newValue;
+
+    const formatColumnData = (arr: Table['columns']) => {
+      arr?.forEach((i) => {
+        if (isEqual(i.name, changedColName)) {
+          i.description = getDescriptionDiff(
+            oldDescription,
+            newDescription,
+            i.description
+          );
+        } else {
+          formatColumnData(i?.children as Table['columns']);
+        }
+      });
+    };
+
+    formatColumnData(colList);
+
+    return colList;
+  };
 
   const tabs = [
     {
@@ -52,6 +169,14 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     },
   ];
 
+  useEffect(() => {
+    setChangeDescription(
+      currentVersionData.changeDescription as ChangeDescription
+    );
+  }, [currentVersionData]);
+
+  updatedColumns();
+
   return (
     <PageContainer>
       <div
@@ -65,7 +190,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
             <EntityPageInfo
               isVersionSelected
               entityName={currentVersionData.name}
-              extraInfo={extraInfo}
+              extraInfo={getExtraInfo()}
               followersList={[]}
               tags={getTableTags(currentVersionData.columns || [])}
               tier={tier || ''}
@@ -80,7 +205,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                   <div className="tw-col-span-full">
                     <Description
                       isReadOnly
-                      description={currentVersionData.description || ''}
+                      description={getTableDescription()}
                     />
                   </div>
 
@@ -92,7 +217,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
                         ['column'],
                         '.'
                       )}
-                      columns={currentVersionData.columns}
+                      columns={updatedColumns()}
                       joins={currentVersionData.joins as ColumnJoins[]}
                     />
                   </div>

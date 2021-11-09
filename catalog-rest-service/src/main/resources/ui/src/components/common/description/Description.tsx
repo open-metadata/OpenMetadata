@@ -1,5 +1,3 @@
-import classNames from 'classnames';
-import { diffWords } from 'diff';
 import React from 'react';
 import { Table } from '../../../generated/entity/data/table';
 import { getHtmlForNonAdminAction } from '../../../utils/CommonUtils';
@@ -7,6 +5,7 @@ import SVGIcons from '../../../utils/SvgUtils';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import NonAdminAction from '../non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../rich-text-editor/RichTextEditorPreviewer';
+
 type Props = {
   entityName?: string;
   owner?: Table['owner'];
@@ -31,21 +30,6 @@ const Description = ({
   isReadOnly = false,
   entityName,
 }: Props) => {
-  const diff = diffWords('', description);
-  // eslint-disable-next-line
-  const result = diff.map((part: any, index: any) => {
-    return (
-      <span
-        className={classNames(
-          { 'diff-added': part.added },
-          { 'diff-removed': part.removed }
-        )}
-        key={index}>
-        {part.value}
-      </span>
-    );
-  });
-
   return (
     <div className="schema-description tw-flex tw-flex-col tw-h-full tw-min-h-168 tw-relative tw-border tw-border-main tw-rounded-md">
       <div className="tw-flex tw-items-center tw-px-3 tw-py-1 tw-border-b tw-border-main">
@@ -75,13 +59,7 @@ const Description = ({
       <div className="tw-px-3 tw-py-2 tw-overflow-y-auto">
         <div className="tw-pl-3" data-testid="description" id="description">
           {description.trim() ? (
-            <>
-              {isReadOnly ? (
-                result
-              ) : (
-                <RichTextEditorPreviewer markdown={description} />
-              )}
-            </>
+            <RichTextEditorPreviewer markdown={description} />
           ) : (
             <span className="tw-no-description">No description added</span>
           )}
