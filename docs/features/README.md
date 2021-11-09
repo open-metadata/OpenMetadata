@@ -24,7 +24,7 @@ Discover assets through frequently joined tables and columns as measured by the 
 
 ![](../.gitbook/assets/discover-association.gif)
 
-#### Complex Queries
+#### Advanced Search
 
 Find assets matching strict criteria on metadata properties and Boolean operators.
 
@@ -32,7 +32,7 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 For more details on asset metadata properties, please see the documentation on [Discover Your Data.](asset-discovery.md)
 
-#### Support for Complex Data Types
+### Complex Data Types
 
 Add descriptions and tags to nested fields in complex data types like arrays and structs. Locate these assets using keyword search or complex queries.
 
