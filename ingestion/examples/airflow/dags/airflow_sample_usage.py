@@ -78,7 +78,6 @@ config = """
 
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
@@ -87,7 +86,7 @@ def metadata_ingestion_workflow():
 
 
 with DAG(
-    "sample_2_usage",
+    "sample_usage",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     schedule_interval=timedelta(days=1),
