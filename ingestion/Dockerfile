@@ -14,6 +14,7 @@ RUN cp -r /ingestion/examples/airflow/airflow.cfg /airflow/airflow.cfg
 RUN cp -r /ingestion/examples/airflow/plugins /airflow/plugins
 RUN cp -r /ingestion/examples/airflow/plugins/dag_templates /airflow/
 RUN mkdir -p /airflow/dag_generated_configs
+RUN cp -r /ingestion/examples/airflow/plugins/dag_managed_operators /airflow/
 RUN chmod 755 ingestion_dependency.sh
 EXPOSE 8080
 CMD [ "./ingestion_dependency.sh" ]
