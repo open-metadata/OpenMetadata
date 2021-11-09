@@ -65,3 +65,5 @@ Enable the data profiler through metadata ingestion to capture the profile of ta
 Integrate your database, dashboard, messaging, and pipeline services with OpenMetadata.
 
 ![](../.gitbook/assets/connectors-feature.gif)
+
+See the [Connectors](../install/metadata-ingestion/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
