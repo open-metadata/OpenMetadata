@@ -41,8 +41,11 @@ import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.StorageServiceType;
 import org.openmetadata.catalog.type.Column;
+import org.openmetadata.catalog.type.SQLQuery;
+import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
+import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.ColumnConstraint;
 import org.openmetadata.catalog.type.ColumnDataType;
 import org.openmetadata.catalog.type.ColumnJoin;
@@ -50,9 +53,7 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
-import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
-import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
@@ -1050,7 +1051,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Add location to the table
     CreateStorageService createService = new CreateStorageService().withName("s3")
-            .withServiceType(CreateStorageService.StorageServiceType.S3);
+            .withServiceType(StorageServiceType.S3);
     StorageService service = StorageServiceResourceTest.createService(createService, adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.STORAGE_SERVICE);
