@@ -34,6 +34,7 @@ import SearchedData from '../../components/searched-data/SearchedData';
 import {
   getExplorePathWithSearch,
   PAGE_SIZE,
+  ROUTES,
   tableSortingFields,
   visibleFilters,
 } from '../../constants/constants';
@@ -355,13 +356,6 @@ const Explore: React.FC<ExploreProps> = ({
           tabsInfo[selectedTab - 1].path
         ),
       });
-
-      // if (previousIndexCount) {
-      //   // setTimeout because we need to reset previous index count after tab change
-      //   setTimeout(() => {
-      //     setCount(previousIndexCount as number, previsouIndex as string);
-      //   }, 100);
-      // }
     }
   };
   const getTabs = () => {
@@ -416,7 +410,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     if (!isMounting.current) {
-      if (location.pathname === '/explore') {
+      if (location.pathname === ROUTES.EXPLORE) {
         handleIsLoading(true);
         handleIsLoadingForData(true);
         getInitialData();
