@@ -10,11 +10,17 @@ description: >-
 
 #### Keyword Search
 
-Find assets based on name, description, and component metadata (e.g., column name, description) and containing service
+Find assets based on name, description, and component metadata (e.g., column name, description) and containing service.
 
 ![](../.gitbook/assets/asset-discovery-features.gif)
 
 For more details see the [Asset Discovery](asset-discovery.md) documentation.
+
+#### Discover Data through Association
+
+Discover assets through frequently joined tables and columns as measured by the data profiler. You can also discover assets through relationships based on data lineage.
+
+![](../.gitbook/assets/discover-association.gif)
 
 #### Complex Queries
 
