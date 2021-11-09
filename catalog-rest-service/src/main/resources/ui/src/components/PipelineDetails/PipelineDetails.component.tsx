@@ -4,13 +4,12 @@ import { EntityTags } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTeamDetailsPath } from '../../constants/constants';
-import { Dashboard } from '../../generated/entity/data/dashboard';
+import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
-import { LabelType, State, TagLabel } from '../../generated/type/tagLabel';
+import { LabelType, State } from '../../generated/type/tagLabel';
 import { useAuth } from '../../hooks/authHooks';
 import {
   getCurrentUserId,
-  getHtmlForNonAdminAction,
   getUserTeams,
   isEven,
 } from '../../utils/CommonUtils';
@@ -18,52 +17,47 @@ import SVGIcons from '../../utils/SvgUtils';
 import { getTagsWithoutTier } from '../../utils/TableUtils';
 import Description from '../common/description/Description';
 import EntityPageInfo from '../common/entityPageInfo/EntityPageInfo';
-import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import RichTextEditorPreviewer from '../common/rich-text-editor/RichTextEditorPreviewer';
 import TabsPane from '../common/TabsPane/TabsPane';
 import PageContainer from '../containers/PageContainer';
+import Entitylineage from '../EntityLineage/EntityLineage.component';
 import ManageTabComponent from '../ManageTab/ManageTab.component';
 import { ModalWithMarkdownEditor } from '../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TagsContainer from '../tags-container/tags-container';
-import Tags from '../tags/tags';
-import { ChartType, DashboardDetailsProps } from './DashboardDetails.interface';
+import { PipeLineDetailsProp } from './PipelineDetails.interface';
 
-const DashboardDetails = ({
+const PipelineDetails = ({
   entityName,
-  followers,
-  followDashboardHandler,
-  unfollowDashboardHandler,
   owner,
   tagList,
   tier,
-  slashedDashboardName,
+  slashedPipelineName,
+  pipelineTags,
   activeTab,
+  pipelineUrl,
+  pipelineDetails,
+  serviceType,
   setActiveTabHandler,
   description,
-  serviceType,
-  dashboardUrl,
-  dashboardTags,
-  dashboardDetails,
-  users,
   descriptionUpdateHandler,
-  settingsUpdateHandler,
+  entityLineage,
+  followers,
+  users,
+  followPipelineHandler,
+  unfollowPipelineHandler,
   tagUpdateHandler,
-  charts,
-  chartDescriptionUpdateHandler,
-  chartTagUpdateHandler,
-}: DashboardDetailsProps) => {
+  settingsUpdateHandler,
+  tasks,
+  taskUpdateHandler,
+}: PipeLineDetailsProp) => {
   const { isAuthDisabled } = useAuth();
   const [isEdit, setIsEdit] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [editChart, setEditChart] = useState<{
-    chart: ChartType;
+  const [editTask, setEditTask] = useState<{
+    task: Task;
     index: number;
   }>();
-  const [editChartTags, setEditChartTags] = useState<{
-    chart: ChartType;
-    index: number;
-  }>();
+
   const hasEditAccess = () => {
     if (owner?.type === 'user') {
       return owner.id === getCurrentUserId();
@@ -89,6 +83,16 @@ const DashboardDetails = ({
       position: 1,
     },
     {
+      name: 'Lineage',
+      icon: {
+        alt: 'lineage',
+        name: 'icon-lineage',
+        title: 'Lineage',
+      },
+      isProtected: false,
+      position: 2,
+    },
+    {
       name: 'Manage',
       icon: {
         alt: 'manage',
@@ -97,7 +101,7 @@ const DashboardDetails = ({
       },
       isProtected: true,
       protectedState: !owner || hasEditAccess(),
-      position: 2,
+      position: 3,
     },
   ];
 
@@ -115,60 +119,64 @@ const DashboardDetails = ({
     { key: 'Tier', value: tier ? tier.split('.')[1] : '' },
     {
       key: `${serviceType} Url`,
-      value: dashboardUrl,
+      value: pipelineUrl,
       placeholderText: entityName,
       isLink: true,
       openInNewTab: true,
     },
   ];
 
-  const onDescriptionEdit = (): void => {
-    setIsEdit(true);
-  };
-  const onCancel = () => {
-    setIsEdit(false);
-  };
+  const onTaskUpdate = (taskDescription: string) => {
+    if (editTask) {
+      const updatedTasks = [...(pipelineDetails.tasks || [])];
 
-  const onDescriptionUpdate = (updatedHTML: string) => {
-    if (description !== updatedHTML) {
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
-        description: updatedHTML,
+      const updatedTask = {
+        ...editTask.task,
+        description: taskDescription,
       };
-      descriptionUpdateHandler(updatedDashboardDetails);
-      setIsEdit(false);
+      updatedTasks[editTask.index] = updatedTask;
+
+      const updatedPipeline = { ...pipelineDetails, tasks: updatedTasks };
+      const jsonPatch = compare(pipelineDetails, updatedPipeline);
+      taskUpdateHandler(jsonPatch);
+      setEditTask(undefined);
     } else {
-      setIsEdit(false);
+      setEditTask(undefined);
     }
   };
 
-  const onSettingsUpdate = (
-    newOwner?: Dashboard['owner'],
-    newTier?: string
-  ) => {
+  const handleUpdateTask = (task: Task, index: number) => {
+    setEditTask({ task, index });
+  };
+
+  const closeEditTaskModal = (): void => {
+    setEditTask(undefined);
+  };
+
+  const onSettingsUpdate = (newOwner?: Pipeline['owner'], newTier?: string) => {
     if (newOwner || newTier) {
-      const tierTag: Dashboard['tags'] = newTier
+      const tierTag: Pipeline['tags'] = newTier
         ? [
-            ...getTagsWithoutTier(dashboardDetails.tags as Array<EntityTags>),
+            ...getTagsWithoutTier(pipelineDetails.tags as Array<EntityTags>),
             {
               tagFQN: newTier,
               labelType: LabelType.Manual,
               state: State.Confirmed,
             },
           ]
-        : dashboardDetails.tags;
-      const updatedDashboardDetails = {
-        ...dashboardDetails,
+        : pipelineDetails.tags;
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
         owner: newOwner
           ? {
-              ...dashboardDetails.owner,
+              ...pipelineDetails.owner,
               ...newOwner,
             }
-          : dashboardDetails.owner,
+          : pipelineDetails.owner,
         tags: tierTag,
       };
 
-      return settingsUpdateHandler(updatedDashboardDetails);
+      return settingsUpdateHandler(updatedPipelineDetails);
     } else {
       return Promise.reject();
     }
@@ -177,7 +185,7 @@ const DashboardDetails = ({
   const onTagUpdate = (selectedTags?: Array<string>) => {
     if (selectedTags) {
       const prevTags =
-        dashboardDetails?.tags?.filter((tag) =>
+        pipelineDetails?.tags?.filter((tag) =>
           selectedTags.includes(tag?.tagFQN as string)
         ) || [];
       const newTags = selectedTags
@@ -190,80 +198,40 @@ const DashboardDetails = ({
           tagFQN: tag,
         }));
       const updatedTags = [...prevTags, ...newTags];
-      const updatedDashboard = { ...dashboardDetails, tags: updatedTags };
-      tagUpdateHandler(updatedDashboard);
+      const updatedPipeline = { ...pipelineDetails, tags: updatedTags };
+      tagUpdateHandler(updatedPipeline);
     }
   };
-  const followDashboard = () => {
+
+  const onDescriptionEdit = (): void => {
+    setIsEdit(true);
+  };
+  const onCancel = () => {
+    setIsEdit(false);
+  };
+
+  const onDescriptionUpdate = (updatedHTML: string) => {
+    if (description !== updatedHTML) {
+      const updatedPipelineDetails = {
+        ...pipelineDetails,
+        description: updatedHTML,
+      };
+      descriptionUpdateHandler(updatedPipelineDetails);
+      setIsEdit(false);
+    } else {
+      setIsEdit(false);
+    }
+  };
+
+  const followPipeline = () => {
     if (isFollowing) {
       setFollowersCount((preValu) => preValu - 1);
       setIsFollowing(false);
-      unfollowDashboardHandler();
+      unfollowPipelineHandler();
     } else {
       setFollowersCount((preValu) => preValu + 1);
       setIsFollowing(true);
-      followDashboardHandler();
-    }
-  };
-  const handleUpdateChart = (chart: ChartType, index: number) => {
-    setEditChart({ chart, index });
-  };
-  const handleEditChartTag = (chart: ChartType, index: number): void => {
-    setEditChartTags({ chart, index });
-  };
-
-  const closeEditChartModal = (): void => {
-    setEditChart(undefined);
-  };
-  const onChartUpdate = (chartDescription: string) => {
-    if (editChart) {
-      const updatedChart = {
-        ...editChart.chart,
-        description: chartDescription,
-      };
-      const jsonPatch = compare(charts[editChart.index], updatedChart);
-      chartDescriptionUpdateHandler(
-        editChart.index,
-        editChart.chart.id,
-        jsonPatch
-      );
-      setEditChart(undefined);
-    } else {
-      setEditChart(undefined);
-    }
-  };
-
-  const handleChartTagSelection = (selectedTags?: Array<EntityTags>) => {
-    if (selectedTags && editChartTags) {
-      const prevTags = editChartTags.chart.tags?.filter((tag) =>
-        selectedTags.some((selectedTag) => selectedTag.tagFQN === tag.tagFQN)
-      );
-      const newTags = selectedTags
-        .filter(
-          (selectedTag) =>
-            !editChartTags.chart.tags?.some(
-              (tag) => tag.tagFQN === selectedTag.tagFQN
-            )
-        )
-        .map((tag) => ({
-          labelType: 'Manual',
-          state: 'Confirmed',
-          tagFQN: tag.tagFQN,
-        }));
-
-      const updatedChart = {
-        ...editChartTags.chart,
-        tags: [...(prevTags as TagLabel[]), ...newTags],
-      };
-      const jsonPatch = compare(charts[editChartTags.index], updatedChart);
-      chartTagUpdateHandler(
-        editChartTags.index,
-        editChartTags.chart.id,
-        jsonPatch
-      );
-      setEditChartTags(undefined);
-    } else {
-      setEditChartTags(undefined);
+      followPipelineHandler();
     }
   };
 
@@ -287,25 +255,24 @@ const DashboardDetails = ({
             extraInfo={extraInfo}
             followers={followersCount}
             followersList={followers}
-            followHandler={followDashboard}
+            followHandler={followPipeline}
             hasEditAccess={hasEditAccess()}
             isFollowing={isFollowing}
             owner={owner}
             tagList={tagList}
-            tags={dashboardTags}
+            tags={pipelineTags}
             tagsHandler={onTagUpdate}
             tier={tier || ''}
-            titleLinks={slashedDashboardName}
+            titleLinks={slashedPipelineName}
           />
           <div className="tw-mt-1 tw-flex tw-flex-col tw-flex-grow">
             <TabsPane
               activeTab={activeTab}
-              className="tw-flex-initial"
               setActiveTab={setActiveTabHandler}
               tabs={tabs}
             />
 
-            <div className="tw-bg-white tw-flex-grow">
+            <div className="tw-bg-white tw-flex-grow ">
               {activeTab === 1 && (
                 <>
                   <div className="tw-grid tw-grid-cols-4 tw-gap-4 tw-w-full tw-mt-4">
@@ -326,14 +293,13 @@ const DashboardDetails = ({
                     <table className="tw-w-full" data-testid="schema-table">
                       <thead>
                         <tr className="tableHead-row">
-                          <th className="tableHead-cell">Chart Name</th>
-                          <th className="tableHead-cell">Chart Type</th>
+                          <th className="tableHead-cell">Task Name</th>
                           <th className="tableHead-cell">Description</th>
-                          <th className="tableHead-cell tw-w-60">Tags</th>
+                          <th className="tableHead-cell">Task Type</th>
                         </tr>
                       </thead>
                       <tbody className="tableBody">
-                        {charts.map((chart, index) => (
+                        {tasks.map((task, index) => (
                           <tr
                             className={classNames(
                               'tableBody-row',
@@ -343,10 +309,10 @@ const DashboardDetails = ({
                             <td className="tableBody-cell">
                               <Link
                                 target="_blank"
-                                to={{ pathname: chart.chartUrl }}>
+                                to={{ pathname: task.taskUrl }}>
                                 <span className="tw-flex">
                                   <span className="tw-mr-1">
-                                    {chart.displayName}
+                                    {task.displayName}
                                   </span>
                                   <SVGIcons
                                     alt="external-link"
@@ -357,18 +323,15 @@ const DashboardDetails = ({
                                 </span>
                               </Link>
                             </td>
-                            <td className="tableBody-cell">
-                              {chart.chartType}
-                            </td>
                             <td className="tw-group tableBody-cell tw-relative">
                               <div
                                 className="tw-cursor-pointer hover:tw-underline tw-flex"
                                 data-testid="description"
-                                onClick={() => handleUpdateChart(chart, index)}>
+                                onClick={() => handleUpdateTask(task, index)}>
                                 <div>
-                                  {chart.description ? (
+                                  {task.description ? (
                                     <RichTextEditorPreviewer
-                                      markdown={chart.description}
+                                      markdown={task.description}
                                     />
                                   ) : (
                                     <span className="tw-no-description">
@@ -386,49 +349,7 @@ const DashboardDetails = ({
                                 </button>
                               </div>
                             </td>
-                            <td
-                              className="tw-group tw-relative tableBody-cell"
-                              onClick={() => {
-                                if (!editChartTags) {
-                                  handleEditChartTag(chart, index);
-                                }
-                              }}>
-                              <NonAdminAction
-                                html={getHtmlForNonAdminAction(Boolean(owner))}
-                                isOwner={hasEditAccess()}
-                                position="left"
-                                trigger="click">
-                                <TagsContainer
-                                  editable={editChartTags?.index === index}
-                                  selectedTags={chart.tags as EntityTags[]}
-                                  tagList={tagList}
-                                  onCancel={() => {
-                                    handleChartTagSelection();
-                                  }}
-                                  onSelectionChange={(tags) => {
-                                    handleChartTagSelection(tags);
-                                  }}>
-                                  {chart.tags?.length ? (
-                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                      <SVGIcons
-                                        alt="edit"
-                                        icon="icon-edit"
-                                        title="Edit"
-                                        width="10px"
-                                      />
-                                    </button>
-                                  ) : (
-                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                      <Tags
-                                        className="tw-border-main"
-                                        tag="+ Add tag"
-                                        type="outlined"
-                                      />
-                                    </span>
-                                  )}
-                                </TagsContainer>
-                              </NonAdminAction>
-                            </td>
+                            <td className="tableBody-cell">{task.taskType}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -437,6 +358,11 @@ const DashboardDetails = ({
                 </>
               )}
               {activeTab === 2 && (
+                <div className="tw-h-full">
+                  <Entitylineage entityLineage={entityLineage} />
+                </div>
+              )}
+              {activeTab === 3 && (
                 <div className="tw-mt-4">
                   <ManageTabComponent
                     currentTier={tier}
@@ -450,17 +376,17 @@ const DashboardDetails = ({
           </div>
         </div>
       </PageContainer>
-      {editChart && (
+      {editTask && (
         <ModalWithMarkdownEditor
-          header={`Edit Chart: "${editChart.chart.displayName}"`}
-          placeholder="Enter Chart Description"
-          value={editChart.chart.description || ''}
-          onCancel={closeEditChartModal}
-          onSave={onChartUpdate}
+          header={`Edit Task: "${editTask.task.displayName}"`}
+          placeholder="Enter Task Description"
+          value={editTask.task.description || ''}
+          onCancel={closeEditTaskModal}
+          onSave={onTaskUpdate}
         />
       )}
     </>
   );
 };
 
-export default DashboardDetails;
+export default PipelineDetails;
