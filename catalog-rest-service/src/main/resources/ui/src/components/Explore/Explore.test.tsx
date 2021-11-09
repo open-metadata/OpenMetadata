@@ -40,13 +40,7 @@ jest.mock('../../components/searched-data/SearchedData', () => {
     ));
 });
 
-const handleSearchText = jest.fn();
-const updateTableCount = jest.fn();
-const updateTopicCount = jest.fn();
-const updateDashboardCount = jest.fn();
-const updatePipelineCount = jest.fn();
-const handlePathChange = jest.fn();
-const fetchData = jest.fn();
+const mockFunction = jest.fn();
 
 const mockSearchResult = {
   resSearchResults: mockResponse as unknown as SearchResponse,
@@ -60,9 +54,10 @@ describe('Test Explore component', () => {
     const { container } = render(
       <Explore
         error=""
-        fetchData={fetchData}
-        handlePathChange={handlePathChange}
-        handleSearchText={handleSearchText}
+        fetchCount={mockFunction}
+        fetchData={mockFunction}
+        handlePathChange={mockFunction}
+        handleSearchText={mockFunction}
         searchQuery=""
         searchResult={mockSearchResult}
         searchText=""
@@ -74,10 +69,10 @@ describe('Test Explore component', () => {
           dashboard: 8,
           pipeline: 5,
         }}
-        updateDashboardCount={updateDashboardCount}
-        updatePipelineCount={updatePipelineCount}
-        updateTableCount={updateTableCount}
-        updateTopicCount={updateTopicCount}
+        updateDashboardCount={mockFunction}
+        updatePipelineCount={mockFunction}
+        updateTableCount={mockFunction}
+        updateTopicCount={mockFunction}
       />,
       {
         wrapper: MemoryRouter,
