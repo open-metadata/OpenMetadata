@@ -1,5 +1,7 @@
 ---
-description: In this section, we present an overview of OpenMetadata features.
+description: >-
+  OpenMetadata includes a rapidly growing set of features to address common
+  needs in data discovery, quality, observability, and collaboration.
 ---
 
 # Features
@@ -28,7 +30,7 @@ Add descriptions and tags to nested fields in complex data types like arrays and
 
 ![](../.gitbook/assets/complex-data-types.gif)
 
-### Importance and Owners
+### Importance & Owners
 
 #### Filter Assets by Importance
 
