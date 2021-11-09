@@ -16,7 +16,7 @@
 */
 
 import classNames from 'classnames';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isUndefined } from 'lodash';
 import {
   AggregationType,
   FilterObject,
@@ -456,7 +456,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = Boolean(searchIndex);
+      forceSetAgg.current = isUndefined(tab);
       fetchTableData();
     }
   }, [currentPage, filters, sortField, sortOrder]);
