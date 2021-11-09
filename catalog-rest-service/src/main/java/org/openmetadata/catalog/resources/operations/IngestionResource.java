@@ -26,7 +26,10 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
+import org.openmetadata.catalog.ingestion.AirflowRESTClient;
+import org.openmetadata.catalog.ingestion.AirflowUtils;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.IngestionRepository;
 import org.openmetadata.catalog.operations.workflows.Ingestion;
@@ -82,6 +85,8 @@ public class IngestionResource {
     public static final String INGESTION_COLLECTION_PATH = "operations/v1/ingestion/";
     private final IngestionRepository dao;
     private final CatalogAuthorizer authorizer;
+    private AirflowRESTClient airflowRESTClient;
+    private CatalogApplicationConfig config;
 
     public static void addHref(UriInfo uriInfo, EntityReference ref) {
         ref.withHref(RestUtil.getHref(uriInfo, INGESTION_COLLECTION_PATH, ref.getId()));
@@ -104,6 +109,11 @@ public class IngestionResource {
         Objects.requireNonNull(dao, "IngestionRepository must not be null");
         this.dao = new IngestionRepository(dao);
         this.authorizer = authorizer;
+    }
+
+    public void initialize(CatalogApplicationConfig config) throws IOException {
+        this.airflowRESTClient = new AirflowRESTClient(config);
+        this.config = config;
     }
 
     public static class IngestionList extends ResultList<Ingestion> {
@@ -255,6 +265,8 @@ public class IngestionResource {
                            @Valid CreateIngestion create) throws IOException, ParseException {
         SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
         Ingestion ingestion = getIngestion(securityContext, create);
+        deploy(ingestion);
+        // write to db only when the deployment is successful
         ingestion = addHref(uriInfo, dao.create(ingestion));
         return Response.created(ingestion.getHref()).entity(ingestion).build();
     }
@@ -297,9 +309,29 @@ public class IngestionResource {
                                    @Context SecurityContext securityContext,
                                    @Valid CreateIngestion create) throws IOException, ParseException {
         Ingestion ingestion = getIngestion(securityContext, create);
+        deploy(ingestion);
+        // write to db only when the deployment is successful
         PutResponse<Ingestion> response = dao.createOrUpdate(ingestion);
         ingestion = addHref(uriInfo, response.getEntity());
         return Response.status(response.getStatus()).entity(ingestion).build();
+    }
+
+    @POST
+    @Path("/trigger/{id}")
+    @Operation(summary = "Trigger a ingestion workflow run", tags = "ingestion",
+            description = "Trigger a ingestion workflow run by ingestion name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The ingestion",
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = Ingestion.class))),
+                    @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+            })
+    public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
+                                   @Context SecurityContext securityContext) throws IOException, ParseException {
+        Fields fields = new Fields(FIELD_LIST, "");
+        Ingestion ingestion = dao.get(id, fields);
+        airflowRESTClient.runPipeline(ingestion.getName());
+        return addHref(uriInfo, dao.get(id, fields));
     }
 
 
@@ -334,5 +366,12 @@ public class IngestionResource {
                 .withService(create.getService())
                 .withUpdatedBy(securityContext.getUserPrincipal().getName())
                 .withUpdatedAt(new Date());
+    }
+
+    private void deploy(Ingestion ingestion) {
+        if (ingestion.getForceDeploy()) {
+            if (airflowRESTClient != null)
+            airflowRESTClient.deploy(ingestion, config);
+        }
     }
 }

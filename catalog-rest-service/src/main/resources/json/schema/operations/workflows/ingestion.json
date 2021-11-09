@@ -86,7 +86,12 @@
           "type": "string"
         },
         "host": {
-          "description": "Host and port of the data source."
+          "description": "Host and port of the data source.",
+          "type": "string"
+        },
+        "database": {
+          "description": "Database of the data source.",
+          "type": "string"
         },
         "includeViews": {
           "description": "optional configuration to turn off fetching metadata for views.",

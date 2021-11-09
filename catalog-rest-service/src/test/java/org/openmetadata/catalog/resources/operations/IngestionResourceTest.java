@@ -194,6 +194,13 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
+    public void post_IngestionWithDeploy_4xx(TestInfo test) {
+        CreateIngestion create = create(test).withService(BIGQUERY_REFERENCE).withForceDeploy(true);
+        HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
+                createIngestion(create, adminAuthHeaders()));
+    }
+
+    @Test
     public void post_IngestionWithNonExistentOwner_4xx(TestInfo test) {
         EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
         CreateIngestion create = create(test).withOwner(owner);
