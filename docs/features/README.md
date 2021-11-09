@@ -42,7 +42,7 @@ Add descriptions and tags to nested fields in complex data types like arrays and
 
 User Tier tags and usage data to identify the relative importance of data assets.&#x20;
 
-![](../.gitbook/assets/asset-importance.gif)
+![](<../.gitbook/assets/asset-importance (1).gif>)
 
 #### Identify Asset Owners
 
