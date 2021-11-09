@@ -17,57 +17,51 @@
  */
 
 /**
- * Create Model entity request
+ * Create Location entity request
  */
-export interface CreateModel {
+export interface CreateLocation {
   /**
-   * Algorithm used to train the model
-   */
-  algorithm: string;
-  /**
-   * Performance Dashboard URL to track metric evolution
-   */
-  dashboard?: EntityReference;
-  /**
-   * Description of the model instance. How it was trained and for what it is used.
+   * Description of the location instance.
    */
   description?: string;
+  locationType?: LocationType;
   /**
-   * Display Name that identifies this model. It could be title or label from the source
-   * services
-   */
-  displayName?: string;
-  /**
-   * Features used to train the ML Model.
-   */
-  mlFeatures?: MlFeature[];
-  /**
-   * Hyper Parameters used to train the ML Model.
-   */
-  mlHyperParameters?: MlHyperParameter[];
-  /**
-   * Name that identifies this model.
+   * Name that identifies this Location.
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this Location
    */
   owner?: EntityReference;
   /**
-   * Tags for this model
+   * Link to the pipeline service where this location is used
+   */
+  service: EntityReference;
+  /**
+   * Tags for this chart
    */
   tags?: TagLabel[];
 }
 
 /**
- * Performance Dashboard URL to track metric evolution
+ * This schema defines the type used for describing different types of Location.
+ */
+export enum LocationType {
+  Bucket = 'Bucket',
+  Database = 'Database',
+  Prefix = 'Prefix',
+  Table = 'Table',
+}
+
+/**
+ * Owner of this Location
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this database
+ * Link to the pipeline service where this location is used
  */
 export interface EntityReference {
   /**
@@ -96,80 +90,6 @@ export interface EntityReference {
    * `bigquery`, `snowflake`...
    */
   type: string;
-}
-
-/**
- * This schema defines the type for a ML Feature used in a Model.
- */
-export interface MlFeature {
-  /**
-   * Data type of the column (numerical vs. categorical).
-   */
-  dataType?: FeatureType;
-  /**
-   * Description of the ML Feature.
-   */
-  description?: string;
-  /**
-   * Description of the algorithm used to compute the feature, e.g., PCA, bucketing...
-   */
-  featureAlgorithm?: string;
-  /**
-   * Columns used to create the ML Feature
-   */
-  featureSources?: FeatureSource[];
-  fullyQualifiedName?: string;
-  name?: string;
-  /**
-   * Tags associated with the feature.
-   */
-  tags?: TagLabel[];
-}
-
-/**
- * Data type of the column (numerical vs. categorical).
- *
- * This enum defines the type of data stored in a ML Feature.
- */
-export enum FeatureType {
-  Categorical = 'categorical',
-  Numerical = 'numerical',
-}
-
-/**
- * This schema defines the sources of a ML Feature.
- */
-export interface FeatureSource {
-  /**
-   * Data type of the source (int, date etc.).
-   */
-  dataType?: FeatureSourceDataType;
-  /**
-   * Description of the feature source.
-   */
-  description?: string;
-  fullyQualifiedName?: string;
-  name?: string;
-  /**
-   * Tags associated with the feature source.
-   */
-  tags?: TagLabel[];
-}
-
-/**
- * Data type of the source (int, date etc.).
- *
- * This enum defines the type of data of a ML Feature source.
- */
-export enum FeatureSourceDataType {
-  Array = 'array',
-  Boolean = 'boolean',
-  Date = 'date',
-  Integer = 'integer',
-  Number = 'number',
-  Object = 'object',
-  String = 'string',
-  Timestamp = 'timestamp',
 }
 
 /**
@@ -217,22 +137,4 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * This schema defines the type for a ML HyperParameter used in a Model.
- */
-export interface MlHyperParameter {
-  /**
-   * Description of the Hyper Parameter.
-   */
-  description?: string;
-  /**
-   * Hyper parameter name
-   */
-  name?: string;
-  /**
-   * Hyper parameter value
-   */
-  value?: string;
 }

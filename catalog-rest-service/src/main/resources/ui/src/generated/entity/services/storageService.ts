@@ -17,49 +17,37 @@
  */
 
 /**
- * This schema defines the Dashboard Service entity, such as Looker and Superset.
+ * This schema defines the Storage Service entity, such as S3, GCS, HDFS.
  */
-export interface DashboardService {
+export interface StorageService {
   /**
    * Change that lead to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.
-   */
-  dashboardUrl: string;
-  /**
-   * Description of a dashboard service instance.
+   * Description of a storage service instance.
    */
   description?: string;
   /**
-   * Display Name that identifies this dashboard service.
+   * Display Name that identifies this storage service.
    */
   displayName?: string;
   /**
-   * Link to the resource corresponding to this dashboard service.
+   * Link to the resource corresponding to this storage service.
    */
-  href?: string;
+  href: string;
   /**
-   * Unique identifier of this dashboard service instance.
+   * Unique identifier of this storage service instance.
    */
   id: string;
   /**
-   * Schedule for running metadata ingestion jobs.
-   */
-  ingestionSchedule?: Schedule;
-  /**
-   * Name that identifies this dashboard service.
+   * Name that identifies this storage service.
    */
   name: string;
   /**
-   * Password to log-into Dashboard Service.
+   * Type of storage service such as S3, GCS, HDFS...
    */
-  password?: string;
-  /**
-   * Type of dashboard service such as Looker or Superset...
-   */
-  serviceType: DashboardServiceType;
+  serviceType: StorageServiceType;
   /**
    * Last update time corresponding to the new version of the entity.
    */
@@ -68,10 +56,6 @@ export interface DashboardService {
    * User who made the update.
    */
   updatedBy?: string;
-  /**
-   * Username to log-into Dashboard Service.
-   */
-  username?: string;
   /**
    * Metadata version of the entity.
    */
@@ -117,30 +101,10 @@ export interface FieldChange {
 }
 
 /**
- * Schedule for running metadata ingestion jobs.
- *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * Type of storage service such as S3, GCS, HDFS...
  */
-export interface Schedule {
-  /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
-   */
-  repeatFrequency?: string;
-  /**
-   * Start date and time of the schedule.
-   */
-  startDate?: Date;
-}
-
-/**
- * Type of dashboard service such as Looker or Superset...
- *
- * Type of Dashboard service - Superset, Looker, Redash or Tableau.
- */
-export enum DashboardServiceType {
-  Looker = 'Looker',
-  Redash = 'Redash',
-  Superset = 'Superset',
-  Tableau = 'Tableau',
+export enum StorageServiceType {
+  Gcs = 'GCS',
+  Hdfs = 'HDFS',
+  S3 = 'S3',
 }

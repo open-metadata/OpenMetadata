@@ -17,57 +17,119 @@
  */
 
 /**
- * Create Model entity request
+ * This schema defines the Location entity. A Location can contain the data of a table or
+ * group other sublocation together
  */
-export interface CreateModel {
+export interface Location {
   /**
-   * Algorithm used to train the model
+   * Change that lead to this version of the entity.
    */
-  algorithm: string;
+  changeDescription?: ChangeDescription;
   /**
-   * Performance Dashboard URL to track metric evolution
-   */
-  dashboard?: EntityReference;
-  /**
-   * Description of the model instance. How it was trained and for what it is used.
+   * Description of a location.
    */
   description?: string;
   /**
-   * Display Name that identifies this model. It could be title or label from the source
-   * services
+   * Display Name that identifies this table. It could be title or label from the source
+   * services.
    */
   displayName?: string;
   /**
-   * Features used to train the ML Model.
+   * Followers of this location.
    */
-  mlFeatures?: MlFeature[];
+  followers?: EntityReference[];
   /**
-   * Hyper Parameters used to train the ML Model.
+   * Fully qualified name of a location in the form `serviceName:/name`.
    */
-  mlHyperParameters?: MlHyperParameter[];
+  fullyQualifiedName?: string;
   /**
-   * Name that identifies this model.
+   * Link to this location resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier of this location instance.
+   */
+  id?: string;
+  locationType?: LocationType;
+  /**
+   * Name of a location without the service. s3://bucket/path1/path2 -> /bucket/path1/path2
    */
   name: string;
   /**
-   * Owner of this database
+   * Owner of this location.
    */
   owner?: EntityReference;
   /**
-   * Tags for this model
+   * Link to the database cluster/service where this database is hosted in.
+   */
+  service: EntityReference;
+  /**
+   * Tags for this location.
    */
   tags?: TagLabel[];
+  /**
+   * Last update time corresponding to the new version of the entity.
+   */
+  updatedAt?: Date;
+  /**
+   * User who made the update.
+   */
+  updatedBy?: string;
+  /**
+   * Metadata version of the entity.
+   */
+  version?: number;
 }
 
 /**
- * Performance Dashboard URL to track metric evolution
+ * Change that lead to this version of the entity.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Names of fields added during the version changes.
+   */
+  fieldsAdded?: FieldChange[];
+  /**
+   * Fields deleted during the version changes with old value before deleted.
+   */
+  fieldsDeleted?: FieldChange[];
+  /**
+   * Fields modified during the version changes with old and new values.
+   */
+  fieldsUpdated?: FieldChange[];
+  previousVersion?: number;
+}
+
+export interface FieldChange {
+  /**
+   * Name of the entity field that changed
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
+}
+
+/**
+ * Followers of this location.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Owner of this database
+ * Owner of this location.
+ *
+ * Link to the database cluster/service where this database is hosted in.
  */
 export interface EntityReference {
   /**
@@ -99,77 +161,13 @@ export interface EntityReference {
 }
 
 /**
- * This schema defines the type for a ML Feature used in a Model.
+ * This schema defines the type used for describing different types of Location.
  */
-export interface MlFeature {
-  /**
-   * Data type of the column (numerical vs. categorical).
-   */
-  dataType?: FeatureType;
-  /**
-   * Description of the ML Feature.
-   */
-  description?: string;
-  /**
-   * Description of the algorithm used to compute the feature, e.g., PCA, bucketing...
-   */
-  featureAlgorithm?: string;
-  /**
-   * Columns used to create the ML Feature
-   */
-  featureSources?: FeatureSource[];
-  fullyQualifiedName?: string;
-  name?: string;
-  /**
-   * Tags associated with the feature.
-   */
-  tags?: TagLabel[];
-}
-
-/**
- * Data type of the column (numerical vs. categorical).
- *
- * This enum defines the type of data stored in a ML Feature.
- */
-export enum FeatureType {
-  Categorical = 'categorical',
-  Numerical = 'numerical',
-}
-
-/**
- * This schema defines the sources of a ML Feature.
- */
-export interface FeatureSource {
-  /**
-   * Data type of the source (int, date etc.).
-   */
-  dataType?: FeatureSourceDataType;
-  /**
-   * Description of the feature source.
-   */
-  description?: string;
-  fullyQualifiedName?: string;
-  name?: string;
-  /**
-   * Tags associated with the feature source.
-   */
-  tags?: TagLabel[];
-}
-
-/**
- * Data type of the source (int, date etc.).
- *
- * This enum defines the type of data of a ML Feature source.
- */
-export enum FeatureSourceDataType {
-  Array = 'array',
-  Boolean = 'boolean',
-  Date = 'date',
-  Integer = 'integer',
-  Number = 'number',
-  Object = 'object',
-  String = 'string',
-  Timestamp = 'timestamp',
+export enum LocationType {
+  Bucket = 'Bucket',
+  Database = 'Database',
+  Prefix = 'Prefix',
+  Table = 'Table',
 }
 
 /**
@@ -217,22 +215,4 @@ export enum LabelType {
 export enum State {
   Confirmed = 'Confirmed',
   Suggested = 'Suggested',
-}
-
-/**
- * This schema defines the type for a ML HyperParameter used in a Model.
- */
-export interface MlHyperParameter {
-  /**
-   * Description of the Hyper Parameter.
-   */
-  description?: string;
-  /**
-   * Hyper parameter name
-   */
-  name?: string;
-  /**
-   * Hyper parameter value
-   */
-  value?: string;
 }

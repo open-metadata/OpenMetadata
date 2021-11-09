@@ -17,51 +17,53 @@
  */
 
 /**
- * This schema defines the Dashboard Service entity, such as Looker and Superset.
+ * This schema defines the Policy entity. A Policy defines lifecycle or access control that
+ * needs to be applied across different Data Entities.
  */
-export interface DashboardService {
+export interface Policy {
   /**
-   * Change that lead to this version of the entity.
+   * Change that led to this version of the entity.
    */
   changeDescription?: ChangeDescription;
   /**
-   * Dashboard Service URL. This will be used to make REST API calls to Dashboard Service.
-   */
-  dashboardUrl: string;
-  /**
-   * Description of a dashboard service instance.
+   * A short description of the Policy, comprehensible to regular users.
    */
   description?: string;
   /**
-   * Display Name that identifies this dashboard service.
+   * Title for this Policy.
    */
   displayName?: string;
   /**
-   * Link to the resource corresponding to this dashboard service.
+   * Is the policy enabled.
+   */
+  enabled?: boolean;
+  /**
+   * Name that uniquely identifies a Policy.
+   */
+  fullyQualifiedName?: string;
+  /**
+   * Link to the resource corresponding to this entity.
    */
   href?: string;
   /**
-   * Unique identifier of this dashboard service instance.
+   * Unique identifier that identifies this Policy.
    */
   id: string;
   /**
-   * Schedule for running metadata ingestion jobs.
-   */
-  ingestionSchedule?: Schedule;
-  /**
-   * Name that identifies this dashboard service.
+   * Name that identifies this Policy.
    */
   name: string;
   /**
-   * Password to log-into Dashboard Service.
+   * Owner of this Policy.
    */
-  password?: string;
+  owner: EntityReference;
+  policyType: PolicyType;
   /**
-   * Type of dashboard service such as Looker or Superset...
+   * Link to a well documented definition of this Policy.
    */
-  serviceType: DashboardServiceType;
+  policyUrl?: string;
   /**
-   * Last update time corresponding to the new version of the entity.
+   * Last update time corresponding to the new version of the Policy.
    */
   updatedAt?: Date;
   /**
@@ -69,17 +71,13 @@ export interface DashboardService {
    */
   updatedBy?: string;
   /**
-   * Username to log-into Dashboard Service.
-   */
-  username?: string;
-  /**
-   * Metadata version of the entity.
+   * Metadata version of the Policy.
    */
   version?: number;
 }
 
 /**
- * Change that lead to this version of the entity.
+ * Change that led to this version of the entity.
  *
  * Description of the change.
  */
@@ -117,30 +115,46 @@ export interface FieldChange {
 }
 
 /**
- * Schedule for running metadata ingestion jobs.
+ * Owner of this Policy.
  *
- * This schema defines the type used for the schedule. The schedule has a start time and
- * repeat frequency.
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
  */
-export interface Schedule {
+export interface EntityReference {
   /**
-   * Repeat frequency in ISO 8601 duration format. Example - 'P23DT23H'.
+   * Optional description of entity.
    */
-  repeatFrequency?: string;
+  description?: string;
   /**
-   * Start date and time of the schedule.
+   * Display Name that identifies this entity.
    */
-  startDate?: Date;
+  displayName?: string;
+  /**
+   * Link to the entity resource.
+   */
+  href?: string;
+  /**
+   * Unique identifier that identifies an entity instance.
+   */
+  id: string;
+  /**
+   * Name of the entity instance. For entities such as tables, databases where the name is not
+   * unique, fullyQualifiedName is returned in this field.
+   */
+  name?: string;
+  /**
+   * Entity type/class name - Examples: `database`, `table`, `metrics`, `redshift`, `mysql`,
+   * `bigquery`, `snowflake`...
+   */
+  type: string;
 }
 
 /**
- * Type of dashboard service such as Looker or Superset...
- *
- * Type of Dashboard service - Superset, Looker, Redash or Tableau.
+ * This schema defines the type used for describing different types of policies.
  */
-export enum DashboardServiceType {
-  Looker = 'Looker',
-  Redash = 'Redash',
-  Superset = 'Superset',
-  Tableau = 'Tableau',
+export enum PolicyType {
+  AccessControl = 'AccessControl',
+  Lifecycle = 'Lifecycle',
 }
