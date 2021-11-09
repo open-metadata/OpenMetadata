@@ -8,7 +8,7 @@ description: >-
 
 ### Discover Your Data
 
-Discover your data through keyword search, associated data (e.g., frequently joined tables, lineage), and complex queries. OpenMetadata supports discovery across tables, topics, dashboards, pipelines, and a their components (e.g., columns, charts) through metadata annotations and data profiling. OpenMetadata includes support for discovery based on complex data types such as arrays and structs.
+OpenMetadata enables you to discover your data using a variety of strategies, including: keyword search, data associations (e.g., frequently joined tables, lineage), and complex queries. Using OpenMetadata you can search across tables, topics, dashboards, pipelines, and services. The OpenMetadata standard and discovery UI provides for fine-grained and detailed metadata for assets and a their components (e.g., columns, charts), including support for complex data types such as arrays and structs.
 
 #### Keyword Search
 
@@ -16,7 +16,7 @@ Find assets based on name, description, component metadata (e.g., for columns, c
 
 ![](../.gitbook/assets/asset-discovery-features.gif)
 
-For more details see the documentation on [Discover Your Data.](discover-your-data.md)
+For more details see the documentation on [Discover Your Data.](asset-discovery.md)
 
 #### Discover Data through Association
 
@@ -30,7 +30,7 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 ![](../.gitbook/assets/complex-queries.gif)
 
-For more details on asset metadata properties, please see the documentation on [Discover Your Data.](discover-your-data.md)
+For more details on asset metadata properties, please see the documentation on [Discover Your Data.](asset-discovery.md)
 
 #### Support for Complex Data Types
 

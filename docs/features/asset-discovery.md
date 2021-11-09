@@ -2,7 +2,7 @@
 description: In this section, we present an overview of asset discovery in OpenMetadata.
 ---
 
-# Asset Discovery
+# Discover Your Data
 
 OpenMetadata provides a search user interface (UI) that enables you to find data assets based on simple keyword queries or complex queries. The figures below provide examples of each type of query.
 
