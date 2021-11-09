@@ -32,6 +32,7 @@ import {
   emptyValue,
   getCurrentIndex,
   getCurrentTab,
+  getQueryParam,
   INITIAL_FROM,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
@@ -39,6 +40,7 @@ import {
   ZERO_SIZE,
 } from '../../constants/explore.constants';
 import { SearchIndex } from '../../enums/search.enum';
+import { getFilterString } from '../../utils/FilterUtils';
 import { getTotalEntityCountByService } from '../../utils/ServiceUtils';
 
 const ExplorePage: FunctionComponent = () => {
@@ -187,7 +189,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: PAGE_SIZE,
-        filters: emptyValue,
+        filters: getFilterString(getQueryParam(location.search)),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -196,7 +198,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: getFilterString(getQueryParam(location.search)),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -205,7 +207,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: getFilterString(getQueryParam(location.search)),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),
@@ -214,7 +216,7 @@ const ExplorePage: FunctionComponent = () => {
         queryString: searchText,
         from: INITIAL_FROM,
         size: ZERO_SIZE,
-        filters: emptyValue,
+        filters: getFilterString(getQueryParam(location.search)),
         sortField: initialSortField,
         sortOrder: INITIAL_SORT_ORDER,
         searchIndex: getCurrentIndex(tab),

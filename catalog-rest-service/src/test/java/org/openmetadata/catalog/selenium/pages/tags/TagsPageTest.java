@@ -20,7 +20,6 @@ import com.github.javafaker.Faker;
 import org.openmetadata.catalog.selenium.events.Events;
 import org.openmetadata.catalog.selenium.properties.Property;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -80,22 +79,17 @@ public class TagsPageTest {
         openTagsPage();
         Events.click(webDriver, By.cssSelector("[data-testid='add-category']"));
         wait.until(ExpectedConditions.elementToBeClickable(webDriver.findElement(By.name("name"))));
-        webDriver.findElement(By.name("name")).sendKeys(tagCategoryDisplayName);
+        Events.sendKeys(webDriver, By.name("name"), tagCategoryDisplayName);
         Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     }
 
@@ -106,8 +100,7 @@ public class TagsPageTest {
         Events.click(webDriver, By.xpath("//*[text()[contains(.,'"+ tagCategoryDisplayName +"')]] "));
         Events.click(webDriver, By.cssSelector("[data-testid='add-description']"));
         wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(enterDescription)));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -119,22 +112,17 @@ public class TagsPageTest {
         // Select the created listed team
         Events.click(webDriver, By.cssSelector("[data-testid='add-new-tag-button']"));
         wait.until(ExpectedConditions.elementToBeClickable(By.name("name")));
-        webDriver.findElement(By.name("name")).sendKeys(tagDisplayName);
+        Events.sendKeys(webDriver, By.name("name"), tagDisplayName);
         Events.click(webDriver, By.cssSelector("[data-testid='boldButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='italicButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.xpath(enterDescription));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(Keys.ENTER);
+        Events.sendEnter(webDriver, By.xpath(enterDescription));
         Events.click(webDriver, By.cssSelector("[data-testid='linkButton']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.xpath(enterDescription)))).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("[data-testid='saveButton']")));
         Events.click(webDriver, By.cssSelector("[data-testid='saveButton']"));
     }
@@ -148,7 +136,7 @@ public class TagsPageTest {
         actions.moveToElement(webDriver.findElement(By.cssSelector("[data-testid='editTagDescription']"))).perform();
         Events.click(webDriver, By.cssSelector("[data-testid='editTagDescription']"));
         wait.until(ExpectedConditions.elementToBeClickable(By.xpath(enterDescription)));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -162,9 +150,7 @@ public class TagsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 0; i <=1; i++){
-            wait.until(ExpectedConditions.elementToBeClickable(
-                    webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
-                    .sendKeys("P");
+            Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
             Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         }
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
@@ -196,9 +182,8 @@ public class TagsPageTest {
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
-                .sendKeys(tagCategoryDisplayName + "." + tagDisplayName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"),
+                tagCategoryDisplayName + "." + tagDisplayName);
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
         Events.click(webDriver, By.cssSelector("[data-testid='menu-button'][id='menu-button-Settings']")); // Setting

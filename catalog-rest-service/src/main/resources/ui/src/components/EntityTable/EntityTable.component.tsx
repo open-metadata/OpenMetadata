@@ -562,7 +562,9 @@ const EntityTable = ({
                             ) : null}
                           </div>
                           {checkIfJoinsAvailable(row.original.name) && (
-                            <div className="tw-mt-3">
+                            <div
+                              className="tw-mt-3"
+                              data-testid="frequently-joined-columns">
                               <span className="tw-text-grey-muted tw-mr-1">
                                 Frequently joined columns:
                               </span>

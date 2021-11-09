@@ -16,7 +16,7 @@
 */
 
 import { lowerCase } from 'lodash';
-import { AggregationType, Bucket } from 'Models';
+import { AggregationType, Bucket, FilterObject } from 'Models';
 import { SearchIndex } from '../enums/search.enum';
 import { Icons } from '../utils/SvgUtils';
 import { tableSortingFields, tiers, topicSortingFields } from './constants';
@@ -40,6 +40,24 @@ export const getBucketList = (buckets: Array<Bucket>) => {
   });
 
   return bucketList ?? [];
+};
+
+export const getQueryParam = (urlSearchQuery = ''): FilterObject => {
+  const arrSearchQuery = urlSearchQuery
+    ? urlSearchQuery.startsWith('?')
+      ? urlSearchQuery.substr(1).split('&')
+      : urlSearchQuery.split('&')
+    : [];
+
+  return arrSearchQuery
+    .map((filter) => {
+      const arrFilter = filter.split('=');
+
+      return { [arrFilter[0]]: [arrFilter[1]] };
+    })
+    .reduce((prev, curr) => {
+      return Object.assign(prev, curr);
+    }, {}) as FilterObject;
 };
 
 export const getAggrWithDefaultValue = (

@@ -78,7 +78,7 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Last Updated
         Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Events.click(webDriver, By.cssSelector("[data-testid='edit-description']"));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -93,9 +93,7 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.cssSelector("[data-testid='tags']"));
         Events.click(webDriver, By.cssSelector("[data-testid='associatedTagName']"));
         for (int i = 1; i <=2; i++){
-            wait.until(ExpectedConditions.elementToBeClickable(
-                            webDriver.findElement(By.cssSelector("[data-testid='associatedTagName']"))))
-                    .sendKeys("P");
+            Events.sendKeys(webDriver, By.cssSelector("[data-testid='associatedTagName']"), "P");
             Events.click(webDriver, By.cssSelector("[data-testid='list-item']"));
         }
         Events.click(webDriver, By.cssSelector("[data-testid='saveAssociatedTag']"));
@@ -126,7 +124,7 @@ public class PipelineDetailsPageTest {
         Thread.sleep(waitTime);
         actions.moveToElement(webDriver.findElement(By.xpath("//div[@data-testid='description']/button"))).perform();
         Events.click(webDriver, By.xpath("//div[@data-testid='description']/button"));
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
     }
 
@@ -134,7 +132,7 @@ public class PipelineDetailsPageTest {
     @Order(6)
     public void checkLineage() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(pipelineName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), pipelineName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id ='sample_airflowdim_product_etl']"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[2]"));
         for (int i=1; i<=3; i++) {
@@ -153,9 +151,7 @@ public class PipelineDetailsPageTest {
         Events.click(webDriver, By.xpath("(//a[@data-testid='table-link'])[last()]"));
         Events.click(webDriver, By.xpath("(//button[@data-testid='tab'])[3]"));
         Events.click(webDriver, By.cssSelector("[data-testid='owner-dropdown']")); // Owner
-        wait.until(ExpectedConditions.elementToBeClickable(
-                webDriver.findElement(By.cssSelector("[data-testid='searchInputText']"))));
-        webDriver.findElement(By.cssSelector("[data-testid='searchInputText']")).sendKeys("Cloud");
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchInputText']"), "Cloud");
         Events.click(webDriver, By.cssSelector("[data-testid='list-item']")); // Select User/Team
         Events.click(webDriver, By.cssSelector("[data-testid='card-list']")); // Select Tier
         Events.click(webDriver, By.cssSelector("[data-testid='saveManageTab']")); // Save
@@ -167,12 +163,12 @@ public class PipelineDetailsPageTest {
     @Order(8)
     public void checkBreadCrumb() throws InterruptedException {
         openExplorePage();
-        webDriver.findElement(By.cssSelector("[data-testid='searchBox']")).sendKeys(pipelineName);
+        Events.sendKeys(webDriver, By.cssSelector("[data-testid='searchBox']"), pipelineName);
         Events.click(webDriver, By.cssSelector("[data-testid='data-name'][id ='sample_airflowdim_product_etl']"));
         Thread.sleep(waitTime);
         Events.click(webDriver, By.cssSelector("[data-testid='breadcrumb-link']"));
         Events.click(webDriver, By.cssSelector("[data-testid='description-edit']")); // edit description
-        webDriver.findElement(By.xpath(enterDescription)).sendKeys(faker.address().toString());
+        Events.sendKeys(webDriver, By.xpath(enterDescription), faker.address().toString());
         Events.click(webDriver, By.cssSelector("[data-testid='save']"));
         for (int i = 1; i <= 3; i++) { //check topics in service
             Events.click(webDriver, By.xpath("(//tr[@data-testid='column']//td[1]/a)" + "[" + i + "]")); // pipelines

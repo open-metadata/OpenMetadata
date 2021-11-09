@@ -73,6 +73,7 @@ const FrequentlyJoinedTables: FunctionComponent<Props> = ({
             key={index}>
             <span
               className="link-text"
+              data-testid="more-related-tables-data"
               onClick={() =>
                 handleTableClick(table.fullyQualifiedName as string)
               }>

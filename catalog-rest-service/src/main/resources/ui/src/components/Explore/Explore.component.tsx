@@ -42,6 +42,7 @@ import {
   getAggrWithDefaultValue,
   getCurrentIndex,
   getCurrentTab,
+  getQueryParam,
   INITIAL_SORT_FIELD,
   INITIAL_SORT_ORDER,
   tabsInfo,
@@ -56,24 +57,6 @@ import { getFilterString } from '../../utils/FilterUtils';
 import { dropdownIcon as DropDownIcon } from '../../utils/svgconstant';
 import SVGIcons from '../../utils/SvgUtils';
 import { ExploreProps } from './explore.interface';
-
-const getQueryParam = (urlSearchQuery = ''): FilterObject => {
-  const arrSearchQuery = urlSearchQuery
-    ? urlSearchQuery.startsWith('?')
-      ? urlSearchQuery.substr(1).split('&')
-      : urlSearchQuery.split('&')
-    : [];
-
-  return arrSearchQuery
-    .map((filter) => {
-      const arrFilter = filter.split('=');
-
-      return { [arrFilter[0]]: [arrFilter[1]] };
-    })
-    .reduce((prev, curr) => {
-      return Object.assign(prev, curr);
-    }, {}) as FilterObject;
-};
 
 const Explore: React.FC<ExploreProps> = ({
   tabCounts,
