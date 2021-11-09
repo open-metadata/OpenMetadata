@@ -66,6 +66,7 @@ const Explore: React.FC<ExploreProps> = ({
   searchResult,
   sortValue,
   error,
+  fetchCount,
   handlePathChange,
   handleSearchText,
   fetchData,
@@ -99,10 +100,6 @@ const Explore: React.FC<ExploreProps> = ({
   const isMounting = useRef(true);
   const forceSetAgg = useRef(false);
   const previsouIndex = usePrevious(searchIndex);
-  const keyOfPreviousIndex = searchIndex.split(
-    '_'
-  )[0] as keyof ExploreProps['tabCounts'];
-  const previousIndexCount = usePrevious(tabCounts[keyOfPreviousIndex]);
 
   const handleSelectedFilter = (
     checked: boolean,
@@ -136,6 +133,7 @@ const Explore: React.FC<ExploreProps> = ({
     setFilters((prevFilters) => {
       return {
         ...prevFilters,
+        ...getQueryParam(location.search),
         [type]: [],
       };
     });
@@ -250,7 +248,7 @@ const Explore: React.FC<ExploreProps> = ({
   };
 
   const getFacetedFilter = () => {
-    const facetFilters: FilterObject = filterObject;
+    const facetFilters: FilterObject = cloneDeep(filterObject);
     for (const key in filters) {
       if (visibleFilters.includes(key)) {
         facetFilters[key as keyof typeof filterObject] =
@@ -354,14 +352,8 @@ const Explore: React.FC<ExploreProps> = ({
           searchQuery,
           tabsInfo[selectedTab - 1].path
         ),
+        search: location.search,
       });
-
-      if (previousIndexCount) {
-        // setTimeout because we need to reset previous index count after tab change
-        setTimeout(() => {
-          setCount(previousIndexCount as number, previsouIndex as string);
-        }, 100);
-      }
     }
   };
   const getTabs = () => {
@@ -412,6 +404,9 @@ const Explore: React.FC<ExploreProps> = ({
     setCurrentTab(getCurrentTab(tab));
     setSearchIndex(getCurrentIndex(tab));
     setCurrentPage(1);
+    if (!isMounting.current) {
+      fetchCount();
+    }
   }, [tab]);
 
   useEffect(() => {
@@ -461,7 +456,7 @@ const Explore: React.FC<ExploreProps> = ({
 
   useEffect(() => {
     if (!isMounting.current && previsouIndex === getCurrentIndex(tab)) {
-      forceSetAgg.current = false;
+      forceSetAgg.current = Boolean(searchIndex);
       fetchTableData();
     }
   }, [currentPage, filters, sortField, sortOrder]);
