@@ -68,7 +68,7 @@ Build trust in your data by creating tests to monitor that the data is complete,
 
 #### Data Profiler
 
-Enable the data profiler through metadata ingestion to capture the profile of tables over a period of time. This will help your users check for null values in non-null columns, for duplicates in a unique column, etc. Understand column data distributions through min, max, mean.
+Enable the data profiler to capture table usage statistics over a period of time. This happens as part of metadata ingestion. Data profiles enable you to check for null values in non-null columns, for duplicates in a unique column, etc. You can gain a better understanding of column data distributions through descriptive statistics provided.
 
 ![](../.gitbook/assets/data-profiler-feature.gif)
 
