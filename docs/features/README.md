@@ -8,13 +8,15 @@ description: >-
 
 ### Discover Your Data
 
+Discover your data through keyword search, associated data (e.g., frequently joined tables, lineage), and complex queries. OpenMetadata supports discovery across tables, topics, dashboards, pipelines, and a their components (e.g., columns, charts) through metadata annotations and data profiling. OpenMetadata includes support for discovery based on complex data types such as arrays and structs.
+
 #### Keyword Search
 
-Find assets based on name, description, and component metadata (e.g., column name, description) and containing service.
+Find assets based on name, description, component metadata (e.g., for columns, charts), and the containing service.
 
 ![](../.gitbook/assets/asset-discovery-features.gif)
 
-For more details see the [Asset Discovery](asset-discovery.md) documentation.
+For more details see the documentation on [Discover Your Data.](discover-your-data.md)
 
 #### Discover Data through Association
 
@@ -28,7 +30,7 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 ![](../.gitbook/assets/complex-queries.gif)
 
-For more details on asset metadata properties, please see the [Asset Discovery](asset-discovery.md) documentation.
+For more details on asset metadata properties, please see the documentation on [Discover Your Data.](discover-your-data.md)
 
 #### Support for Complex Data Types
 
@@ -37,6 +39,10 @@ Add descriptions and tags to nested fields in complex data types like arrays and
 ![](../.gitbook/assets/complex-data-types.gif)
 
 ### Importance & Owners
+
+Tier tags enable you to annotate assets with their importance relative to other assets. The Explore UI enables you to filter assets based on importance.&#x20;
+
+Use ownership metadata to determine the primary points of contact for any assets of interest in order to get help with any questions you might have.
 
 #### Filter Assets by Importance
 
