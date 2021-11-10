@@ -32,6 +32,7 @@ export type DropDownListItem = {
   method?: () => void;
   icon?: React.ReactElement;
   isOpenNewTab?: boolean;
+  isVersion?: boolean;
 } & Record<
   string,
   string | number | boolean | undefined | Function | React.ReactElement
