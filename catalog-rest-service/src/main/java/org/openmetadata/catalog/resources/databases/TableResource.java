@@ -421,7 +421,7 @@ public class TableResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Fields fields = new Fields(FIELD_LIST, "tableQueries");
     dao.addQuery(UUID.fromString(id), sqlQuery);
-    Table table = dao.get(id, fields);
+    Table table = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, table);
   }
 

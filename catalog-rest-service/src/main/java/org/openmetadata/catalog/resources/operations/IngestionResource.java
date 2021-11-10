@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.operations.workflows.CreateIngestion;
 import org.openmetadata.catalog.ingestion.AirflowRESTClient;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -37,7 +38,6 @@ import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -68,11 +68,9 @@ import java.io.UnsupportedEncodingException;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 
 @Path("operations/v1/ingestion")
@@ -91,15 +89,10 @@ public class IngestionResource {
         ref.withHref(RestUtil.getHref(uriInfo, INGESTION_COLLECTION_PATH, ref.getId()));
     }
 
-    public static List<Ingestion> addHref(UriInfo uriInfo, List<Ingestion> ingestions) {
-        Optional.ofNullable(ingestions).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
-        return ingestions;
-    }
-
     public static Ingestion addHref(UriInfo uriInfo, Ingestion ingestion) {
         ingestion.setHref(RestUtil.getHref(uriInfo, INGESTION_COLLECTION_PATH, ingestion.getId()));
-        EntityUtil.addHref(uriInfo, ingestion.getOwner());
-        EntityUtil.addHref(uriInfo, ingestion.getService());
+        Entity.withHref(uriInfo, ingestion.getOwner());
+        Entity.withHref(uriInfo, ingestion.getService());
         return ingestion;
     }
 
@@ -165,11 +158,10 @@ public class IngestionResource {
 
         ResultList<Ingestion> ingestions;
         if (before != null) { // Reverse paging
-            ingestions = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
+            ingestions = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
         } else { // Forward paging or first page
-            ingestions = dao.listAfter(fields, null, limitParam, after);
+            ingestions = dao.listAfter(uriInfo, fields, null, limitParam, after);
         }
-        addHref(uriInfo, ingestions.getData());
         return ingestions;
     }
 
@@ -206,7 +198,7 @@ public class IngestionResource {
                              schema = @Schema(type = "string", example = FIELDS))
                      @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        return addHref(uriInfo, dao.get(id, fields));
+        return dao.get(uriInfo, id, fields);
     }
 
     @GET
@@ -246,8 +238,7 @@ public class IngestionResource {
                                    schema = @Schema(type = "string", example = FIELDS))
                            @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, fieldsParam);
-        Ingestion ingestion = dao.getByName(fqn, fields);
-        return addHref(uriInfo, ingestion);
+        return dao.getByName(uriInfo, fqn, fields);
     }
 
 
@@ -266,7 +257,7 @@ public class IngestionResource {
         Ingestion ingestion = getIngestion(securityContext, create);
         deploy(ingestion);
         // write to db only when the deployment is successful
-        ingestion = addHref(uriInfo, dao.create(ingestion));
+        ingestion = dao.create(uriInfo, ingestion);
         return Response.created(ingestion.getHref()).entity(ingestion).build();
     }
 
@@ -288,11 +279,10 @@ public class IngestionResource {
                                                            "]")}))
                                            JsonPatch patch) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, FIELDS);
-        Ingestion ingestion = dao.get(id, fields);
+        Ingestion ingestion = dao.get(uriInfo, id, fields);
         SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
                 dao.getOwnerReference(ingestion));
-        ingestion = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-        return addHref(uriInfo, ingestion);
+        return dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     }
 
     @PUT
@@ -310,9 +300,8 @@ public class IngestionResource {
         Ingestion ingestion = getIngestion(securityContext, create);
         deploy(ingestion);
         // write to db only when the deployment is successful
-        PutResponse<Ingestion> response = dao.createOrUpdate(ingestion);
-        ingestion = addHref(uriInfo, response.getEntity());
-        return Response.status(response.getStatus()).entity(ingestion).build();
+        PutResponse<Ingestion> response = dao.createOrUpdate(uriInfo, ingestion);
+        return response.toResponse();
     }
 
     @POST
@@ -328,9 +317,9 @@ public class IngestionResource {
     public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
                                    @Context SecurityContext securityContext) throws IOException, ParseException {
         Fields fields = new Fields(FIELD_LIST, "");
-        Ingestion ingestion = dao.get(id, fields);
+        Ingestion ingestion = dao.get(uriInfo, id, fields);
         airflowRESTClient.runPipeline(ingestion.getName());
-        return addHref(uriInfo, dao.get(id, fields));
+        return dao.get(uriInfo, id, fields);
     }
 
 

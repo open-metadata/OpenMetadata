@@ -62,7 +62,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     public static ConnectorConfig INGESTION_CONFIG;
 
     public IngestionResourceTest() {
-        super(Ingestion.class, IngestionResource.IngestionList.class, "ingestion",
+        super(Entity.INGESTION, Ingestion.class, IngestionResource.IngestionList.class, "ingestion",
                 IngestionResource.FIELDS, false, true, true);
     }
 
@@ -99,7 +99,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Override
-    public void validatePatchedEntity(Ingestion expected, Ingestion updated, Map<String, String> authHeaders)
+    public void compareEntities(Ingestion expected, Ingestion updated, Map<String, String> authHeaders)
             throws HttpResponseException {
         validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
                 TestUtils.getPrincipal(authHeaders), expected.getOwner());
@@ -120,7 +120,6 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
             return;
         }
         assertCommonFieldChange(fieldName, expected, actual);
-
     }
 
 

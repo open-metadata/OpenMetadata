@@ -630,16 +630,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateUpdatedEntity(updated, request, authHeaders);
     validateChangeDescription(updated, updateType, changeDescription);
     validateEntityHistory(entityInterface.getId(), updateType, changeDescription, authHeaders);
-
-    // GET ../entity/{id}/versions/{versionId} to get specific versions of the entity
-    // Get the latest version of the entity from the versions API and ensure it is correct
-    latestVersion = getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
-    validateChangeDescription(latestVersion, updateType, changeDescription);
-    if (updateType != NO_CHANGE && updateType != UpdateType.CREATED){
-      // Get the previous version of the entity from the versions API and ensure it is correct
-      T previousVersion = getVersion(entityInterface.getId(), changeDescription.getPreviousVersion(), authHeaders);
-      assertEquals(changeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
-    }
+    validateLatestVersion(entityInterface, updateType, changeDescription, authHeaders);
 
     // GET the newly updated entity and validate
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
@@ -666,6 +657,21 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertEquals(expectedChangeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
     }
   }
+
+  private void validateLatestVersion(EntityInterface entityInterface, UpdateType updateType,
+                                     ChangeDescription expectedChangeDescription,
+                                     Map<String, String> authHeaders) throws IOException {
+    // GET ../entity/{id}/versions/{versionId} to get specific versions of the entity
+    // Get the latest version of the entity from the versions API and ensure it is correct
+    T latestVersion = getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
+    validateChangeDescription(latestVersion, updateType, expectedChangeDescription);
+    if (updateType != NO_CHANGE && updateType != UpdateType.CREATED) {
+      // Get the previous version of the entity from the versions API and ensure it is correct
+      T previousVersion = getVersion(entityInterface.getId(), expectedChangeDescription.getPreviousVersion(), authHeaders);
+      assertEquals(expectedChangeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
+    }
+  }
+
 
   protected final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
                                      UpdateType updateType, ChangeDescription expectedChange)
