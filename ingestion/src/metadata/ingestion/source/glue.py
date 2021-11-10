@@ -27,7 +27,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 
 
 class GlueSourceConfig(ConfigModel):
-    service_type = "MySQL"
+    service_type = "Glue"
     aws_access_key_id: str
     aws_secret_access_key: str
     endpoint_url: str
@@ -55,7 +55,7 @@ class GlueSource(Source):
         self.pipeline_service = get_pipeline_service_or_create(
             {
                 "name": self.config.service_name,
-                "serviceType": "Airflow",
+                "serviceType": "Glue",
                 "pipelineUrl": self.config.endpoint_url,
             },
             metadata_config,
