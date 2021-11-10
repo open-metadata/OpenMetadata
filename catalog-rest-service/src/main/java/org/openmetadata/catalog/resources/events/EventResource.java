@@ -55,7 +55,7 @@ import java.util.Objects;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "events")
-public class EventsResource {
+public class EventResource {
   private final ChangeEventRepository dao;
 
   public static class ChangeEventList extends ResultList<ChangeEvent> {
@@ -69,7 +69,7 @@ public class EventsResource {
   }
 
   @Inject
-  public EventsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public EventResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ChangeEventRepository must not be null");
     this.dao = new ChangeEventRepository(dao);
   }

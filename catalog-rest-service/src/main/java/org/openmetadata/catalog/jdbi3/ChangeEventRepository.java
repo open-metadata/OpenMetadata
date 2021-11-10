@@ -17,7 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.catalog.resources.events.EventsResource.ChangeEventList;
+import org.openmetadata.catalog.resources.events.EventResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 public class ChangeEventRepository {
