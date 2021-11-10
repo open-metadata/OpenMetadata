@@ -1,4 +1,8 @@
-export const getFilterString = (filters, excludeFilters = []) => {
+export const getFilterString = (
+  filters,
+  excludeFilters = [],
+  restrictKeyModification = false
+) => {
   const modifiedFilters = {};
   for (const key in filters) {
     if (excludeFilters.includes(key)) {
@@ -7,7 +11,8 @@ export const getFilterString = (filters, excludeFilters = []) => {
     const modifiedFilter = [];
     const filter = filters[key];
     filter.forEach((value) => {
-      const modifiedKey = key === 'service' ? 'service type' : key;
+      const modifiedKey =
+        !restrictKeyModification && key === 'service' ? 'service type' : key;
       modifiedFilter.push(`${modifiedKey.split(' ').join('_')}:${value}`);
     });
     modifiedFilters[key] = modifiedFilter;
