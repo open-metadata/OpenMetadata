@@ -25,6 +25,8 @@ import java.util.Map;
 
 public final class AirflowUtils {
 
+    private AirflowUtils() {}
+
     public static OpenMetadataIngestionComponent makeDatasourceComponent(Ingestion ingestion) {
         Map<String, Object> dbConfig = new HashMap<>();
         dbConfig.put("host_port", ingestion.getConnectorConfig().getHost());
