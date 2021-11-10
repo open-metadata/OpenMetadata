@@ -13,7 +13,11 @@ import {
 import { TagLabel } from '../generated/type/tagLabel';
 
 /*eslint-disable */
-const parseMarkdown = (content: string, className: string) => {
+const parseMarkdown = (
+  content: string,
+  className: string,
+  isNewLine: boolean
+) => {
   return (
     <ReactMarkdown
       children={content
@@ -29,9 +33,25 @@ const parseMarkdown = (content: string, className: string) => {
         h6: 'p',
         p: ({ node, children, ...props }) => {
           return (
-            <p className={className} {...props}>
+            <>
+              {isNewLine ? (
+                <p className={className} {...props}>
+                  {children}
+                </p>
+              ) : (
+                <span className={className} {...props}>
+                  {children}
+                </span>
+              )}
+            </>
+          );
+        },
+        ul: ({ node, children, ...props }) => {
+          const { ordered: _ordered, ...rest } = props;
+          return (
+            <ul className={className} style={{ marginLeft: '16px' }} {...rest}>
               {children}
-            </p>
+            </ul>
           );
         },
       }}
@@ -88,6 +108,7 @@ export const getDescriptionDiff = (
 ) => {
   if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
     const diff = diffWordsWithSpace(oldDescription ?? '', newDescription ?? '');
+    console.log(diff);
     // eslint-disable-next-line
     const result: Array<string> = diff.map((part: any, index: any) => {
       const classes = classNames(
@@ -96,7 +117,13 @@ export const getDescriptionDiff = (
       );
 
       return ReactDOMServer.renderToString(
-        <div key={index}>{parseMarkdown(part.value, classes)}</div>
+        <span key={index}>
+          {parseMarkdown(
+            part.value,
+            classes,
+            part.value?.startsWith('\n\n') || part.value?.includes('\n\n')
+          )}
+        </span>
       );
     });
 
