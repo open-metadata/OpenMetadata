@@ -1,6 +1,6 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { toString } from 'lodash';
-import React, { FunctionComponent, useEffect, useRef, useState } from 'react';
+import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
@@ -45,8 +45,6 @@ const EntityVersionPage: FunctionComponent = () => {
   const [slashedTableName, setSlashedTableName] = useState<
     TitleBreadcrumbProps['titleLinks']
   >([]);
-
-  const isMounted = useRef(false);
 
   const backHandler = () => {
     history.push(getDatasetDetailsPath(datasetFQN));
@@ -221,14 +219,8 @@ const EntityVersionPage: FunctionComponent = () => {
   }, [datasetFQN]);
 
   useEffect(() => {
-    if (isMounted.current) {
-      fetchCurrentVersion();
-    }
+    fetchCurrentVersion();
   }, [version]);
-
-  useEffect(() => {
-    isMounted.current = true;
-  }, []);
 
   return (
     <>

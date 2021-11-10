@@ -111,7 +111,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
       return result.join('');
     } else {
-      return oldDescription || newDescription || latestDescription || '';
+      return latestDescription || '';
     }
   };
 
@@ -133,27 +133,31 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const updatedColumns = (): Table['columns'] => {
     const colList = cloneDeep(currentVersionData.columns);
     const columnsDiff = getDiffByFieldName('columns', changeDescription);
-    const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
-    const oldDescription = columnsDiff?.oldValue;
-    const newDescription = columnsDiff?.newValue;
+    if (columnsDiff?.name?.endsWith('description')) {
+      const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
+      const oldDescription = columnsDiff?.oldValue;
+      const newDescription = columnsDiff?.newValue;
 
-    const formatColumnData = (arr: Table['columns']) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, changedColName)) {
-          i.description = getDescriptionDiff(
-            oldDescription,
-            newDescription,
-            i.description
-          );
-        } else {
-          formatColumnData(i?.children as Table['columns']);
-        }
-      });
-    };
+      const formatColumnData = (arr: Table['columns']) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, changedColName)) {
+            i.description = getDescriptionDiff(
+              oldDescription,
+              newDescription,
+              i.description
+            );
+          } else {
+            formatColumnData(i?.children as Table['columns']);
+          }
+        });
+      };
 
-    formatColumnData(colList);
+      formatColumnData(colList);
 
-    return colList;
+      return colList;
+    } else {
+      return colList;
+    }
   };
 
   const tabs = [
