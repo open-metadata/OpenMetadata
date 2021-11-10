@@ -1,0 +1,25 @@
+{
+    "source": {
+      "type": "glue",
+      "config": {
+        "aws_access_key_id": "aws_access_key_id",
+        "aws_secret_access_key": "aws_secret_access_key",
+        "database": "database",
+        "region_name": "region_name",
+        "endpoint_url": "endpoint_url",
+        "service_name": "local_glue"
+      }
+    },
+    "sink": {
+      "type": "metadata-rest",
+      "config": {}
+    },
+    "metadata_server": {
+      "type": "metadata-server",
+      "config": {
+        "api_endpoint": "http://localhost:8585/api",
+        "auth_provider_type": "no-auth"
+      }
+    }
+  }
+  
