@@ -89,7 +89,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
         assertEquals(createRequest.getDisplayName(), ingestion.getDisplayName());
         assertEquals(createRequest.getConcurrency(), ingestion.getConcurrency());
         assertEquals(createRequest.getConnectorConfig(), ingestion.getConnectorConfig());
-        TestUtils.validateTags(ingestion.getFullyQualifiedName(), createRequest.getTags(), ingestion.getTags());
+        TestUtils.validateTags(createRequest.getTags(), ingestion.getTags());
     }
 
     @Override
@@ -106,7 +106,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
         assertEquals(expected.getDisplayName(), updated.getDisplayName());
         assertService(expected.getService(), updated.getService());
         assertEquals(expected.getConnectorConfig(), updated.getConnectorConfig());
-        TestUtils.validateTags(updated.getFullyQualifiedName(), expected.getTags(), updated.getTags());
+        TestUtils.validateTags(expected.getTags(), updated.getTags());
     }
 
     @Override

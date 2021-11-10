@@ -97,7 +97,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertEquals(createRequest.getDisplayName(), pipeline.getDisplayName());
     assertService(createRequest.getService(), pipeline.getService());
     assertEquals(createRequest.getTasks(), pipeline.getTasks());
-    TestUtils.assertTags(pipeline.getFullyQualifiedName(), createRequest.getTags(), pipeline.getTags());
+    TestUtils.validateTags(createRequest.getTags(), pipeline.getTags());
   }
 
   @Override
@@ -112,7 +112,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
     assertService(expected.getService(), updated.getService());
     assertEquals(expected.getTasks(), updated.getTasks());
-    TestUtils.assertTags(updated.getFullyQualifiedName(), expected.getTags(), updated.getTags());
+    TestUtils.validateTags(expected.getTags(), updated.getTags());
   }
 
   @Override
