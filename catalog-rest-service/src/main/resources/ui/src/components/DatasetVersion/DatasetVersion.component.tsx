@@ -1,5 +1,5 @@
 import classNames from 'classnames';
-import { diffWords } from 'diff';
+import { diffArrays, diffWords } from 'diff';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -8,6 +8,7 @@ import {
   ColumnJoins,
   Table,
 } from '../../generated/entity/data/table';
+import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import {
   getDiffByFieldName,
@@ -116,6 +117,25 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     }
   };
 
+  const getTagsDiff = (
+    oldTagList: Array<TagLabel>,
+    newTagList: Array<TagLabel>
+  ) => {
+    const tagDiff = diffArrays(oldTagList, newTagList);
+    const result = tagDiff
+      // eslint-disable-next-line
+      .map((part: any) =>
+        (part.value as Array<TagLabel>).map((tag) => ({
+          ...tag,
+          added: part.added,
+          removed: part.removed,
+        }))
+      )
+      ?.flat(Infinity);
+
+    return result;
+  };
+
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
       'description',
@@ -134,8 +154,8 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const updatedColumns = (): Table['columns'] => {
     const colList = cloneDeep(currentVersionData.columns);
     const columnsDiff = getDiffByFieldName('columns', changeDescription);
+    const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
     if (columnsDiff?.name?.endsWith('description')) {
-      const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
       const oldDescription = columnsDiff?.oldValue;
       const newDescription = columnsDiff?.newValue;
 
@@ -147,6 +167,40 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
               newDescription,
               i.description
             );
+          } else {
+            formatColumnData(i?.children as Table['columns']);
+          }
+        });
+      };
+
+      formatColumnData(colList);
+
+      return colList;
+    } else if (columnsDiff?.name?.endsWith('tags')) {
+      const oldTags: Array<TagLabel> = JSON.parse(
+        columnsDiff?.oldValue ?? '[]'
+      );
+      const newTags: Array<TagLabel> = JSON.parse(
+        columnsDiff?.newValue ?? '[]'
+      );
+
+      const formatColumnData = (arr: Table['columns']) => {
+        arr?.forEach((i) => {
+          if (isEqual(i.name, changedColName)) {
+            const flag: { [x: string]: boolean } = {};
+            const uniqueTags: Array<
+              TagLabel & { added: boolean; removed: boolean }
+            > = [];
+            const tagsDiff = getTagsDiff(oldTags, newTags);
+            [...tagsDiff, ...(i.tags as Array<TagLabel>)].forEach(
+              (elem: TagLabel & { added: boolean; removed: boolean }) => {
+                if (!flag[elem.tagFQN as string]) {
+                  flag[elem.tagFQN as string] = true;
+                  uniqueTags.push(elem);
+                }
+              }
+            );
+            i.tags = uniqueTags;
           } else {
             formatColumnData(i?.children as Table['columns']);
           }

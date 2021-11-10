@@ -484,46 +484,69 @@ const EntityTable = ({
                       )}
 
                       {cell.column.id === 'tags' && (
-                        <div
-                          onClick={() => {
-                            if (!editColumnTag && !isReadOnly) {
-                              handleEditColumnTag(row.original, row.id);
-                            }
-                          }}>
-                          <NonAdminAction
-                            html={getHtmlForNonAdminAction(Boolean(owner))}
-                            isOwner={hasEditAccess}
-                            position="left"
-                            trigger="click">
-                            <TagsContainer
-                              editable={editColumnTag?.index === row.id}
-                              selectedTags={cell.value || []}
-                              tagList={allTags}
-                              onCancel={() => {
-                                handleTagSelection();
-                              }}
-                              onSelectionChange={(tags) => {
-                                handleTagSelection(tags);
-                              }}>
-                              {!isReadOnly ? (
-                                cell.value.length ? (
-                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                ) : (
-                                  <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                    <Tags tag="+ Add tag" type="outlined" />
-                                  </span>
+                        <>
+                          {isReadOnly ? (
+                            <div className="tw-flex tw-flex-wrap">
+                              {cell.value?.map(
+                                (
+                                  tag: TagLabel & {
+                                    added: boolean;
+                                    removed: boolean;
+                                  },
+                                  i: number
+                                ) => (
+                                  <Tags
+                                    className={classNames(
+                                      { 'diff-added': tag?.added },
+                                      { 'diff-removed': tag?.removed }
+                                    )}
+                                    key={i}
+                                    tag={`#${tag.tagFQN}`}
+                                  />
                                 )
-                              ) : null}
-                            </TagsContainer>
-                          </NonAdminAction>
-                        </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                if (!editColumnTag) {
+                                  handleEditColumnTag(row.original, row.id);
+                                }
+                              }}>
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess}
+                                position="left"
+                                trigger="click">
+                                <TagsContainer
+                                  editable={editColumnTag?.index === row.id}
+                                  selectedTags={cell.value || []}
+                                  tagList={allTags}
+                                  onCancel={() => {
+                                    handleTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleTagSelection(tags);
+                                  }}>
+                                  {cell.value.length ? (
+                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                      <Tags tag="+ Add tag" type="outlined" />
+                                    </span>
+                                  )}
+                                </TagsContainer>
+                              </NonAdminAction>
+                            </div>
+                          )}
+                        </>
                       )}
                       {cell.column.id === 'description' && (
                         <div>
