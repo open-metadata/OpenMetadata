@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table, Column
+from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -199,7 +199,9 @@ class ElasticsearchSink(Sink):
                 tier = table_tag.tagFQN
             else:
                 tags.add(table_tag.tagFQN)
-        self._parse_columns(table.columns, None, column_names, column_descriptions, tags)
+        self._parse_columns(
+            table.columns, None, column_names, column_descriptions, tags
+        )
 
         database_entity = self.metadata.get_by_id(
             entity=Database, entity_id=str(table.database.id.__root__)
@@ -397,9 +399,20 @@ class ElasticsearchSink(Sink):
                 charts.append(chart)
         return charts
 
-    def _parse_columns(self, columns: List[Column], parent_column, column_names, column_descriptions, tags):
+    def _parse_columns(
+        self,
+        columns: List[Column],
+        parent_column,
+        column_names,
+        column_descriptions,
+        tags,
+    ):
         for column in columns:
-            col_name = parent_column + "." + column.name.__root__ if parent_column is not None else column.name.__root__
+            col_name = (
+                parent_column + "." + column.name.__root__
+                if parent_column is not None
+                else column.name.__root__
+            )
             column_names.append(col_name)
             if column.description is not None:
                 column_descriptions.append(column.description)
@@ -407,7 +420,13 @@ class ElasticsearchSink(Sink):
                 for col_tag in column.tags:
                     tags.add(col_tag.tagFQN)
             if column.children is not None:
-                self._parse_columns(column.children, column.name.__root__, column_names, column_descriptions, tags)
+                self._parse_columns(
+                    column.children,
+                    column.name.__root__,
+                    column_names,
+                    column_descriptions,
+                    tags,
+                )
 
     def get_status(self):
         return self.status
