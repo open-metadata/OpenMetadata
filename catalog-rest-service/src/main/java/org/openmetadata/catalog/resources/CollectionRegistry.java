@@ -19,6 +19,7 @@ package org.openmetadata.catalog.resources;
 import io.dropwizard.setup.Environment;
 import io.swagger.annotations.Api;
 import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.CollectionDescriptor;
@@ -141,14 +142,15 @@ public final class CollectionRegistry {
   /**
    * Register resources from CollectionRegistry
    */
-  public void registerResources(Jdbi jdbi, Environment environment, CatalogAuthorizer authorizer) {
+  public void registerResources(Jdbi jdbi, Environment environment,
+                                CatalogApplicationConfig config, CatalogAuthorizer authorizer) {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
       try {
         CollectionDAO daoObject = jdbi.onDemand(CollectionDAO.class);
-        Object resource = createResource(daoObject, resourceClass, authorizer);
+        Object resource = createResource(daoObject, resourceClass, config, authorizer);
         environment.jersey().register(resource);
         LOG.info("Registering {}", resourceClass);
       } catch (Exception ex) {
@@ -195,7 +197,8 @@ public final class CollectionRegistry {
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
-  private static Object createResource(CollectionDAO daoObject, String resourceClass, CatalogAuthorizer authorizer) throws
+  private static Object createResource(CollectionDAO daoObject, String resourceClass,
+                                       CatalogApplicationConfig config, CatalogAuthorizer authorizer) throws
           ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InvocationTargetException,
           InstantiationException {
     Object resource;
@@ -213,9 +216,9 @@ public final class CollectionRegistry {
 
     // Call initialize method, if it exists
     try {
-      Method initializeMethod = resource.getClass().getMethod("initialize");
+      Method initializeMethod = resource.getClass().getMethod("initialize", CatalogApplicationConfig.class);
       LOG.info("Initializing resource {}", resourceClass);
-      initializeMethod.invoke(resource);
+      initializeMethod.invoke(resource, config);
     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
       // Method does not exist and initialize is not called
     }

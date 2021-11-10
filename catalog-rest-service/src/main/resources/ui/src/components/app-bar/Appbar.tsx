@@ -297,6 +297,7 @@ const Appbar: React.FC = (): JSX.Element => {
                     to: '',
                     disabled: false,
                     icon: <></>,
+                    isVersion: true,
                   },
                   {
                     name: 'Logout',

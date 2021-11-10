@@ -166,7 +166,7 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
   }
 
   private void registerResources(CatalogApplicationConfig config, Environment environment, Jdbi jdbi) throws IOException {
-    CollectionRegistry.getInstance().registerResources(jdbi, environment, authorizer);
+    CollectionRegistry.getInstance().registerResources(jdbi, environment, config, authorizer);
 
     environment.lifecycle().manage(new Managed() {
       @Override

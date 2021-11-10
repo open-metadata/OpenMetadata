@@ -19,6 +19,7 @@ package org.openmetadata.catalog;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.dropwizard.health.conf.HealthConfiguration;
 import org.openmetadata.catalog.events.EventHandlerConfiguration;
+import org.openmetadata.catalog.ingestion.AirflowConfiguration;
 import org.openmetadata.catalog.security.AuthenticationConfiguration;
 import org.openmetadata.catalog.security.AuthorizerConfiguration;
 import io.dropwizard.Configuration;
@@ -48,6 +49,10 @@ public class CatalogApplicationConfig extends Configuration {
 
     @JsonProperty("eventHandlerConfiguration")
     private EventHandlerConfiguration eventHandlerConfiguration;
+
+    @NotNull
+    @JsonProperty("airflowConfiguration")
+    private AirflowConfiguration airflowConfiguration;
 
     public DataSourceFactory getDataSourceFactory() {
         return dataSourceFactory;
@@ -86,6 +91,11 @@ public class CatalogApplicationConfig extends Configuration {
     }
     public void setEventHandlerConfiguration(EventHandlerConfiguration eventHandlerConfiguration) {
         this.eventHandlerConfiguration = eventHandlerConfiguration;
+    }
+
+    public AirflowConfiguration getAirflowConfiguration() { return airflowConfiguration; }
+    public void setAirflowConfiguration(AirflowConfiguration airflowConfiguration) {
+        this.airflowConfiguration = airflowConfiguration;
     }
 
     @Valid

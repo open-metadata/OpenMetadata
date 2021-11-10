@@ -221,7 +221,7 @@ class ElasticsearchSink(Sink):
                 table_followers.append(str(follower.id.__root__))
         table_doc = TableESDocument(
             table_id=str(table.id.__root__),
-            database=database,
+            database=str(database_entity.name.__root__),
             service=service_entity.name,
             service_type=service_entity.serviceType.name,
             table_name=table.name.__root__,

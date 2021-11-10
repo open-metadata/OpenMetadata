@@ -37,6 +37,7 @@ import org.openmetadata.catalog.resources.databases.DatabaseResource;
 import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.catalog.resources.models.ModelResource;
+import org.openmetadata.catalog.resources.operations.IngestionResource;
 import org.openmetadata.catalog.resources.pipelines.PipelineResource;
 import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.resources.policies.PolicyResource;
@@ -213,6 +214,8 @@ public final class EntityUtil {
       PipelineResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
       LocationResource.addHref(uriInfo, ref);
+    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
+      IngestionResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
       DatabaseServiceResource.addHref(uriInfo, ref);
     } else if (entity.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
@@ -337,6 +340,8 @@ public final class EntityUtil {
       return dao.locationDAO().findEntityReferenceById(id);
     } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
       return dao.policyDAO().findEntityReferenceById(id);
+    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
+      return dao.ingestionDAO().findEntityReferenceById(id);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
   }
@@ -369,6 +374,8 @@ public final class EntityUtil {
       return dao.teamDAO().findEntityReferenceByName(fqn);
     } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
       return dao.locationDAO().findEntityReferenceByName(fqn);
+    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
+      return dao.ingestionDAO().findEntityReferenceByName(fqn);
     }
     throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
   }
