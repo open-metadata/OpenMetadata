@@ -16,8 +16,6 @@ Find assets based on name, description, component metadata (e.g., for columns, c
 
 ![](.gitbook/assets/asset-discovery-features.gif)
 
-For more details see the documentation on [Discover Your Data.](broken-reference)
-
 #### Discover Data through Association
 
 Discover assets through frequently joined tables and columns as measured by the data profiler. You can also discover assets through relationships based on data lineage.
@@ -29,8 +27,6 @@ Discover assets through frequently joined tables and columns as measured by the 
 Find assets matching strict criteria on metadata properties and Boolean operators.
 
 ![](.gitbook/assets/complex-queries.gif)
-
-For more details on asset metadata properties, please see the documentation on [Discover Your Data.](broken-reference)
 
 ### Complex Data Types
 
