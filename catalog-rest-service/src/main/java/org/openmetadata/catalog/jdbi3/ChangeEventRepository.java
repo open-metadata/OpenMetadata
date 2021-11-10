@@ -17,6 +17,7 @@
 package org.openmetadata.catalog.jdbi3;
 
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.catalog.resources.events.EventsResource.ChangeEventList;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.ResultList;
@@ -24,7 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 public class ChangeEventRepository {
@@ -34,13 +37,15 @@ public class ChangeEventRepository {
   public ChangeEventRepository(CollectionDAO dao) { this.dao = dao; }
 
   @Transaction
-  public ResultList<ChangeEvent> list(String date, List<String> eventTypes, List<String> entityTypes) throws IOException {
-    List<String> jsons = dao.changeEventDAO().list(eventTypes, entityTypes,date);
+  public ResultList<ChangeEvent> list(String date, List<String> eventTypes, List<String> entityTypes) throws IOException,
+          GeneralSecurityException {
+    List<String> jsons = dao.changeEventDAO().list(eventTypes, entityTypes, date);
+    System.out.println("Total change events " + jsons.size());
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
-    return null; // TODO
+    return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
   }
 
   @Transaction

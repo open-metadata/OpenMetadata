@@ -26,29 +26,26 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.UsageRepository;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.teams.UserResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.ChangeEvent.EventType;
-import org.openmetadata.catalog.type.EntityUsage;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.GeneralSecurityException;
+import java.text.ParseException;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -60,6 +57,16 @@ import java.util.Objects;
 @Collection(name = "events")
 public class EventsResource {
   private final ChangeEventRepository dao;
+
+  public static class ChangeEventList extends ResultList<ChangeEvent> {
+    @SuppressWarnings("unused") /* Required for tests */
+    public ChangeEventList() {}
+
+    public ChangeEventList(List<ChangeEvent> data, String beforeCursor, String afterCursor, int total)
+            throws GeneralSecurityException, UnsupportedEncodingException {
+      super(data, beforeCursor, afterCursor, total);
+    }
+  }
 
   @Inject
   public EventsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
@@ -86,11 +93,16 @@ public class EventsResource {
           @Parameter(description = "Event types",
                   required = true,
                   schema = @Schema(type = "string"))
-          @PathParam("eventTypes") List<String> eventTypes,
+          @QueryParam("eventTypes") List<String> eventTypes,
           @Parameter(description = "Events since this date and time (inclusive) in ISO 8601 format.",
                   required = true,
                   schema = @Schema(type = "string"))
-          @QueryParam("date") String date) throws IOException {
+          @QueryParam("date") String date) throws IOException, GeneralSecurityException, ParseException {
+    // TODO hack
+    eventTypes = List.of(EventType.ENTITY_CREATED.toString(), EventType.ENTITY_UPDATED.toString());
+    entityTypes = List.of(Entity.TABLE);
+    Date parsedDate = RestUtil.DATE_TIME_FORMAT.parse(date);
+    date = RestUtil.DATE_FORMAT.format(parsedDate);
     return dao.list(date, eventTypes, entityTypes);
   }
 }

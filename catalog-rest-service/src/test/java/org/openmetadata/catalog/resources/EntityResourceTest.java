@@ -22,11 +22,14 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DatabaseServiceRepository.DatabaseServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.MessagingServiceRepository.MessagingServiceEntityInterface;
 import org.openmetadata.catalog.jdbi3.PipelineServiceRepository.PipelineServiceEntityInterface;
+import org.openmetadata.catalog.resources.events.EventsResource.ChangeEventList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.MessagingServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
+import org.openmetadata.catalog.type.ChangeEvent.EventType;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
@@ -34,6 +37,7 @@ import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.catalog.util.TestUtils;
 import org.openmetadata.catalog.util.TestUtils.UpdateType;
@@ -50,6 +54,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -623,18 +628,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateUpdatedEntity(updated, request, authHeaders);
     validateChangeDescription(updated, updateType, changeDescription);
 
-    // GET ../entity/{id}/versions to list the operation
-    // Get a list of entity versions API and ensure it is correct
-    EntityHistory history = getVersionList(entityInterface.getId(), authHeaders);
-    T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
-    validateChangeDescription(latestVersion, updateType, changeDescription);
-    if (updateType == UpdateType.CREATED) {
-      assertEquals(1, history.getVersions().size()); // PUT used for creating entity, there is only one version
-    } else if (updateType != NO_CHANGE){
-      // Entity changed by PUT. Check the previous version exists
-      T previousVersion = JsonUtils.readValue((String) history.getVersions().get(1), entityClass);
-      assertEquals(changeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
-    }
+    validateEntityHistory(entityInterface.getId(), updateType, changeDescription, authHeaders);
 
     // GET ../entity/{id}/versions/{versionId} to get specific versions of the entity
     // Get the latest version of the entity from the versions API and ensure it is correct
@@ -646,11 +640,38 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       assertEquals(changeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
     }
 
-    // GET the newly updated database and validate
+    // GET the newly updated entity and validate
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
     validateUpdatedEntity(getEntity, request, authHeaders);
     validateChangeDescription(getEntity, updateType, changeDescription);
+
+    // Finally get changeEvents and ensure it is correct
+    List<String> entityNames = List.of(entityInterface.getEntityReference().getType());
+    List<EventType> eventTypes = List.of(EventType.ENTITY_CREATED, EventType.ENTITY_UPDATED);
+    ResultList<ChangeEvent> changeEvents = getChangeEvents(eventTypes, entityNames, entityInterface.getUpdatedAt(),
+            authHeaders);
+    System.out.println("data " + changeEvents.getData());
+    System.out.println("size " + changeEvents.getData().size());
+    changeEvents.getData().forEach(e -> System.out.println(e));
     return updated;
+  }
+
+  private void validateEntityHistory(UUID id, UpdateType updateType, ChangeDescription expectedChangeDescription,
+                               Map<String, String> authHeaders) throws IOException {
+    // GET ../entity/{id}/versions to list the all the versions of an entity
+    EntityHistory history = getVersionList(id, authHeaders);
+    T latestVersion = JsonUtils.readValue((String) history.getVersions().get(0), entityClass);
+
+    // Make sure the latest version has changeDescription as received during update
+    validateChangeDescription(latestVersion, updateType, expectedChangeDescription);
+    if (updateType == UpdateType.CREATED) {
+      // PUT used for creating entity, there is only one version
+      assertEquals(1, history.getVersions().size());
+    } else if (updateType != NO_CHANGE) {
+      // Entity changed by PUT. Check the previous version exists
+      T previousVersion = JsonUtils.readValue((String) history.getVersions().get(1), entityClass);
+      assertEquals(expectedChangeDescription.getPreviousVersion(), getEntityInterface(previousVersion).getVersion());
+    }
   }
 
   protected final T patchEntityAndCheck(T updated, String originalJson, Map<String, String> authHeaders,
@@ -701,6 +722,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   protected EntityHistory getVersionList(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(collectionName + "/" + id + "/versions");
     return TestUtils.get(target, EntityHistory.class, authHeaders);
+  }
+
+  protected ResultList<ChangeEvent> getChangeEvents(List<EventType> eventTypes, List<String> entityTypes, Date date,
+                                                    Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("events");
+    target = target.queryParam("eventTypes", eventTypes);
+    target = target.queryParam("entityTypes", entityTypes);
+    target = target.queryParam("date", RestUtil.DATE_TIME_FORMAT.format(date));
+    return TestUtils.get(target, ChangeEventList.class, authHeaders);
   }
 
   protected T getVersion(UUID id, Double version, Map<String, String> authHeaders) throws HttpResponseException {

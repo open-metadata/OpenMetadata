@@ -393,7 +393,7 @@ CREATE TABLE IF NOT EXISTS tag_usage (
 CREATE TABLE IF NOT EXISTS change_event (
     eventType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.eventType') NOT NULL,
     entityType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityType') NOT NULL,
-    username VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
+    userName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.userName') NOT NULL,
     dateTime TIMESTAMP GENERATED ALWAYS AS (TIMESTAMP(STR_TO_DATE(json ->> '$.dateTime', '%Y-%m-%dT%T.%fZ'))) NOT NULL,
     json JSON NOT NULL,
     timestamp BIGINT,

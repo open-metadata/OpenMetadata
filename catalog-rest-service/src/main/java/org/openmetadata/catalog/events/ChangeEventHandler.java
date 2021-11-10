@@ -59,33 +59,45 @@ public class ChangeEventHandler implements  EventHandler {
         if (responseCode == Status.CREATED.getStatusCode()) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
-
-          changeEvent.withEventType(EventType.ENTITY_CREATED).withEntityId(entityInterface.getId())
-                  .withEntityType(entityReference.getType()).withDateTime(entityInterface.getUpdatedAt())
+          changeEvent = new ChangeEvent()
+                  .withEventType(EventType.ENTITY_CREATED)
+                  .withEntityId(entityInterface.getId())
+                  .withEntityType(entityReference.getType())
+                  .withUserName(entityInterface.getUpdatedBy())
+                  .withDateTime(entityInterface.getUpdatedAt())
                   .withEntity(JsonUtils.pojoToJson(entity))
                   .withPreviousVersion(entityInterface.getVersion())
                   .withCurrentVersion(entityInterface.getVersion());
+
         } else if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
-          changeEvent.withEventType(EventType.ENTITY_UPDATED).withEntityId(entityInterface.getId())
+
+          System.out.println(entityInterface.getId());
+          System.out.println(entity);
+          System.out.println(entityReference.getType());
+          changeEvent = new ChangeEvent()
+                  .withEventType(EventType.ENTITY_UPDATED)
+                  .withEntityId(entityInterface.getId())
                   .withEntityType(entityReference.getType())
+                  .withUserName(entityInterface.getUpdatedBy())
                   .withDateTime(entityInterface.getUpdatedAt())
                   .withChangeDescription(entityInterface.getChangeDescription())
                   .withPreviousVersion(entityInterface.getVersion())
                   .withCurrentVersion(entityInterface.getVersion());
+
         } else if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)){
           changeEvent = (ChangeEvent) entity;
         } else if (changeType.equals(RestUtil.ENTITY_DELETED)) {
           changeEvent = (ChangeEvent) entity;
         }
-        System.out.println(changeEvent);
 
         if (changeEvent != null) {
+          System.out.println("Adding change " + changeEvent);
           dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
         }
       } catch(Exception e) {
-        LOG.error("Failed to capture change event for {} and method {} due to {}", method, e.getMessage());
+        LOG.error("Failed to capture change event for method {} due to {}", method, e);
       }
     }
     return null;

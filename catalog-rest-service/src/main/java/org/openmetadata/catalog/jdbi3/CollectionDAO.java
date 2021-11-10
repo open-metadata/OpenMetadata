@@ -808,11 +808,13 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     @SqlQuery("SELECT json FROM change_event WHERE " +
-            "(eventType IN (<eventTypes>) OR eventTypes IS NULL) AND " +
-            "(entityType IN (<entityTypes>) OR entityTypes IS NULL) AND " +
+            "(eventType IN (<eventTypes>) OR eventType IS NULL) AND " +
+//            "(entityType IN (<entityTypes>) OR entityType IS NULL) " +
+            "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
             "dateTime >= :date " +
-            "ORDER BY dateTime")
-    List<String> list(@BindList("eventTypes") List<String> eventTypes, @Bind("entityTypes") List<String> entityTypes,
+            "ORDER BY dateTime DESC")
+    List<String> list(@BindList("eventTypes") List<String> eventTypes,
+                      @BindList("entityTypes") List<String> entityTypes,
                       @Bind("date") String date);
   }
 }
