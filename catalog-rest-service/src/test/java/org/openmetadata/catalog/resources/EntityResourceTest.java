@@ -638,9 +638,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // GET ../entity/{id}/versions/{versionId} to get specific versions of the entity
     // Get the latest version of the entity from the versions API and ensure it is correct
-    // TODO fix this
-//    latestVersion = getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
-//    validateChangeDescription(latestVersion, updateType, changeDescription);
+    latestVersion = getVersion(entityInterface.getId(), entityInterface.getVersion(), authHeaders);
+    validateChangeDescription(latestVersion, updateType, changeDescription);
     if (updateType != NO_CHANGE && updateType != UpdateType.CREATED){
       // Get the previous version of the entity from the versions API and ensure it is correct
       T previousVersion = getVersion(entityInterface.getId(), changeDescription.getPreviousVersion(), authHeaders);

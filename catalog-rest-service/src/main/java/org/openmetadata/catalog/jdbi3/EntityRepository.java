@@ -3,6 +3,8 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.exception.CatalogExceptionMessage;
+import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityHistory;
@@ -127,10 +129,23 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public T getVersion(String id, String version) throws IOException {
-    String extension = EntityUtil.getVersionExtension(entityName, Double.parseDouble(version));
+  public T getVersion(String id, String version) throws IOException, ParseException {
+    Double requestedVersion = Double.parseDouble(version);
+    String extension = EntityUtil.getVersionExtension(entityName, requestedVersion);
+
+    // Get previous version from version history
     String json = daoCollection.entityExtensionDAO().getEntityVersion(id, extension);
-    return JsonUtils.readValue(json, entityClass);
+    if (json != null) {
+      return JsonUtils.readValue(json, entityClass);
+    }
+    // If requested latest version, return it from current version of the entity
+    T entity = setFields(dao.findEntityById(UUID.fromString(id)), putFields);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    if (entityInterface.getVersion().equals(requestedVersion)) {
+      return entity;
+    }
+    throw EntityNotFoundException.byMessage(
+            CatalogExceptionMessage.entityVersionNotFound(entityName, id, requestedVersion));
   }
 
   @Transaction
