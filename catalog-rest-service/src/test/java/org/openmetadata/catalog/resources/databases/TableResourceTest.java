@@ -281,10 +281,9 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
     // Test PUT operation - put operation to create
     CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
-    System.out.println("Put to create");
     Table table2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+
     // Test PUT operation again without any change
-    System.out.println("Put with no change");
     ChangeDescription change = getChangeDescription(table2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
 

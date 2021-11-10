@@ -484,10 +484,8 @@ public abstract class EntityRepository<T> {
                 JsonUtils.pojoToJson(original.getEntity()));
 
         // Store the new version
-        System.out.println("Storing new version");
         EntityRepository.this.store(updated.getEntity(), true);
       } else {
-        System.out.println("Restoring old version");
         updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
     }

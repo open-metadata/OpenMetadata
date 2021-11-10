@@ -82,7 +82,6 @@ public final class Entity {
 
   public static void registerEntity(String entity, EntityDAO<?> dao,
                                     EntityRepository<?> entityRepository) {
-    System.out.println("Registering entity " + entity);
     daoMap.put(entity.toLowerCase(Locale.ROOT), dao);
     entityRepositoryMap.put(entity, entityRepository);
   }

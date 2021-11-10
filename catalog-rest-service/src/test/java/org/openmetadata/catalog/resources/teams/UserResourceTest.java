@@ -539,16 +539,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     if (!expectedTeams.isEmpty()) {
       assertEquals(expectedTeams.size(), user.getTeams().size());
-      for (EntityReference team : user.getTeams()) {
-        TestUtils.validateEntityReference(team);
-        boolean foundTeam = false;
-        for (EntityReference expected : expectedTeams) {
-          if (expected.getId().equals(team.getId())) {
-            foundTeam = true;
-            break;
-          }
-        }
-        assertTrue(foundTeam);
+      for (EntityReference team : expectedTeams) {
+        TestUtils.existsInEntityReferenceList(user.getTeams(), team.getId(), true);
       }
     }
     if (createRequest.getProfile() != null) {

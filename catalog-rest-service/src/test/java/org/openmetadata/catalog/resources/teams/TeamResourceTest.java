@@ -45,7 +45,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -348,14 +347,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
       assertEquals(expectedUsers.size(), team.getUsers().size());
       for (EntityReference user : team.getUsers()) {
         TestUtils.validateEntityReference(user);
-        boolean foundUser = false;
-        for (EntityReference expected : expectedUsers) {
-          if (expected.getId().equals(user.getId())) {
-            foundUser = true;
-            break;
-          }
-        }
-        assertTrue(foundUser);
+        TestUtils.existsInEntityReferenceList(expectedUsers, user.getId(), true);
       }
     }
     TestUtils.validateEntityReference(team.getOwns());
@@ -431,16 +423,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     List<EntityReference> actualUsers = Optional.ofNullable(team.getUsers()).orElse(Collections.emptyList());
     if (!expectedUsers.isEmpty()) {
       assertEquals(expectedUsers.size(), actualUsers.size());
-      for (EntityReference user : actualUsers) {
-        TestUtils.validateEntityReference(user);
-        boolean foundUser = false;
-        for (EntityReference expectedEntity : expectedUsers) {
-          if (expectedEntity.getId().equals(user.getId())) {
-            foundUser = true;
-            break;
-          }
-        }
-        assertTrue(foundUser);
+      for (EntityReference user : expectedUsers) {
+        TestUtils.existsInEntityReferenceList(actualUsers, user.getId(), true);
       }
     }
     TestUtils.validateEntityReference(team.getOwns());

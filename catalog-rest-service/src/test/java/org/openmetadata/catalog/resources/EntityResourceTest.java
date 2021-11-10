@@ -620,7 +620,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     validateCreatedEntity(getEntity, create, authHeaders);
 
     // Validate that change event was created
-    validateChangeEvents(entityInterface, EventType.ENTITY_CREATED, authHeaders);
+    validateChangeEvents(entityInterface, EventType.ENTITY_CREATED, null, authHeaders);
     return entity;
   }
 
@@ -643,7 +643,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     if (updateType != NO_CHANGE) {
       EventType expectedEventType = updateType == UpdateType.CREATED ?
               EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      validateChangeEvents(entityInterface, expectedEventType, authHeaders);
+      validateChangeEvents(entityInterface, expectedEventType, changeDescription, authHeaders);
     }
     return updated;
   }
@@ -717,13 +717,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     TestUtils.validateUpdate(expectedChange.getPreviousVersion(), updatedEntityInterface.getVersion(), updateType);
 
     if (updateType != UpdateType.NO_CHANGE) {
-      ChangeDescription change = updatedEntityInterface.getChangeDescription();
-      assertEquals(expectedChange.getPreviousVersion(), change.getPreviousVersion());
-
-      assertFieldLists(expectedChange.getFieldsAdded(), change.getFieldsAdded());
-      assertFieldLists(expectedChange.getFieldsUpdated(), change.getFieldsUpdated());
-      assertFieldLists(expectedChange.getFieldsDeleted(), change.getFieldsDeleted());
+      assertChangeDescription(expectedChange, updatedEntityInterface.getChangeDescription());
     }
+  }
+
+  private void assertChangeDescription(ChangeDescription expected, ChangeDescription actual) throws IOException {
+    assertEquals(expected.getPreviousVersion(), actual.getPreviousVersion());
+    assertFieldLists(expected.getFieldsAdded(), actual.getFieldsAdded());
+    assertFieldLists(expected.getFieldsUpdated(), actual.getFieldsUpdated());
+    assertFieldLists(expected.getFieldsDeleted(), actual.getFieldsDeleted());
   }
 
   /**
@@ -732,6 +734,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
    * valid date.
    */
   protected final void validateChangeEvents(EntityInterface<T> entityInterface, EventType expectedEventType,
+                                            ChangeDescription expectedChangeDescription,
                                             Map<String, String> authHeaders) throws IOException {
     ResultList<ChangeEvent> changeEvents = getChangeEvents(entityName, entityName, null,
             entityInterface.getUpdatedAt(), authHeaders);
@@ -741,12 +744,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     // Top most changeEvent corresponds to the update
     ChangeEvent changeEvent = changeEvents.getData().get(0);
     assertEquals(expectedEventType, changeEvent.getEventType());
+    assertEquals(entityName, changeEvent.getEntityType());
+    assertEquals(entityInterface.getId(), changeEvent.getEntityId());
+    assertEquals(entityInterface.getVersion(), changeEvent.getCurrentVersion());
+    assertEquals(entityInterface.getUpdatedBy(), changeEvent.getUserName());
+    assertEquals(entityInterface.getUpdatedAt().getTime(), changeEvent.getDateTime().getTime());
 
-    assertEquals(changeEvent.getDateTime().getTime(), entityInterface.getUpdatedAt().getTime());
-    assertEquals(changeEvent.getEntityId(), entityInterface.getId());
-    assertEquals(changeEvent.getCurrentVersion(), entityInterface.getVersion());
-    assertEquals(changeEvent.getUserName(), entityInterface.getUpdatedBy());
-    assertEquals(changeEvent.getEntityType(), entityName);
+    // previous, entity, changeDescription
 
     if (expectedEventType == EventType.ENTITY_CREATED) {
       assertEquals(changeEvent.getEventType(), EventType.ENTITY_CREATED);
@@ -755,9 +759,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
       compareEntities(entityInterface.getEntity(),
               JsonUtils.readValue((String)changeEvent.getEntity(), entityClass), authHeaders);
     } else if (expectedEventType == EventType.ENTITY_UPDATED) {
-      // TODO
+      assertNull(changeEvent.getEntity());
+      assertChangeDescription(expectedChangeDescription, changeEvent.getChangeDescription());
+      assertEquals(entityInterface.getChangeDescription().getPreviousVersion(), changeEvent.getPreviousVersion());
     } else if (expectedEventType == EventType.ENTITY_DELETED) {
-
+      assertNull(changeEvent.getEntity());
+      assertNull(changeEvent.getChangeDescription());
     }
   }
 
@@ -851,15 +858,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
         throw new IllegalArgumentException("Invalid owner type " + owner.getType());
       }
 
-      boolean owning = false;
-      for (EntityReference owns : ownsList) {
-        TestUtils.validateEntityReference(owns);
-        if (owns.getId().equals(entityId)) {
-          owning = true;
-          break;
-        }
-      }
-      assertEquals(expectedOwning, owning, "Ownership not correct in the owns list for " + owner.getType());
+      TestUtils.existsInEntityReferenceList(ownsList, entityId, expectedOwning);
     }
   }
 
@@ -875,14 +874,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     assertEquals(totalFollowerCount, followers.size());
     TestUtils.validateEntityReference(followers);
-    boolean followerFound = false;
-    for (EntityReference follower : followers) {
-      if (follower.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertTrue(followerFound, "Follower added was not found in " + entityClass + " get response");
+    TestUtils.existsInEntityReferenceList(followers, userId, true);
 
     // GET .../users/{userId} shows user as following the entity
     checkUserFollowing(userId, entityId, true, authHeaders);
@@ -905,14 +897,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     T getEntity = getEntity(entityId, authHeaders);
     List<EntityReference> followers = getEntityInterface(getEntity).getFollowers();
     TestUtils.validateEntityReference(followers);
-    boolean followerFound = false;
-    for (EntityReference follower : followers) {
-      if (follower.getId().equals(userId)) {
-        followerFound = true;
-        break;
-      }
-    }
-    assertFalse(followerFound, "Follower deleted is still found in " + entityClass + " get response");
+    TestUtils.existsInEntityReferenceList(followers, userId, false);
 
     // GET .../users/{userId} shows user as following the entity
     checkUserFollowing(userId, entityId, false, authHeaders);
@@ -941,4 +926,5 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     list.getData().forEach(entity -> LOG.info("{} {}", entityClass, getEntityInterface(entity).getFullyQualifiedName()));
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
+
 }

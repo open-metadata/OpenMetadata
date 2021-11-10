@@ -58,7 +58,6 @@ public class ChangeEventHandler implements  EventHandler {
         if (responseCode == Status.CREATED.getStatusCode()) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
-          System.out.println("Entity created at " + entityInterface.getUpdatedAt().getTime());
           changeEvent = new ChangeEvent()
                   .withEventType(EventType.ENTITY_CREATED)
                   .withEntityId(entityInterface.getId())
@@ -72,7 +71,6 @@ public class ChangeEventHandler implements  EventHandler {
         } else if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
-          System.out.println("Entity updated at " + entityInterface.getUpdatedAt().getTime());
           changeEvent = new ChangeEvent()
                   .withEventType(EventType.ENTITY_UPDATED)
                   .withEntityId(entityInterface.getId())
@@ -91,9 +89,6 @@ public class ChangeEventHandler implements  EventHandler {
 
         if (changeEvent != null) {
           dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-          System.out.println("Adding change event " + changeEvent);
-        } else {
-          System.out.println("Change event not recorded");
         }
       } catch(Exception e) {
         LOG.error("Failed to capture change event for method {} due to {}", method, e);

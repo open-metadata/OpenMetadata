@@ -71,6 +71,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.readOnlyAttribute;
+import static org.openmetadata.catalog.util.TestUtils.existsInEntityReferenceList;
 import static org.openmetadata.catalog.util.TestUtils.NON_EXISTENT_ENTITY;
 import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
@@ -745,14 +746,7 @@ public class LocationResourceTest extends CatalogApplicationTest {
         // GET .../users/{userId} shows user as following location
         boolean following = false;
         User user = UserResourceTest.getUser(userId, "follows", authHeaders);
-        for (EntityReference follows : user.getFollows()) {
-            TestUtils.validateEntityReference(follows);
-            if (follows.getId().equals(locationId)) {
-                following = true;
-                break;
-            }
-        }
-        assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
+        existsInEntityReferenceList(user.getFollows(), locationId, expectedFollowing);
     }
 
     private void deleteAndCheckFollower(Location location, UUID userId, int totalFollowerCount,
@@ -769,14 +763,7 @@ public class LocationResourceTest extends CatalogApplicationTest {
             throws HttpResponseException {
         Location getLocation = getLocation(locationId, "followers", authHeaders);
         TestUtils.validateEntityReference(getLocation.getFollowers());
-        boolean followerFound = false;
-        for (EntityReference followers : getLocation.getFollowers()) {
-            if (followers.getId().equals(userId)) {
-                followerFound = true;
-                break;
-            }
-        }
-        assertFalse(followerFound, "Follower deleted is still found in location get response");
+        existsInEntityReferenceList(getLocation.getFollowers(), locationId, false);
 
         // GET .../users/{userId} shows user as following location
         checkUserFollowing(userId, locationId, false, authHeaders);
