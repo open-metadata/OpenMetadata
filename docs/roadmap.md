@@ -8,7 +8,7 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 ## 0.4 Release - Sep 20th, 2021
 
-#### Theme:  Topics, Dashboards, and Data Profiler
+#### Theme: Topics, Dashboards, and Data Profiler
 
 ### Support for Kafka (and Pulsar WIP)
 
@@ -24,7 +24,7 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 * Sort search results based on Usage, Relevance, and Last updated time
 * Search string highlighted in search results
-* Support for Kafka and Dashboards from Looker, SuperSet, and Tableau 
+* Support for Kafka and Dashboards from Looker, SuperSet, and Tableau
 
 ### Other features
 
@@ -44,24 +44,48 @@ If you would like to prioritize any feature or would like to add a new feature t
 
 * Lineage related schemas and APIs
 * Lineage metadata integration from AirFlow for tables
-* Lineage metadata  integration from Looker, and Superset for Dashboards
-* Extra lineage from queries for BigQuery, Hive, Redshift, and Snowflake
 * UI changes to show lineage information to the users
 
-### Eventing & Notification framework
+### Data Reliability
 
-* Design for eventing framework for both internal and external applications
-* Schema change event
-* Schema change notification
+* Improvements to Data Profiler
+* UI integration with Data Profiler to show how the table profile looks over the period of time
+
+### Complex Types
+
+* Support complex types such as Struct, Array with nested fields
+* UI support to add expand complex types and tag , add description for nested fields
+
+### Connectors
+
+* Trino
+* Redash
 
 ### Other features
 
-* Data quality - Data profiler integration work in progress
-* Schema versioning
+* Pipeline Entities are supported
+* Integration with Airflow to extract Pipeline details
 
 ## 0.6 Release - Nov 17th, 2021
 
-#### Theme: User collaboration features
+#### Theme: Metadata Versioning & Eventing
+
+### Metadata Versioning and Eventing Framework
+
+* Capture changes to Entity Metadata from source and user interactions as versions
+* Versioned changes will be published as events for clients to consume to take actions on
+
+### Data Reliability
+
+* Improvements to Data Reliablity library
+* Capture custom measurements through user provided SQL
+
+### Airflow APIs
+
+* Airflow APIs to deploy DAGS and manage them
+* UI integration to deploy ingestion workflows&#x20;
+
+## 0.7 Release - Dec 15th, 2021
 
 ### Support for User Collaboration
 
@@ -78,5 +102,4 @@ If you would like to prioritize any feature or would like to add a new feature t
 ### Other features
 
 * Metadata Change Event integration into Slack and framework for integration into other services such as Kafka or other Notification frameworks
-* Data Health Report
-* Delta Lake support,  Databricks, Iceberg
+* Delta Lake support, Databricks, Iceberg
