@@ -1,8 +1,6 @@
 import classNames from 'classnames';
-import { diffArrays, diffWords } from 'diff';
 import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import ReactDOMServer from 'react-dom/server';
 import {
   ChangeDescription,
   ColumnJoins,
@@ -11,8 +9,10 @@ import {
 import { TagLabel } from '../../generated/type/tagLabel';
 import { getPartialNameFromFQN } from '../../utils/CommonUtils';
 import {
+  getDescriptionDiff,
   getDiffByFieldName,
   getDiffValue,
+  getTagsDiff,
 } from '../../utils/EntityVersionUtils';
 import { getOwnerFromId } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
@@ -41,36 +41,68 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
+  const getChangeColName = (name: string | undefined) => {
+    return name?.split('.')?.slice(-2, -1)[0];
+  };
+
+  const isEdsWithField = (name: string | undefined, checkWith: string) => {
+    return name?.endsWith(checkWith);
+  };
+
   const getExtraInfo = () => {
     const ownerDiff = getDiffByFieldName('owner', changeDescription);
+
     const oldOwner = getOwnerFromId(
-      JSON.parse(ownerDiff?.oldValue ?? '{}')?.id
+      JSON.parse(
+        ownerDiff?.added?.oldValue ??
+          ownerDiff?.deleted?.oldValue ??
+          ownerDiff?.updated?.oldValue ??
+          '{}'
+      )?.id
     );
     const newOwner = getOwnerFromId(
-      JSON.parse(ownerDiff?.newValue ?? '{}')?.id
+      JSON.parse(
+        ownerDiff?.added?.newValue ??
+          ownerDiff?.deleted?.newValue ??
+          ownerDiff?.updated?.newValue ??
+          '{}'
+      )?.id
     );
-    const ownerPlaceHolder = owner?.name || owner?.displayName || '';
+    const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
     const tagsDiff = getDiffByFieldName('tags', changeDescription);
-    const newTier = [...JSON.parse(tagsDiff?.newValue ?? '[]')].find((t) =>
-      (t?.tagFQN as string).startsWith('Tier')
-    );
+    const newTier = [
+      ...JSON.parse(
+        tagsDiff?.added?.newValue ??
+          tagsDiff?.deleted?.newValue ??
+          tagsDiff?.updated?.newValue ??
+          '[]'
+      ),
+    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
-    const oldTier = [...JSON.parse(tagsDiff?.oldValue ?? '[]')].find((t) =>
-      (t?.tagFQN as string).startsWith('Tier')
-    );
+    const oldTier = [
+      ...JSON.parse(
+        tagsDiff?.added?.oldValue ??
+          tagsDiff?.deleted?.oldValue ??
+          tagsDiff?.updated?.oldValue ??
+          '[]'
+      ),
+    ].find((t) => (t?.tagFQN as string).startsWith('Tier'));
 
     const extraInfo = [
       {
         key: 'Owner',
-        value: !isUndefined(ownerDiff)
-          ? getDiffValue(
-              oldOwner?.displayName || oldOwner?.name || '',
-              newOwner?.displayName || newOwner?.name || ''
-            )
-          : ownerPlaceHolder
-          ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
-          : '',
+        value:
+          !isUndefined(ownerDiff.added) ||
+          !isUndefined(ownerDiff.deleted) ||
+          !isUndefined(ownerDiff.updated)
+            ? getDiffValue(
+                oldOwner?.displayName || oldOwner?.name || '',
+                newOwner?.displayName || newOwner?.name || ''
+              )
+            : ownerPlaceHolder
+            ? getDiffValue(ownerPlaceHolder, ownerPlaceHolder)
+            : '',
       },
       {
         key: 'Tier',
@@ -89,60 +121,19 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return extraInfo;
   };
 
-  const getDescriptionDiff = (
-    oldDescription: string | undefined,
-    newDescription: string | undefined,
-    latestDescription: string | undefined
-  ) => {
-    if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
-      const diff = diffWords(oldDescription ?? '', newDescription ?? '');
-      // eslint-disable-next-line
-      const result: Array<string> = diff.map((part: any, index: any) => {
-        return ReactDOMServer.renderToString(
-          <div
-            className={classNames(
-              'tw-inline-block',
-              { 'diff-added': part.added },
-              { 'diff-removed': part.removed }
-            )}
-            key={index}>
-            {part.value}
-          </div>
-        );
-      });
-
-      return result.join('');
-    } else {
-      return latestDescription || '';
-    }
-  };
-
-  const getTagsDiff = (
-    oldTagList: Array<TagLabel>,
-    newTagList: Array<TagLabel>
-  ) => {
-    const tagDiff = diffArrays(oldTagList, newTagList);
-    const result = tagDiff
-      // eslint-disable-next-line
-      .map((part: any) =>
-        (part.value as Array<TagLabel>).map((tag) => ({
-          ...tag,
-          added: part.added,
-          removed: part.removed,
-        }))
-      )
-      ?.flat(Infinity);
-
-    return result;
-  };
-
   const getTableDescription = () => {
     const descriptionDiff = getDiffByFieldName(
       'description',
       changeDescription
     );
-    const oldDescription = descriptionDiff?.oldValue;
-    const newDescription = descriptionDiff?.newValue;
+    const oldDescription =
+      descriptionDiff?.added?.oldValue ??
+      descriptionDiff?.deleted?.oldValue ??
+      descriptionDiff?.updated?.oldValue;
+    const newDescription =
+      descriptionDiff?.added?.newValue ??
+      descriptionDiff?.deleted?.newValue ??
+      descriptionDiff?.updated?.newValue;
 
     return getDescriptionDiff(
       oldDescription,
@@ -154,10 +145,28 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
   const updatedColumns = (): Table['columns'] => {
     const colList = cloneDeep(currentVersionData.columns);
     const columnsDiff = getDiffByFieldName('columns', changeDescription);
-    const changedColName = columnsDiff?.name?.split('.')?.slice(-2, -1)[0];
-    if (columnsDiff?.name?.endsWith('description')) {
-      const oldDescription = columnsDiff?.oldValue;
-      const newDescription = columnsDiff?.newValue;
+    const changedColName = getChangeColName(
+      columnsDiff?.added?.name ??
+        columnsDiff?.deleted?.name ??
+        columnsDiff?.updated?.name
+    );
+
+    if (
+      isEdsWithField(
+        columnsDiff?.added?.name ??
+          columnsDiff?.deleted?.name ??
+          columnsDiff?.updated?.name,
+        'description'
+      )
+    ) {
+      const oldDescription =
+        columnsDiff?.added?.oldValue ??
+        columnsDiff?.deleted?.oldValue ??
+        columnsDiff?.updated?.oldValue;
+      const newDescription =
+        columnsDiff?.added?.newValue ??
+        columnsDiff?.deleted?.newValue ??
+        columnsDiff?.updated?.newValue;
 
       const formatColumnData = (arr: Table['columns']) => {
         arr?.forEach((i) => {
@@ -176,12 +185,25 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       formatColumnData(colList);
 
       return colList;
-    } else if (columnsDiff?.name?.endsWith('tags')) {
+    } else if (
+      isEdsWithField(
+        columnsDiff?.added?.name ??
+          columnsDiff?.deleted?.name ??
+          columnsDiff?.updated?.name,
+        'tags'
+      )
+    ) {
       const oldTags: Array<TagLabel> = JSON.parse(
-        columnsDiff?.oldValue ?? '[]'
+        columnsDiff?.added?.oldValue ??
+          columnsDiff?.deleted?.oldValue ??
+          columnsDiff?.updated?.oldValue ??
+          '[]'
       );
       const newTags: Array<TagLabel> = JSON.parse(
-        columnsDiff?.newValue ?? '[]'
+        columnsDiff?.added?.newValue ??
+          columnsDiff?.deleted?.newValue ??
+          columnsDiff?.updated?.newValue ??
+          '[]'
       );
 
       const formatColumnData = (arr: Table['columns']) => {
@@ -233,8 +255,6 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       currentVersionData.changeDescription as ChangeDescription
     );
   }, [currentVersionData]);
-
-  updatedColumns();
 
   return (
     <PageContainer>

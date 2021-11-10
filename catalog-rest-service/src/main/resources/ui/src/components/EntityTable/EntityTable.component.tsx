@@ -468,13 +468,13 @@ const EntityTable = ({
                                 position="bottom"
                                 theme="light"
                                 trigger="click">
-                                <p className="tw-cursor-pointer tw-underline tw-inline-block">
+                                <div className="tw-cursor-pointer tw-underline tw-inline-block">
                                   <RichTextEditorPreviewer
                                     markdown={`${cell.value
                                       .slice(0, 20)
                                       .toLowerCase()}...`}
                                   />
-                                </p>
+                                </div>
                               </PopOver>
                             </span>
                           ) : (
