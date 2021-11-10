@@ -101,7 +101,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_validTeams_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTeams_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTeam create = create(test, 1);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -130,7 +130,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void post_teamWithUsers_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_teamWithUsers_200_OK(TestInfo test) throws IOException {
     // Add team to user relationships while creating a team
     User user1 = createUser(UserResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
@@ -200,7 +200,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
    */
 
   @Test
-  public void delete_validTeam_200_OK(TestInfo test) throws HttpResponseException {
+  public void delete_validTeam_200_OK(TestInfo test) throws IOException {
     User user1 = createUser(UserResourceTest.create(test, 1), adminAuthHeaders());
     List<UUID> users = Collections.singletonList(user1.getId());
     CreateTeam create = create(test).withUsers(users);
@@ -218,7 +218,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Test
-  public void delete_validTeam_as_non_admin_401(TestInfo test) throws HttpResponseException {
+  public void delete_validTeam_as_non_admin_401(TestInfo test) throws IOException {
     User user1 = createUser(UserResourceTest.create(test, 1),
             authHeaders("test@open-metadata.org"));
     List<UUID> users = Collections.singletonList(user1.getId());
@@ -463,6 +463,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
     List<EntityReference> actualUsers = Optional.ofNullable(updated.getUsers()).orElse(Collections.emptyList());
     actualUsers.forEach(TestUtils::validateEntityReference);
     actualUsers.forEach(user -> user.setHref(null));
+    expectedUsers.forEach(user -> user.setHref(null));
 
     actualUsers.sort(EntityUtil.compareEntityReference);
     expectedUsers.sort(EntityUtil.compareEntityReference);

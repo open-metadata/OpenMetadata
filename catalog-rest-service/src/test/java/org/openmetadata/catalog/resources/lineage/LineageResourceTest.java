@@ -34,11 +34,10 @@ import org.openmetadata.catalog.type.EntitiesEdge;
 import org.openmetadata.catalog.type.EntityLineage;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.TestUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,12 +51,11 @@ import static org.openmetadata.catalog.util.TestUtils.adminAuthHeaders;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class LineageResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(LineageResourceTest.class);
   public static final List<Table> TABLES = new ArrayList<>();
   public static final int TABLE_COUNT = 10;
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
     for (int i = 0; i < TABLE_COUNT; i++) {

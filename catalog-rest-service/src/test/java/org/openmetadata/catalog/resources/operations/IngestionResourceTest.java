@@ -68,7 +68,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
 
 
     @BeforeAll
-    public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+    public static void setup(TestInfo test) throws IOException, URISyntaxException {
         EntityResourceTest.setup(test);
         INGESTION_CONFIG = new ConnectorConfig().withEnableDataProfiler(true).withUsername("test")
                 .withPassword("test").withHost("localhost:9092");
@@ -142,7 +142,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void post_validIngestion_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+    public void post_validIngestion_as_admin_200_OK(TestInfo test) throws IOException {
         // Create team with different optional fields
         CreateIngestion create = create(test);
         createAndCheckEntity(create, adminAuthHeaders());
@@ -152,17 +152,17 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void post_IngestionWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+    public void post_IngestionWithUserOwner_200_ok(TestInfo test) throws IOException {
         createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
     }
 
     @Test
-    public void post_IngestionWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+    public void post_IngestionWithTeamOwner_200_ok(TestInfo test) throws IOException {
         createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Ingestion1"), adminAuthHeaders());
     }
 
     @Test
-    public void post_IngestionWithConfig_200_ok(TestInfo test) throws HttpResponseException {
+    public void post_IngestionWithConfig_200_ok(TestInfo test) throws IOException {
         createAndCheckEntity(create(test).withConnectorConfig(INGESTION_CONFIG), adminAuthHeaders());
     }
 
@@ -209,7 +209,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void post_IngestionWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+    public void post_IngestionWithDifferentService_200_ok(TestInfo test) throws IOException {
         EntityReference[] differentServices = {REDSHIFT_REFERENCE, BIGQUERY_REFERENCE};
 
         // Create Ingestion for each service and test APIs
@@ -220,7 +220,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void put_IngestionUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+    public void put_IngestionUrlUpdate_200(TestInfo test) throws IOException {
         CreateIngestion request = create(test).withService(new EntityReference().withId(BIGQUERY_REFERENCE.getId())
                 .withType("databaseService")).withDescription("description");
         createAndCheckEntity(request, adminAuthHeaders());
@@ -259,7 +259,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void get_IngestionWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+    public void get_IngestionWithDifferentFields_200_OK(TestInfo test) throws IOException {
         CreateIngestion create = create(test).withDescription("description").withOwner(USER_OWNER1)
                 .withService(REDSHIFT_REFERENCE).withConcurrency(10);
         Ingestion ingestion = createAndCheckEntity(create, adminAuthHeaders());
@@ -267,7 +267,7 @@ public class IngestionResourceTest extends EntityResourceTest<Ingestion> {
     }
 
     @Test
-    public void get_IngestionByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+    public void get_IngestionByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
         CreateIngestion create = create(test).withDescription("description").withOwner(USER_OWNER1)
                 .withService(BIGQUERY_REFERENCE);
         Ingestion ingestion = createAndCheckEntity(create, adminAuthHeaders());

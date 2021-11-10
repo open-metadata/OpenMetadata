@@ -84,7 +84,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
 
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
 
     CreateDashboardService createService = new CreateDashboardService().withName("superset")
@@ -131,7 +131,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_validDashboards_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validDashboards_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateDashboard create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -141,17 +141,17 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_DashboardWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_DashboardWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_DashboardWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Dashboard1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_DashboardWithCharts_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_DashboardWithCharts_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withCharts(CHART_REFERENCES), adminAuthHeaders());
   }
 
@@ -198,7 +198,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void post_DashboardWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_DashboardWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {SUPERSET_REFERENCE, LOOKER_REFERENCE};
 
     // Create Dashboard for each service and test APIs
@@ -256,7 +256,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void get_DashboardWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_DashboardWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
     Dashboard dashboard = createAndCheckEntity(create, adminAuthHeaders());
@@ -264,7 +264,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Test
-  public void get_DashboardByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_DashboardByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateDashboard create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(SUPERSET_REFERENCE).withCharts(CHART_REFERENCES);
     Dashboard dashboard = createAndCheckEntity(create, adminAuthHeaders());

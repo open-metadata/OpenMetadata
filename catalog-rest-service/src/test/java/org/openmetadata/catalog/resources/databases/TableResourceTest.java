@@ -135,13 +135,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
   }
 
-  public static Table createTable(TestInfo test, int i) throws HttpResponseException {
+  public static Table createTable(TestInfo test, int i) throws IOException {
     return new TableResourceTest().createEntity(test, i);
   }
 
@@ -151,7 +151,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   public static Table createAndCheckTable(CreateTable createTable, Map<String, String> adminAuthHeaders)
-          throws HttpResponseException {
+          throws IOException {
     return new TableResourceTest().createAndCheckEntity(createTable, adminAuthHeaders);
   }
 
@@ -230,7 +230,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTables_200_OK(TestInfo test) throws IOException {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = create(test).withDescription("description");
@@ -357,12 +357,12 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void post_tableWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_tableWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_tableWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_tableWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
@@ -541,7 +541,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableJoins_200(TestInfo test) throws HttpResponseException, ParseException {
+  public void put_tableJoins_200(TestInfo test) throws IOException, ParseException {
     Table table1 = createAndCheckEntity(create(test, 1), adminAuthHeaders());
     Table table2 = createAndCheckEntity(create(test, 2), adminAuthHeaders());
     Table table3 = createAndCheckEntity(create(test, 3), adminAuthHeaders());
@@ -632,7 +632,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws HttpResponseException, ParseException {
+  public void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException, ParseException {
     Table table1 = createAndCheckEntity(create(test, 1), adminAuthHeaders());
     Table table2 = createAndCheckEntity(create(test, 2), adminAuthHeaders());
 
@@ -687,7 +687,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableSampleData_200(TestInfo test) throws HttpResponseException {
+  public void put_tableSampleData_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     List<String> columns = Arrays.asList("c1", "c2", "c3");
 
@@ -704,7 +704,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableInvalidSampleData_4xx(TestInfo test) throws HttpResponseException {
+  public void put_tableInvalidSampleData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     TableData tableData = new TableData();
 
@@ -736,7 +736,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_viewDefinition_200(TestInfo test) throws HttpResponseException {
+  public void put_viewDefinition_200(TestInfo test) throws IOException {
     CreateTable createTable = create(test);
     createTable.setTableType(TableType.View);
     String query = "sales_vw\n" +
@@ -770,7 +770,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
+  public void put_tableProfile_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0")
             .withMin("10.0").withUniqueCount(100.0);
@@ -803,7 +803,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableInvalidTableProfileData_4xx(TestInfo test) throws HttpResponseException {
+  public void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100").withMin("10.0")
@@ -820,7 +820,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableQueries_200(TestInfo test) throws HttpResponseException {
+  public void put_tableQueries_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     SQLQuery query = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-08")
             .withDuration(600.0);
@@ -856,14 +856,14 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void get_tableWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
     Table table = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(table, false);
   }
 
   @Test
-  public void get_tableByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
     Table table = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(table, true);
@@ -871,7 +871,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
   @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
-  public void get_tableListWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test, 1).withDescription("description").withOwner(USER_OWNER1)
             .withTags(singletonList(USER_ADDRESS_TAG_LABEL));
     createAndCheckEntity(create, adminAuthHeaders());
@@ -1050,7 +1050,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_addDeleteLocation_200(TestInfo test) throws HttpResponseException {
+  public void put_addDeleteLocation_200(TestInfo test) throws IOException {
     Table table = createAndCheckTable(create(test), adminAuthHeaders());
 
     // Add location to the table
@@ -1220,7 +1220,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
    * A method variant to be called form other tests to create a table without depending on Database, DatabaseService
    * set up in the {@code setup()} method
    */
-  public Table createEntity(TestInfo test, int index) throws HttpResponseException {
+  public Table createEntity(TestInfo test, int index) throws IOException {
     DatabaseService service = createService(DatabaseServiceResourceTest.create(test), adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);

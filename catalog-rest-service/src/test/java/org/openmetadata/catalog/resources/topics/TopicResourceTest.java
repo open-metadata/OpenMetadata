@@ -77,7 +77,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_validTopics_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -89,12 +89,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
@@ -152,7 +152,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
 
     // Create topic for each service and test APIs
@@ -177,7 +177,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_topicWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_topicWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
     Topic topic = createAndCheckEntity(create, adminAuthHeaders());
@@ -185,7 +185,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
     Topic topic = createAndCheckEntity(create, adminAuthHeaders());

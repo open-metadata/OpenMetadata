@@ -125,7 +125,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws URISyntaxException, IOException {
     USER1 = UserResourceTest.createUser(UserResourceTest.create(test), authHeaders("test@open-metadata.org"));
     USER_OWNER1 = new EntityReference().withId(USER1.getId()).withType("user");
 
@@ -406,7 +406,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public void put_entityNonEmptyDescriptionUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     // Create entity with non-empty description
     Object request = createRequest(test, "description", "displayName", null);
     T entity = createAndCheckEntity(request, adminAuthHeaders());
@@ -422,7 +422,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addDeleteFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public void put_addDeleteFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -447,7 +447,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   }
 
   @Test
-  public void put_addDeleteInvalidFollower_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public void put_addDeleteInvalidFollower_200(TestInfo test) throws IOException, URISyntaxException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -604,7 +604,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
 
-  protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws HttpResponseException {
+  protected final T createAndCheckEntity(Object create, Map<String, String> authHeaders) throws IOException {
     // Validate an entity that is created has all the information set in create request
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     T entity = createEntity(create, authHeaders);
@@ -619,6 +619,8 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertEquals(0.1, entityInterface.getVersion()); // First version of the entity
     validateCreatedEntity(getEntity, create, authHeaders);
 
+    // Validate that change event was created
+    validateChangeEvents(entityInterface, EventType.ENTITY_CREATED, authHeaders);
     return entity;
   }
 
