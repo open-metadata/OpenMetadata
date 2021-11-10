@@ -32,29 +32,31 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
         aria-labelledby="menu-button"
         aria-orientation="vertical"
         className="tw-origin-top-right tw-absolute tw-z-10
-              tw-right-0 tw-mt-2 tw-w-32 tw-rounded-md tw-shadow-lg 
+              tw-right-0 tw-mt-2 tw-w-32 tw-rounded-md tw-shadow-lg
               tw-bg-white tw-ring-1 tw-ring-black tw-ring-opacity-5 focus:tw-outline-none"
         role="menu">
         <div className="py-1" role="none">
           {dropDownList.map((item: DropDownListItem, index: number) => (
-            <div
-              className="tw-flex tw-gap-1 hover:tw-bg-body-hover tw-px-2"
-              key={index}>
-              {item.icon && item.icon}
-              <Link
-                aria-disabled={item.disabled}
-                className={classNames('tw-block tw-py-2 ', {
+            <Link
+              aria-disabled={item.disabled}
+              className={classNames(
+                'tw-block tw-py-2 hover:tw-bg-body-hover ',
+                {
                   'link-text': !item.icon,
-                })}
-                data-testid={`menu-item-${item.name}`}
-                id={`menu-item-${index}`}
-                role="menuitem"
-                target={item.isOpenNewTab ? '_blank' : '_self'}
-                to={{ pathname: item.to }}
-                onClick={() => {
-                  item.method && item.method();
-                  setIsOpen && setIsOpen(false);
-                }}>
+                }
+              )}
+              data-testid={`menu-item-${item.name}`}
+              id={`menu-item-${index}`}
+              key={index}
+              role="menuitem"
+              target={item.isOpenNewTab ? '_blank' : '_self'}
+              to={{ pathname: item.to }}
+              onClick={() => {
+                item.method && item.method();
+                setIsOpen && setIsOpen(false);
+              }}>
+              <div className="tw-flex tw-gap-1 tw-px-2">
+                {item.icon && item.icon}
                 {item.icon ? (
                   <button className="tw-text-grey-body">
                     {item.isOpenNewTab ? (
@@ -88,8 +90,8 @@ const AnchorDropDownList = ({ dropDownList, setIsOpen }: DropDownListProp) => {
                     )}
                   </>
                 )}
-              </Link>
-            </div>
+              </div>
+            </Link>
           ))}
         </div>
       </div>
