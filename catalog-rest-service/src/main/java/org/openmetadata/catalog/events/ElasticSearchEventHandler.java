@@ -16,6 +16,9 @@
 
 package org.openmetadata.catalog.events;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -39,6 +42,7 @@ import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.TagLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +53,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 public class ElasticSearchEventHandler implements EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
@@ -116,13 +123,21 @@ public class ElasticSearchEventHandler implements EventHandler {
     jsonMap.put("description", instance.getDescription());
     Set<String> tags = new HashSet<>();
     List<String> columnDescriptions = new ArrayList<>();
+    List<String> columnNames = new ArrayList<>();
     if (instance.getTags() != null) {
       instance.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
     }
     if (instance.getColumns() != null) {
-      for (Column column : instance.getColumns()) {
-        column.getTags().forEach(tag -> tags.add(tag.getTagFQN()));
-        columnDescriptions.add(column.getDescription());
+
+      List<FlattenColumn> cols = new ArrayList<>();
+      cols = parseColumns(instance.getColumns(), cols, null);
+
+      for (FlattenColumn col : cols) {
+        if (col.getTags() != null) {
+          tags.addAll(col.getTags());
+        }
+        columnDescriptions.add(col.getDescription());
+        columnNames.add(col.getName());
       }
     }
     
@@ -140,6 +155,9 @@ public class ElasticSearchEventHandler implements EventHandler {
         jsonMap.put("tier", tierTag);
       }
       jsonMap.put("tags", tagsList);
+    }
+    if (!columnNames.isEmpty()) {
+      jsonMap.put("column_names", columnNames);
     }
     if (!columnDescriptions.isEmpty()) {
       jsonMap.put("column_descriptions", columnDescriptions);
@@ -278,6 +296,34 @@ public class ElasticSearchEventHandler implements EventHandler {
     UpdateRequest updateRequest = new UpdateRequest("pipeline_search_index", instance.getId().toString());
     updateRequest.doc(jsonMap);
     return updateRequest;
+  }
+
+  private List<FlattenColumn> parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns,
+                                           String parentColumn) {
+    Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
+    for (Column col: columns) {
+      String columnName = col.getName();
+      if (optParentColumn.isPresent()) {
+        columnName = optParentColumn.get() + "." + columnName;
+      }
+      FlattenColumn flattenColumn = FlattenColumn.builder()
+              .name(columnName)
+              .description(col.getDescription())
+              .tags(col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList())).build();
+      flattenColumns.add(flattenColumn);
+      if (col.getChildren() != null) {
+        parseColumns(col.getChildren(), flattenColumns, col.getName());
+      }
+    }
+    return flattenColumns;
+  }
+
+  @Getter
+  @Builder
+  public static class FlattenColumn {
+    String name;
+    String description;
+    List<String> tags;
   }
 
   public void close() {
