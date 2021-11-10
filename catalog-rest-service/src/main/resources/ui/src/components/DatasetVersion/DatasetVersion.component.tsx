@@ -98,14 +98,15 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
       // eslint-disable-next-line
       const result: Array<string> = diff.map((part: any, index: any) => {
         return ReactDOMServer.renderToString(
-          <span
+          <div
             className={classNames(
+              'tw-inline-block',
               { 'diff-added': part.added },
               { 'diff-removed': part.removed }
             )}
             key={index}>
             {part.value}
-          </span>
+          </div>
         );
       });
 
