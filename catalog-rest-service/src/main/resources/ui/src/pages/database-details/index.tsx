@@ -64,6 +64,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const { databaseFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsLoading] = useState(true);
   const [database, setDatabase] = useState<Database>();
+  const [serviceName, setServiceName] = useState<string>();
   const [data, setData] = useState<Array<Table>>([]);
 
   const [databaseName, setDatabaseName] = useState<string>(
@@ -115,6 +116,7 @@ const DatabaseDetails: FunctionComponent = () => {
 
         getServiceById('databaseServices', service?.id).then(
           (resService: AxiosResponse) => {
+            setServiceName(resService.data.name);
             setSlashedTableName([
               {
                 name: resService.data.name,
@@ -210,7 +212,7 @@ const DatabaseDetails: FunctionComponent = () => {
       history.push(
         `${getExplorePathWithSearch(
           appState.inPageSearchText
-        )}?database=${databaseName}`
+        )}?database=${databaseName}&service=${serviceName}`
       );
     }
   }, [appState.inPageSearchText]);
