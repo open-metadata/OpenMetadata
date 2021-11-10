@@ -454,33 +454,43 @@ const EntityTable = ({
                       ) : null}
 
                       {cell.column.id === 'dataTypeDisplay' && (
-                        <div>
-                          {cell.value.length > 25 ? (
-                            <span>
-                              <PopOver
-                                html={
-                                  <div className="tw-break-words">
-                                    <RichTextEditorPreviewer
-                                      markdown={cell.value.toLowerCase()}
-                                    />
-                                  </div>
-                                }
-                                position="bottom"
-                                theme="light"
-                                trigger="click">
-                                <div className="tw-cursor-pointer tw-underline tw-inline-block">
-                                  <RichTextEditorPreviewer
-                                    markdown={`${cell.value
-                                      .slice(0, 20)
-                                      .toLowerCase()}...`}
-                                  />
-                                </div>
-                              </PopOver>
-                            </span>
+                        <>
+                          {isReadOnly ? (
+                            <div className="tw-flex tw-flex-wrap tw-w-60 tw-overflow-x-auto">
+                              <RichTextEditorPreviewer
+                                markdown={cell.value.toLowerCase()}
+                              />
+                            </div>
                           ) : (
-                            cell.value.toLowerCase()
+                            <>
+                              {cell.value.length > 25 ? (
+                                <span>
+                                  <PopOver
+                                    html={
+                                      <div className="tw-break-words">
+                                        <RichTextEditorPreviewer
+                                          markdown={cell.value.toLowerCase()}
+                                        />
+                                      </div>
+                                    }
+                                    position="bottom"
+                                    theme="light"
+                                    trigger="click">
+                                    <div className="tw-cursor-pointer tw-underline tw-inline-block">
+                                      <RichTextEditorPreviewer
+                                        markdown={`${cell.value
+                                          .slice(0, 20)
+                                          .toLowerCase()}...`}
+                                      />
+                                    </div>
+                                  </PopOver>
+                                </span>
+                              ) : (
+                                cell.value.toLowerCase()
+                              )}
+                            </>
                           )}
-                        </div>
+                        </>
                       )}
 
                       {cell.column.id === 'tags' && (
@@ -670,15 +680,21 @@ const EntityTable = ({
                         </div>
                       )}
                       {cell.column.id === 'name' && (
-                        <span
-                          style={{
-                            paddingLeft: `${
-                              row.canExpand ? '0px' : `${row.depth * 25}px`
-                            }`,
-                          }}>
-                          {getConstraintIcon(row.original.constraint)}
-                          {cell.render('Cell')}
-                        </span>
+                        <>
+                          {isReadOnly ? (
+                            <RichTextEditorPreviewer markdown={cell.value} />
+                          ) : (
+                            <span
+                              style={{
+                                paddingLeft: `${
+                                  row.canExpand ? '0px' : `${row.depth * 25}px`
+                                }`,
+                              }}>
+                              {getConstraintIcon(row.original.constraint)}
+                              {cell.render('Cell')}
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                   );

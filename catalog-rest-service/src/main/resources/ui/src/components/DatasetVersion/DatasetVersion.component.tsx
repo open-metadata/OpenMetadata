@@ -3,6 +3,7 @@ import { cloneDeep, isEqual, isUndefined } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import {
   ChangeDescription,
+  Column,
   ColumnJoins,
   Table,
 } from '../../generated/entity/data/table';
@@ -233,7 +234,64 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
       return colList;
     } else {
-      return colList;
+      const columnsDiff = getDiffByFieldName(
+        'columns',
+        changeDescription,
+        true
+      );
+      if (columnsDiff.added) {
+        const newCol: Array<Column> = JSON.parse(
+          columnsDiff.added?.newValue ?? '[]'
+        );
+        newCol.forEach((col) => {
+          const formatColumnData = (arr: Table['columns']) => {
+            arr?.forEach((i) => {
+              if (isEqual(i.name, col.name)) {
+                i.tags = col.tags?.map((tag) => ({ ...tag, added: true }));
+                i.description = getDescriptionDiff(
+                  undefined,
+                  col.description,
+                  col.description
+                );
+                i.dataTypeDisplay = getDescriptionDiff(
+                  undefined,
+                  col.dataTypeDisplay,
+                  col.dataTypeDisplay
+                );
+                i.name = getDescriptionDiff(undefined, col.name, col.name);
+              } else {
+                formatColumnData(i?.children as Table['columns']);
+              }
+            });
+          };
+          formatColumnData(colList);
+        });
+
+        return colList;
+      } else if (columnsDiff.deleted) {
+        const newCol: Array<Column> = JSON.parse(
+          columnsDiff.deleted?.oldValue ?? '[]'
+        );
+        const newColumns = newCol.map((col) => ({
+          ...col,
+          tags: col.tags?.map((tag) => ({ ...tag, removed: true })),
+          description: getDescriptionDiff(
+            col.description,
+            undefined,
+            col.description
+          ),
+          dataTypeDisplay: getDescriptionDiff(
+            col.dataTypeDisplay,
+            undefined,
+            col.dataTypeDisplay
+          ),
+          name: getDescriptionDiff(col.name, undefined, col.name),
+        }));
+
+        return [...newColumns, ...colList];
+      } else {
+        return colList;
+      }
     }
   };
 

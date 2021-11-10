@@ -64,7 +64,8 @@ const parseMarkdown = (
 
 export const getDiffByFieldName = (
   name: string,
-  changeDescription: ChangeDescription
+  changeDescription: ChangeDescription,
+  exactMatch?: boolean
 ): {
   added: FieldChange | undefined;
   deleted: FieldChange | undefined;
@@ -73,14 +74,19 @@ export const getDiffByFieldName = (
   const fieldsAdded = changeDescription?.fieldsAdded || [];
   const fieldsDeleted = changeDescription?.fieldsDeleted || [];
   const fieldsUpdated = changeDescription?.fieldsUpdated || [];
-
-  const diff = {
-    added: fieldsAdded.find((ch) => ch.name?.startsWith(name)),
-    deleted: fieldsDeleted.find((ch) => ch.name?.startsWith(name)),
-    updated: fieldsUpdated.find((ch) => ch.name?.startsWith(name)),
-  };
-
-  return diff;
+  if (exactMatch) {
+    return {
+      added: fieldsAdded.find((ch) => ch.name === name),
+      deleted: fieldsDeleted.find((ch) => ch.name === name),
+      updated: fieldsUpdated.find((ch) => ch.name === name),
+    };
+  } else {
+    return {
+      added: fieldsAdded.find((ch) => ch.name?.startsWith(name)),
+      deleted: fieldsDeleted.find((ch) => ch.name?.startsWith(name)),
+      updated: fieldsUpdated.find((ch) => ch.name?.startsWith(name)),
+    };
+  }
 };
 
 export const getDiffValue = (oldValue: string, newValue: string) => {
@@ -108,7 +114,6 @@ export const getDescriptionDiff = (
 ) => {
   if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
     const diff = diffWordsWithSpace(oldDescription ?? '', newDescription ?? '');
-    console.log(diff);
     // eslint-disable-next-line
     const result: Array<string> = diff.map((part: any, index: any) => {
       const classes = classNames(
@@ -126,7 +131,7 @@ export const getDescriptionDiff = (
         </span>
       );
     });
-
+    console.log(diff);
     return result.join('');
   } else {
     return latestDescription || '';
