@@ -102,6 +102,7 @@ const EntityTable = ({
     rows,
     prepareRow,
     toggleAllRowsExpanded,
+    isAllRowsExpanded,
   } = useTable(
     {
       columns,
@@ -388,8 +389,11 @@ const EntityTable = ({
 
   useEffect(() => {
     fetchTags();
-    toggleAllRowsExpanded(isReadOnly);
   }, []);
+
+  useEffect(() => {
+    toggleAllRowsExpanded(isReadOnly);
+  }, [isAllRowsExpanded]);
 
   return (
     <div className="tw-table-responsive" id="schemaTable">
