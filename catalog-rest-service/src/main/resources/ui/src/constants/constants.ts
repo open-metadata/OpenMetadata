@@ -123,6 +123,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   SIGNIN: '/signin',
   DATASET_DETAILS: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}`,
+  DATASET_DETAILS_WITH_TAB: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATASET_VERSION: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
@@ -144,11 +145,21 @@ export const getDatasetDetailsPath = (
 
   return `${path}${columnName ? `.${columnName}` : ''}`;
 };
+
 export const getDatasetVersionPath = (datasetFQN: string, version: string) => {
   let path = ROUTES.DATASET_VERSION;
   path = path
     .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
     .replace(PLAEHOLDER_ROUTE_VERSION, version);
+
+  return path;
+};
+
+export const getDatasetTabPath = (datasetFQN: string, tab = 'schema') => {
+  let path = ROUTES.DATASET_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DATASET_FQN, datasetFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
 
   return path;
 };
