@@ -1166,7 +1166,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     if (expectedColumn.getDataTypeDisplay() != null) {
       assertEquals(expectedColumn.getDataTypeDisplay().toLowerCase(Locale.ROOT), actualColumn.getDataTypeDisplay());
     }
-    TestUtils.assertTags(actualColumn.getFullyQualifiedName(), expectedColumn.getTags(), actualColumn.getTags());
+    TestUtils.validateTags(expectedColumn.getTags(), actualColumn.getTags());
 
     // Check the nested columns
     assertColumns(expectedColumn.getChildren(), actualColumn.getChildren());
@@ -1304,7 +1304,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertColumns(createRequest.getColumns(), createdEntity.getColumns());
     validateDatabase(createRequest.getDatabase(), createdEntity.getDatabase());
     assertEquals(createRequest.getTableConstraints(), createdEntity.getTableConstraints());
-    TestUtils.assertTags(createdEntity.getFullyQualifiedName(), createRequest.getTags(), createdEntity.getTags());
+    TestUtils.validateTags(createRequest.getTags(), createdEntity.getTags());
     TestUtils.validateEntityReference(createdEntity.getFollowers());
   }
 
@@ -1324,7 +1324,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     assertColumns(expected.getColumns(), patched.getColumns());
     validateDatabase(expected.getDatabase().getId(), patched.getDatabase());
     assertEquals(expected.getTableConstraints(), patched.getTableConstraints());
-    TestUtils.assertTags(expected.getFullyQualifiedName(), expected.getTags(), patched.getTags());
+    TestUtils.validateTags(expected.getTags(), patched.getTags());
     TestUtils.validateEntityReference(expected.getFollowers());
   }
 

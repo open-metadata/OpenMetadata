@@ -32,6 +32,7 @@ import javax.ws.rs.ext.ExceptionMapper;
 import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.concurrent.ThreadLocalRandom;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -67,6 +68,11 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
       return Response.status(NOT_FOUND)
               .type(MediaType.APPLICATION_JSON_TYPE)
               .entity(new ErrorMessage(NOT_FOUND.getStatusCode(), ex.getMessage()))
+              .build();
+    } else if (ex instanceof IngestionPipelineDeploymentException) {
+      return Response.status(BAD_REQUEST)
+              .type(MediaType.APPLICATION_JSON_TYPE)
+              .entity(new ErrorMessage(BAD_REQUEST.getStatusCode(), ex.getMessage()))
               .build();
     } else if (ex instanceof AuthenticationException) {
       return Response.status(UNAUTHORIZED)

@@ -143,3 +143,10 @@ authenticationConfiguration:
 eventHandlerConfiguration:
   eventHandlerClassNames:
     - "org.openmetadata.catalog.events.AuditEventHandler"
+
+airflowConfiguration:
+  apiEndpoint: "http://localhost:8080"
+  username: "admin"
+  password: "admin"
+  metadataApiEndpoint: "http://localhost:8585/api"
+  authProvider: "no-auth"

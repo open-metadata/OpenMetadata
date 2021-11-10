@@ -241,7 +241,7 @@ public final class TestUtils {
     return headers;
   }
 
-  public static void assertTags(String fqn, List<TagLabel> expectedList, List<TagLabel> actualList)
+  public static void validateTags(List<TagLabel> expectedList, List<TagLabel> actualList)
           throws HttpResponseException {
     if (expectedList == null) {
       return;
