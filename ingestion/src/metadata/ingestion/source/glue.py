@@ -1,29 +1,27 @@
-import json
 import logging
 import os
 import traceback
 import uuid
-from typing import Iterable, Optional
+from typing import Iterable
 
 import boto3
 
-from ...generated.schema.api.services.createPipelineService import (
-    CreatePipelineServiceEntityRequest,
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
 )
-from ...generated.schema.entity.data.database import Database
-from ...generated.schema.entity.data.pipeline import Pipeline, Task
-from ...generated.schema.entity.data.table import Column, Table
-from ...generated.schema.entity.services.databaseService import DatabaseServiceType
-from ...generated.schema.type.entityReference import EntityReference
-from ...utils.column_helpers import check_column_complex_type
-from ...utils.helpers import get_database_service_or_create
-from ..api.common import ConfigModel, IncludeFilterPattern, Record
-from ..api.source import Source, SourceStatus
-from ..models.ometa_table_db import OMetaDatabaseAndTable
-from ..ometa.ometa_api import OpenMetadata
-from ..ometa.openmetadata_rest import MetadataServerConfig
-from ..source.sample_data import get_pipeline_service_or_create
-from .sql_source import SQLConnectionConfig, SQLSourceStatus
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.common import ConfigModel, IncludeFilterPattern, Record
+from metadata.ingestion.api.source import Source, SourceStatus
+from metadata.ingestion.models.ometa_table_db import OMetaDatabaseAndTable
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.openmetadata_rest import MetadataServerConfig
+from metadata.ingestion.source.sample_data import get_pipeline_service_or_create
+from metadata.ingestion.source.sql_source import SQLSourceStatus
+from metadata.utils.column_helpers import check_column_complex_type
+from metadata.utils.helpers import get_database_service_or_create
 
 logger: logging.Logger = logging.getLogger(__name__)
 
