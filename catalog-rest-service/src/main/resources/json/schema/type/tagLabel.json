@@ -10,6 +10,10 @@
       "type": "string",
       "maxLength": 45
     },
+    "description": {
+      "description": "Unique name of the tag category.",
+      "type": "string"
+    },
     "labelType": {
       "description" : "Label type describes how a tag label was applied. 'Manual' indicates the tag label was applied by a person. 'Derived' indicates a tag label was derived using the associated tag relationship (see TagCategory.json for more details). 'Propagated` indicates a tag label was propagated from upstream based on lineage. 'Automated' is used when a tool was used to determine the tag label.",
       "type": "string",
@@ -35,5 +39,6 @@
       "$ref": "basic.json#/definitions/href"
     }
   },
+  "required": ["tagFQN", "labelType", "state"],
   "additionalProperties": false
 }

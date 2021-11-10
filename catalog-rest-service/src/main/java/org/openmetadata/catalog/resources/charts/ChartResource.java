@@ -28,8 +28,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.openmetadata.catalog.api.data.CreateChart;
 import org.openmetadata.catalog.entity.data.Chart;
-import org.openmetadata.catalog.entity.data.Database;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.ChartRepository;
 import org.openmetadata.catalog.jdbi3.ChartRepository.ChartEntityInterface;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
