@@ -1,8 +1,7 @@
 # Table of contents
 
 * [Introduction](README.md)
-* [Features](features/README.md)
-  * [Discover Your Data](features/asset-discovery.md)
+* [Features](features.md)
 * [Roadmap](roadmap.md)
 * [Try OpenMetadata](take-it-for-a-spin.md)
 * [Tutorials](tutorials/README.md)

@@ -14,29 +14,29 @@ OpenMetadata enables you to discover your data using a variety of strategies, in
 
 Find assets based on name, description, component metadata (e.g., for columns, charts), and the containing service.
 
-![](../.gitbook/assets/asset-discovery-features.gif)
+![](.gitbook/assets/asset-discovery-features.gif)
 
-For more details see the documentation on [Discover Your Data.](asset-discovery.md)
+For more details see the documentation on [Discover Your Data.](broken-reference)
 
 #### Discover Data through Association
 
 Discover assets through frequently joined tables and columns as measured by the data profiler. You can also discover assets through relationships based on data lineage.
 
-![](../.gitbook/assets/discover-association.gif)
+![](.gitbook/assets/discover-association.gif)
 
 #### Advanced Search
 
 Find assets matching strict criteria on metadata properties and Boolean operators.
 
-![](../.gitbook/assets/complex-queries.gif)
+![](.gitbook/assets/complex-queries.gif)
 
-For more details on asset metadata properties, please see the documentation on [Discover Your Data.](asset-discovery.md)
+For more details on asset metadata properties, please see the documentation on [Discover Your Data.](broken-reference)
 
 ### Complex Data Types
 
 Add descriptions and tags to nested fields in complex data types like arrays and structs. Locate these assets using keyword search or advanced search.
 
-![](../.gitbook/assets/complex-data-types.gif)
+![](.gitbook/assets/complex-data-types.gif)
 
 ### Importance & Owners
 
@@ -48,19 +48,19 @@ Use ownership metadata to determine the primary points of contact for any assets
 
 User Tier tags and usage data to identify the relative importance of data assets.&#x20;
 
-![](<../.gitbook/assets/asset-importance (1).gif>)
+![](<.gitbook/assets/asset-importance (1).gif>)
 
 #### Identify Asset Owners
 
 Identify owners who can help with questions about an asset.
 
-![](../.gitbook/assets/asset-owners.gif)
+![](.gitbook/assets/asset-owners.gif)
 
 ### Data Lineage
 
 Trace the path of data across tables, pipelines, and dashboards.
 
-![](../.gitbook/assets/lineage-feature.gif)
+![](.gitbook/assets/lineage-feature.gif)
 
 ### Data Reliability
 
@@ -70,12 +70,12 @@ Build trust in your data by creating tests to monitor that the data is complete,
 
 Enable the data profiler to capture table usage statistics over a period of time. This happens as part of metadata ingestion. Data profiles enable you to check for null values in non-null columns, for duplicates in a unique column, etc. You can gain a better understanding of column data distributions through descriptive statistics provided.
 
-![](../.gitbook/assets/data-profiler-feature.gif)
+![](.gitbook/assets/data-profiler-feature.gif)
 
 ### Service Connectors
 
 Integrate your database, dashboard, messaging, and pipeline services with OpenMetadata.
 
-![](../.gitbook/assets/connectors-feature.gif)
+![](.gitbook/assets/connectors-feature.gif)
 
-See the [Connectors](../install/metadata-ingestion/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
+See the [Connectors](install/metadata-ingestion/connectors/) documentation for information on available connectors and how to integrate your services with OpenMetadata.
