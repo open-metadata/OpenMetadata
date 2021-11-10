@@ -21,8 +21,8 @@ import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.ChangeEvent.EventType;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -54,11 +54,11 @@ public class ChangeEventHandler implements  EventHandler {
       try {
         Object entity = responseContext.getEntity();
         String changeType = responseContext.getHeaderString(RestUtil.CHANGE_CUSTOM_HEADER);
-        System.out.println("Change type is " + changeType);
 
         if (responseCode == Status.CREATED.getStatusCode()) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
+          System.out.println("Entity created at " + entityInterface.getUpdatedAt().getTime());
           changeEvent = new ChangeEvent()
                   .withEventType(EventType.ENTITY_CREATED)
                   .withEntityId(entityInterface.getId())
@@ -72,10 +72,7 @@ public class ChangeEventHandler implements  EventHandler {
         } else if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);
-
-          System.out.println(entityInterface.getId());
-          System.out.println(entity);
-          System.out.println(entityReference.getType());
+          System.out.println("Entity updated at " + entityInterface.getUpdatedAt().getTime());
           changeEvent = new ChangeEvent()
                   .withEventType(EventType.ENTITY_UPDATED)
                   .withEntityId(entityInterface.getId())
@@ -83,7 +80,7 @@ public class ChangeEventHandler implements  EventHandler {
                   .withUserName(entityInterface.getUpdatedBy())
                   .withDateTime(entityInterface.getUpdatedAt())
                   .withChangeDescription(entityInterface.getChangeDescription())
-                  .withPreviousVersion(entityInterface.getVersion())
+                  .withPreviousVersion(entityInterface.getChangeDescription().getPreviousVersion())
                   .withCurrentVersion(entityInterface.getVersion());
 
         } else if (changeType.equals(RestUtil.ENTITY_FIELDS_CHANGED)){
@@ -93,8 +90,10 @@ public class ChangeEventHandler implements  EventHandler {
         }
 
         if (changeEvent != null) {
-          System.out.println("Adding change " + changeEvent);
           dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+          System.out.println("Adding change event " + changeEvent);
+        } else {
+          System.out.println("Change event not recorded");
         }
       } catch(Exception e) {
         LOG.error("Failed to capture change event for method {} due to {}", method, e);

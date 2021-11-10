@@ -73,7 +73,9 @@ import org.openmetadata.catalog.util.EntityUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 public interface CollectionDAO {
@@ -808,13 +810,13 @@ public interface CollectionDAO {
     void insert(@Bind("json") String json);
 
     @SqlQuery("SELECT json FROM change_event WHERE " +
-            "(eventType IN (<eventTypes>) OR eventType IS NULL) AND " +
+            "eventType = :eventType AND " +
 //            "(entityType IN (<entityTypes>) OR entityType IS NULL) " +
             "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
-            "dateTime >= :date " +
+            "dateTime >= :dateTime " +
             "ORDER BY dateTime DESC")
-    List<String> list(@BindList("eventTypes") List<String> eventTypes,
+    List<String> list(@Bind("eventType") String eventType,
                       @BindList("entityTypes") List<String> entityTypes,
-                      @Bind("date") String date);
+                      @Bind("dateTime") long dateTime);
   }
 }

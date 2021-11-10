@@ -71,7 +71,8 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public TeamResourceTest() {
-    super(Team.class, TeamList.class, "teams", TeamResource.FIELDS, false, false, false);
+    super(Entity.TEAM, Team.class, TeamList.class, "teams", TeamResource.FIELDS,
+            false, false, false);
   }
 
   @Test
@@ -451,7 +452,7 @@ public class TeamResourceTest extends EntityResourceTest<Team> {
   }
 
   @Override
-  public void validatePatchedEntity(Team expected, Team updated, Map<String, String> authHeaders) {
+  public void compareEntities(Team expected, Team updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), null);
 

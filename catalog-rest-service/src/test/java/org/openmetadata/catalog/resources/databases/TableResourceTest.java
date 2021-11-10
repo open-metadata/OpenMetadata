@@ -130,7 +130,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
 
   public TableResourceTest() {
-    super(Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS,
+            true, true, true);
   }
 
   @BeforeAll
@@ -278,10 +279,12 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     CreateTable create1 = create(test, 1).withColumns(Arrays.asList(c1, c2));
     Table table1 = createAndCheckEntity(create1, adminAuthHeaders());
 
-    // Test PUT operation
+    // Test PUT operation - put operation to create
     CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
-    Table table2= updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
-    // Update without any change
+    System.out.println("Put to create");
+    Table table2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+    // Test PUT operation again without any change
+    System.out.println("Put with no change");
     ChangeDescription change = getChangeDescription(table2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
 
@@ -1315,7 +1318,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Override
-  public void validatePatchedEntity(Table expected, Table patched, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders) throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
 
@@ -1344,14 +1347,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       return;
     }
     if (fieldName.startsWith("columns") && fieldName.endsWith("constraint")) {
-      // Column constraint
       ColumnConstraint expectedConstraint = (ColumnConstraint) expected;
       ColumnConstraint actualConstraint = ColumnConstraint.fromValue((String) actual);
       assertEquals(expectedConstraint, actualConstraint);
     } else if (fieldName.endsWith("tableConstraints")) {
-        List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
-        List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
-        assertEquals(expectedConstraints, actualConstraints);
+      List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
+      List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
+      assertEquals(expectedConstraints, actualConstraints);
     } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

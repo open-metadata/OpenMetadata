@@ -4,9 +4,11 @@
   "title": "ChangeEvent",
   "description": "This schema defines the change event type to capture the changes to entities. Entities change due to user activity, such as updating description of a dataset, changing ownership, or adding new tags. Entity also changes due to activities at the metadata sources, such as a new dataset was created, a datasets was deleted, or schema of a dataset is modified. When state of entity changes, an event is produced. These events can be used to build apps and bots that respond to the change from activities.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.type.ChangeEvent",
 
   "definitions": {
     "eventType" :{
+      "javaType": "org.openmetadata.catalog.type.EventType",
       "description": "Type of event",
       "type": "string",
       "enum": [
@@ -15,20 +17,23 @@
         "entityDeleted"
       ]
     },
-    "versionChange" : {
-      "description": "Details of version change for `entityCreated`, `entityUpdated`, and `entityDeleted` events",
-      "type" : "object",
+    "eventFilter": {
+      "type": "object",
+      "javaType": "org.openmetadata.catalog.type.EventFilter",
       "properties": {
-        "oldVersion" : {
-          "$ref" : "entityHistory.json#/definitions/entityVersion"
+        "eventType": {
+          "description": "Event type that is being requested.",
+          "$ref": "#/definitions/eventType"
         },
-        "newVersion" : {
-          "$ref" : "entityHistory.json#/definitions/entityVersion"
-        },
-        "entity" : {
-          "description": "JSON coded string for the entity using the schema corresponding to `entityType` that includes the current value of entity with `changeDescription` attribute that provides details on fields added, updated, and deleted."
+        "entities": {
+          "description": "Entities for which the events are needed. Example - `table`, `topic`, etc. **When not set, events for all the entities will be provided.**",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
-      }
+      },
+      "required": ["eventType"]
     }
   },
   "properties" : {

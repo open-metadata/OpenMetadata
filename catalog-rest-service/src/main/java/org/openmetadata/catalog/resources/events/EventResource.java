@@ -23,13 +23,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.Entity.EntityList;
 import org.openmetadata.catalog.jdbi3.ChangeEventRepository;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.type.ChangeEvent;
-import org.openmetadata.catalog.type.ChangeEvent.EventType;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
@@ -84,25 +83,26 @@ public class EventResource {
                           schema = @Schema(implementation = ChangeEvent.class))),
                   @ApiResponse(responseCode = "404", description = "Entity for instance {id} is not found")
           })
-  public ResultList<ChangeEvent> get(
-          @Context UriInfo uriInfo,
-          @Parameter(description = "Entity type for which usage is requested",
-                  required = true,
-                  schema = @Schema(type = "string", example = "table, report, metrics, or dashboard"))
-          @QueryParam("entityTypes") List<String> entityTypes,
-          @Parameter(description = "Event types",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @QueryParam("eventTypes") List<String> eventTypes,
-          @Parameter(description = "Events since this date and time (inclusive) in ISO 8601 format.",
-                  required = true,
-                  schema = @Schema(type = "string"))
-          @QueryParam("date") String date) throws IOException, GeneralSecurityException, ParseException {
-    // TODO hack
-    eventTypes = List.of(EventType.ENTITY_CREATED.toString(), EventType.ENTITY_UPDATED.toString());
-    entityTypes = List.of(Entity.TABLE);
+  public ResultList<ChangeEvent> get(@Context UriInfo uriInfo,
+                                     // TODO document
+                                     @Parameter(description = "Entities requested for `entityCreated` event",
+                                             schema = @Schema(type = "string", example = "table,dashboard,..."))
+                                     @QueryParam("entityCreated") String entityCreated,
+                                     @Parameter(description = "Entities requested for `entityUpdated` event",
+                                             schema = @Schema(type = "string", example = "table,dashboard,..."))
+                                     @QueryParam("entityUpdated") String entityUpdated,
+                                     @Parameter(description = "Entities requested for `entityDeleted` event",
+                                             schema = @Schema(type = "string", example = "table,dashboard,..."))
+                                     @QueryParam("entityDeleted") String entityDeleted,
+                                     @Parameter(description = "Events starting from this date time in ISO8601 format",
+                                             required = true,
+                                             schema = @Schema(type = "string", example = "2021-01-28T10:00:00.000000Z"))
+                                     @QueryParam("date") String date)
+          throws IOException, GeneralSecurityException, ParseException {
     Date parsedDate = RestUtil.DATE_TIME_FORMAT.parse(date);
-    date = RestUtil.DATE_FORMAT.format(parsedDate);
-    return dao.list(date, eventTypes, entityTypes);
+    EntityList entityCreatedList = new EntityList(entityCreated);
+    EntityList entityUpdatedList = new EntityList(entityCreated);
+    EntityList entityDeletedList = new EntityList(entityCreated);
+    return dao.list(parsedDate, entityCreatedList, entityUpdatedList, entityDeletedList);
   }
 }

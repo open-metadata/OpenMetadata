@@ -82,6 +82,15 @@ public class CatalogApplication extends Application<CatalogApplicationConfig> {
     final JdbiFactory factory = new JdbiFactory();
     final Jdbi jdbi = factory.build(environment, catalogConfig.getDataSourceFactory(), "mysql3");
 
+    SqlLogger sqlLogger = new SqlLogger() {
+      @Override
+      public void logAfterExecution(StatementContext context) {
+        LOG.info("sql {}, parameters {}, timeTaken {} ms", context.getRenderedSql(),
+                context.getBinding().toString(), context.getElapsedTime(ChronoUnit.MILLIS));
+      }
+    };
+    jdbi.setSqlLogger(sqlLogger);
+
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment, jdbi);

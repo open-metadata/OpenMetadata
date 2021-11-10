@@ -200,7 +200,6 @@ public abstract class EntityRepository<T> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
-    String change;
     validate(updated);
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
@@ -212,7 +211,7 @@ public abstract class EntityRepository<T> {
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
     entityUpdater.update();
     entityUpdater.store();
-    change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
@@ -485,7 +484,11 @@ public abstract class EntityRepository<T> {
                 JsonUtils.pojoToJson(original.getEntity()));
 
         // Store the new version
+        System.out.println("Storing new version");
         EntityRepository.this.store(updated.getEntity(), true);
+      } else {
+        System.out.println("Restoring old version");
+        updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
     }
   }

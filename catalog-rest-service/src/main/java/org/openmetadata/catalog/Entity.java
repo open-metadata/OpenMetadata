@@ -26,6 +26,7 @@ import org.openmetadata.catalog.util.EntityInterface;
 import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -138,6 +139,26 @@ public final class Entity {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
     return entityRepository.getEntityInterface(entity);
+  }
+
+  public static class EntityList {
+    public static final EntityList EMPTY_LIST = new EntityList(null);
+    private final List<String> list;
+
+    public EntityList(String entitiesParam) {
+      if (entitiesParam == null) {
+        list = Collections.emptyList();
+        return;
+      }
+      list = Arrays.asList(entitiesParam.replaceAll("\\s", "").split(","));
+      for (String field : list) {
+        // TODO validate entity
+      }
+    }
+
+    public List<String> getList() {
+      return list;
+    }
   }
 }
 

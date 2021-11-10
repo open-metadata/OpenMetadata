@@ -65,7 +65,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   public static EntityReference LOOKER_REFERENCE;
 
   public ChartResourceTest() {
-    super(Chart.class, ChartList.class, "charts", ChartResource.FIELDS, true, true, true);
+    super(Entity.CHART, Chart.class, ChartList.class, "charts", ChartResource.FIELDS,
+            true, true, true);
   }
 
   @BeforeAll
@@ -306,7 +307,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart> {
   }
 
   @Override
-  public void validatePatchedEntity(Chart expected, Chart patched, Map<String, String> authHeaders) {
+  public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), patched.getService());

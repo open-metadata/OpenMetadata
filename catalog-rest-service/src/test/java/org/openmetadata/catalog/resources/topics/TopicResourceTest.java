@@ -54,7 +54,8 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   public TopicResourceTest() {
-    super(Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true);
+    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS,
+            true, true, true);
   }
 
   @Test
@@ -304,7 +305,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validatePatchedEntity(Topic expected, Topic updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders) throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());

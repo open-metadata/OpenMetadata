@@ -78,7 +78,8 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   public static List<EntityReference> CHART_REFERENCES;
 
   public DashboardResourceTest() {
-    super(Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS, true, true, true);
+    super(Entity.DASHBOARD, Dashboard.class, DashboardList.class, "dashboards", DashboardResource.FIELDS, true,
+            true, true);
   }
 
 
@@ -397,7 +398,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard> {
   }
 
   @Override
-  public void validatePatchedEntity(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {
+  public void compareEntities(Dashboard expected, Dashboard updated, Map<String, String> authHeaders) {
   }
 
   @Override

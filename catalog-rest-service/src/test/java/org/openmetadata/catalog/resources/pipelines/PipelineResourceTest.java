@@ -68,7 +68,8 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
-    super(Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
+    super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS,
+            true, true, true);
   }
 
 
@@ -106,7 +107,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public void validatePatchedEntity(Pipeline expected, Pipeline updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders) throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());

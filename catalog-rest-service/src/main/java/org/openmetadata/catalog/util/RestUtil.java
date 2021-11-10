@@ -171,7 +171,6 @@ public final class RestUtil {
     public T getEntity() { return entity; }
 
     public Response toResponse() {
-      System.out.println("Status " + status + " changeType " + changeType);
       ResponseBuilder responseBuilder = Response.status(status).header(CHANGE_CUSTOM_HEADER, changeType);
       if (changeType.equals(RestUtil.ENTITY_CREATED) || changeType.equals(RestUtil.ENTITY_UPDATED) ||
               changeType.equals(RestUtil.ENTITY_NO_CHANGE)) {

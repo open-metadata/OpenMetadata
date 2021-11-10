@@ -54,7 +54,8 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
 public class DatabaseResourceTest extends EntityResourceTest<Database> {
   public DatabaseResourceTest() {
-    super(Database.class, DatabaseList.class, "databases", DatabaseResource.FIELDS, false, true, false);
+    super(Entity.DATABASE, Database.class, DatabaseList.class, "databases",
+            DatabaseResource.FIELDS, false, true, false);
   }
 
   @BeforeAll
@@ -317,7 +318,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database> {
   }
 
   @Override
-  public void validatePatchedEntity(Database expected, Database updated, Map<String, String> authHeaders) {
+  public void compareEntities(Database expected, Database updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     // Validate service
