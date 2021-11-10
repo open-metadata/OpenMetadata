@@ -636,7 +636,13 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     T getEntity = getEntity(entityInterface.getId(), authHeaders);
     validateUpdatedEntity(getEntity, request, authHeaders);
     validateChangeDescription(getEntity, updateType, changeDescription);
-    validateChangeEvents(entityInterface, updateType, authHeaders);
+
+    // Check if the entity change events are record
+    if (updateType != NO_CHANGE) {
+      EventType expectedEventType = updateType == UpdateType.CREATED ?
+              EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
+      validateChangeEvents(entityInterface, expectedEventType, authHeaders);
+    }
     return updated;
   }
 
@@ -718,7 +724,12 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     }
   }
 
-  protected final void validateChangeEvents(EntityInterface<T> entityInterface, UpdateType updateType,
+  /**
+   * This method validates the change event created after POST, PUT, and PATCH operations
+   * and ensures entityCreate, entityUpdated, and entityDeleted change events are created in the system with
+   * valid date.
+   */
+  protected final void validateChangeEvents(EntityInterface<T> entityInterface, EventType expectedEventType,
                                             Map<String, String> authHeaders) throws IOException {
     ResultList<ChangeEvent> changeEvents = getChangeEvents(entityName, entityName, null,
             entityInterface.getUpdatedAt(), authHeaders);
@@ -727,6 +738,7 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
 
     // Top most changeEvent corresponds to the update
     ChangeEvent changeEvent = changeEvents.getData().get(0);
+    assertEquals(expectedEventType, changeEvent.getEventType());
 
     assertEquals(changeEvent.getDateTime().getTime(), entityInterface.getUpdatedAt().getTime());
     assertEquals(changeEvent.getEntityId(), entityInterface.getId());
@@ -734,13 +746,15 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
     assertEquals(changeEvent.getUserName(), entityInterface.getUpdatedBy());
     assertEquals(changeEvent.getEntityType(), entityName);
 
-    if (updateType == UpdateType.CREATED) {
+    if (expectedEventType == EventType.ENTITY_CREATED) {
       assertEquals(changeEvent.getEventType(), EventType.ENTITY_CREATED);
       assertEquals(changeEvent.getPreviousVersion(), 0.1);
       assertNull(changeEvent.getChangeDescription());
       compareEntities(entityInterface.getEntity(),
               JsonUtils.readValue((String)changeEvent.getEntity(), entityClass), authHeaders);
-    } else if (updateType == MINOR_UPDATE) {
+    } else if (expectedEventType == EventType.ENTITY_UPDATED) {
+      // TODO
+    } else if (expectedEventType == EventType.ENTITY_DELETED) {
 
     }
   }
