@@ -56,12 +56,55 @@ _column_string_mapping = {
     "OBJECT": "JSON",
     "MAP": "MAP",
     "UNION": "UNION",
+    "BIGINT": "BIGINT",
+    "INTEGER": "INT",
+    "SMALLINT": "SMALLINT",
+    "TIMESTAMP WITHOUT TIME ZONE": "TIMESTAMP",
 }
 
 _known_unknown_column_types: Set[Type[types.TypeEngine]] = {
     types.Interval,
     types.CLOB,
 }
+
+
+def check_column_complex_type(
+    status: SourceStatus, dataset_name: str, column_raw_type: Any, col_name: str
+):
+    arr_data_type = None
+    col_obj = None
+    data_type_display = None
+    children = None
+    if column_raw_type.startswith("struct<"):
+        col_type = "STRUCT"
+        col_obj = _handle_complex_data_types(
+            status,
+            dataset_name,
+            f"{col_name}:{column_raw_type}",
+        )
+        if "children" in col_obj and col_obj["children"] is not None:
+            children = col_obj["children"]
+    elif column_raw_type.startswith("map<"):
+        col_type = "MAP"
+        col_obj = _handle_complex_data_types(
+            status,
+            dataset_name,
+            f"{col_name}:{column_raw_type}",
+        )
+    elif column_raw_type.startswith("array<"):
+        col_type = "ARRAY"
+        arr_data_type = re.match(r"(?:array<)(\w*)(?:.*)", column_raw_type)
+        arr_data_type = arr_data_type.groups()[0].upper()
+    elif column_raw_type.startswith("uniontype<") or column_raw_type.startswith(
+        "union<"
+    ):
+        col_type = "UNION"
+    else:
+        col_type = get_column_type(status, dataset_name, column_raw_type.split("(")[0])
+        data_type_display = col_type
+    if data_type_display is None:
+        data_type_display = column_raw_type
+    return col_type, data_type_display, arr_data_type, children
 
 
 def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -> str:
@@ -76,7 +119,7 @@ def get_column_type(status: SourceStatus, dataset_name: str, column_type: Any) -
                 type_class = "NULL"
                 break
         for col_type in _column_string_mapping.keys():
-            if str(column_type) == col_type:
+            if str(column_type).upper() in col_type:
                 type_class = _column_string_mapping.get(col_type)
                 break
             else:
@@ -187,7 +230,7 @@ def _handle_complex_data_types(status, dataset_name, raw_type: str, level=0):
         col["dataType"] = get_column_type(
             status,
             dataset_name,
-            re.match("([\w\s]*)(?:.*)", col_type).groups()[0].upper(),
+            re.match("([\w\s]*)(?:.*)", col_type).groups()[0],
         )
         col["dataTypeDisplay"] = col_type.rstrip(">")
     return col
