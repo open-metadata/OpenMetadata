@@ -12,14 +12,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 import logging
 import os
 import pathlib
+import subprocess
 import sys
 
 import click
 from pydantic import ValidationError
+
+try:
+    import docker
+except ImportError:
+    raise ImportError(
+        "docker package not found, can you try `pip install 'openmetadata-ingestion[docker]'`"
+    )
 
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
@@ -121,6 +128,71 @@ def report(config: str) -> None:
             "available on your PYTHONPATH environment variable? Did you "
             "forget to activate a virtual environment?"
         ) from exc
+
+
+@metadata.command()
+@click.option(
+    "-t",
+    "--type",
+    help="Workflow config",
+    required=True,
+)
+def docker_run(type: str) -> None:
+    """
+    Checks Docker Memory Allocation
+    Run Local Docker - metadata docker-run -t local
+    Run Latest Release Docker - metadata docker-run -t latest
+    """
+    try:
+        client = docker.from_env()
+        docker_info = client.info()
+        calc_gb = 1024 * 1024 * 1000
+        if docker_info["MemTotal"] < (3 * 1024 * 1024 * 1000):
+            raise MemoryError(
+                f"Please Allocate More memory to Docker.\nRecommended: 4GB\nCurrent: "
+                f"{round(float(docker_info['MemTotal']) / calc_gb, 2)}"
+            )
+        if type == "local":
+            logger.info("Running Local Docker")
+            subprocess.run(
+                "cd ../docker/local-metadata && docker-compose up --build -d",
+                shell=True,
+            )
+        elif type == "latest":
+            logger.info("Running Latest Release Docker")
+            subprocess.run(
+                "cd ../docker/metadata && docker-compose up --build -d", shell=True
+            )
+        else:
+            raise ValueError("Please Enter one of the following. 'local' or 'latest'")
+    except Exception as err:
+        logger.error(err)
+
+
+@metadata.command()
+def docker_stop() -> None:
+    """
+    Stops all the running containers
+    metadata docker-stop
+    """
+    client = docker.from_env()
+    running_containers = client.containers.list()
+    logger.info("Stopping Running Containers")
+    for container in running_containers:
+        logger.info(f"Stopping {container.name}")
+        container.stop()
+
+
+@metadata.command()
+def docker_clean() -> None:
+    """
+    Cleans All Dangling Docker Containers, Images and Volumes
+    metadata docker-clean
+    """
+    client = docker.from_env()
+    client.containers.prune()
+    client.images.prune()
+    client.volumes.prune()
 
 
 metadata.add_command(check)
