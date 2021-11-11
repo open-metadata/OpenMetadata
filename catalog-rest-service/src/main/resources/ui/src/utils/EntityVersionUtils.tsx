@@ -13,7 +13,7 @@ import {
 import { TagLabel } from '../generated/type/tagLabel';
 import { isValidJSONString } from './StringsUtils';
 
-/*eslint-disable */
+/* eslint-disable */
 const parseMarkdown = (
   content: string,
   className: string,
@@ -49,6 +49,7 @@ const parseMarkdown = (
         },
         ul: ({ node, children, ...props }) => {
           const { ordered: _ordered, ...rest } = props;
+
           return (
             <ul className={className} style={{ marginLeft: '16px' }} {...rest}>
               {children}
@@ -56,8 +57,8 @@ const parseMarkdown = (
           );
         },
       }}
-      remarkPlugins={[gfm]}
       rehypePlugins={[[rehypeRaw, { allowDangerousHtml: false }]]}
+      remarkPlugins={[gfm]}
     />
   );
 };
@@ -92,7 +93,6 @@ export const getDiffByFieldName = (
 export const getDiffValue = (oldValue: string, newValue: string) => {
   const diff = diffWordsWithSpace(oldValue, newValue);
 
-  // eslint-disable-next-line
   return diff.map((part: any, index: any) => {
     return (
       <span
@@ -114,7 +114,7 @@ export const getDescriptionDiff = (
 ) => {
   if (!isUndefined(newDescription) || !isUndefined(oldDescription)) {
     const diff = diffWordsWithSpace(oldDescription ?? '', newDescription ?? '');
-    // eslint-disable-next-line
+
     const result: Array<string> = diff.map((part: any, index: any) => {
       const classes = classNames(
         { 'diff-added': part.added },
@@ -144,7 +144,7 @@ export const getTagsDiff = (
 ) => {
   const tagDiff = diffArrays(oldTagList, newTagList);
   const result = tagDiff
-    // eslint-disable-next-line
+
     .map((part: any) =>
       (part.value as Array<TagLabel>).map((tag) => ({
         ...tag,
