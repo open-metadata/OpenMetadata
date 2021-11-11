@@ -125,10 +125,10 @@ eventHandlerConfiguration:
     - "org.openmetadata.catalog.events.ElasticSearchEventHandler"
 
 airflowConfiguration:
-  apiEndpoint: "http://localhost:8080"
+  apiEndpoint: "http://ingestion:8080"
   username: "admin"
   password: "admin"
-  metadataApiEndpoint: "http://localhost:8585/api"
+  metadataApiEndpoint: "http://openmetadata-server:8585/api"
   authProvider: "no-auth"
 
 health:
