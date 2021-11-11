@@ -34,6 +34,7 @@ import org.openmetadata.catalog.jdbi3.MLModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
+import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -77,7 +78,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "mlmodels")
 public class MLModelResource {
-  public static final String MODEL_COLLECTION_PATH = "v1/mlmodels/";
+  public static final String COLLECTION_PATH = "v1/mlmodels/";
   private final MLModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
@@ -87,10 +88,10 @@ public class MLModelResource {
   }
 
   public static MLModel addHref(UriInfo uriInfo, MLModel mlmodel) {
-    mlmodel.setHref(RestUtil.getHref(uriInfo, MODEL_COLLECTION_PATH, mlmodel.getId()));
-    EntityUtil.addHref(uriInfo, mlmodel.getOwner());
-    EntityUtil.addHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
-    EntityUtil.addHref(uriInfo, mlmodel.getFollowers());
+    mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
+    Entity.withHref(uriInfo, mlmodel.getOwner());
+    Entity.withHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
+    Entity.withHref(uriInfo, mlmodel.getFollowers());
     return mlmodel;
   }
 
@@ -195,7 +196,7 @@ public class MLModelResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    MLModel mlmodel = dao.getByName(fqn, fields);
+    MLModel mlmodel = dao.getByName(uriInfo, fqn, fields);
     return addHref(uriInfo, mlmodel);
   }
 
@@ -213,7 +214,7 @@ public class MLModelResource {
                          @Valid CreateMLModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     MLModel mlModel = getMLModel(securityContext, create);
-    mlModel = addHref(uriInfo, dao.create(mlModel));
+    mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
     return Response.created(mlModel.getHref()).entity(mlModel).build();
   }
 
@@ -235,10 +236,10 @@ public class MLModelResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    MLModel mlModel = dao.get(id, fields);
+    MLModel mlModel = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(mlModel));
-    mlModel = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    mlModel = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, mlModel);
   }
 
@@ -255,9 +256,9 @@ public class MLModelResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateMLModel create) throws IOException, ParseException {
     MLModel mlModel = getMLModel(securityContext, create);
-    PutResponse<MLModel> response = dao.createOrUpdate(mlModel);
-    mlModel = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(mlModel).build();
+    PutResponse<MLModel> response = dao.createOrUpdate(uriInfo, mlModel);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -283,7 +284,7 @@ public class MLModelResource {
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "models",
           description = "Remove the user identified `userId` as a follower of the model.")
-  public MLModel deleteFollower(@Context UriInfo uriInfo,
+  public Response deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the model",
                                       schema = @Schema(type = "string"))

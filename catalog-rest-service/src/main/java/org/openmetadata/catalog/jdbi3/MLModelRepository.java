@@ -50,7 +50,8 @@ public class MLModelRepository extends EntityRepository<MLModel> {
   private final CollectionDAO dao;
 
   public MLModelRepository(CollectionDAO dao) {
-    super(ModelResource.COLLECTION_PATH, MLModel.class, dao.mlModelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
+    super(MLModelResource.COLLECTION_PATH, MLModel.class, dao.mlModelDAO(), dao,
+            MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -285,7 +286,7 @@ public class MLModelRepository extends EntityRepository<MLModel> {
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
-    public Model withHref(URI href) { return entity.withHref(href); }
+    public MLModel withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {
