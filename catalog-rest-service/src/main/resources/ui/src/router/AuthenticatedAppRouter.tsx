@@ -74,9 +74,36 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={DatasetDetailsPage}
         path={ROUTES.DATASET_DETAILS}
       />
-      <Route component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
-      <Route component={DashboardDetailsPage} path={ROUTES.DASHBOARD_DETAILS} />
-      <Route component={PipelineDetailsPage} path={ROUTES.PIPELINE_DETAILS} />
+      <Route
+        exact
+        component={DatasetDetailsPage}
+        path={ROUTES.DATASET_DETAILS_WITH_TAB}
+      />
+      <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
+      <Route
+        component={TopicDetailsPage}
+        path={ROUTES.TOPIC_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={DashboardDetailsPage}
+        path={ROUTES.DASHBOARD_DETAILS}
+      />
+      <Route
+        exact
+        component={DashboardDetailsPage}
+        path={ROUTES.DASHBOARD_DETAILS_WITH_TAB}
+      />
+      <Route
+        exact
+        component={PipelineDetailsPage}
+        path={ROUTES.PIPELINE_DETAILS}
+      />
+      <Route
+        exact
+        component={PipelineDetailsPage}
+        path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
+      />
       <Route component={Onboarding} path={ROUTES.ONBOARDING} />
       <Route
         exact

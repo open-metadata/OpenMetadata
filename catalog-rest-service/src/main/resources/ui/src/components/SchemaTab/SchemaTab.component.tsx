@@ -15,8 +15,11 @@
   * limitations under the License.
 */
 
-import { lowerCase } from 'lodash';
-import React, { FunctionComponent, useState } from 'react';
+import { isUndefined, lowerCase } from 'lodash';
+import { DatasetSchemaTableTab } from 'Models';
+import React, { FunctionComponent, useEffect, useState } from 'react';
+import { useHistory, useParams } from 'react-router';
+import { getDatasetTabPath } from '../../constants/constants';
 import {
   ColumnJoins,
   Table,
@@ -49,16 +52,31 @@ const SchemaTab: FunctionComponent<Props> = ({
   owner,
   isReadOnly = false,
 }: Props) => {
+  const history = useHistory();
+  const { datasetFQN: tableFQN, tab } = useParams() as Record<string, string>;
   const [searchText, setSearchText] = useState('');
-  const [checkedValue, setCheckedValue] = useState('schema');
+  const [checkedValue, setCheckedValue] =
+    useState<DatasetSchemaTableTab>('schema');
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
   };
 
-  const handleToggleChange = (value: string) => {
+  const handleToggleChange = (value: DatasetSchemaTableTab) => {
     setCheckedValue(value);
+    history.push({
+      pathname: getDatasetTabPath(tableFQN, value),
+    });
   };
+
+  useEffect(() => {
+    if (tab && ['schema', 'sample_data'].includes(tab)) {
+      const activeTab = isUndefined(tab)
+        ? 'schema'
+        : (tab as DatasetSchemaTableTab);
+      setCheckedValue(activeTab);
+    }
+  }, [tab]);
 
   const getToggleButtonClasses = (type: string): string => {
     return (
@@ -115,10 +133,10 @@ const SchemaTab: FunctionComponent<Props> = ({
                 Schema
               </button>
               <button
-                className={getToggleButtonClasses('sample-data')}
+                className={getToggleButtonClasses('sample_data')}
                 data-testid="sample-data-button"
                 onClick={() => {
-                  handleToggleChange('sample-data');
+                  handleToggleChange('sample_data');
                 }}>
                 Sample Data
               </button>
