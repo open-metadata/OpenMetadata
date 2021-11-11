@@ -301,15 +301,22 @@ public class ElasticSearchEventHandler implements EventHandler {
   private List<FlattenColumn> parseColumns(List<Column> columns, List<FlattenColumn> flattenColumns,
                                            String parentColumn) {
     Optional<String> optParentColumn = Optional.ofNullable(parentColumn).filter(Predicate.not(String::isEmpty));
+    List<String> tags = new ArrayList<>();
     for (Column col: columns) {
       String columnName = col.getName();
       if (optParentColumn.isPresent()) {
         columnName = optParentColumn.get() + "." + columnName;
       }
+      if (col.getTags() != null) {
+        tags = col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
+      }
+
       FlattenColumn flattenColumn = FlattenColumn.builder()
               .name(columnName)
-              .description(col.getDescription())
-              .tags(col.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList())).build();
+              .description(col.getDescription()).build();
+      if (!tags.isEmpty()) {
+        flattenColumn.tags = tags;
+      }
       flattenColumns.add(flattenColumn);
       if (col.getChildren() != null) {
         parseColumns(col.getChildren(), flattenColumns, col.getName());
