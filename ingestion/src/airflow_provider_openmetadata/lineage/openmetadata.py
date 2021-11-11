@@ -291,4 +291,5 @@ class OpenMetadataLineageBackend(LineageBackend):
                 config, context, operator, op_inlets, op_outlets, client
             )
         except Exception as e:
+            operator.log.error(traceback.format_exc())
             operator.log.error(e)
