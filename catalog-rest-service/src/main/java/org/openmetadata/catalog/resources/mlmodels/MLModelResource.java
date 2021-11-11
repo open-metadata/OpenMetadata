@@ -34,7 +34,6 @@ import org.openmetadata.catalog.jdbi3.MLModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -277,7 +276,7 @@ public class MLModelResource {
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
       return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
-            UUID.fromString(userId)).toResponse();
+              UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
@@ -311,15 +310,15 @@ public class MLModelResource {
 
   private MLModel getMLModel(SecurityContext securityContext, CreateMLModel create) {
     return new MLModel().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withDashboard(create.getDashboard())
-            .withAlgorithm(create.getAlgorithm())
-            .withMlFeatures(create.getMlFeatures())
-            .withMlHyperParameters(create.getMlHyperParameters())
-            .withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+              .withDisplayName(create.getDisplayName())
+              .withDescription(create.getDescription())
+              .withDashboard(create.getDashboard())
+              .withAlgorithm(create.getAlgorithm())
+              .withMlFeatures(create.getMlFeatures())
+              .withMlHyperParameters(create.getMlHyperParameters())
+              .withTags(create.getTags())
+              .withOwner(create.getOwner())
+              .withUpdatedBy(securityContext.getUserPrincipal().getName())
+              .withUpdatedAt(new Date());
   }
 }

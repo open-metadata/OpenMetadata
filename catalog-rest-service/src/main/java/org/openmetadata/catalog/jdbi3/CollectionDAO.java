@@ -31,7 +31,6 @@ import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.entity.data.Location;
 import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.entity.data.Metrics;
-import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.entity.data.Pipeline;
 import org.openmetadata.catalog.entity.data.Report;
 import org.openmetadata.catalog.entity.data.Table;

@@ -325,10 +325,10 @@ public class IngestionResource {
             })
   public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
                                    @Context SecurityContext securityContext) throws IOException, ParseException {
-      Fields fields = new Fields(FIELD_LIST, "");
-      Ingestion ingestion = dao.get(uriInfo, id, fields);
-      airflowRESTClient.runPipeline(ingestion.getName());
-      return addHref(uriInfo, dao.get(uriInfo, id, fields));
+    Fields fields = new Fields(FIELD_LIST, "");
+    Ingestion ingestion = dao.get(uriInfo, id, fields);
+    airflowRESTClient.runPipeline(ingestion.getName());
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
 
@@ -347,22 +347,22 @@ public class IngestionResource {
 
   private Ingestion getIngestion(SecurityContext securityContext, CreateIngestion create) {
     return new Ingestion().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withForceDeploy(create.getForceDeploy())
-            .withConcurrency(create.getConcurrency())
-            .withPauseWorkflow(create.getPauseWorkflow())
-            .withStartDate(create.getStartDate())
-            .withEndDate(create.getEndDate())
-            .withRetries(create.getRetries())
-            .withRetryDelay(create.getRetryDelay())
-            .withConnectorConfig(create.getConnectorConfig())
-            .withWorkflowCatchup(create.getWorkflowCatchup())
-            .withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withService(create.getService())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+        .withDisplayName(create.getDisplayName())
+        .withDescription(create.getDescription())
+        .withForceDeploy(create.getForceDeploy())
+        .withConcurrency(create.getConcurrency())
+        .withPauseWorkflow(create.getPauseWorkflow())
+        .withStartDate(create.getStartDate())
+        .withEndDate(create.getEndDate())
+        .withRetries(create.getRetries())
+        .withRetryDelay(create.getRetryDelay())
+        .withConnectorConfig(create.getConnectorConfig())
+        .withWorkflowCatchup(create.getWorkflowCatchup())
+        .withTags(create.getTags())
+        .withOwner(create.getOwner())
+        .withService(create.getService())
+        .withUpdatedBy(securityContext.getUserPrincipal().getName())
+        .withUpdatedAt(new Date());
   }
 
   private void deploy(Ingestion ingestion) {
