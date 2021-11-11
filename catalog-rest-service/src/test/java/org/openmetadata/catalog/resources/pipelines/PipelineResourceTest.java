@@ -68,12 +68,13 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   public static List<Task> TASKS;
 
   public PipelineResourceTest() {
-    super(Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS, true, true, true);
+    super(Entity.PIPELINE, Pipeline.class, PipelineList.class, "pipelines", PipelineResource.FIELDS,
+            true, true, true);
   }
 
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
     TASKS = new ArrayList<>();
     for (int i=0; i < 3; i++) {
@@ -101,12 +102,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public void validateUpdatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(pipeline, request, authHeaders);
   }
 
   @Override
-  public void validatePatchedEntity(Pipeline expected, Pipeline updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());
@@ -162,7 +165,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_validPipelines_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validPipelines_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreatePipeline create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -172,17 +175,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_PipelineWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_PipelineWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1).withDisplayName("Pipeline1"), adminAuthHeaders());
   }
 
   @Test
-  public void post_PipelineWithTasks_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_PipelineWithTasks_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withTasks(TASKS), adminAuthHeaders());
   }
 
@@ -222,7 +225,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void post_PipelineWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_PipelineWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {AIRFLOW_REFERENCE, PREFECT_REFERENCE};
 
     // Create Pipeline for each service and test APIs
@@ -239,7 +242,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void put_PipelineUrlUpdate_200(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public void put_PipelineUrlUpdate_200(TestInfo test) throws IOException, URISyntaxException {
     CreatePipeline request = create(test).withService(new EntityReference().withId(AIRFLOW_REFERENCE.getId())
             .withType("pipelineService")).withDescription("description");
     createAndCheckEntity(request, adminAuthHeaders());
@@ -299,7 +302,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void get_PipelineWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_PipelineWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreatePipeline create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AIRFLOW_REFERENCE).withTasks(TASKS);
     Pipeline pipeline = createAndCheckEntity(create, adminAuthHeaders());
@@ -307,7 +310,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Test
-  public void get_PipelineByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_PipelineByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreatePipeline create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(AIRFLOW_REFERENCE).withTasks(TASKS);
     Pipeline pipeline = createAndCheckEntity(create, adminAuthHeaders());

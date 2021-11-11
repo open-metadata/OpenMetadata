@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.services.messaging;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,8 +31,6 @@ import org.openmetadata.catalog.jdbi3.MessagingServiceRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
 
 import javax.validation.Valid;
@@ -65,22 +62,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "messagingServices")
 public class MessagingServiceResource {
+  public static final String COLLECTION_PATH = "v1/services/messagingServices/";
   private final MessagingServiceRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
-    return service.withHref(RestUtil.getHref(uriInfo, "v1/services/messagingServices/", service.getId()));
-  }
-
-  private static List<MessagingService> addHref(UriInfo uriInfo, List<MessagingService> instances) {
-    instances.forEach(i -> addHref(uriInfo, i));
-    return instances;
-  }
-
-  private static MessagingService addHref(UriInfo uriInfo, MessagingService dbService) {
-    dbService.setHref(RestUtil.getHref(uriInfo, "v1/services/messagingServices/", dbService.getId()));
-    return dbService;
-  }
 
   @Inject
   public MessagingServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
@@ -106,9 +90,7 @@ public class MessagingServiceResource {
   public ResultList<MessagingService> list(@Context UriInfo uriInfo,
                                            @QueryParam("name") String name) throws IOException,
           GeneralSecurityException, ParseException {
-    ResultList<MessagingService> list = dao.listAfter(null, null, 10000, null);
-    list.getData().forEach(m -> addHref(uriInfo, m));
-    return list;
+    return dao.listAfter(uriInfo, null, null, 10000, null);
   }
 
   @GET
@@ -124,7 +106,7 @@ public class MessagingServiceResource {
   public MessagingService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, null));
+    return dao.get(uriInfo, id, null);
   }
 
   @GET
@@ -140,7 +122,7 @@ public class MessagingServiceResource {
   public MessagingService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
-    return addHref(uriInfo, dao.getByName(name, null));
+    return dao.getByName(uriInfo, name, null);
   }
 
   @POST
@@ -165,7 +147,7 @@ public class MessagingServiceResource {
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
 
-    addHref(uriInfo, dao.create(service));
+    dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
@@ -185,9 +167,8 @@ public class MessagingServiceResource {
                          @PathParam("id") String id,
                          @Valid UpdateMessagingService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    MessagingService service = addHref(uriInfo,
-            dao.update(UUID.fromString(id), update.getDescription(), update.getBrokers(), update.getSchemaRegistry(),
-                    update.getIngestionSchedule()));
+    MessagingService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(),
+            update.getBrokers(), update.getSchemaRegistry(), update.getIngestionSchedule());
     return Response.ok(service).build();
   }
 

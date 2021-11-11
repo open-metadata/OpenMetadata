@@ -50,7 +50,7 @@ public class ModelRepository extends EntityRepository<Model> {
   private final CollectionDAO dao;
 
   public ModelRepository(CollectionDAO dao) {
-    super(Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
+    super(ModelResource.COLLECTION_PATH, Model.class, dao.modelDAO(), dao, MODEL_PATCH_FIELDS, MODEL_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -283,6 +283,9 @@ public class ModelRepository extends EntityRepository<Model> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Model withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

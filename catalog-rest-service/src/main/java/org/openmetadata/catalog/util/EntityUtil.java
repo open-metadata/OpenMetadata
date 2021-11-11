@@ -23,7 +23,6 @@ import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.TagDAO;
@@ -31,27 +30,11 @@ import org.openmetadata.catalog.jdbi3.CollectionDAO.TeamDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UsageDAO;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.catalog.jdbi3.Relationship;
-import org.openmetadata.catalog.resources.charts.ChartResource;
-import org.openmetadata.catalog.resources.dashboards.DashboardResource;
-import org.openmetadata.catalog.resources.databases.DatabaseResource;
-import org.openmetadata.catalog.resources.databases.TableResource;
 import org.openmetadata.catalog.resources.feeds.MessageParser.EntityLink;
-import org.openmetadata.catalog.resources.models.ModelResource;
-import org.openmetadata.catalog.resources.operations.IngestionResource;
-import org.openmetadata.catalog.resources.pipelines.PipelineResource;
-import org.openmetadata.catalog.resources.locations.LocationResource;
-import org.openmetadata.catalog.resources.policies.PolicyResource;
-import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
-import org.openmetadata.catalog.resources.services.database.DatabaseServiceResource;
-import org.openmetadata.catalog.resources.services.messaging.MessagingServiceResource;
-import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
-import org.openmetadata.catalog.resources.services.storage.StorageServiceResource;
-import org.openmetadata.catalog.resources.teams.TeamResource;
-import org.openmetadata.catalog.resources.teams.UserResource;
-import org.openmetadata.catalog.resources.topics.TopicResource;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
+import org.openmetadata.catalog.type.Schedule;
 import org.openmetadata.catalog.type.TableConstraint;
 import org.openmetadata.catalog.type.Tag;
 import org.openmetadata.catalog.type.TagLabel;
@@ -59,12 +42,10 @@ import org.openmetadata.catalog.type.TagLabel.LabelType;
 import org.openmetadata.catalog.type.Task;
 import org.openmetadata.catalog.type.UsageDetails;
 import org.openmetadata.catalog.type.UsageStats;
-import org.openmetadata.catalog.type.Schedule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -184,57 +165,6 @@ public final class EntityUtil {
     return refs.isEmpty() ? null : refs.get(0);
   }
 
-  /**
-   * Populate EntityRef with href
-   */
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    if (ref == null) {
-      return;
-    }
-    String entity = ref.getType();
-    if (entity.equalsIgnoreCase(Entity.TEAM)) {
-      TeamResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.USER)) {
-      UserResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      TableResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      DatabaseResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      TopicResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      ChartResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      DashboardResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      ModelResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
-      PolicyResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      PipelineResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
-      LocationResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
-      IngestionResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.DATABASE_SERVICE)) {
-      DatabaseServiceResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.MESSAGING_SERVICE)) {
-      MessagingServiceResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)) {
-      DashboardServiceResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.PIPELINE_SERVICE)) {
-      PipelineServiceResource.addHref(uriInfo, ref);
-    } else if (entity.equalsIgnoreCase(Entity.STORAGE_SERVICE)) {
-      StorageServiceResource.addHref(uriInfo, ref);
-    } else {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(ref.getType()));
-    }
-  }
-
-  public static void addHref(UriInfo uriInfo, List<EntityReference> list) {
-    Optional.ofNullable(list).orElse(Collections.emptyList()).forEach(ref -> addHref(uriInfo, ref));
-  }
-
   public static void validateUser(UserDAO userDAO, UUID userId) {
     if (!userDAO.exists(userId)) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(Entity.USER, userId));
@@ -303,88 +233,25 @@ public final class EntityUtil {
     setOwner(dao, ownedEntityId, ownedEntityType, newOwner);
   }
 
-  public static List<EntityReference> getEntityReference(List<EntityReference> list, CollectionDAO dao)
+  public static List<EntityReference> populateEntityReferences(List<EntityReference> list)
           throws IOException {
     for (EntityReference ref : list) {
-      getEntityReference(ref, dao);
+      populateEntityReference(ref);
     }
     return list;
   }
 
-  public static EntityReference getEntityReference(EntityReference ref, CollectionDAO dao) throws IOException {
+  public static EntityReference populateEntityReference(EntityReference ref) throws IOException {
     // Note href to entity reference is not added here
-    EntityReference ref2 = getEntityReference(ref.getType(), ref.getId(), dao);
+    EntityReference ref2 = Entity.getEntityReference(ref.getType(), ref.getId());
     return ref.withDescription(ref2.getDescription()).withName(ref2.getName());
   }
 
-  public static EntityReference getEntityReference(String entity, UUID id, CollectionDAO dao) throws IOException {
-    if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      return dao.tableDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      return dao.databaseDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
-      return dao.metricsDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return dao.dashboardDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
-      return dao.reportDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      return dao.topicDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      return dao.chartDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      return dao.pipelineDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      return dao.modelDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
-      return dao.locationDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
-      return dao.policyDAO().findEntityReferenceById(id);
-    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
-      return dao.ingestionDAO().findEntityReferenceById(id);
-    }
-    throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
-  }
-
-  public static EntityReference getEntityReferenceByName(String entity, String fqn, CollectionDAO dao)
-          throws IOException {
-    if (entity.equalsIgnoreCase(Entity.TABLE)) {
-      return dao.tableDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.DATABASE)) {
-      return dao.databaseDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.METRICS)) {
-      return dao.metricsDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.REPORT)) {
-      return dao.reportDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.TOPIC)) {
-      return dao.topicDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.CHART)) {
-      return dao.chartDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.DASHBOARD)) {
-      return dao.dashboardDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.PIPELINE)) {
-      return dao.pipelineDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.MODEL)) {
-      return dao.modelDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.POLICY)) {
-      return dao.policyDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.USER)) {
-      return dao.userDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.TEAM)) {
-      return dao.teamDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.LOCATION)) {
-      return dao.locationDAO().findEntityReferenceByName(fqn);
-    } else if (entity.equalsIgnoreCase(Entity.INGESTION)) {
-      return dao.ingestionDAO().findEntityReferenceByName(fqn);
-    }
-    throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(entity, fqn));
-  }
-
-  public static EntityReference validateEntityLink(EntityLink entityLink, CollectionDAO dao)
+  public static EntityReference validateEntityLink(EntityLink entityLink)
           throws IOException {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityId();
-    return getEntityReferenceByName(entityType, fqn, dao);
+    return Entity.getEntityReferenceByName(entityType, fqn);
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
@@ -466,20 +333,6 @@ public final class EntityUtil {
             Optional.ofNullable(list2).orElse(Collections.emptyList()).stream())
             .distinct().collect(Collectors.toList());
     return mergedTags.isEmpty() ? null : mergedTags;
-  }
-
-  public static void publishEntityCreatedEvent(String entity, String entityName, String event) {
-    String print = String.format("Entity Created: [%s] Name: [%s] Event: [%s]", entity, entityName, event);
-    LOG.info(print);
-  }
-
-  public static void publishEntityUpdatedEvent(String entity,
-                                               String entityName,
-                                               String oldEvent,
-                                               String newEvent) {
-    String diff = JsonUtils.diffTwoJson(oldEvent, newEvent);
-    String print = String.format("Entity Updated: [%s] Name: [%s] DiffString: [%s]", entity, entityName, diff);
-    LOG.info(print);
   }
 
   public static boolean addFollower(EntityRelationshipDAO dao, UserDAO userDAO,

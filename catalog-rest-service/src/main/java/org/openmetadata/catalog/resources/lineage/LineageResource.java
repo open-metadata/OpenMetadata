@@ -23,6 +23,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.lineage.AddLineage;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.LineageRepository;
@@ -143,8 +144,8 @@ public class LineageResource {
   }
 
   private EntityLineage addHref(UriInfo uriInfo, EntityLineage lineage) {
-    EntityUtil.addHref(uriInfo, lineage.getEntity());
-    lineage.getNodes().forEach(node -> EntityUtil.addHref(uriInfo, node));
+    Entity.withHref(uriInfo, lineage.getEntity());
+    Entity.withHref(uriInfo, lineage.getNodes());
     return lineage;
   }
 }

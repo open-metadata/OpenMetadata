@@ -51,7 +51,6 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,7 +82,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
   final Profile PROFILE = new Profile().withImages(new ImageList().withImage(URI.create("http://image.com")));
 
   public UserResourceTest() {
-    super(User.class, UserList.class, "users", UserResource.FIELDS, false, false, false);
+    super(Entity.USER, User.class, UserList.class, "users", UserResource.FIELDS,
+            false, false, false);
   }
 
   @Test
@@ -150,7 +150,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUser_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_validUser_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     CreateUser create = create(test, 1);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -201,7 +201,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validAdminUser_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_validAdminUser_200_ok(TestInfo test) throws IOException {
     CreateUser create = create(test, 6)
             .withName("test1")
             .withDisplayName("displayName")
@@ -210,7 +210,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void post_validUserWithTeams_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_validUserWithTeams_200_ok(TestInfo test) throws IOException {
     // Create user with different optional fields
     Team team1 = createTeam(TeamResourceTest.create(test, 1), adminAuthHeaders());
     Team team2 = createTeam(TeamResourceTest.create(test, 2), adminAuthHeaders());
@@ -321,7 +321,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     assertNull(user.getDisplayName());
     assertNull(user.getIsBot());
     assertNull(user.getProfile());
-    assertNull(user.getDeactivated());
+//    assertNull(user.getDeactivated());
     assertNull(user.getTimezone());
 
     EntityReference team1 = new TeamEntityInterface(createTeam(TeamResourceTest.create(test, 1),
@@ -401,7 +401,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Test
-  public void delete_validUser_as_admin_200(TestInfo test) throws HttpResponseException {
+  public void delete_validUser_as_admin_200(TestInfo test) throws IOException {
     Team team = createTeam(TeamResourceTest.create(test), adminAuthHeaders());
     List<UUID> teamIds = Collections.singletonList(team.getId());
 
@@ -539,16 +539,8 @@ public class UserResourceTest extends EntityResourceTest<User> {
 
     if (!expectedTeams.isEmpty()) {
       assertEquals(expectedTeams.size(), user.getTeams().size());
-      for (EntityReference team : user.getTeams()) {
-        TestUtils.validateEntityReference(team);
-        boolean foundTeam = false;
-        for (EntityReference expected : expectedTeams) {
-          if (expected.getId().equals(team.getId())) {
-            foundTeam = true;
-            break;
-          }
-        }
-        assertTrue(foundTeam);
+      for (EntityReference team : expectedTeams) {
+        TestUtils.existsInEntityReferenceList(user.getTeams(), team.getId(), true);
       }
     }
     if (createRequest.getProfile() != null) {
@@ -562,7 +554,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
   }
 
   @Override
-  public void validatePatchedEntity(User expected, User updated, Map<String, String> authHeaders) {
+  public void compareEntities(User expected, User updated, Map<String, String> authHeaders) {
     validateCommonEntityFields(getEntityInterface(expected), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), null);
 
@@ -581,6 +573,7 @@ public class UserResourceTest extends EntityResourceTest<User> {
     expectedTeams.sort(EntityUtil.compareEntityReference);
     updatedTeams.sort(EntityUtil.compareEntityReference);
     updatedTeams.forEach(t -> t.setHref(null));
+    expectedTeams.forEach(t -> t.setHref(null));
     assertEquals(expectedTeams, updatedTeams);
     if (expected.getProfile() != null) {
       assertEquals(expected.getProfile(), updated.getProfile());

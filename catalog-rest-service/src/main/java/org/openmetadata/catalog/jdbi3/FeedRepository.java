@@ -48,7 +48,7 @@ public class FeedRepository {
 
     // Validate about data entity is valid
     EntityLink about = EntityLink.parse(thread.getAbout());
-    EntityReference aboutRef = EntityUtil.validateEntityLink(about, dao);
+    EntityReference aboutRef = EntityUtil.validateEntityLink(about);
 
     // Get owner for the addressed to Entity
     EntityReference owner = EntityUtil.populateOwner(aboutRef.getId(),
@@ -127,7 +127,7 @@ public class FeedRepository {
     if (entityLink.getLinkType() != LinkType.ENTITY) {
       throw new IllegalArgumentException("Only entity links of type <E#/{entityType}/{entityName}> is allowed");
     }
-    EntityReference reference = EntityUtil.validateEntityLink(entityLink, dao);
+    EntityReference reference = EntityUtil.validateEntityLink(entityLink);
     List<String> threadIds = new ArrayList<>();
     List<List<String>> result = dao.fieldRelationshipDAO().listToByPrefix(entityLink.getFullyQualifiedFieldValue(),
             entityLink.getFullyQualifiedFieldType(), "thread",

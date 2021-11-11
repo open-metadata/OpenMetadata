@@ -41,10 +41,6 @@ import org.openmetadata.catalog.resources.databases.TableResource.TableList;
 import org.openmetadata.catalog.resources.services.DatabaseServiceResourceTest;
 import org.openmetadata.catalog.resources.services.StorageServiceResourceTest;
 import org.openmetadata.catalog.resources.tags.TagResourceTest;
-
-import org.openmetadata.catalog.type.Column;
-import org.openmetadata.catalog.type.SQLQuery;
-import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.Column;
 import org.openmetadata.catalog.type.ColumnConstraint;
@@ -54,13 +50,14 @@ import org.openmetadata.catalog.type.ColumnProfile;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.JoinedWith;
+import org.openmetadata.catalog.type.SQLQuery;
 import org.openmetadata.catalog.type.TableConstraint;
+import org.openmetadata.catalog.type.TableConstraint.ConstraintType;
 import org.openmetadata.catalog.type.TableData;
 import org.openmetadata.catalog.type.TableJoins;
 import org.openmetadata.catalog.type.TableProfile;
 import org.openmetadata.catalog.type.TableType;
 import org.openmetadata.catalog.type.TagLabel;
-
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 import org.openmetadata.catalog.util.RestUtil;
@@ -94,7 +91,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.catalog.resources.databases.DatabaseResourceTest.createAndCheckDatabase;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.createLocation;
 import static org.openmetadata.catalog.resources.locations.LocationResourceTest.getLocationName;
@@ -130,17 +126,18 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
 
   public TableResourceTest() {
-    super(Table.class, TableList.class, "tables", TableResource.FIELDS, true, true, true);
+    super(Entity.TABLE, Table.class, TableList.class, "tables", TableResource.FIELDS,
+            true, true, true);
   }
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     EntityResourceTest.setup(test);
     CreateDatabase create = DatabaseResourceTest.create(test).withService(SNOWFLAKE_REFERENCE);
     DATABASE = createAndCheckDatabase(create, adminAuthHeaders());
   }
 
-  public static Table createTable(TestInfo test, int i) throws HttpResponseException {
+  public static Table createTable(TestInfo test, int i) throws IOException {
     return new TableResourceTest().createEntity(test, i);
   }
 
@@ -150,7 +147,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   public static Table createAndCheckTable(CreateTable createTable, Map<String, String> adminAuthHeaders)
-          throws HttpResponseException {
+          throws IOException {
     return new TableResourceTest().createAndCheckEntity(createTable, adminAuthHeaders);
   }
 
@@ -229,7 +226,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void post_validTables_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTables_200_OK(TestInfo test) throws IOException {
     // Create table with different optional fields
     // Optional field description
     CreateTable create = create(test).withDescription("description");
@@ -265,8 +262,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
             .withChildren(new ArrayList<>(singletonList(c2_c_d)));
 
     // Column struct<a: int, b:char, c: struct<int: d>>>
-    Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>", USER_BANK_ACCOUNT_TAG_LABEL)
-            .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
+    Column c2 = getColumn("c2", STRUCT, "struct<a: int, b:string, c: struct<int: d>>",
+            USER_BANK_ACCOUNT_TAG_LABEL) .withChildren(new ArrayList<>(Arrays.asList(c2_a, c2_b, c2_c)));
 
     // Test POST operation can create complex types
     // c1 array<int>
@@ -278,10 +275,11 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     CreateTable create1 = create(test, 1).withColumns(Arrays.asList(c1, c2));
     Table table1 = createAndCheckEntity(create1, adminAuthHeaders());
 
-    // Test PUT operation
+    // Test PUT operation - put operation to create
     CreateTable create2 = create(test, 2).withColumns(Arrays.asList(c1, c2)).withName("put_complexColumnType");
-    Table table2= updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
-    // Update without any change
+    Table table2 = updateAndCheckEntity(create2, CREATED, adminAuthHeaders(), UpdateType.CREATED, null);
+
+    // Test PUT operation again without any change
     ChangeDescription change = getChangeDescription(table2.getVersion());
     updateAndCheckEntity(create2, Status.OK, adminAuthHeaders(), NO_CHANGE, change);
 
@@ -354,12 +352,12 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void post_tableWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_tableWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_tableWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_tableWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
@@ -538,7 +536,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableJoins_200(TestInfo test) throws HttpResponseException, ParseException {
+  public void put_tableJoins_200(TestInfo test) throws IOException, ParseException {
     Table table1 = createAndCheckEntity(create(test, 1), adminAuthHeaders());
     Table table2 = createAndCheckEntity(create(test, 2), adminAuthHeaders());
     Table table3 = createAndCheckEntity(create(test, 3), adminAuthHeaders());
@@ -629,7 +627,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws HttpResponseException, ParseException {
+  public void put_tableJoinsInvalidColumnName_4xx(TestInfo test) throws IOException, ParseException {
     Table table1 = createAndCheckEntity(create(test, 1), adminAuthHeaders());
     Table table2 = createAndCheckEntity(create(test, 2), adminAuthHeaders());
 
@@ -684,7 +682,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableSampleData_200(TestInfo test) throws HttpResponseException {
+  public void put_tableSampleData_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     List<String> columns = Arrays.asList("c1", "c2", "c3");
 
@@ -701,7 +699,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableInvalidSampleData_4xx(TestInfo test) throws HttpResponseException {
+  public void put_tableInvalidSampleData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     TableData tableData = new TableData();
 
@@ -733,7 +731,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_viewDefinition_200(TestInfo test) throws HttpResponseException {
+  public void put_viewDefinition_200(TestInfo test) throws IOException {
     CreateTable createTable = create(test);
     createTable.setTableType(TableType.View);
     String query = "sales_vw\n" +
@@ -767,7 +765,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableProfile_200(TestInfo test) throws HttpResponseException {
+  public void put_tableProfile_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100.0")
             .withMin("10.0").withUniqueCount(100.0);
@@ -800,7 +798,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableInvalidTableProfileData_4xx(TestInfo test) throws HttpResponseException {
+  public void put_tableInvalidTableProfileData_4xx(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
 
     ColumnProfile c1Profile = new ColumnProfile().withName("c1").withMax("100").withMin("10.0")
@@ -817,7 +815,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_tableQueries_200(TestInfo test) throws HttpResponseException {
+  public void put_tableQueries_200(TestInfo test) throws IOException {
     Table table = createAndCheckEntity(create(test), adminAuthHeaders());
     SQLQuery query = new SQLQuery().withQuery("select * from test;").withQueryDate("2021-09-08")
             .withDuration(600.0);
@@ -853,14 +851,14 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void get_tableWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
     Table table = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(table, false);
   }
 
   @Test
-  public void get_tableByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test).withDescription("description").withOwner(USER_OWNER1);
     Table table = createAndCheckEntity(create, adminAuthHeaders());
     validateGetWithDifferentFields(table, true);
@@ -868,7 +866,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
 
   @Test
   @Order(1) // Run this test first as other tables created in other tests will interfere with listing
-  public void get_tableListWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_tableListWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTable create = create(test, 1).withDescription("description").withOwner(USER_OWNER1)
             .withTags(singletonList(USER_ADDRESS_TAG_LABEL));
     createAndCheckEntity(create, adminAuthHeaders());
@@ -1047,7 +1045,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Test
-  public void put_addDeleteLocation_200(TestInfo test) throws HttpResponseException {
+  public void put_addDeleteLocation_200(TestInfo test) throws IOException {
     Table table = createAndCheckTable(create(test), adminAuthHeaders());
 
     // Add location to the table
@@ -1084,7 +1082,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
     // GET .../tables/{tableId} returns newly added follower
     Table getTable = getTable(table.getId(), "location", authHeaders);
     TestUtils.validateEntityReference(getTable.getLocation());
-    assertTrue(getTable.getLocation().getId().equals(locationId), "Location added was not found in the table " +
+    assertEquals(locationId, getTable.getLocation().getId(), "Location added was not found in the table " +
             "get response");
   }
 
@@ -1217,7 +1215,7 @@ public class TableResourceTest extends EntityResourceTest<Table> {
    * A method variant to be called form other tests to create a table without depending on Database, DatabaseService
    * set up in the {@code setup()} method
    */
-  public Table createEntity(TestInfo test, int index) throws HttpResponseException {
+  public Table createEntity(TestInfo test, int index) throws IOException {
     DatabaseService service = createService(DatabaseServiceResourceTest.create(test), adminAuthHeaders());
     EntityReference serviceRef =
             new EntityReference().withName(service.getName()).withId(service.getId()).withType(Entity.DATABASE_SERVICE);
@@ -1315,7 +1313,8 @@ public class TableResourceTest extends EntityResourceTest<Table> {
   }
 
   @Override
-  public void validatePatchedEntity(Table expected, Table patched, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Table expected, Table patched, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(patched), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
 
@@ -1344,14 +1343,13 @@ public class TableResourceTest extends EntityResourceTest<Table> {
       return;
     }
     if (fieldName.startsWith("columns") && fieldName.endsWith("constraint")) {
-      // Column constraint
       ColumnConstraint expectedConstraint = (ColumnConstraint) expected;
       ColumnConstraint actualConstraint = ColumnConstraint.fromValue((String) actual);
       assertEquals(expectedConstraint, actualConstraint);
     } else if (fieldName.endsWith("tableConstraints")) {
-        List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
-        List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
-        assertEquals(expectedConstraints, actualConstraints);
+      List<TableConstraint> expectedConstraints = (List<TableConstraint>) expected;
+      List<TableConstraint> actualConstraints = JsonUtils.readObjects(actual.toString(), TableConstraint.class);
+      assertEquals(expectedConstraints, actualConstraints);
     } else if (fieldName.contains("columns") && !fieldName.endsWith("tags") && !fieldName.endsWith("description")) {
       List<Column> expectedRefs = (List<Column>) expected;
       List<Column> actualRefs = JsonUtils.readObjects(actual.toString(), Column.class);

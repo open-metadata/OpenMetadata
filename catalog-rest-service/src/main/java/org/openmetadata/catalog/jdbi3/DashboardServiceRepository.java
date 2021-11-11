@@ -20,6 +20,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.DashboardService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.dashboard.DashboardServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
@@ -29,6 +30,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -43,12 +45,13 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
   private final CollectionDAO dao;
 
   public DashboardServiceRepository(CollectionDAO dao) {
-    super(DashboardService.class, dao.dashboardServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(DashboardServiceResource.COLLECTION_PATH, DashboardService.class, dao.dashboardServiceDAO(), dao,
+            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
-  public DashboardService update(UUID id, String description, URI dashboardUrl, String username, String password,
-                                 Schedule ingestionSchedule)
+  public DashboardService update(UriInfo uriInfo, UUID id, String description, URI dashboardUrl, String username,
+                                 String password, Schedule ingestionSchedule)
           throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
     DashboardService dashboardService = dao.dashboardServiceDAO().findEntityById(id);
@@ -56,7 +59,7 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
     dashboardService.withDescription(description).withDashboardUrl(dashboardUrl).withUsername(username)
             .withPassword(password).withIngestionSchedule(ingestionSchedule);
     dao.dashboardServiceDAO().update(id, JsonUtils.pojoToJson(dashboardService));
-    return dashboardService;
+    return withHref(uriInfo, dashboardService);
   }
 
   @Transaction
@@ -183,6 +186,9 @@ public class DashboardServiceRepository extends EntityRepository<DashboardServic
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public DashboardService withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

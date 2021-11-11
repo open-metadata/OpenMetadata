@@ -28,8 +28,6 @@ import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -42,7 +40,6 @@ import java.util.UUID;
 import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityNotFound;
 
 public class IngestionRepository extends EntityRepository<Ingestion> {
-  private static final Logger LOG = LoggerFactory.getLogger(IngestionRepository.class);
   private static final Fields INGESTION_UPDATE_FIELDS = new Fields(IngestionResource.FIELD_LIST,
           "owner,tags");
   private static final Fields INGESTION_PATCH_FIELDS = new Fields(IngestionResource.FIELD_LIST,
@@ -50,7 +47,7 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
   private final CollectionDAO dao;
 
   public IngestionRepository(CollectionDAO dao) {
-    super(Ingestion.class, dao.ingestionDAO(), dao, INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
+    super(Entity.INGESTION, Ingestion.class, dao.ingestionDAO(), dao, INGESTION_PATCH_FIELDS, INGESTION_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -268,6 +265,9 @@ public class IngestionRepository extends EntityRepository<Ingestion> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Ingestion withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

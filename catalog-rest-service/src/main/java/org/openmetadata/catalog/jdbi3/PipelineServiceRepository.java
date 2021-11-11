@@ -20,6 +20,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.services.PipelineService;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
+import org.openmetadata.catalog.resources.services.pipeline.PipelineServiceResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.Schedule;
@@ -29,6 +30,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
 
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.net.URI;
 import java.text.ParseException;
@@ -43,12 +45,13 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
   private final CollectionDAO dao;
 
   public PipelineServiceRepository(CollectionDAO dao) {
-    super(PipelineService.class, dao.pipelineServiceDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(PipelineServiceResource.COLLECTION_PATH, PipelineService.class, dao.pipelineServiceDAO(), dao,
+            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao;
   }
 
   @Transaction
-  public PipelineService update(UUID id, String description, URI url,
+  public PipelineService update(UriInfo uriInfo, UUID id, String description, URI url,
                                  Schedule ingestionSchedule)
           throws IOException {
     EntityUtil.validateIngestionSchedule(ingestionSchedule);
@@ -57,7 +60,7 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
     pipelineService.withDescription(description).withIngestionSchedule(ingestionSchedule)
             .withPipelineUrl(url);
     dao.pipelineServiceDAO().update(id, JsonUtils.pojoToJson(pipelineService));
-    return pipelineService;
+    return withHref(uriInfo, pipelineService);
   }
 
   @Transaction
@@ -186,6 +189,9 @@ public class PipelineServiceRepository extends EntityRepository<PipelineService>
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public PipelineService withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

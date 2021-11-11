@@ -21,6 +21,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.catalog.entity.Bots;
@@ -153,6 +154,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   LocationDAO locationDAO();
+
+  @CreateSqlObject
+  ChangeEventDAO changeEventDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -797,5 +801,20 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT json FROM user_entity WHERE email = :email")
     String findByEmail(@Bind("email") String email);
+  }
+
+  interface ChangeEventDAO {
+    @SqlUpdate("INSERT INTO change_event (json) VALUES (:json)")
+    void insert(@Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM change_event WHERE " +
+            "eventType = :eventType AND " +
+//            "(entityType IN (<entityTypes>) OR entityType IS NULL) " +
+            "(entityType IN (<entityTypes>) OR entityType IS NULL) AND " +
+            "dateTime >= :dateTime " +
+            "ORDER BY dateTime DESC")
+    List<String> list(@Bind("eventType") String eventType,
+                      @BindList("entityTypes") List<String> entityTypes,
+                      @Bind("dateTime") long dateTime);
   }
 }

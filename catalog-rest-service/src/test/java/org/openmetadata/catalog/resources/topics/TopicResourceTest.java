@@ -54,7 +54,8 @@ import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 public class TopicResourceTest extends EntityResourceTest<Topic> {
 
   public TopicResourceTest() {
-    super(Topic.class, TopicList.class, "topics", TopicResource.FIELDS, true, true, true);
+    super(Entity.TOPIC, Topic.class, TopicList.class, "topics", TopicResource.FIELDS,
+            true, true, true);
   }
 
   @Test
@@ -76,7 +77,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_validTopics_as_admin_200_OK(TestInfo test) throws HttpResponseException {
+  public void post_validTopics_as_admin_200_OK(TestInfo test) throws IOException {
     // Create team with different optional fields
     CreateTopic create = create(test);
     createAndCheckEntity(create, adminAuthHeaders());
@@ -88,12 +89,12 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithUserOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithUserOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(USER_OWNER1), adminAuthHeaders());
   }
 
   @Test
-  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithTeamOwner_200_ok(TestInfo test) throws IOException {
     createAndCheckEntity(create(test).withOwner(TEAM_OWNER1), adminAuthHeaders());
   }
 
@@ -151,7 +152,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void post_topicWithDifferentService_200_ok(TestInfo test) throws HttpResponseException {
+  public void post_topicWithDifferentService_200_ok(TestInfo test) throws IOException {
     EntityReference[] differentServices = {PULSAR_REFERENCE, KAFKA_REFERENCE};
 
     // Create topic for each service and test APIs
@@ -176,7 +177,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_topicWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_topicWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
     Topic topic = createAndCheckEntity(create, adminAuthHeaders());
@@ -184,7 +185,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Test
-  public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
+  public void get_topicByNameWithDifferentFields_200_OK(TestInfo test) throws IOException {
     CreateTopic create = create(test).withDescription("description").withOwner(USER_OWNER1)
             .withService(KAFKA_REFERENCE);
     Topic topic = createAndCheckEntity(create, adminAuthHeaders());
@@ -290,7 +291,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     CreateTopic createRequest = (CreateTopic) request;
     validateCommonEntityFields(getEntityInterface(topic), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
@@ -299,12 +301,14 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(topic, request, authHeaders);
   }
 
   @Override
-  public void validatePatchedEntity(Topic expected, Topic updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());

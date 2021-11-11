@@ -26,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateModel;
 import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -33,8 +34,6 @@ import org.openmetadata.catalog.jdbi3.ModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -78,13 +77,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "models")
 public class ModelResource {
-  public static final String MODEL_COLLECTION_PATH = "v1/models/";
+  public static final String COLLECTION_PATH = "v1/models/";
   private final ModelRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, MODEL_COLLECTION_PATH, ref.getId()));
-  }
 
   public static List<Model> addHref(UriInfo uriInfo, List<Model> models) {
     Optional.ofNullable(models).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -92,10 +87,10 @@ public class ModelResource {
   }
 
   public static Model addHref(UriInfo uriInfo, Model model) {
-    model.setHref(RestUtil.getHref(uriInfo, MODEL_COLLECTION_PATH, model.getId()));
-    EntityUtil.addHref(uriInfo, model.getOwner());
-    EntityUtil.addHref(uriInfo, model.getDashboard()); // Dashboard HREF
-    EntityUtil.addHref(uriInfo, model.getFollowers());
+    model.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, model.getId()));
+    Entity.withHref(uriInfo, model.getOwner());
+    Entity.withHref(uriInfo, model.getDashboard()); // Dashboard HREF
+    Entity.withHref(uriInfo, model.getFollowers());
     return model;
   }
 
@@ -156,9 +151,9 @@ public class ModelResource {
 
     ResultList<Model> models;
     if (before != null) { // Reverse paging
-      models = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
+      models = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      models = dao.listAfter(fields, null, limitParam, after);
+      models = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
     addHref(uriInfo, models.getData());
     return models;
@@ -181,7 +176,7 @@ public class ModelResource {
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
@@ -200,7 +195,7 @@ public class ModelResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Model model = dao.getByName(fqn, fields);
+    Model model = dao.getByName(uriInfo, fqn, fields);
     return addHref(uriInfo, model);
   }
 
@@ -218,7 +213,7 @@ public class ModelResource {
                          @Valid CreateModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Model model = getModel(securityContext, create);
-    model = addHref(uriInfo, dao.create(model));
+    model = addHref(uriInfo, dao.create(uriInfo, model));
     return Response.created(model.getHref()).entity(model).build();
   }
 
@@ -240,10 +235,10 @@ public class ModelResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Model model = dao.get(id, fields);
+    Model model = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(model));
-    model = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    model = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, model);
   }
 
@@ -260,9 +255,9 @@ public class ModelResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateModel create) throws IOException, ParseException {
     Model model = getModel(securityContext, create);
-    PutResponse<Model> response = dao.createOrUpdate(model);
-    model = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(model).build();
+    PutResponse<Model> response = dao.createOrUpdate(uriInfo, model);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -280,28 +275,24 @@ public class ModelResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-    Model model = dao.get(id, fields);
-    return Response.status(status).entity(model).build();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "models",
           description = "Remove the user identified `userId` as a follower of the model.")
-  public Model deleteFollower(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the model",
+  public Response deleteFollower(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Parameter(description = "Id of the model",
                                       schema = @Schema(type = "string"))
                               @PathParam("id") String id,
-                              @Parameter(description = "Id of the user being removed as follower",
+                                 @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-    Model model = dao.get(id, fields);
-    return addHref(uriInfo, model);
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
