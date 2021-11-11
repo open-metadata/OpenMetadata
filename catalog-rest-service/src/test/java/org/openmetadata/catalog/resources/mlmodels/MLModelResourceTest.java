@@ -486,13 +486,13 @@ public class MLModelResourceTest extends CatalogApplicationTest {
   public static MLModel updateModel(CreateMLModel create,
                                   Status status,
                                   Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("models"),
+    return TestUtils.put(getResource("mlmodels"),
             create, MLModel.class, status, authHeaders);
   }
 
   public static MLModel createModel(CreateMLModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(getResource("models"), create, MLModel.class, authHeaders);
+    return TestUtils.post(getResource("mlmodels"), create, MLModel.class, authHeaders);
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
@@ -586,14 +586,14 @@ public class MLModelResourceTest extends CatalogApplicationTest {
 
   public static MLModel getModel(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models/" + id);
+    WebTarget target = getResource("mlmodels/" + id);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, MLModel.class, authHeaders);
   }
 
   public static MLModel getModelByName(String fqn, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models/name/" + fqn);
+    WebTarget target = getResource("mlmodels/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
     return TestUtils.get(target, MLModel.class, authHeaders);
   }
@@ -601,7 +601,7 @@ public class MLModelResourceTest extends CatalogApplicationTest {
   public static MLModelList listModels(String fields, Integer limitParam,
                                          String before, String after, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models");
+    WebTarget target = getResource("mlmodels");
     target = fields != null ? target.queryParam("fields", fields): target;
     target = limitParam != null ? target.queryParam("limit", limitParam): target;
     target = before != null ? target.queryParam("before", before) : target;
@@ -610,7 +610,7 @@ public class MLModelResourceTest extends CatalogApplicationTest {
   }
 
   private void deleteModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("models/" + id), authHeaders);
+    TestUtils.delete(getResource("mlmodels/" + id), authHeaders);
 
     // Ensure deleted Model does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getModel(id, authHeaders));
@@ -618,11 +618,11 @@ public class MLModelResourceTest extends CatalogApplicationTest {
   }
 
   public static String getModelName(TestInfo test) {
-    return String.format("model_%s", test.getDisplayName());
+    return String.format("mlmodel_%s", test.getDisplayName());
   }
 
   public static String getModelName(TestInfo test, int index) {
-    return String.format("model%d_%s", index, test.getDisplayName());
+    return String.format("mlmodel%d_%s", index, test.getDisplayName());
   }
 
   public static CreateMLModel create(TestInfo test) {

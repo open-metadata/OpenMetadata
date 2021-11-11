@@ -23,9 +23,8 @@ from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, Table
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

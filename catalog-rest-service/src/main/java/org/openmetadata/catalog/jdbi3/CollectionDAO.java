@@ -492,7 +492,7 @@ public interface CollectionDAO {
 
   interface MLModelDAO extends EntityDAO<MLModel>{
     @Override
-    default String getTableName() { return "model_entity"; }
+    default String getTableName() { return "ml_model_entity"; }
 
     @Override
     default Class<MLModel> getEntityClass() { return MLModel.class; }

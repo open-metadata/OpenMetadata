@@ -184,7 +184,7 @@ CREATE TABLE IF NOT EXISTS dashboard_entity (
     INDEX (updatedAt)
 );
 
-CREATE TABLE IF NOT EXISTS model_entity (
+CREATE TABLE IF NOT EXISTS ml_model_entity (
     id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') STORED NOT NULL,
     fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
     json JSON NOT NULL,
