@@ -28,6 +28,12 @@ Find assets matching strict criteria on metadata properties and Boolean operator
 
 ![](.gitbook/assets/complex-queries.gif)
 
+### Descriptions & Tags
+
+Add descriptions and tags to tables and columns. OpenMetadata indexes assets based on descriptions, tags, names, and other metadata to enable keyword, advanced search, and filtering to enable you and others in your organization to discover your data.
+
+![](.gitbook/assets/descriptions-tags.gif)
+
 ### Complex Data Types
 
 Add descriptions and tags to nested fields in complex data types like arrays and structs. Locate these assets using keyword search or advanced search.
@@ -36,13 +42,13 @@ Add descriptions and tags to nested fields in complex data types like arrays and
 
 ### Importance & Owners
 
-Tier tags enable you to annotate assets with their importance relative to other assets. The Explore UI enables you to filter assets based on importance.&#x20;
+Tier tags enable you to annotate assets with their importance relative to other assets. The Explore UI enables you to filter assets based on importance.
 
 Use ownership metadata to determine the primary points of contact for any assets of interest in order to get help with any questions you might have.
 
 #### Filter Assets by Importance
 
-User Tier tags and usage data to identify the relative importance of data assets.&#x20;
+User Tier tags and usage data to identify the relative importance of data assets.
 
 ![](<.gitbook/assets/asset-importance (1).gif>)
 
