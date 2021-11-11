@@ -61,7 +61,6 @@ const parseMarkdown = (
     />
   );
 };
-/*eslint-disable */
 
 export const getDiffByFieldName = (
   name: string,

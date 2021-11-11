@@ -46,7 +46,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     return name?.split('.')?.slice(-2, -1)[0];
   };
 
-  const isEdsWithField = (name: string | undefined, checkWith: string) => {
+  const isEndsWithField = (name: string | undefined, checkWith: string) => {
     return name?.endsWith(checkWith);
   };
 
@@ -153,7 +153,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     );
 
     if (
-      isEdsWithField(
+      isEndsWithField(
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
           columnsDiff?.updated?.name,
@@ -187,7 +187,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
 
       return colList;
     } else if (
-      isEdsWithField(
+      isEndsWithField(
         columnsDiff?.added?.name ??
           columnsDiff?.deleted?.name ??
           columnsDiff?.updated?.name,
