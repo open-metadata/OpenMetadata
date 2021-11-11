@@ -8,6 +8,7 @@ import { Button } from '../buttons/Button/Button';
 import NonAdminAction from '../common/non-admin-action/NonAdminAction';
 import Searchbar from '../common/searchbar/Searchbar';
 import PageContainer from '../containers/PageContainer';
+import IngestionModal from '../IngestionModal/IngestionModal.component';
 
 const MOCK_INGESTIONS = [
   {
@@ -55,6 +56,7 @@ const MOCK_INGESTIONS = [
 const Ingestion = () => {
   const { isAdminUser, isAuthDisabled } = useAuth();
   const [searchText, setSearchText] = useState('');
+  const [isAdding, setIsAdding] = useState<boolean>(false);
 
   const handleSearchAction = (searchValue: string) => {
     setSearchText(searchValue);
@@ -83,7 +85,8 @@ const Ingestion = () => {
                 data-testid="add-new-user-button"
                 size="small"
                 theme="primary"
-                variant="contained">
+                variant="contained"
+                onClick={() => setIsAdding(true)}>
                 Add Ingestion
               </Button>
             </NonAdminAction>
@@ -152,7 +155,13 @@ const Ingestion = () => {
           </table>
         </div>
       </div>
-      ;
+      {isAdding ? (
+        <IngestionModal
+          header="Add Ingestion"
+          onCancel={() => setIsAdding(false)}
+          onSave={() => setIsAdding(false)}
+        />
+      ) : null}
     </PageContainer>
   );
 };
