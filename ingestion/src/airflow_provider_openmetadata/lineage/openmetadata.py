@@ -9,11 +9,11 @@ from airflow.lineage.backend import LineageBackend
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
-from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
+from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineServiceType,
@@ -173,7 +173,7 @@ def parse_lineage_to_openmetadata(
         else None
     )
 
-    create_task = CreateTaskEntityRequest(
+    task = Task(
         name=task_properties["task_id"],
         displayName=task_properties["label"],
         taskUrl=task_url,
@@ -181,18 +181,14 @@ def parse_lineage_to_openmetadata(
         startDate=task_start_date,
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
-        service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
-    task = client.create_or_update(create_task)
-    operator.log.info("Created Task {}".format(task))
-    operator.log.info("Dag {}".format(dag))
     create_pipeline = CreatePipelineEntityRequest(
         name=dag.dag_id,
         displayName=dag.dag_id,
         description=dag.description,
         pipelineUrl=dag_url,
         startDate=dag_start_date,
-        tasks=[EntityReference(id=task.id, type="task")],
+        tasks=[task],
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
     pipeline = client.create_or_update(create_pipeline)
