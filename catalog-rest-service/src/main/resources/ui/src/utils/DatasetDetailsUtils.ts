@@ -1,7 +1,7 @@
 export const datasetTableTabs = [
   {
     name: 'Schema',
-    path: 'schema.schema',
+    path: 'schema',
   },
   {
     name: 'Profiler',
@@ -33,7 +33,8 @@ export const getCurrentDatasetTab = (tab: string) => {
 
       break;
 
-    case 'schema.schema':
+    case 'schema':
+    case 'sample_data':
     default:
       currentTab = 1;
 

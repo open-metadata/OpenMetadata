@@ -65,16 +65,15 @@ const SchemaTab: FunctionComponent<Props> = ({
   const handleToggleChange = (value: DatasetSchemaTableTab) => {
     setCheckedValue(value);
     history.push({
-      pathname: getDatasetTabPath(tableFQN, `schema.${value}`),
+      pathname: getDatasetTabPath(tableFQN, value),
     });
   };
 
   useEffect(() => {
-    if (tab && tab.includes('schema')) {
-      const tabName = tab.split('.')[1];
-      const activeTab = isUndefined(tabName)
+    if (tab && ['schema', 'sample_data'].includes(tab)) {
+      const activeTab = isUndefined(tab)
         ? 'schema'
-        : (tabName as DatasetSchemaTableTab);
+        : (tab as DatasetSchemaTableTab);
       setCheckedValue(activeTab);
     }
   }, [tab]);
