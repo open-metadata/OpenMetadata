@@ -81,6 +81,7 @@ plugins: Dict[str, Set[str]] = {
     "bigquery": {"openmetadata-sqlalchemy-bigquery==0.2.0"},
     "bigquery-usage": {"google-cloud-logging", "cachetools"},
     "elasticsearch": {"elasticsearch~=7.13.1"},
+    "glue": {"boto3~=1.19.12"},
     "hive": {
         "openmetadata-sqlalchemy-hive==0.2.0",
         "thrift~=0.13.0",
