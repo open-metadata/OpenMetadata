@@ -12,18 +12,21 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import pathlib
 from datetime import timedelta
+
 from airflow import DAG
-import json
+
 try:
     from airflow.operators.python import PythonOperator
 except ModuleNotFoundError:
     from airflow.operators.python_operator import PythonOperator
 
+from airflow.utils.dates import days_ago
+
 from metadata.config.common import load_config_file
 from metadata.ingestion.api.workflow import Workflow
-from airflow.utils.dates import days_ago
 
 default_args = {
     "owner": "user_name",
@@ -31,7 +34,7 @@ default_args = {
     "email_on_failure": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=5),
-    "execution_timeout": timedelta(minutes=60)
+    "execution_timeout": timedelta(minutes=60),
 }
 
 config = """
@@ -72,9 +75,9 @@ config = """
 }
 """
 
+
 def metadata_ingestion_workflow():
     workflow_config = json.loads(config)
-    
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
