@@ -15,7 +15,7 @@ const MOCK_INGESTIONS = [
     type: 'Usage',
     service: 'BigQuery',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'info', 'success', 'info'],
+    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -23,7 +23,7 @@ const MOCK_INGESTIONS = [
     type: 'Profiler',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'info', 'success', 'info'],
+    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -31,7 +31,7 @@ const MOCK_INGESTIONS = [
     type: 'Metadata',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'info', 'success', 'info'],
+    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -39,7 +39,7 @@ const MOCK_INGESTIONS = [
     type: 'Metadata',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'info', 'success', 'info'],
+    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -47,7 +47,7 @@ const MOCK_INGESTIONS = [
     type: 'Usage',
     service: 'Redshift',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'info', 'success', 'info'],
+    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
     nextRun: '2021-11-19 14:00:00',
   },
 ];
@@ -84,7 +84,7 @@ const Ingestion = () => {
                 size="small"
                 theme="primary"
                 variant="contained">
-                Add New Service
+                Add Ingestion
               </Button>
             </NonAdminAction>
           </div>
