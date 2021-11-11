@@ -9,13 +9,14 @@ from airflow.lineage.backend import LineageBackend
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
-from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
+from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineService,
     PipelineServiceType,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
@@ -143,14 +144,16 @@ def parse_lineage_to_openmetadata(
     tags = dag.tags
     airflow_service_entity = None
     operator.log.info("Get Airflow Service ID")
-    airflow_service_entity = client.get_pipeline_service(config.airflow_service_name)
+    airflow_service_entity = client.get_by_name(
+        entity=PipelineService, fqdn=config.airflow_service_name
+    )
     if airflow_service_entity is None:
         pipeline_service = CreatePipelineServiceEntityRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
             pipelineUrl=pipeline_service_url,
         )
-        airflow_service_entity = client.create_pipeline_service(pipeline_service)
+        airflow_service_entity = client.create_or_update(pipeline_service)
 
     operator.log.info("airflow service entity {}", airflow_service_entity)
     operator.log.info(task_properties)
@@ -173,7 +176,7 @@ def parse_lineage_to_openmetadata(
         else None
     )
 
-    create_task = CreateTaskEntityRequest(
+    task = Task(
         name=task_properties["task_id"],
         displayName=task_properties["label"],
         taskUrl=task_url,
@@ -181,18 +184,14 @@ def parse_lineage_to_openmetadata(
         startDate=task_start_date,
         endDate=task_end_date,
         downstreamTasks=downstream_tasks,
-        service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
-    task = client.create_or_update(create_task)
-    operator.log.info("Created Task {}".format(task))
-    operator.log.info("Dag {}".format(dag))
     create_pipeline = CreatePipelineEntityRequest(
         name=dag.dag_id,
         displayName=dag.dag_id,
         description=dag.description,
         pipelineUrl=dag_url,
         startDate=dag_start_date,
-        tasks=[EntityReference(id=task.id, type="task")],
+        tasks=[task],
         service=EntityReference(id=airflow_service_entity.id, type="pipelineService"),
     )
     pipeline = client.create_or_update(create_pipeline)
@@ -295,4 +294,5 @@ class OpenMetadataLineageBackend(LineageBackend):
                 config, context, operator, op_inlets, op_outlets, client
             )
         except Exception as e:
+            operator.log.error(traceback.format_exc())
             operator.log.error(e)
