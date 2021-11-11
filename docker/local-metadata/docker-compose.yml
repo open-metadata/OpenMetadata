@@ -25,15 +25,17 @@ services:
     expose:
       - 3306
     networks:
-      app_net:
+      local_app_net:
         ipv4_address: 172.16.239.10
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.10.2
     environment:
       - discovery.type=single-node
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+
     networks:
-      app_net:
+      local_app_net:
         ipv4_address: 172.16.239.11
     expose:
       - 9200
@@ -57,7 +59,7 @@ services:
     depends_on:
       - mysql
     networks:
-      app_net:
+      local_app_net:
         ipv4_address: 172.16.239.13
     extra_hosts:
       - "localhost:172.16.239.10"
@@ -74,14 +76,14 @@ services:
     ports:
       - 8080:8080
     networks:
-      - app_net
+      - local_app_net
     extra_hosts:
       - "localhost:172.16.239.10"
       - "localhost:172.16.239.11"
       - "localhost:172.16.239.13"
 
 networks:
-  app_net:
+  local_app_net:
     ipam:
       driver: default
       config:
