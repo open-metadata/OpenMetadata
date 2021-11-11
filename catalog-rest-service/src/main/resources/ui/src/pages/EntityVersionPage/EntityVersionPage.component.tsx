@@ -1,5 +1,4 @@
 import { AxiosError, AxiosResponse } from 'axios';
-import { toString } from 'lodash';
 import React, { FunctionComponent, useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
 import { getDatabase } from '../../axiosAPIs/databaseAPI';
@@ -35,7 +34,6 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as Table
   );
 
-  const [latestVersion, setLatestVersion] = useState<string>();
   const { version, datasetFQN } = useParams() as Record<string, string>;
   const [isLoading, setIsloading] = useState<boolean>(false);
   const [versionList, setVersionList] = useState<EntityHistory>(
@@ -61,11 +59,10 @@ const EntityVersionPage: FunctionComponent = () => {
       ['owner', 'tags', 'database']
     )
       .then((res: AxiosResponse) => {
-        const { id, version, owner, tags, name, database } = res.data;
+        const { id, owner, tags, name, database } = res.data;
         setTier(getTierFromTableTags(tags));
         setOwner(getOwnerFromId(owner?.id));
         setCurrentVersionData(res.data);
-        setLatestVersion(version);
         getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
           getServiceById('databaseServices', resDB.data.service?.id).then(
             (resService: AxiosResponse) => {
@@ -118,100 +115,67 @@ const EntityVersionPage: FunctionComponent = () => {
   };
 
   const fetchCurrentVersion = () => {
-    if (toString(latestVersion) === version) {
-      setIsVersionLoading(true);
-      getTableDetailsByFQN(
-        getPartialNameFromFQN(
-          datasetFQN,
-          ['service', 'database', 'table'],
-          '.'
-        ),
-        ['owner', 'tags']
-      )
-        .then((vRes: AxiosResponse) => {
-          const { owner, tags } = vRes.data;
-          setTier(getTierFromTableTags(tags));
-          setOwner(getOwnerFromId(owner?.id));
-          setCurrentVersionData(vRes.data);
-          setIsVersionLoading(false);
-        })
-        .catch((err: AxiosError) => {
-          const msg = err.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while fetching ${datasetFQN} version ${version}`,
-          });
+    setIsVersionLoading(true);
+    getTableDetailsByFQN(
+      getPartialNameFromFQN(datasetFQN, ['service', 'database', 'table'], '.'),
+      'database'
+    )
+      .then((res: AxiosResponse) => {
+        const { id, database, name } = res.data;
+        getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
+          getServiceById('databaseServices', resDB.data.service?.id).then(
+            (resService: AxiosResponse) => {
+              setSlashedTableName([
+                {
+                  name: resService.data.name,
+                  url: resService.data.name
+                    ? getServiceDetailsPath(
+                        resService.data.name,
+                        resService.data.serviceType
+                      )
+                    : '',
+                  imgSrc: resService.data.serviceType
+                    ? serviceTypeLogo(resService.data.serviceType)
+                    : undefined,
+                },
+                {
+                  name: resDB.data.name,
+                  url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
+                },
+                {
+                  name: name,
+                  url: '',
+                  activeTitle: true,
+                },
+              ]);
+            }
+          );
         });
-    } else {
-      setIsVersionLoading(true);
-      getTableDetailsByFQN(
-        getPartialNameFromFQN(
-          datasetFQN,
-          ['service', 'database', 'table'],
-          '.'
-        ),
-        'database'
-      )
-        .then((res: AxiosResponse) => {
-          const { id, database, name } = res.data;
-          getDatabase(database.id, 'service').then((resDB: AxiosResponse) => {
-            getServiceById('databaseServices', resDB.data.service?.id).then(
-              (resService: AxiosResponse) => {
-                setSlashedTableName([
-                  {
-                    name: resService.data.name,
-                    url: resService.data.name
-                      ? getServiceDetailsPath(
-                          resService.data.name,
-                          resService.data.serviceType
-                        )
-                      : '',
-                    imgSrc: resService.data.serviceType
-                      ? serviceTypeLogo(resService.data.serviceType)
-                      : undefined,
-                  },
-                  {
-                    name: resDB.data.name,
-                    url: getDatabaseDetailsPath(resDB.data.fullyQualifiedName),
-                  },
-                  {
-                    name: name,
-                    url: '',
-                    activeTitle: true,
-                  },
-                ]);
-              }
-            );
-          });
 
-          getTableVersion(id, version)
-            .then((vRes: AxiosResponse) => {
-              const { owner, tags } = vRes.data;
-              setTier(getTierFromTableTags(tags));
-              setOwner(getOwnerFromId(owner?.id));
-              setCurrentVersionData(vRes.data);
-              setIsVersionLoading(false);
-            })
-            .catch((err: AxiosError) => {
-              const msg = err.message;
-              showToast({
-                variant: 'error',
-                body:
-                  msg ??
-                  `Error while fetching ${datasetFQN} version ${version}`,
-              });
+        getTableVersion(id, version)
+          .then((vRes: AxiosResponse) => {
+            const { owner, tags } = vRes.data;
+            setTier(getTierFromTableTags(tags));
+            setOwner(getOwnerFromId(owner?.id));
+            setCurrentVersionData(vRes.data);
+            setIsVersionLoading(false);
+          })
+          .catch((err: AxiosError) => {
+            const msg = err.message;
+            showToast({
+              variant: 'error',
+              body:
+                msg ?? `Error while fetching ${datasetFQN} version ${version}`,
             });
-        })
-        .catch((err: AxiosError) => {
-          const msg = err.message;
-          showToast({
-            variant: 'error',
-            body:
-              msg ?? `Error while fetching ${datasetFQN}  version ${version}`,
           });
+      })
+      .catch((err: AxiosError) => {
+        const msg = err.message;
+        showToast({
+          variant: 'error',
+          body: msg ?? `Error while fetching ${datasetFQN}  version ${version}`,
         });
-    }
+      });
   };
 
   useEffect(() => {
