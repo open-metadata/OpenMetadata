@@ -90,6 +90,7 @@ public class ChangeEventHandler implements  EventHandler {
         }
 
         if (changeEvent != null) {
+          LOG.info("Recording change event {} {}", changeEvent.getDateTime().getTime(), changeEvent);
           dao.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
         }
       } catch(Exception e) {

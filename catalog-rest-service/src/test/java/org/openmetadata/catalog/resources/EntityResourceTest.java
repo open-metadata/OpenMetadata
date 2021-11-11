@@ -735,19 +735,46 @@ public abstract class EntityResourceTest<T> extends CatalogApplicationTest {
   protected final void validateChangeEvents(EntityInterface<T> entityInterface, EventType expectedEventType,
                                             ChangeDescription expectedChangeDescription,
                                             Map<String, String> authHeaders) throws IOException {
-    ResultList<ChangeEvent> changeEvents = getChangeEvents(entityName, entityName, null,
-            entityInterface.getUpdatedAt(), authHeaders);
+    ResultList<ChangeEvent> changeEvents;
+    ChangeEvent changeEvent = null;
 
-    assertTrue(changeEvents.getData().size() > 0);
+    int iteration = 1;
+    while (iteration < 10) {
+      // Some times change event is not returned on quickly querying with a millisecond
+      // Try multiple times before giving up
+      changeEvents = getChangeEvents(entityName, entityName, null,
+              entityInterface.getUpdatedAt(), authHeaders);
+
+      assertTrue(changeEvents.getData().size() > 0);
+      for (ChangeEvent event : changeEvents.getData()) {
+        if (event.getDateTime().getTime() == entityInterface.getUpdatedAt().getTime()) {
+          changeEvent = event;
+          break;
+        }
+      }
+      if (changeEvent != null) {
+        break;
+      }
+      try {
+        Thread.sleep(iteration * 10L); // Sleep with backoff
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+      iteration++;
+    }
+
+    LOG.info("Did not find change event {} {} {}", entityInterface.getUpdatedAt().getTime(), entityInterface.getId(),
+            expectedEventType);
+
+    assertNotNull(changeEvent, "Expected change event " + expectedEventType + " at "
+            + entityInterface.getUpdatedAt().getTime() + " was not found for entity " + entityInterface.getId());
 
     // Top most changeEvent corresponds to the update
-    ChangeEvent changeEvent = changeEvents.getData().get(0);
     assertEquals(expectedEventType, changeEvent.getEventType());
     assertEquals(entityName, changeEvent.getEntityType());
     assertEquals(entityInterface.getId(), changeEvent.getEntityId());
     assertEquals(entityInterface.getVersion(), changeEvent.getCurrentVersion());
     assertEquals(entityInterface.getUpdatedBy(), changeEvent.getUserName());
-    assertEquals(entityInterface.getUpdatedAt().getTime(), changeEvent.getDateTime().getTime());
 
     // previous, entity, changeDescription
 
