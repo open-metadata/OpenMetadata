@@ -3,7 +3,7 @@ import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, TableDetail } from 'Models';
 import React, { FunctionComponent, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import {
@@ -15,7 +15,10 @@ import {
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getServiceDetailsPath,
+  getTopicDetailsWithTabPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
 import { User } from '../../generated/entity/teams/user';
@@ -29,22 +32,60 @@ import {
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
+const topicDetailsTabs = [
+  {
+    name: 'Schema',
+    path: 'schema',
+  },
+  {
+    name: 'Config',
+    path: 'config',
+  },
+  {
+    name: 'Manage',
+    path: 'manage',
+  },
+];
+
+export const getCurrentTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'config':
+      currentTab = 2;
+
+      break;
+    case 'manage':
+      currentTab = 3;
+
+      break;
+
+    case 'schema':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
+};
+
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
   const showToast = useToastContext();
+  const history = useHistory();
 
   const [tagList, setTagList] = useState<Array<string>>([]);
-  const { topicFQN } = useParams() as Record<string, string>;
+  const { topicFQN, tab } = useParams() as Record<string, string>;
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [topicId, setTopicId] = useState<string>('');
-  const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoading, setLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
   const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
   const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
@@ -58,8 +99,23 @@ const TopicDetailsPage: FunctionComponent = () => {
   >([]);
 
   const activeTabHandler = (tabValue: number) => {
-    setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (topicDetailsTabs[currentTabIndex].path !== tab) {
+      setActiveTab(getCurrentTab(topicDetailsTabs[currentTabIndex].path));
+      history.push({
+        pathname: getTopicDetailsWithTabPath(
+          topicFQN,
+          topicDetailsTabs[currentTabIndex].path
+        ),
+      });
+    }
   };
+
+  useEffect(() => {
+    if (topicDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTab(tab));
+    }
+  }, [tab]);
 
   const saveUpdatedTopicData = (updatedData: Topic): Promise<AxiosResponse> => {
     const jsonPatch = compare(topicDetails, updatedData);
@@ -149,6 +205,7 @@ const TopicDetailsPage: FunctionComponent = () => {
               variant: 'error',
               body: errMsg,
             });
+            setLoading(false);
           });
       })
       .catch((err: AxiosError) => {
@@ -157,6 +214,7 @@ const TopicDetailsPage: FunctionComponent = () => {
           variant: 'error',
           body: errMsg,
         });
+        setLoading(false);
       });
   };
 

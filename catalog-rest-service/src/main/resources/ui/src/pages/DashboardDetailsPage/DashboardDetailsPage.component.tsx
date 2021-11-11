@@ -2,7 +2,7 @@ import { AxiosPromise, AxiosResponse } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getChartById, updateChart } from '../../axiosAPIs/chartAPI';
 import {
@@ -15,7 +15,10 @@ import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import Loader from '../../components/Loader/Loader';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getDashboardDetailsWithTabPath,
+  getServiceDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
@@ -31,10 +34,42 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 type ChartType = {
   displayName: string;
 } & Chart;
+
+const dashboardDetailsTabs = [
+  {
+    name: 'Details',
+    path: 'details',
+  },
+  {
+    name: 'Manage',
+    path: 'manage',
+  },
+];
+
+export const getCurrentTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'manage':
+      currentTab = 2;
+
+      break;
+
+    case 'details':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
+};
+
 const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
+  const history = useHistory();
+
   const [tagList, setTagList] = useState<Array<string>>([]);
-  const { dashboardFQN } = useParams() as Record<string, string>;
+  const { dashboardFQN, tab } = useParams() as Record<string, string>;
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
@@ -45,7 +80,7 @@ const DashboardDetailsPage = () => {
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [dashboardUrl, setDashboardUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
@@ -55,8 +90,23 @@ const DashboardDetailsPage = () => {
   >([]);
 
   const activeTabHandler = (tabValue: number) => {
-    setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
+      setActiveTab(getCurrentTab(dashboardDetailsTabs[currentTabIndex].path));
+      history.push({
+        pathname: getDashboardDetailsWithTabPath(
+          dashboardFQN,
+          dashboardDetailsTabs[currentTabIndex].path
+        ),
+      });
+    }
   };
+
+  useEffect(() => {
+    if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTab(tab));
+    }
+  }, [tab]);
 
   const saveUpdatedDashboardData = (
     updatedData: Dashboard

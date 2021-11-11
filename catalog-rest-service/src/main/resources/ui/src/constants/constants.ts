@@ -126,9 +126,12 @@ export const ROUTES = {
   DATASET_DETAILS_WITH_TAB: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATASET_VERSION: `/dataset/${PLACEHOLDER_ROUTE_DATASET_FQN}/versions/${PLAEHOLDER_ROUTE_VERSION}`,
   TOPIC_DETAILS: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}`,
+  TOPIC_DETAILS_WITH_TAB: `/topic/${PLACEHOLDER_ROUTE_TOPIC_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DASHBOARD_DETAILS: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}`,
+  DASHBOARD_DETAILS_WITH_TAB: `/dashboard/${PLACEHOLDER_ROUTE_DASHBOARD_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   DATABASE_DETAILS: `/database/${PLACEHOLDER_ROUTE_DATABASE_FQN}`,
   PIPELINE_DETAILS: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}`,
+  PIPELINE_DETAILS_WITH_TAB: `/pipeline/${PLACEHOLDER_ROUTE_PIPELINE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   ONBOARDING: '/onboarding',
 };
 
@@ -198,18 +201,57 @@ export const getTopicDetailsPath = (topicFQN: string) => {
 
   return path;
 };
+
+export const getTopicDetailsWithTabPath = (
+  topicFQN: string,
+  tab = 'schema'
+) => {
+  let path = ROUTES.TOPIC_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
 export const getDashboardDetailsPath = (dashboardFQN: string) => {
   let path = ROUTES.DASHBOARD_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
 
   return path;
 };
+
+export const getDashboardDetailsWithTabPath = (
+  dashboardFQN: string,
+  tab = 'details'
+) => {
+  let path = ROUTES.DASHBOARD_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
 export const getPipelineDetailsPath = (pipelineFQN: string) => {
   let path = ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
 
   return path;
 };
+
+export const getPipelineDetailsWithTabPath = (
+  pipelineFQN: string,
+  tab = 'details'
+) => {
+  let path = ROUTES.PIPELINE_DETAILS_WITH_TAB;
+  path = path
+    .replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN)
+    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+
+  return path;
+};
+
 export const getTeamDetailsPath = (teamName: string) => {
   let path = ROUTES.TEAM_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TEAM, teamName);

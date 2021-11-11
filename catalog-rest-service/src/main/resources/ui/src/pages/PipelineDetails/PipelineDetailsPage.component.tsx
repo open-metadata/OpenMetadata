@@ -3,7 +3,7 @@ import { compare, Operation } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import { EntityTags, TableDetail } from 'Models';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import AppState from '../../AppState';
 import { getLineageByFQN } from '../../axiosAPIs/lineageAPI';
 import {
@@ -16,7 +16,10 @@ import { getServiceById } from '../../axiosAPIs/serviceAPI';
 import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/title-breadcrumb.interface';
 import Loader from '../../components/Loader/Loader';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
-import { getServiceDetailsPath } from '../../constants/constants';
+import {
+  getPipelineDetailsWithTabPath,
+  getServiceDetailsPath,
+} from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
@@ -30,22 +33,61 @@ import {
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 
+const pipelineDetailsTabs = [
+  {
+    name: 'Details',
+    path: 'details',
+  },
+  {
+    name: 'Lineage',
+    path: 'lineage',
+  },
+  {
+    name: 'Manage',
+    path: 'manage',
+  },
+];
+
+export const getCurrentTab = (tab: string) => {
+  let currentTab = 1;
+  switch (tab) {
+    case 'lineage':
+      currentTab = 2;
+
+      break;
+    case 'manage':
+      currentTab = 3;
+
+      break;
+
+    case 'details':
+    default:
+      currentTab = 1;
+
+      break;
+  }
+
+  return currentTab;
+};
+
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
+  const history = useHistory();
 
   const [tagList, setTagList] = useState<Array<string>>([]);
-  const { pipelineFQN } = useParams() as Record<string, string>;
+  const { pipelineFQN, tab } = useParams() as Record<string, string>;
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
   );
   const [pipelineId, setPipelineId] = useState<string>('');
-  const [isLoading, setLoading] = useState<boolean>(false);
+  const [isLoading, setLoading] = useState<boolean>(true);
+  const [isLineageLoading, setIsLineageLoading] = useState<boolean>(true);
   const [description, setDescription] = useState<string>('');
   const [followers, setFollowers] = useState<Array<User>>([]);
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(1);
+  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pipelineUrl, setPipelineUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
@@ -58,8 +100,23 @@ const PipelineDetailsPage = () => {
     {} as EntityLineage
   );
   const activeTabHandler = (tabValue: number) => {
-    setActiveTab(tabValue);
+    const currentTabIndex = tabValue - 1;
+    if (pipelineDetailsTabs[currentTabIndex].path !== tab) {
+      setActiveTab(getCurrentTab(pipelineDetailsTabs[currentTabIndex].path));
+      history.push({
+        pathname: getPipelineDetailsWithTabPath(
+          pipelineFQN,
+          pipelineDetailsTabs[currentTabIndex].path
+        ),
+      });
+    }
   };
+
+  useEffect(() => {
+    if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTab(tab));
+    }
+  }, [tab]);
 
   const saveUpdatedPipelineData = (
     updatedData: Pipeline
@@ -88,62 +145,64 @@ const PipelineDetailsPage = () => {
       'followers',
       'tags',
       'tasks',
-    ]).then((res: AxiosResponse) => {
-      const {
-        id,
-        description,
-        followers,
-        fullyQualifiedName,
-        service,
-        tags,
-        owner,
-        displayName,
-        tasks,
-        pipelineUrl,
-      } = res.data;
-      setDisplayName(displayName);
-      setPipelineDetails(res.data);
-      setPipelineId(id);
-      setDescription(description ?? '');
-      setFollowers(followers);
-      setOwner(getOwnerFromId(owner?.id));
-      setTier(getTierFromTableTags(tags));
-      setTags(getTagsWithoutTier(tags));
-      getServiceById('pipelineServices', service?.id).then(
-        (serviceRes: AxiosResponse) => {
-          setServiceType(serviceRes.data.serviceType);
-          setSlashedPipelineName([
-            {
-              name: serviceRes.data.name,
-              url: serviceRes.data.name
-                ? getServiceDetailsPath(
-                    serviceRes.data.name,
-                    serviceRes.data.serviceType
-                  )
-                : '',
-              imgSrc: serviceRes.data.serviceType
-                ? serviceTypeLogo(serviceRes.data.serviceType)
-                : undefined,
-            },
-            {
-              name: displayName,
-              url: '',
-              activeTitle: true,
-            },
-          ]);
+    ])
+      .then((res: AxiosResponse) => {
+        const {
+          id,
+          description,
+          followers,
+          fullyQualifiedName,
+          service,
+          tags,
+          owner,
+          displayName,
+          tasks,
+          pipelineUrl,
+        } = res.data;
+        setDisplayName(displayName);
+        setPipelineDetails(res.data);
+        setPipelineId(id);
+        setDescription(description ?? '');
+        setFollowers(followers);
+        setOwner(getOwnerFromId(owner?.id));
+        setTier(getTierFromTableTags(tags));
+        setTags(getTagsWithoutTier(tags));
+        getServiceById('pipelineServices', service?.id).then(
+          (serviceRes: AxiosResponse) => {
+            setServiceType(serviceRes.data.serviceType);
+            setSlashedPipelineName([
+              {
+                name: serviceRes.data.name,
+                url: serviceRes.data.name
+                  ? getServiceDetailsPath(
+                      serviceRes.data.name,
+                      serviceRes.data.serviceType
+                    )
+                  : '',
+                imgSrc: serviceRes.data.serviceType
+                  ? serviceTypeLogo(serviceRes.data.serviceType)
+                  : undefined,
+              },
+              {
+                name: displayName,
+                url: '',
+                activeTitle: true,
+              },
+            ]);
 
-          addToRecentViewed({
-            entityType: EntityType.PIPELINE,
-            fqn: fullyQualifiedName,
-            serviceType: serviceRes.data.serviceType,
-            timestamp: 0,
-          });
-        }
-      );
-      setPipelineUrl(pipelineUrl);
-      setTasks(tasks);
-      setLoading(false);
-    });
+            addToRecentViewed({
+              entityType: EntityType.PIPELINE,
+              fqn: fullyQualifiedName,
+              serviceType: serviceRes.data.serviceType,
+              timestamp: 0,
+            });
+          }
+        );
+        setPipelineUrl(pipelineUrl);
+        setTasks(tasks);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
 
   const followPipeline = () => {
@@ -196,10 +255,15 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
-    setActiveTab(1);
-    getLineageByFQN(pipelineFQN, EntityType.PIPELINE).then(
-      (res: AxiosResponse) => setEntityLineage(res.data)
-    );
+    setActiveTab(getCurrentTab(tab));
+    getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
+      .then((res: AxiosResponse) => {
+        setEntityLineage(res.data);
+        setIsLineageLoading(false);
+      })
+      .catch(() => {
+        setIsLineageLoading(false);
+      });
   }, [pipelineFQN]);
 
   useEffect(() => {
@@ -208,7 +272,7 @@ const PipelineDetailsPage = () => {
 
   return (
     <>
-      {isLoading ? (
+      {isLoading || isLineageLoading ? (
         <Loader />
       ) : (
         <PipelineDetails

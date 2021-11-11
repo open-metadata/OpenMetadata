@@ -145,16 +145,23 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [, setPreviousVersion] = useState<string>();
 
   const activeTabHandler = (tabValue: number) => {
-    if (datasetTableTabs[tabValue - 1].path !== tab) {
-      setActiveTab(getCurrentTab(datasetTableTabs[tabValue - 1].path));
+    const currentTabIndex = tabValue - 1;
+    if (datasetTableTabs[currentTabIndex].path !== tab) {
+      setActiveTab(getCurrentTab(datasetTableTabs[currentTabIndex].path));
       history.push({
         pathname: getDatasetTabPath(
           tableFQN,
-          datasetTableTabs[tabValue - 1].path
+          datasetTableTabs[currentTabIndex].path
         ),
       });
     }
   };
+
+  useEffect(() => {
+    if (datasetTableTabs[activeTab - 1].path !== tab) {
+      setActiveTab(getCurrentTab(tab));
+    }
+  }, [tab]);
 
   const saveUpdatedTableData = (updatedData: Table): Promise<AxiosResponse> => {
     const jsonPatch = compare(tableDetails, updatedData);
