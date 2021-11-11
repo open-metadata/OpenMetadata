@@ -291,7 +291,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateCreatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     CreateTopic createRequest = (CreateTopic) request;
     validateCommonEntityFields(getEntityInterface(topic), createRequest.getDescription(),
             TestUtils.getPrincipal(authHeaders), createRequest.getOwner());
@@ -300,12 +301,14 @@ public class TopicResourceTest extends EntityResourceTest<Topic> {
   }
 
   @Override
-  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(Topic topic, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(topic, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Topic expected, Topic updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertService(expected.getService(), expected.getService());

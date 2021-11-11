@@ -36,8 +36,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 public final class Entity {
-  private static final Map<String, EntityDAO<?>> daoMap = new HashMap<>();
-  private static final Map<String, EntityRepository> entityRepositoryMap = new HashMap<>();
+  private static final Map<String, EntityDAO<?>> DAO_MAP = new HashMap<>();
+  private static final Map<String, EntityRepository> ENTITY_REPOSITORY_MAP = new HashMap<>();
 
   //
   // Services
@@ -82,12 +82,12 @@ public final class Entity {
 
   public static void registerEntity(String entity, EntityDAO<?> dao,
                                     EntityRepository<?> entityRepository) {
-    daoMap.put(entity.toLowerCase(Locale.ROOT), dao);
-    entityRepositoryMap.put(entity, entityRepository);
+    DAO_MAP.put(entity.toLowerCase(Locale.ROOT), dao);
+    ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
   }
 
   public static EntityReference getEntityReference(String entity, UUID id) throws IOException {
-    EntityDAO<?> dao = daoMap.get(entity);
+    EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
@@ -95,7 +95,7 @@ public final class Entity {
   }
 
   public static EntityReference getEntityReferenceByName(String entity, String fqn) throws IOException {
-    EntityDAO<?> dao = daoMap.get(entity);
+    EntityDAO<?> dao = DAO_MAP.get(entity);
     if (dao == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entity));
     }
@@ -104,7 +104,7 @@ public final class Entity {
 
   public static EntityReference getEntityReference(Object entity) {
     String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    EntityRepository entityRepository = entityRepositoryMap.get(entityName);
+    EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
@@ -120,7 +120,7 @@ public final class Entity {
       return null;
     }
     String entityName = ref.getType().toLowerCase(Locale.ROOT);
-    EntityRepository<?> entityRepository = entityRepositoryMap.get(entityName);
+    EntityRepository<?> entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
@@ -133,7 +133,7 @@ public final class Entity {
       return null;
     }
     String entityName = entity.getClass().getSimpleName().toLowerCase(Locale.ROOT);
-    EntityRepository entityRepository = entityRepositoryMap.get(entityName);
+    EntityRepository entityRepository = ENTITY_REPOSITORY_MAP.get(entityName);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityTypeNotFound(entityName));
     }
@@ -150,9 +150,7 @@ public final class Entity {
         return;
       }
       list = Arrays.asList(entitiesParam.replaceAll("\\s", "").split(","));
-      for (String field : list) {
-        // TODO validate entity
-      }
+      // TODO validate entity
     }
 
     public List<String> getList() {

@@ -29,9 +29,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.net.URI;
 import java.text.ParseException;
 import java.util.Date;
 import java.util.HashSet;

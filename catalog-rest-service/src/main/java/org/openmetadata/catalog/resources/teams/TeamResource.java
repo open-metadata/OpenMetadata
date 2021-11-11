@@ -282,7 +282,8 @@ public class TeamResource {
                     JsonPatch patch) throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
+    return addHref(uriInfo, dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE

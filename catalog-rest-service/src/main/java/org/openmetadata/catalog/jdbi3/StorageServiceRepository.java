@@ -39,153 +39,154 @@ import static org.openmetadata.catalog.exception.CatalogExceptionMessage.entityN
 import static org.openmetadata.catalog.util.EntityUtil.Fields;
 
 public class StorageServiceRepository extends EntityRepository<StorageService> {
-    private final CollectionDAO dao;
-    
-    public StorageServiceRepository(CollectionDAO dao) {
-        super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
-                Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
-        this.dao = dao;
+  private final CollectionDAO dao;
+
+  public StorageServiceRepository(CollectionDAO dao) {
+    super(StorageServiceResource.COLLECTION_PATH, StorageService.class, dao.storageServiceDAO(), dao,
+            Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    this.dao = dao;
+  }
+
+  public StorageService update(UriInfo uriInfo, UUID id, String description)
+          throws IOException {
+    StorageService storageService = dao.storageServiceDAO().findEntityById(id);
+    // Update fields
+    storageService.withDescription(description);
+    dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
+    return withHref(uriInfo, storageService);
+  }
+
+  @Transaction
+  public void delete(UUID id) {
+    if (dao.storageServiceDAO().delete(id) <= 0) {
+      throw EntityNotFoundException.byMessage(entityNotFound(Entity.STORAGE_SERVICE, id));
     }
-    
-    public StorageService update(UriInfo uriInfo, UUID id, String description)
-            throws IOException {
-        StorageService storageService = dao.storageServiceDAO().findEntityById(id);
-        // Update fields
-        storageService.withDescription(description);
-        dao.storageServiceDAO().update(id, JsonUtils.pojoToJson(storageService));
-        return withHref(uriInfo, storageService);
+    dao.relationshipDAO().deleteAll(id.toString());
+  }
+
+  @Override
+  public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
+    return entity;
+  }
+
+  @Override
+  public void restorePatchAttributes(StorageService original, StorageService updated) throws IOException,
+          ParseException {
+  }
+
+  @Override
+  public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
+    return new StorageServiceRepository.StorageServiceEntityInterface(entity);
+  }
+
+  @Override
+  public void validate(StorageService entity) throws IOException {
+  }
+
+
+  @Override
+  public void store(StorageService entity, boolean update) throws IOException {
+    dao.storageServiceDAO().insert(entity);
+    // TODO other cleanup
+  }
+
+  @Override
+  public void storeRelationships(StorageService entity) throws IOException {
+  }
+
+  public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
+    private final StorageService entity;
+
+    public StorageServiceEntityInterface(StorageService entity) {
+      this.entity = entity;
     }
 
-    @Transaction
-    public void delete(UUID id) {
-        if (dao.storageServiceDAO().delete(id) <= 0) {
-            throw EntityNotFoundException.byMessage(entityNotFound(Entity.STORAGE_SERVICE, id));
-        }
-        dao.relationshipDAO().deleteAll(id.toString());
-    }
-    
     @Override
-    public StorageService setFields(StorageService entity, Fields fields) throws IOException, ParseException {
-        return entity;
-    }
-    
+    public UUID getId() { return entity.getId(); }
+
     @Override
-    public void restorePatchAttributes(StorageService original, StorageService updated) throws IOException,
-            ParseException {
-    }
-    
-    @Override
-    public EntityInterface<StorageService> getEntityInterface(StorageService entity) {
-        return new StorageServiceRepository.StorageServiceEntityInterface(entity);
+    public String getDescription() {
+      return entity.getDescription();
     }
 
     @Override
-    public void validate(StorageService entity) throws IOException {
-    }
-
-
-    @Override
-    public void store(StorageService entity, boolean update) throws IOException {
-        dao.storageServiceDAO().insert(entity);
-        // TODO other cleanup
+    public String getDisplayName() {
+      return entity.getDisplayName();
     }
 
     @Override
-    public void storeRelationships(StorageService entity) throws IOException {
+    public EntityReference getOwner() { return null; }
+
+    @Override
+    public String getFullyQualifiedName() { return entity.getName(); }
+
+    @Override
+    public List<TagLabel> getTags() { return null; }
+
+    @Override
+    public Double getVersion() { return entity.getVersion(); }
+
+    @Override
+    public String getUpdatedBy() { return entity.getUpdatedBy(); }
+
+    @Override
+    public Date getUpdatedAt() { return entity.getUpdatedAt(); }
+
+    @Override
+    public URI getHref() { return entity.getHref(); }
+
+    @Override
+    public List<EntityReference> getFollowers() {
+      throw new UnsupportedOperationException("Storage service does not support followers");
     }
-    public static class StorageServiceEntityInterface implements EntityInterface<StorageService> {
-        private final StorageService entity;
 
-        public StorageServiceEntityInterface(StorageService entity) {
-            this.entity = entity;
-        }
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
-        @Override
-        public UUID getId() { return entity.getId(); }
-
-        @Override
-        public String getDescription() {
-            return entity.getDescription();
-        }
-
-        @Override
-        public String getDisplayName() {
-            return entity.getDisplayName();
-        }
-
-        @Override
-        public EntityReference getOwner() { return null; }
-
-        @Override
-        public String getFullyQualifiedName() { return entity.getName(); }
-
-        @Override
-        public List<TagLabel> getTags() { return null; }
-
-        @Override
-        public Double getVersion() { return entity.getVersion(); }
-
-        @Override
-        public String getUpdatedBy() { return entity.getUpdatedBy(); }
-
-        @Override
-        public Date getUpdatedAt() { return entity.getUpdatedAt(); }
-
-        @Override
-        public URI getHref() { return entity.getHref(); }
-
-        @Override
-        public List<EntityReference> getFollowers() {
-            throw new UnsupportedOperationException("Storage service does not support followers");
-        }
-
-        @Override
-        public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
-
-        @Override
-        public EntityReference getEntityReference() {
-            return new EntityReference().withId(getId()).withName(getFullyQualifiedName())
-                    .withDescription(getDescription()).withDisplayName(getDisplayName())
-                    .withType(Entity.STORAGE_SERVICE);
-        }
-
-        @Override
-        public StorageService getEntity() { return entity; }
-
-        @Override
-        public void setId(UUID id) { entity.setId(id); }
-
-        @Override
-        public void setDescription(String description) {
-            entity.setDescription(description);
-        }
-
-        @Override
-        public void setDisplayName(String displayName) {
-            entity.setDisplayName(displayName);
-        }
-
-        @Override
-        public void setUpdateDetails(String updatedBy, Date updatedAt) {
-            entity.setUpdatedBy(updatedBy);
-            entity.setUpdatedAt(updatedAt);
-        }
-
-        @Override
-        public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
-            entity.setVersion(newVersion);
-            entity.setChangeDescription(changeDescription);
-        }
-
-        @Override
-        public void setOwner(EntityReference owner) {
-
-        }
-
-        @Override
-        public StorageService withHref(URI href) { return entity.withHref(href); }
-
-        @Override
-        public void setTags(List<TagLabel> tags) { }
+    @Override
+    public EntityReference getEntityReference() {
+      return new EntityReference().withId(getId()).withName(getFullyQualifiedName())
+              .withDescription(getDescription()).withDisplayName(getDisplayName())
+              .withType(Entity.STORAGE_SERVICE);
     }
+
+    @Override
+    public StorageService getEntity() { return entity; }
+
+    @Override
+    public void setId(UUID id) { entity.setId(id); }
+
+    @Override
+    public void setDescription(String description) {
+      entity.setDescription(description);
+    }
+
+    @Override
+    public void setDisplayName(String displayName) {
+      entity.setDisplayName(displayName);
+    }
+
+    @Override
+    public void setUpdateDetails(String updatedBy, Date updatedAt) {
+      entity.setUpdatedBy(updatedBy);
+      entity.setUpdatedAt(updatedAt);
+    }
+
+    @Override
+    public void setChangeDescription(Double newVersion, ChangeDescription changeDescription) {
+      entity.setVersion(newVersion);
+      entity.setChangeDescription(changeDescription);
+    }
+
+    @Override
+    public void setOwner(EntityReference owner) {
+
+    }
+
+    @Override
+    public StorageService withHref(URI href) { return entity.withHref(href); }
+
+    @Override
+    public void setTags(List<TagLabel> tags) { }
+  }
 }

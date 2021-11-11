@@ -68,6 +68,8 @@ public class ChangeEventHandler implements  EventHandler {
                   .withPreviousVersion(entityInterface.getVersion())
                   .withCurrentVersion(entityInterface.getVersion());
 
+        } else if (changeType == null) {
+          return null;
         } else if (changeType.equals(RestUtil.ENTITY_UPDATED)) {
           EntityInterface entityInterface = Entity.getEntityInterface(entity);
           EntityReference entityReference = Entity.getEntityReference(entity);

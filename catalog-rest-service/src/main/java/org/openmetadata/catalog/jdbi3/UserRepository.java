@@ -144,7 +144,8 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   private List<EntityReference> getFollows(User user) throws IOException {
-    return EntityUtil.populateEntityReferences(dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
+    return EntityUtil.populateEntityReferences(
+            dao.relationshipDAO().findTo(user.getId().toString(), FOLLOWS.ordinal()));
   }
 
   private User validateUser(UUID userId) throws IOException {
@@ -295,7 +296,8 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate() throws IOException {
       // Update operation can't undelete a user
       if (updated.getEntity().getDeactivated() != original.getEntity().getDeactivated()) {
-        throw new IllegalArgumentException(CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
+        throw new IllegalArgumentException(
+                CatalogExceptionMessage.readOnlyAttribute("User", "deactivated"));
       }
       updateTeams(original.getEntity(), updated.getEntity());
       recordChange("profile", original.getEntity().getProfile(), updated.getEntity().getProfile(), true);

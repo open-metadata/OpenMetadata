@@ -54,7 +54,8 @@ public class ChangeEventRepository {
     for (String json : jsons) {
       changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
     }
-    changeEvents.sort(Comparator.comparing((ChangeEvent changeEvent) -> changeEvent.getDateTime().getTime()).reversed());
+    changeEvents.sort(Comparator.comparing((ChangeEvent changeEvent)
+            -> changeEvent.getDateTime().getTime()).reversed());
     return new ChangeEventList(changeEvents, null, null, changeEvents.size()); // TODO
   }
 

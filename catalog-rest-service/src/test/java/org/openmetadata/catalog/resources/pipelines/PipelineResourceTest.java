@@ -102,12 +102,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline> {
   }
 
   @Override
-  public void validateUpdatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders) throws HttpResponseException {
+  public void validateUpdatedEntity(Pipeline pipeline, Object request, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCreatedEntity(pipeline, request, authHeaders);
   }
 
   @Override
-  public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders) throws HttpResponseException {
+  public void compareEntities(Pipeline expected, Pipeline updated, Map<String, String> authHeaders)
+          throws HttpResponseException {
     validateCommonEntityFields(getEntityInterface(updated), expected.getDescription(),
             TestUtils.getPrincipal(authHeaders), expected.getOwner());
     assertEquals(expected.getDisplayName(), updated.getDisplayName());

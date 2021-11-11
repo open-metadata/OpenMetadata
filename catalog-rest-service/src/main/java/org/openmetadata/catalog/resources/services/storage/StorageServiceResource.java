@@ -61,127 +61,127 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "storageServices")
 public class StorageServiceResource {
-    public static final String COLLECTION_PATH = "v1/services/storageServices/";
-    private final StorageServiceRepository dao;
-    private final CatalogAuthorizer authorizer;
+  public static final String COLLECTION_PATH = "v1/services/storageServices/";
+  private final StorageServiceRepository dao;
+  private final CatalogAuthorizer authorizer;
 
 
-    @Inject
-    public StorageServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
-        Objects.requireNonNull(dao, "StorageServiceRepository must not be null");
-        this.dao = new StorageServiceRepository(dao);
-        this.authorizer = authorizer;
-    }
+  @Inject
+  public StorageServiceResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+    Objects.requireNonNull(dao, "StorageServiceRepository must not be null");
+    this.dao = new StorageServiceRepository(dao);
+    this.authorizer = authorizer;
+  }
 
-    static class StorageServiceList extends ResultList<StorageService> {
-        StorageServiceList(List<StorageService> data) {
-            super(data);
-        }
+  static class StorageServiceList extends ResultList<StorageService> {
+    StorageServiceList(List<StorageService> data) {
+      super(data);
     }
+  }
 
-    @GET
-    @Operation(summary = "List storage services", tags = "services",
-            description = "Get a list of storage services.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "List of storage service instances",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StorageServiceList.class)))
-            })
-    public ResultList<StorageService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException,
-            ParseException {
-        return dao.listAfter(uriInfo, null, null, 10000, null);
-    }
+  @GET
+  @Operation(summary = "List storage services", tags = "services",
+          description = "Get a list of storage services.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "List of storage service instances",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageServiceList.class)))
+          })
+  public ResultList<StorageService> list(@Context UriInfo uriInfo) throws IOException, GeneralSecurityException,
+          ParseException {
+    return dao.listAfter(uriInfo, null, null, 10000, null);
+  }
 
-    @GET
-    @Path("/{id}")
-    @Operation(summary = "Get a storage service", tags = "services",
-            description = "Get a storage service by `id`.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Storage service instance",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StorageService.class))),
-                    @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
-            })
-    public StorageService get(@Context UriInfo uriInfo,
-                               @Context SecurityContext securityContext,
-                               @PathParam("id") String id) throws IOException, ParseException {
-        return dao.get(uriInfo, id, null);
-    }
+  @GET
+  @Path("/{id}")
+  @Operation(summary = "Get a storage service", tags = "services",
+          description = "Get a storage service by `id`.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Storage service instance",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageService.class))),
+                  @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
+          })
+  public StorageService get(@Context UriInfo uriInfo,
+                            @Context SecurityContext securityContext,
+                            @PathParam("id") String id) throws IOException, ParseException {
+    return dao.get(uriInfo, id, null);
+  }
 
-    @GET
-    @Path("/name/{name}")
-    @Operation(summary = "Get storage service by name", tags = "services",
-            description = "Get a storage service by the service `name`.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Storage service instance",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StorageService.class))),
-                    @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
-            })
-    public StorageService getByName(@Context UriInfo uriInfo,
-                                     @Context SecurityContext securityContext,
-                                     @PathParam("name") String name) throws IOException, ParseException {
-        return dao.getByName(uriInfo, name, null);
-    }
-    
-    @POST
-    @Operation(summary = "Create storage service", tags = "services",
-            description = "Create a new storage service.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Storage service instance",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StorageService.class))),
-                    @ApiResponse(responseCode = "400", description = "Bad request")
-            })
-    public Response create(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Valid CreateStorageService create) throws IOException, ParseException {
-        SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-        StorageService databaseService = new StorageService().withId(UUID.randomUUID())
-                .withName(create.getName()).withDescription(create.getDescription())
-                .withServiceType(create.getServiceType()).withUpdatedBy(securityContext.getUserPrincipal().getName())
-                .withUpdatedAt(new Date());
+  @GET
+  @Path("/name/{name}")
+  @Operation(summary = "Get storage service by name", tags = "services",
+          description = "Get a storage service by the service `name`.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Storage service instance",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageService.class))),
+                  @ApiResponse(responseCode = "404", description = "Storage service for instance {id} is not found")
+          })
+  public StorageService getByName(@Context UriInfo uriInfo,
+                                  @Context SecurityContext securityContext,
+                                  @PathParam("name") String name) throws IOException, ParseException {
+    return dao.getByName(uriInfo, name, null);
+  }
 
-        dao.create(uriInfo, databaseService);
-        return Response.created(databaseService.getHref()).entity(databaseService).build();
-    }
-    
-    @PUT
-    @Path("/{id}")
-    @Operation(summary = "Update a storage service", tags = "services",
-            description = "Update an existing storage service identified by `id`.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Storage service instance",
-                            content = @Content(mediaType = "application/json",
-                                    schema = @Schema(implementation = StorageService.class))),
-                    @ApiResponse(responseCode = "400", description = "Bad request")
-            })
-    public Response update(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
-                           @PathParam("id") String id,
-                           @Valid UpdateStorageService update) throws IOException {
-        SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-        StorageService databaseService = dao.update(uriInfo, UUID.fromString(id), update.getDescription());
-        return Response.ok(databaseService).build();
-    }
-    
-    @DELETE
-    @Path("/{id}")
-    @Operation(summary = "Delete a storage service", tags = "services",
-            description = "Delete a storage services. If storages (and tables) belong the service, it can't be " +
-                    "deleted.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "OK"),
-                    @ApiResponse(responseCode = "404", description = "StorageService service for instance {id} " +
-                            "is not found")
-            })
-    public Response delete(@Context UriInfo uriInfo,
-                           @Context SecurityContext securityContext,
-                           @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
-                           @PathParam("id") String id) {
-        SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-        dao.delete(UUID.fromString(id));
-        return Response.ok().build();
-    }
+  @POST
+  @Operation(summary = "Create storage service", tags = "services",
+          description = "Create a new storage service.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Storage service instance",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageService.class))),
+                  @ApiResponse(responseCode = "400", description = "Bad request")
+          })
+  public Response create(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Valid CreateStorageService create) throws IOException, ParseException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    StorageService databaseService = new StorageService().withId(UUID.randomUUID())
+            .withName(create.getName()).withDescription(create.getDescription())
+            .withServiceType(create.getServiceType()).withUpdatedBy(securityContext.getUserPrincipal().getName())
+            .withUpdatedAt(new Date());
+
+    dao.create(uriInfo, databaseService);
+    return Response.created(databaseService.getHref()).entity(databaseService).build();
+  }
+
+  @PUT
+  @Path("/{id}")
+  @Operation(summary = "Update a storage service", tags = "services",
+          description = "Update an existing storage service identified by `id`.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "Storage service instance",
+                          content = @Content(mediaType = "application/json",
+                                  schema = @Schema(implementation = StorageService.class))),
+                  @ApiResponse(responseCode = "400", description = "Bad request")
+          })
+  public Response update(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
+                         @PathParam("id") String id,
+                         @Valid UpdateStorageService update) throws IOException {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    StorageService databaseService = dao.update(uriInfo, UUID.fromString(id), update.getDescription());
+    return Response.ok(databaseService).build();
+  }
+
+  @DELETE
+  @Path("/{id}")
+  @Operation(summary = "Delete a storage service", tags = "services",
+          description = "Delete a storage services. If storages (and tables) belong the service, it can't be " +
+                  "deleted.",
+          responses = {
+                  @ApiResponse(responseCode = "200", description = "OK"),
+                  @ApiResponse(responseCode = "404", description = "StorageService service for instance {id} " +
+                          "is not found")
+          })
+  public Response delete(@Context UriInfo uriInfo,
+                         @Context SecurityContext securityContext,
+                         @Parameter(description = "Id of the storage service", schema = @Schema(type = "string"))
+                         @PathParam("id") String id) {
+    SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
+    dao.delete(UUID.fromString(id));
+    return Response.ok().build();
+  }
 }

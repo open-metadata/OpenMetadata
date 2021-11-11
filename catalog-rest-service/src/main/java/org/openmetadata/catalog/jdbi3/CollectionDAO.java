@@ -73,9 +73,7 @@ import org.openmetadata.catalog.util.EntityUtil;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 public interface CollectionDAO {

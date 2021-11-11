@@ -4,7 +4,6 @@ import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
 
-import javax.ws.rs.core.UriInfo;
 import java.net.URI;
 import java.util.Date;
 import java.util.List;

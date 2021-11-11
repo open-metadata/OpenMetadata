@@ -19,7 +19,6 @@ package org.openmetadata.catalog.events;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.type.AuditLog;
 import org.openmetadata.catalog.type.EntityReference;
 import org.slf4j.Logger;

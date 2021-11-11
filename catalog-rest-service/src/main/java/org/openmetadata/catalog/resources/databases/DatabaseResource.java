@@ -283,11 +283,11 @@ public class DatabaseResource {
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
                                             JsonPatch patch) throws IOException, ParseException {
-      Database database = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-      SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+    Database database = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new DatabaseEntityInterface(database).getEntityReference());
-      return addHref(uriInfo, database);
-    }
+    return addHref(uriInfo, database);
+  }
 
   @PUT
   @Operation(summary = "Create or update database", tags = "databases",
