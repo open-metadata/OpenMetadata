@@ -313,23 +313,23 @@ public class IngestionResource {
     return response.toResponse();
   }
 
-  @POST
-  @Path("/trigger/{id}")
-  @Operation(summary = "Trigger a ingestion workflow run", tags = "ingestion",
-          description = "Trigger a ingestion workflow run by ingestion name.",
-          responses = {
-                  @ApiResponse(responseCode = "200", description = "The ingestion",
-                          content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Ingestion.class))),
-                  @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
-          })
-  public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
-                                    @Context SecurityContext securityContext) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "");
-    Ingestion ingestion = dao.get(uriInfo, id, fields);
-    airflowRESTClient.runPipeline(ingestion.getName());
-    return addHref(uriInfo, dao.get(uriInfo, id, fields));
-  }
+    @POST
+    @Path("/trigger/{id}")
+    @Operation(summary = "Trigger a ingestion workflow run", tags = "ingestion",
+            description = "Trigger a ingestion workflow run by ingestion name.",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "The ingestion",
+                            content = @Content(mediaType = "application/json",
+                                    schema = @Schema(implementation = Ingestion.class))),
+                    @ApiResponse(responseCode = "404", description = "Ingestion for instance {name} is not found")
+            })
+    public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
+                                   @Context SecurityContext securityContext) throws IOException, ParseException {
+        Fields fields = new Fields(FIELD_LIST, "owner");
+        Ingestion ingestion = dao.get(id, fields);
+        airflowRESTClient.runPipeline(ingestion.getName());
+        return addHref(uriInfo, dao.get(id, fields));
+    }
 
 
   @DELETE

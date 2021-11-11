@@ -1,33 +1,33 @@
 {
-  "$id": "https://open-metadata.org/schema/api/data/createModel.json",
+  "$id": "https://open-metadata.org/schema/api/data/createMLModel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Create Model entity request",
-  "description": "Create Model entity request",
+  "title": "Create ML Model entity request",
+  "description": "Create ML Model entity request",
   "type": "object",
   "properties" : {
     "name": {
-      "description": "Name that identifies this model.",
+      "description": "Name that identifies this ML model.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "displayName": {
-      "description": "Display Name that identifies this model. It could be title or label from the source services",
+      "description": "Display Name that identifies this ML model. It could be title or label from the source services",
       "type": "string"
     },
     "description": {
-      "description": "Description of the model instance. How it was trained and for what it is used.",
+      "description": "Description of the ML model instance. How it was trained and for what it is used.",
       "type": "string"
     },
     "algorithm": {
-      "description": "Algorithm used to train the model",
+      "description": "Algorithm used to train the ML model",
       "type": "string"
     },
     "mlFeatures": {
       "description": "Features used to train the ML Model.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/model.json#/definitions/mlFeature"
+        "$ref": "../../entity/data/mlmodel.json#/definitions/mlFeature"
       },
       "default" : null
     },
@@ -35,7 +35,7 @@
       "description": "Hyper Parameters used to train the ML Model.",
       "type": "array",
       "items": {
-        "$ref": "../../entity/data/model.json#/definitions/mlHyperParameter"
+        "$ref": "../../entity/data/mlmodel.json#/definitions/mlHyperParameter"
       },
       "default" : null
     },
@@ -44,7 +44,7 @@
       "$ref" : "../../type/entityReference.json"
     },
     "tags": {
-      "description": "Tags for this model",
+      "description": "Tags for this ML Model",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"

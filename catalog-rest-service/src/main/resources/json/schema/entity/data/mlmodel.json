@@ -1,9 +1,10 @@
 {
-  "$id": "https://open-metadata.org/schema/entity/data/model.json",
+  "$id": "https://open-metadata.org/schema/entity/data/mlmodel.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Model",
+  "title": "MLModel",
   "description": "This schema defines the Model entity. Models are algorithms trained on data to find patterns or make predictions.",
   "type": "object",
+  "javaType": "org.openmetadata.catalog.entity.data.MLModel",
   "definitions": {
     "featureType": {
       "javaType": "org.openmetadata.catalog.type.MLFeatureDataType",
@@ -96,7 +97,7 @@
     "mlFeature": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MLFeature",
-      "description": "This schema defines the type for a ML Feature used in a Model.",
+      "description": "This schema defines the type for a ML Feature used in a MLModel.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -138,7 +139,7 @@
     "mlHyperParameter": {
       "type": "object",
       "javaType": "org.openmetadata.catalog.type.MLHyperParameter",
-      "description": "This schema defines the type for a ML HyperParameter used in a Model.",
+      "description": "This schema defines the type for a ML HyperParameter used in a MLModel.",
       "additionalProperties": false,
       "properties": {
         "name": {
@@ -158,31 +159,31 @@
   },
   "properties" : {
     "id": {
-      "description": "Unique identifier of a model instance.",
+      "description": "Unique identifier of a MLModel instance.",
       "$ref": "../../type/basic.json#/definitions/uuid"
     },
     "name": {
-      "description": "Name that identifies this model.",
+      "description": "Name that identifies this MLModel.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "fullyQualifiedName": {
-      "description": "A unique name that identifies a model.",
+      "description": "A unique name that identifies a MLModel.",
       "type": "string",
       "minLength": 1,
       "maxLength": 64
     },
     "displayName": {
-      "description": "Display Name that identifies this model.",
+      "description": "Display Name that identifies this MLModel.",
       "type": "string"
     },
     "description": {
-      "description": "Description of the model, what it is, and how to use it.",
+      "description": "Description of the MLModel, what it is, and how to use it.",
       "type": "string"
     },
     "algorithm": {
-      "description": "Algorithm used to train the model.",
+      "description": "Algorithm used to train the MLModel.",
       "type": "string"
     },
     "mlFeatures": {
@@ -210,15 +211,15 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this model.",
+      "description": "Owner of this MLModel.",
       "$ref": "../../type/entityReference.json"
     },
     "followers": {
-      "description": "Followers of this model.",
+      "description": "Followers of this MLModel.",
       "$ref": "../../type/entityReference.json#/definitions/entityReferenceList"
     },
     "tags": {
-      "description": "Tags for this model.",
+      "description": "Tags for this MLModel.",
       "type": "array",
       "items": {
         "$ref": "../../type/tagLabel.json"
@@ -226,7 +227,7 @@
       "default": null
     },
     "usageSummary" : {
-      "description": "Latest usage information for this model.",
+      "description": "Latest usage information for this MLModel.",
       "$ref": "../../type/usageDetails.json",
       "default": null
     },
