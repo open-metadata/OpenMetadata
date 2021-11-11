@@ -12,6 +12,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import json
 import pathlib
 from datetime import timedelta
 
@@ -29,21 +30,45 @@ from metadata.ingestion.api.workflow import Workflow
 
 default_args = {
     "owner": "user_name",
-    "email": ["username@org.com"],
-    "email_on_failure": False,
     "retries": 3,
     "retry_delay": timedelta(minutes=2),
     "execution_timeout": timedelta(minutes=60),
 }
 
 config = """
+{
+  "source": {
+    "type": "metadata",
+    "config": {
+      "include_tables": "true",
+      "include_topics": "true",
+      "include_dashboards": "true",
+      "limit_records": 10
+    }
+  },
+  "sink": {
+    "type": "elasticsearch",
+    "config": {
+      "index_tables": "true",
+      "index_topics": "true",
+      "index_dashboards": "true",
+      "es_host": "localhost",
+      "es_port": 9200
+    }
+  },
+  "metadata_server": {
+    "type": "metadata-server",
+    "config": {
+      "api_endpoint": "http://localhost:8585/api",
+      "auth_provider_type": "no-auth"
+    }
+  }
+}
 """
 
 
 def metadata_ingestion_workflow():
-    config_file = pathlib.Path("/ingestion/pipelines/metadata_to_es.json")
-    workflow_config = load_config_file(config_file)
-
+    workflow_config = json.loads(config)
     workflow = Workflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
@@ -52,7 +77,7 @@ def metadata_ingestion_workflow():
 
 
 with DAG(
-    "elasticsearch",
+    "index_metadata",
     default_args=default_args,
     description="An example DAG which runs a OpenMetadata ingestion workflow",
     start_date=days_ago(1),

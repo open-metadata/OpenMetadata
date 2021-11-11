@@ -418,12 +418,8 @@ const DashboardDetails = ({
                                       />
                                     </button>
                                   ) : (
-                                    <span className="tw-opacity-0 group-hover:tw-opacity-100">
-                                      <Tags
-                                        className="tw-border-main"
-                                        tag="+ Add tag"
-                                        type="outlined"
-                                      />
+                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                      <Tags tag="+ Add tag" type="outlined" />
                                     </span>
                                   )}
                                 </TagsContainer>
