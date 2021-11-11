@@ -16,7 +16,7 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
 import Loader from '../../components/Loader/Loader';
 import {
-  getDashboardDetailsWithTabPath,
+  getDashboardDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -24,6 +24,10 @@ import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { User } from '../../generated/entity/teams/user';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  dashboardDetailsTabs,
+  getCurrentDashboardTab,
+} from '../../utils/DashboardDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -34,35 +38,6 @@ import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
 type ChartType = {
   displayName: string;
 } & Chart;
-
-const dashboardDetailsTabs = [
-  {
-    name: 'Details',
-    path: 'details',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
-];
-
-export const getCurrentTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'manage':
-      currentTab = 2;
-
-      break;
-
-    case 'details':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
 
 const DashboardDetailsPage = () => {
   const USERId = getCurrentUserId();
@@ -80,7 +55,9 @@ const DashboardDetailsPage = () => {
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
+  const [activeTab, setActiveTab] = useState<number>(
+    getCurrentDashboardTab(tab)
+  );
   const [charts, setCharts] = useState<ChartType[]>([]);
   const [dashboardUrl, setDashboardUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
@@ -92,9 +69,11 @@ const DashboardDetailsPage = () => {
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (dashboardDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTab(dashboardDetailsTabs[currentTabIndex].path));
+      setActiveTab(
+        getCurrentDashboardTab(dashboardDetailsTabs[currentTabIndex].path)
+      );
       history.push({
-        pathname: getDashboardDetailsWithTabPath(
+        pathname: getDashboardDetailsPath(
           dashboardFQN,
           dashboardDetailsTabs[currentTabIndex].path
         ),
@@ -104,7 +83,7 @@ const DashboardDetailsPage = () => {
 
   useEffect(() => {
     if (dashboardDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTab(tab));
+      setActiveTab(getCurrentDashboardTab(tab));
     }
   }, [tab]);
 

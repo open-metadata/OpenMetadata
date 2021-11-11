@@ -195,59 +195,35 @@ export const getDatabaseDetailsPath = (databaseFQN: string) => {
   return path;
 };
 
-export const getTopicDetailsPath = (topicFQN: string) => {
-  let path = ROUTES.TOPIC_DETAILS;
+export const getTopicDetailsPath = (topicFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.TOPIC_DETAILS_WITH_TAB : ROUTES.TOPIC_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN);
 
-  return path;
-};
-
-export const getTopicDetailsWithTabPath = (
-  topicFQN: string,
-  tab = 'schema'
-) => {
-  let path = ROUTES.TOPIC_DETAILS_WITH_TAB;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_TOPIC_FQN, topicFQN)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
 
-export const getDashboardDetailsPath = (dashboardFQN: string) => {
-  let path = ROUTES.DASHBOARD_DETAILS;
+export const getDashboardDetailsPath = (dashboardFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.DASHBOARD_DETAILS_WITH_TAB : ROUTES.DASHBOARD_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN);
 
-  return path;
-};
-
-export const getDashboardDetailsWithTabPath = (
-  dashboardFQN: string,
-  tab = 'details'
-) => {
-  let path = ROUTES.DASHBOARD_DETAILS_WITH_TAB;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_DASHBOARD_FQN, dashboardFQN)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };
 
-export const getPipelineDetailsPath = (pipelineFQN: string) => {
-  let path = ROUTES.PIPELINE_DETAILS;
+export const getPipelineDetailsPath = (pipelineFQN: string, tab?: string) => {
+  let path = tab ? ROUTES.PIPELINE_DETAILS_WITH_TAB : ROUTES.PIPELINE_DETAILS;
   path = path.replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN);
 
-  return path;
-};
-
-export const getPipelineDetailsWithTabPath = (
-  pipelineFQN: string,
-  tab = 'details'
-) => {
-  let path = ROUTES.PIPELINE_DETAILS_WITH_TAB;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_PIPELINE_FQN, pipelineFQN)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
 
   return path;
 };

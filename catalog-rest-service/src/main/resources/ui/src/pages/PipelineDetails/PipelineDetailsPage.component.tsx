@@ -17,7 +17,7 @@ import { TitleBreadcrumbProps } from '../../components/common/title-breadcrumb/t
 import Loader from '../../components/Loader/Loader';
 import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
 import {
-  getPipelineDetailsWithTabPath,
+  getPipelineDetailsPath,
   getServiceDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -25,6 +25,10 @@ import { Pipeline, Task } from '../../generated/entity/data/pipeline';
 import { User } from '../../generated/entity/teams/user';
 import { EntityLineage } from '../../generated/type/entityLineage';
 import { addToRecentViewed, getCurrentUserId } from '../../utils/CommonUtils';
+import {
+  getCurrentPipelineTab,
+  pipelineDetailsTabs,
+} from '../../utils/PipelineDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import {
   getOwnerFromId,
@@ -32,43 +36,6 @@ import {
   getTierFromTableTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-
-const pipelineDetailsTabs = [
-  {
-    name: 'Details',
-    path: 'details',
-  },
-  {
-    name: 'Lineage',
-    path: 'lineage',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
-];
-
-export const getCurrentTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'lineage':
-      currentTab = 2;
-
-      break;
-    case 'manage':
-      currentTab = 3;
-
-      break;
-
-    case 'details':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
 
 const PipelineDetailsPage = () => {
   const USERId = getCurrentUserId();
@@ -87,7 +54,9 @@ const PipelineDetailsPage = () => {
   const [owner, setOwner] = useState<TableDetail['owner']>();
   const [tier, setTier] = useState<string>();
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
+  const [activeTab, setActiveTab] = useState<number>(
+    getCurrentPipelineTab(tab)
+  );
   const [tasks, setTasks] = useState<Task[]>([]);
   const [pipelineUrl, setPipelineUrl] = useState<string>('');
   const [displayName, setDisplayName] = useState<string>('');
@@ -102,9 +71,11 @@ const PipelineDetailsPage = () => {
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (pipelineDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTab(pipelineDetailsTabs[currentTabIndex].path));
+      setActiveTab(
+        getCurrentPipelineTab(pipelineDetailsTabs[currentTabIndex].path)
+      );
       history.push({
-        pathname: getPipelineDetailsWithTabPath(
+        pathname: getPipelineDetailsPath(
           pipelineFQN,
           pipelineDetailsTabs[currentTabIndex].path
         ),
@@ -114,7 +85,7 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     if (pipelineDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTab(tab));
+      setActiveTab(getCurrentPipelineTab(tab));
     }
   }, [tab]);
 
@@ -200,9 +171,8 @@ const PipelineDetailsPage = () => {
         );
         setPipelineUrl(pipelineUrl);
         setTasks(tasks);
-        setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .finally(() => setLoading(false));
   };
 
   const followPipeline = () => {
@@ -255,13 +225,12 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     fetchPipelineDetail(pipelineFQN);
-    setActiveTab(getCurrentTab(tab));
+    setActiveTab(getCurrentPipelineTab(tab));
     getLineageByFQN(pipelineFQN, EntityType.PIPELINE)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
-        setIsLineageLoading(false);
       })
-      .catch(() => {
+      .finally(() => {
         setIsLineageLoading(false);
       });
   }, [pipelineFQN]);

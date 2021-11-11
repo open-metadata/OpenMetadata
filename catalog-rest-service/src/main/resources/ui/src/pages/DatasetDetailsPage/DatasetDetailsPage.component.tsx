@@ -54,54 +54,13 @@ import {
   getCurrentUserId,
   getPartialNameFromFQN,
 } from '../../utils/CommonUtils';
+import {
+  datasetTableTabs,
+  getCurrentDatasetTab,
+} from '../../utils/DatasetDetailsUtils';
 import { serviceTypeLogo } from '../../utils/ServiceUtils';
 import { getOwnerFromId, getTierFromTableTags } from '../../utils/TableUtils';
 import { getTableTags } from '../../utils/TagsUtils';
-
-const datasetTableTabs = [
-  {
-    name: 'Schema',
-    path: 'schema',
-  },
-  {
-    name: 'Profiler',
-    path: 'profiler',
-  },
-  {
-    name: 'Lineage',
-    path: 'lineage',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
-];
-
-export const getCurrentTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'profiler':
-      currentTab = 2;
-
-      break;
-    case 'lineage':
-      currentTab = 3;
-
-      break;
-    case 'manage':
-      currentTab = 4;
-
-      break;
-
-    case 'schema':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
 
 const DatasetDetailsPage: FunctionComponent = () => {
   const history = useHistory();
@@ -133,7 +92,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const [tableProfile, setTableProfile] = useState<Table['tableProfile']>([]);
   const [tableDetails, setTableDetails] = useState<Table>({} as Table);
   const { datasetFQN: tableFQN, tab } = useParams() as Record<string, string>;
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
+  const [activeTab, setActiveTab] = useState<number>(getCurrentDatasetTab(tab));
   const [entityLineage, setEntityLineage] = useState<EntityLineage>(
     {} as EntityLineage
   );
@@ -147,7 +106,9 @@ const DatasetDetailsPage: FunctionComponent = () => {
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (datasetTableTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTab(datasetTableTabs[currentTabIndex].path));
+      setActiveTab(
+        getCurrentDatasetTab(datasetTableTabs[currentTabIndex].path)
+      );
       history.push({
         pathname: getDatasetTabPath(
           tableFQN,
@@ -159,7 +120,7 @@ const DatasetDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (datasetTableTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTab(tab));
+      setActiveTab(getCurrentDatasetTab(tab));
     }
   }, [tab]);
 
@@ -303,21 +264,19 @@ const DatasetDetailsPage: FunctionComponent = () => {
         setTableTags(getTableTags(columns || []));
         setUsageSummary(usageSummary);
         setJoins(joins);
-        setIsLoading(false);
       })
-      .catch(() => {
+      .finally(() => {
         setIsLoading(false);
       });
 
     getLineageByFQN(tableFQN, EntityType.TABLE)
       .then((res: AxiosResponse) => {
         setEntityLineage(res.data);
-        setIsLineageLoading(false);
       })
-      .catch(() => {
+      .finally(() => {
         setIsLineageLoading(false);
       });
-    setActiveTab(getCurrentTab(tab));
+    setActiveTab(getCurrentDatasetTab(tab));
   }, [tableFQN]);
 
   return (

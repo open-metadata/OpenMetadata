@@ -17,7 +17,7 @@ import Loader from '../../components/Loader/Loader';
 import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
 import {
   getServiceDetailsPath,
-  getTopicDetailsWithTabPath,
+  getTopicDetailsPath,
 } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Topic } from '../../generated/entity/data/topic';
@@ -31,43 +31,10 @@ import {
   getTierFromTableTags,
 } from '../../utils/TableUtils';
 import { getTagCategories, getTaglist } from '../../utils/TagsUtils';
-
-const topicDetailsTabs = [
-  {
-    name: 'Schema',
-    path: 'schema',
-  },
-  {
-    name: 'Config',
-    path: 'config',
-  },
-  {
-    name: 'Manage',
-    path: 'manage',
-  },
-];
-
-export const getCurrentTab = (tab: string) => {
-  let currentTab = 1;
-  switch (tab) {
-    case 'config':
-      currentTab = 2;
-
-      break;
-    case 'manage':
-      currentTab = 3;
-
-      break;
-
-    case 'schema':
-    default:
-      currentTab = 1;
-
-      break;
-  }
-
-  return currentTab;
-};
+import {
+  getCurrentTopicTab,
+  topicDetailsTabs,
+} from '../../utils/TopicDetailsUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const USERId = getCurrentUserId();
@@ -85,7 +52,7 @@ const TopicDetailsPage: FunctionComponent = () => {
   const [tier, setTier] = useState<string>();
   const [schemaType, setSchemaType] = useState<string>('');
   const [tags, setTags] = useState<Array<EntityTags>>([]);
-  const [activeTab, setActiveTab] = useState<number>(getCurrentTab(tab));
+  const [activeTab, setActiveTab] = useState<number>(getCurrentTopicTab(tab));
   const [partitions, setPartitions] = useState<number>(0);
   const [cleanupPolicies, setCleanupPolicies] = useState<Array<string>>([]);
   const [maximumMessageSize, setMaximumMessageSize] = useState<number>(0);
@@ -101,9 +68,9 @@ const TopicDetailsPage: FunctionComponent = () => {
   const activeTabHandler = (tabValue: number) => {
     const currentTabIndex = tabValue - 1;
     if (topicDetailsTabs[currentTabIndex].path !== tab) {
-      setActiveTab(getCurrentTab(topicDetailsTabs[currentTabIndex].path));
+      setActiveTab(getCurrentTopicTab(topicDetailsTabs[currentTabIndex].path));
       history.push({
-        pathname: getTopicDetailsWithTabPath(
+        pathname: getTopicDetailsPath(
           topicFQN,
           topicDetailsTabs[currentTabIndex].path
         ),
@@ -113,7 +80,7 @@ const TopicDetailsPage: FunctionComponent = () => {
 
   useEffect(() => {
     if (topicDetailsTabs[activeTab - 1].path !== tab) {
-      setActiveTab(getCurrentTab(tab));
+      setActiveTab(getCurrentTopicTab(tab));
     }
   }, [tab]);
 
@@ -196,7 +163,6 @@ const TopicDetailsPage: FunctionComponent = () => {
               serviceType: serviceRes.data.serviceType,
               timestamp: 0,
             });
-            setLoading(false);
           })
           .catch((err: AxiosError) => {
             const errMsg =
@@ -205,8 +171,8 @@ const TopicDetailsPage: FunctionComponent = () => {
               variant: 'error',
               body: errMsg,
             });
-            setLoading(false);
-          });
+          })
+          .finally(() => setLoading(false));
       })
       .catch((err: AxiosError) => {
         const errMsg = err.message || 'Error while fetching topic details';
