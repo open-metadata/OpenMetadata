@@ -19,6 +19,7 @@ import subprocess
 import sys
 
 import click
+import requests as requests
 from pydantic import ValidationError
 
 try:
@@ -137,7 +138,13 @@ def report(config: str) -> None:
     help="Workflow config",
     required=True,
 )
-def docker_run(type: str) -> None:
+@click.option(
+    "-p",
+    "--path",
+    help="Workflow config",
+    required=False,
+)
+def docker_run(type: str, path: str = "") -> None:
     """
     Checks Docker Memory Allocation
     Run Local Docker - metadata docker-run -t local
@@ -154,15 +161,20 @@ def docker_run(type: str) -> None:
             )
         if type == "local":
             logger.info("Running Local Docker")
-            subprocess.run(
-                "cd ../docker/local-metadata && docker-compose up --build -d",
-                shell=True,
-            )
+            if path == "":
+                raise ValueError("Please Provide Path to local docker-compose.yml file")
+            else:
+                subprocess.run(
+                    f"docker compose -f {path} up --build -d",
+                    shell=True,
+                )
         elif type == "latest":
             logger.info("Running Latest Release Docker")
-            subprocess.run(
-                "cd ../docker/metadata && docker-compose up --build -d", shell=True
+            r = requests.get(
+                "https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/docker/metadata/docker-compose.yml"
             )
+            open("/tmp/docker-compose.yml", "wb").write(r.content)
+            subprocess.run(f"docker compose -f /tmp/docker-compose.yml up", shell=True)
         else:
             raise ValueError("Please Enter one of the following. 'local' or 'latest'")
     except Exception as err:
