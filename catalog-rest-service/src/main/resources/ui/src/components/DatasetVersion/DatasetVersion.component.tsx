@@ -71,7 +71,7 @@ const DatasetVersion: React.FC<DatasetVersionProp> = ({
     );
     const ownerPlaceHolder = owner?.name ?? owner?.displayName ?? '';
 
-    const tagsDiff = getDiffByFieldName('tags', changeDescription);
+    const tagsDiff = getDiffByFieldName('tags', changeDescription, true);
     const newTier = [
       ...JSON.parse(
         tagsDiff?.added?.newValue ??

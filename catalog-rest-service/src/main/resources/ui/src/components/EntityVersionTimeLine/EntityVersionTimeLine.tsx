@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import { toString } from 'lodash';
 import React, { Fragment } from 'react';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { getSummary } from '../../utils/EntityVersionUtils';
 import './EntityVersionTimeLine.css';
 
 type Props = {
@@ -55,30 +56,7 @@ const EntityVersionTimeLine: React.FC<Props> = ({
                 v{parseFloat(currV?.version).toFixed(1)}
               </p>
               <div className="tw-text-xs tw-font-normal">
-                {currV?.changeDescription?.fieldsAdded?.length ? (
-                  <p>
-                    {currV?.changeDescription?.fieldsAdded
-                      ?.map((v: { name: string }) => v.name)
-                      ?.join(',')}{' '}
-                    has been added
-                  </p>
-                ) : null}
-                {currV?.changeDescription?.fieldsUpdated?.length ? (
-                  <p>
-                    {currV?.changeDescription?.fieldsUpdated
-                      ?.map((v: { name: string }) => v.name)
-                      ?.join(',')}{' '}
-                    has been updated
-                  </p>
-                ) : null}
-                {currV?.changeDescription?.fieldsDeleted?.length ? (
-                  <p>
-                    {currV?.changeDescription?.fieldsDeleted
-                      ?.map((v: { name: string }) => v.name)
-                      ?.join(',')}{' '}
-                    has been deleted
-                  </p>
-                ) : null}
+                {getSummary(currV?.changeDescription)}
               </div>
               <p className="tw-text-xs tw-italic">
                 <span className="tw-font-normal">{currV?.updatedBy}</span>

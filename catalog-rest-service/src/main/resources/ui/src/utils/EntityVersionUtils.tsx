@@ -1,7 +1,7 @@
 import classNames from 'classnames';
 import { diffArrays, diffWordsWithSpace } from 'diff';
 import { isUndefined } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
@@ -11,6 +11,7 @@ import {
   FieldChange,
 } from '../generated/entity/services/databaseService';
 import { TagLabel } from '../generated/type/tagLabel';
+import { isValidJSONString } from './StringsUtils';
 
 /*eslint-disable */
 const parseMarkdown = (
@@ -131,7 +132,7 @@ export const getDescriptionDiff = (
         </span>
       );
     });
-    console.log(diff);
+
     return result.join('');
   } else {
     return latestDescription || '';
@@ -155,4 +156,41 @@ export const getTagsDiff = (
     ?.flat(Infinity);
 
   return result;
+};
+
+export const summaryFormatter = (v: FieldChange) => {
+  const value = JSON.parse(
+    isValidJSONString(v?.newValue)
+      ? v?.newValue
+      : isValidJSONString(v?.oldValue)
+      ? v?.oldValue
+      : '{}'
+  );
+  if (v.name === 'columns') {
+    return `columns ${value?.map((val: any) => val?.name).join(',')}`;
+  } else if (v.name === 'tags' || v.name?.endsWith('tags')) {
+    return `tags ${value?.map((val: any) => val?.tagFQN)?.join(',')}`;
+  } else {
+    return v.name;
+  }
+};
+
+export const getSummary = (changeDescription: ChangeDescription) => {
+  const fieldsAdded = [...(changeDescription?.fieldsAdded || [])];
+  const fieldsDeleted = [...(changeDescription?.fieldsDeleted || [])];
+  const fieldsUpdated = [...(changeDescription?.fieldsUpdated || [])];
+
+  return (
+    <Fragment>
+      {fieldsAdded?.length > 0 ? (
+        <p>{fieldsAdded?.map(summaryFormatter)} has been added</p>
+      ) : null}
+      {fieldsUpdated?.length ? (
+        <p>{fieldsUpdated?.map(summaryFormatter)} has been updated</p>
+      ) : null}
+      {fieldsDeleted?.length ? (
+        <p>{fieldsDeleted?.map(summaryFormatter)} has been deleted</p>
+      ) : null}
+    </Fragment>
+  );
 };
