@@ -16,6 +16,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
 from metadata.generated.schema.entity.data.pipeline import Task
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
+    PipelineService,
     PipelineServiceType,
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
@@ -143,14 +144,16 @@ def parse_lineage_to_openmetadata(
     tags = dag.tags
     airflow_service_entity = None
     operator.log.info("Get Airflow Service ID")
-    airflow_service_entity = client.get_pipeline_service(config.airflow_service_name)
+    airflow_service_entity = client.get_by_name(
+        entity=PipelineService, fqdn=config.airflow_service_name
+    )
     if airflow_service_entity is None:
         pipeline_service = CreatePipelineServiceEntityRequest(
             name=config.airflow_service_name,
             serviceType=PipelineServiceType.Airflow,
             pipelineUrl=pipeline_service_url,
         )
-        airflow_service_entity = client.create_pipeline_service(pipeline_service)
+        airflow_service_entity = client.create_or_update(pipeline_service)
 
     operator.log.info("airflow service entity {}", airflow_service_entity)
     operator.log.info(task_properties)
