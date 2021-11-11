@@ -682,7 +682,9 @@ const EntityTable = ({
                       {cell.column.id === 'name' && (
                         <>
                           {isReadOnly ? (
-                            <RichTextEditorPreviewer markdown={cell.value} />
+                            <div className="tw-inline-block">
+                              <RichTextEditorPreviewer markdown={cell.value} />
+                            </div>
                           ) : (
                             <span
                               style={{
