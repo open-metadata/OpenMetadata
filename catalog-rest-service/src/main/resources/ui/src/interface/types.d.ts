@@ -393,4 +393,6 @@ declare module 'Models' {
   export interface RecentlyViewed {
     data: Array<RecentlyViewedData>;
   }
+
+  export type DatasetSchemaTableTab = 'schema' | 'sample_data';
 }
