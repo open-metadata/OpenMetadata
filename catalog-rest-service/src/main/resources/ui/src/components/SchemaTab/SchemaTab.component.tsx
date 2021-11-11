@@ -127,22 +127,24 @@ const SchemaTab: FunctionComponent<Props> = ({
         ) : null}
       </div>
       <div className="row">
-        <div className="col-sm-12">
-          {checkedValue === 'schema' ? (
-            <EntityTable
-              columnName={columnName}
-              hasEditAccess={Boolean(hasEditAccess)}
-              isReadOnly={isReadOnly}
-              joins={joins}
-              owner={owner}
-              searchText={lowerCase(searchText)}
-              tableColumns={columns}
-              onUpdate={onUpdate}
-            />
-          ) : (
-            <SampleDataTable sampleData={getSampleDataWithType()} />
-          )}
-        </div>
+        {columns?.length > 0 ? (
+          <div className="col-sm-12">
+            {checkedValue === 'schema' ? (
+              <EntityTable
+                columnName={columnName}
+                hasEditAccess={Boolean(hasEditAccess)}
+                isReadOnly={isReadOnly}
+                joins={joins}
+                owner={owner}
+                searchText={lowerCase(searchText)}
+                tableColumns={columns}
+                onUpdate={onUpdate}
+              />
+            ) : (
+              <SampleDataTable sampleData={getSampleDataWithType()} />
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
