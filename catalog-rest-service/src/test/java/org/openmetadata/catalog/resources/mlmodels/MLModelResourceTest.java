@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.models;
+package org.openmetadata.catalog.resources.mlmodels;
 
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.BeforeAll;
@@ -22,11 +22,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.catalog.CatalogApplicationTest;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateModel;
+import org.openmetadata.catalog.api.data.CreateMLModel;
 import org.openmetadata.catalog.api.services.CreateDashboardService;
 import org.openmetadata.catalog.api.services.CreateDashboardService.DashboardServiceType;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Model;
+import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.type.FeatureSourceDataType;
 import org.openmetadata.catalog.type.MLFeature;
 import org.openmetadata.catalog.type.MLFeatureDataType;
@@ -39,7 +39,7 @@ import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.jdbi3.DashboardRepository.DashboardEntityInterface;
 import org.openmetadata.catalog.jdbi3.DashboardServiceRepository.DashboardServiceEntityInterface;
 import org.openmetadata.catalog.resources.dashboards.DashboardResourceTest;
-import org.openmetadata.catalog.resources.models.ModelResource.ModelList;
+import org.openmetadata.catalog.resources.mlmodels.MLModelResource.MLModelList;
 import org.openmetadata.catalog.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.catalog.resources.teams.TeamResourceTest;
 import org.openmetadata.catalog.resources.teams.UserResourceTest;
@@ -76,8 +76,8 @@ import static org.openmetadata.catalog.util.TestUtils.assertEntityPagination;
 import static org.openmetadata.catalog.util.TestUtils.assertResponse;
 import static org.openmetadata.catalog.util.TestUtils.authHeaders;
 
-public class ModelResourceTest extends CatalogApplicationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(ModelResourceTest.class);
+public class MLModelResourceTest extends CatalogApplicationTest {
+  private static final Logger LOG = LoggerFactory.getLogger(MLModelResourceTest.class);
   public static User USER1;
   public static EntityReference USER_OWNER1;
   public static Team TEAM1;
@@ -144,7 +144,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void post_modelWithLongName_400_badRequest(TestInfo test) {
     // Create model with mandatory name field empty
-    CreateModel create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
+    CreateMLModel create = create(test).withName(TestUtils.LONG_ENTITY_NAME);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
@@ -153,7 +153,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void post_ModelWithoutName_400_badRequest(TestInfo test) {
     // Create Model with mandatory name field empty
-    CreateModel create = create(test).withName("");
+    CreateMLModel create = create(test).withName("");
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, adminAuthHeaders()));
     assertResponse(exception, BAD_REQUEST, "[name size must be between 1 and 64]");
@@ -161,7 +161,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_ModelAlreadyExists_409_conflict(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test);
+    CreateMLModel create = create(test);
     createModel(create, adminAuthHeaders());
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, adminAuthHeaders()));
@@ -171,7 +171,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void post_validModels_as_admin_200_OK(TestInfo test) throws HttpResponseException {
     // Create valid model
-    CreateModel create = create(test);
+    CreateMLModel create = create(test);
     createAndCheckModel(create, adminAuthHeaders());
 
     create.withName(getModelName(test, 1)).withDescription("description");
@@ -195,7 +195,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void post_Model_as_non_admin_401(TestInfo test) {
-    CreateModel create = create(test);
+    CreateMLModel create = create(test);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, authHeaders("test@open-metadata.org")));
     assertResponse(exception, FORBIDDEN, "Principal: CatalogPrincipal{name='test'} is not admin");
@@ -205,7 +205,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public void post_ModelWithInvalidOwnerType_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
 
-    CreateModel create = create(test).withOwner(owner);
+    CreateMLModel create = create(test).withOwner(owner);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, adminAuthHeaders()));
     TestUtils.assertResponseContains(exception, BAD_REQUEST, "type must not be null");
@@ -214,7 +214,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void post_ModelWithNonExistentOwner_4xx(TestInfo test) {
     EntityReference owner = new EntityReference().withId(TestUtils.NON_EXISTENT_ENTITY).withType("user");
-    CreateModel create = create(test).withOwner(owner);
+    CreateMLModel create = create(test).withOwner(owner);
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             createModel(create, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND, entityNotFound("User", TestUtils.NON_EXISTENT_ENTITY));
@@ -253,7 +253,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
     }
 
     // List all Models
-    ModelList allModels = listModels(null, 1000000, null,
+    MLModelList allModels = listModels(null, 1000000, null,
             null, adminAuthHeaders());
     int totalRecords = allModels.getData().size();
     printModels(allModels);
@@ -264,8 +264,8 @@ public class ModelResourceTest extends CatalogApplicationTest {
       String before;
       int pageCount = 0;
       int indexInAllModels = 0;
-      ModelList forwardPage;
-      ModelList backwardPage;
+      MLModelList forwardPage;
+      MLModelList backwardPage;
       do { // For each limit (or page size) - forward scroll till the end
         LOG.info("Limit {} forward scrollCount {} afterCursor {}", limit, pageCount, after);
         forwardPage = listModels(null, limit, null, after, adminAuthHeaders());
@@ -301,7 +301,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
     }
   }
 
-  private void printModels(ModelList list) {
+  private void printModels(MLModelList list) {
     list.getData().forEach(Model -> LOG.info("DB {}", Model.getFullyQualifiedName()));
     LOG.info("before {} after {} ", list.getPaging().getBefore(), list.getPaging().getAfter());
   }
@@ -309,8 +309,8 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void put_ModelUpdateWithNoChange_200(TestInfo test) throws HttpResponseException {
     // Create a Model with POST
-    CreateModel request = create(test).withOwner(USER_OWNER1);
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withOwner(USER_OWNER1);
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update Model two times successfully with PUT requests
     model = updateAndCheckModel(model, request, OK, adminAuthHeaders(), NO_CHANGE);
@@ -320,7 +320,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void put_ModelCreate_200(TestInfo test) throws HttpResponseException {
     // Create a new Model with PUT
-    CreateModel request = create(test).withOwner(USER_OWNER1);
+    CreateMLModel request = create(test).withOwner(USER_OWNER1);
     updateAndCheckModel(null, request.withName(test.getDisplayName()).withDescription(null), CREATED,
             adminAuthHeaders(), NO_CHANGE);
   }
@@ -328,20 +328,20 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void put_ModelCreate_as_owner_200(TestInfo test) throws HttpResponseException {
     // Create a new Model with put
-    CreateModel request = create(test).withOwner(USER_OWNER1);
+    CreateMLModel request = create(test).withOwner(USER_OWNER1);
     // Add model as admin
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
     // Update the table as Owner
     updateAndCheckModel(model, request.withDescription("new"), OK, authHeaders(USER1.getEmail()), MINOR_UPDATE);
   }
 
   @Test
   public void put_ModelNullDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateModel request = create(test).withDescription(null);
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withDescription(null);
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update null description with a new description
-    Model db = updateAndCheckModel(model, request.withDisplayName("model1").
+    MLModel db = updateAndCheckModel(model, request.withDisplayName("model1").
             withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
     assertEquals("model1", db.getDisplayName()); // Move this check to validate method
   }
@@ -349,8 +349,8 @@ public class ModelResourceTest extends CatalogApplicationTest {
   @Test
   public void put_ModelEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
     // Create table with empty description
-    CreateModel request = create(test).withDescription("");
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withDescription("");
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
 
     // Update empty description with a new description
     updateAndCheckModel(model, request.withDescription("newDescription"), OK, adminAuthHeaders(), MINOR_UPDATE);
@@ -358,18 +358,18 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_ModelNonEmptyDescriptionUpdate_200(TestInfo test) throws HttpResponseException {
-    CreateModel request = create(test).withDescription("description");
+    CreateMLModel request = create(test).withDescription("description");
     createAndCheckModel(request, adminAuthHeaders());
 
     // Updating description is ignored when backend already has description
-    Model db = updateModel(request.withDescription("newDescription"), OK, adminAuthHeaders());
+    MLModel db = updateModel(request.withDescription("newDescription"), OK, adminAuthHeaders());
     assertEquals("description", db.getDescription());
   }
 
   @Test
   public void put_ModelUpdateOwner_200(TestInfo test) throws HttpResponseException {
-    CreateModel request = create(test).withDescription("");
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withDescription("");
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
 
     // Change ownership from USER_OWNER1 to TEAM_OWNER1
     model = updateAndCheckModel(model, request.withOwner(TEAM_OWNER1), OK, adminAuthHeaders(), MINOR_UPDATE);
@@ -381,15 +381,15 @@ public class ModelResourceTest extends CatalogApplicationTest {
 
   @Test
   public void put_ModelUpdateAlgorithm_200(TestInfo test) throws HttpResponseException {
-    CreateModel request = create(test).withDescription("");
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withDescription("");
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
     updateAndCheckModel(model, request.withAlgorithm("SVM"), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
   @Test
   public void put_ModelUpdateDashboard_200(TestInfo test) throws HttpResponseException {
-    CreateModel request = create(test).withDescription("");
-    Model model = createAndCheckModel(request, adminAuthHeaders());
+    CreateMLModel request = create(test).withDescription("");
+    MLModel model = createAndCheckModel(request, adminAuthHeaders());
     updateAndCheckModel(model, request.withDashboard(DASHBOARD_REFERENCE), OK, adminAuthHeaders(), MINOR_UPDATE);
   }
 
@@ -398,28 +398,28 @@ public class ModelResourceTest extends CatalogApplicationTest {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             getModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
     assertResponse(exception, NOT_FOUND,
-            entityNotFound(Entity.MODEL, TestUtils.NON_EXISTENT_ENTITY));
+            entityNotFound(Entity.MLMODEL, TestUtils.NON_EXISTENT_ENTITY));
   }
 
   @Test
   public void get_ModelWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description")
+    CreateMLModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    Model model = createAndCheckModel(create, adminAuthHeaders());
+    MLModel model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, false);
   }
 
   @Test
   public void get_ModelByNameWithDifferentFields_200_OK(TestInfo test) throws HttpResponseException {
-    CreateModel create = create(test).withDescription("description")
+    CreateMLModel create = create(test).withDescription("description")
             .withOwner(USER_OWNER1).withDashboard(DASHBOARD_REFERENCE);
-    Model model = createAndCheckModel(create, adminAuthHeaders());
+    MLModel model = createAndCheckModel(create, adminAuthHeaders());
     validateGetWithDifferentFields(model, true);
   }
 
   @Test
   public void delete_emptyModel_200_ok(TestInfo test) throws HttpResponseException {
-    Model model = createModel(create(test), adminAuthHeaders());
+    MLModel model = createModel(create(test), adminAuthHeaders());
     deleteModel(model.getId(), adminAuthHeaders());
   }
 
@@ -432,32 +432,32 @@ public class ModelResourceTest extends CatalogApplicationTest {
   public void delete_nonExistentModel_404() {
     HttpResponseException exception = assertThrows(HttpResponseException.class, () ->
             deleteModel(TestUtils.NON_EXISTENT_ENTITY, adminAuthHeaders()));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MODEL, TestUtils.NON_EXISTENT_ENTITY));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MLMODEL, TestUtils.NON_EXISTENT_ENTITY));
   }
 
-  public static Model createAndCheckModel(CreateModel create,
+  public static MLModel createAndCheckModel(CreateMLModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Model model = createModel(create, authHeaders);
+    MLModel model = createModel(create, authHeaders);
     validateModel(model, create.getDisplayName(), create.getDescription(), create.getOwner(), updatedBy);
     return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Model createAndCheckModel(CreateModel create, EntityReference dashboard,
+  public static MLModel createAndCheckModel(CreateMLModel create, EntityReference dashboard,
                                           Map<String, String> authHeaders) throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
     create.withDashboard(dashboard);
-    Model model = createModel(create, authHeaders);
+    MLModel model = createModel(create, authHeaders);
     assertEquals(0.1, model.getVersion());
     validateModel(model, create.getDescription(), create.getOwner(), create.getTags(), updatedBy);
     return getAndValidate(model.getId(), create, authHeaders, updatedBy);
   }
 
-  public static Model updateAndCheckModel(Model before, CreateModel create, Status status,
+  public static MLModel updateAndCheckModel(MLModel before, CreateMLModel create, Status status,
                                           Map<String, String> authHeaders, UpdateType updateType)
           throws HttpResponseException {
     String updatedBy = TestUtils.getPrincipal(authHeaders);
-    Model updatedModel = updateModel(create, status, authHeaders);
+    MLModel updatedModel = updateModel(create, status, authHeaders);
     validateModel(updatedModel, create.getDescription(), create.getOwner(), updatedBy);
     if (before == null) {
       assertEquals(0.1, updatedModel.getVersion()); // First version created
@@ -469,12 +469,12 @@ public class ModelResourceTest extends CatalogApplicationTest {
   }
 
   // Make sure in GET operations the returned Model has all the required information passed during creation
-  public static Model getAndValidate(UUID modelId,
-                                     CreateModel create,
+  public static MLModel getAndValidate(UUID modelId,
+                                     CreateMLModel create,
                                      Map<String, String> authHeaders,
                                      String expectedUpdatedBy) throws HttpResponseException {
     // GET the newly created Model by ID and validate
-    Model model = getModel(modelId, "owner", authHeaders);
+    MLModel model = getModel(modelId, "owner", authHeaders);
     validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
 
     // GET the newly created Model by name and validate
@@ -483,20 +483,20 @@ public class ModelResourceTest extends CatalogApplicationTest {
     return validateModel(model, create.getDescription(), create.getOwner(), expectedUpdatedBy);
   }
 
-  public static Model updateModel(CreateModel create,
+  public static MLModel updateModel(CreateMLModel create,
                                   Status status,
                                   Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.put(getResource("models"),
-            create, Model.class, status, authHeaders);
+    return TestUtils.put(getResource("mlmodels"),
+            create, MLModel.class, status, authHeaders);
   }
 
-  public static Model createModel(CreateModel create,
+  public static MLModel createModel(CreateMLModel create,
                                           Map<String, String> authHeaders) throws HttpResponseException {
-    return TestUtils.post(getResource("models"), create, Model.class, authHeaders);
+    return TestUtils.post(getResource("mlmodels"), create, MLModel.class, authHeaders);
   }
 
   /** Validate returned fields GET .../models/{id}?fields="..." or GET .../models/name/{fqn}?fields="..." */
-  private void validateGetWithDifferentFields(Model model, boolean byName) throws HttpResponseException {
+  private void validateGetWithDifferentFields(MLModel model, boolean byName) throws HttpResponseException {
     // .../models?fields=owner
     String fields = "owner";
     model = byName ? getModelByName(model.getFullyQualifiedName(), fields, adminAuthHeaders()) :
@@ -532,15 +532,15 @@ public class ModelResourceTest extends CatalogApplicationTest {
     TestUtils.validateEntityReference(model.getDashboard());
   }
 
-  private static Model validateModel(Model model, String expectedDisplayName,
+  private static MLModel validateModel(MLModel model, String expectedDisplayName,
                                      String expectedDescription,
                                      EntityReference expectedOwner,
                                      String expectedUpdatedBy) {
-    Model newModel = validateModel(model, expectedDescription, expectedOwner, expectedUpdatedBy);
+    MLModel newModel = validateModel(model, expectedDescription, expectedOwner, expectedUpdatedBy);
     assertEquals(expectedDisplayName, newModel.getDisplayName());
     return newModel;
   }
-  private static Model validateModel(Model model, String expectedDescription,
+  private static MLModel validateModel(MLModel model, String expectedDescription,
                                      EntityReference expectedOwner, String expectedUpdatedBy) {
     assertNotNull(model.getId());
     assertNotNull(model.getHref());
@@ -559,7 +559,7 @@ public class ModelResourceTest extends CatalogApplicationTest {
     return model;
   }
 
-  private static Model validateModel(Model model, String expectedDescription,
+  private static MLModel validateModel(MLModel model, String expectedDescription,
                                      EntityReference expectedOwner,
                                      List<TagLabel> expectedTags,
                                      String expectedUpdatedBy) throws HttpResponseException {
@@ -584,54 +584,54 @@ public class ModelResourceTest extends CatalogApplicationTest {
     getModel(id, null, authHeaders);
   }
 
-  public static Model getModel(UUID id, String fields, Map<String, String> authHeaders)
+  public static MLModel getModel(UUID id, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models/" + id);
+    WebTarget target = getResource("mlmodels/" + id);
     target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Model.class, authHeaders);
+    return TestUtils.get(target, MLModel.class, authHeaders);
   }
 
-  public static Model getModelByName(String fqn, String fields, Map<String, String> authHeaders)
+  public static MLModel getModelByName(String fqn, String fields, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models/name/" + fqn);
+    WebTarget target = getResource("mlmodels/name/" + fqn);
     target = fields != null ? target.queryParam("fields", fields): target;
-    return TestUtils.get(target, Model.class, authHeaders);
+    return TestUtils.get(target, MLModel.class, authHeaders);
   }
 
-  public static ModelList listModels(String fields, Integer limitParam,
+  public static MLModelList listModels(String fields, Integer limitParam,
                                          String before, String after, Map<String, String> authHeaders)
           throws HttpResponseException {
-    WebTarget target = getResource("models");
+    WebTarget target = getResource("mlmodels");
     target = fields != null ? target.queryParam("fields", fields): target;
     target = limitParam != null ? target.queryParam("limit", limitParam): target;
     target = before != null ? target.queryParam("before", before) : target;
     target = after != null ? target.queryParam("after", after) : target;
-    return TestUtils.get(target, ModelList.class, authHeaders);
+    return TestUtils.get(target, MLModelList.class, authHeaders);
   }
 
   private void deleteModel(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
-    TestUtils.delete(getResource("models/" + id), authHeaders);
+    TestUtils.delete(getResource("mlmodels/" + id), authHeaders);
 
     // Ensure deleted Model does not exist
     HttpResponseException exception = assertThrows(HttpResponseException.class, () -> getModel(id, authHeaders));
-    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MODEL, id));
+    assertResponse(exception, NOT_FOUND, entityNotFound(Entity.MLMODEL, id));
   }
 
   public static String getModelName(TestInfo test) {
-    return String.format("model_%s", test.getDisplayName());
+    return String.format("mlmodel_%s", test.getDisplayName());
   }
 
   public static String getModelName(TestInfo test, int index) {
-    return String.format("model%d_%s", index, test.getDisplayName());
+    return String.format("mlmodel%d_%s", index, test.getDisplayName());
   }
 
-  public static CreateModel create(TestInfo test) {
-    return new CreateModel().withName(getModelName(test)).withAlgorithm(ALGORITHM)
+  public static CreateMLModel create(TestInfo test) {
+    return new CreateMLModel().withName(getModelName(test)).withAlgorithm(ALGORITHM)
             .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
   }
 
-  public static CreateModel create(TestInfo test, int index) {
-    return new CreateModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
+  public static CreateMLModel create(TestInfo test, int index) {
+    return new CreateMLModel().withName(getModelName(test, index)).withAlgorithm(ALGORITHM)
             .withMlFeatures(ML_FEATURES).withMlHyperParameters(ML_HYPERPARAMS);
   }
 

@@ -42,7 +42,7 @@ from metadata.generated.schema.api.services.createPipelineService import (
     CreatePipelineServiceEntityRequest,
 )
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.mlmodel import MLModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
@@ -347,7 +347,7 @@ class SampleDataSource(Source):
         yield from self.ingest_pipelines()
         yield from self.ingest_lineage()
         yield from self.ingest_users()
-        yield from self.ingest_models()
+        yield from self.ingest_mlmodels()
 
     def ingest_tables(self) -> Iterable[OMetaDatabaseAndTable]:
         db = Database(
@@ -434,7 +434,7 @@ class SampleDataSource(Source):
             )
             yield lineage
 
-    def ingest_models(self) -> Iterable[Model]:
+    def ingest_mlmodels(self) -> Iterable[MLModel]:
         """
         Convert sample model data into a Model Entity
         to feed the metastore
@@ -453,7 +453,7 @@ class SampleDataSource(Source):
 
             dashboard_id = str(dashboard.id.__root__)
 
-            model_ev = Model(
+            model_ev = MLModel(
                 id=uuid.uuid4(),
                 name=model["name"],
                 displayName=model["displayName"],

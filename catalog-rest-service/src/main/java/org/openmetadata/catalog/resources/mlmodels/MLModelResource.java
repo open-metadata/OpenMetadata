@@ -14,7 +14,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.catalog.resources.models;
+package org.openmetadata.catalog.resources.mlmodels;
 
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
@@ -26,11 +26,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.api.data.CreateMLModel;
+import org.openmetadata.catalog.entity.data.MLModel;
 import org.openmetadata.catalog.Entity;
-import org.openmetadata.catalog.api.data.CreateModel;
-import org.openmetadata.catalog.entity.data.Model;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
-import org.openmetadata.catalog.jdbi3.ModelRepository;
+import org.openmetadata.catalog.jdbi3.MLModelRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
@@ -71,43 +71,43 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-@Path("/v1/models")
-@Api(value = "Models collection", tags = "Models collection")
+@Path("/v1/mlmodels")
+@Api(value = "MLModels collection", tags = "MLModels collection")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "models")
-public class ModelResource {
-  public static final String COLLECTION_PATH = "v1/models/";
-  private final ModelRepository dao;
+@Collection(name = "mlmodels")
+public class MLModelResource {
+  public static final String COLLECTION_PATH = "v1/mlmodels/";
+  private final MLModelRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  public static List<Model> addHref(UriInfo uriInfo, List<Model> models) {
+  public static List<MLModel> addHref(UriInfo uriInfo, List<MLModel> models) {
     Optional.ofNullable(models).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
     return models;
   }
 
-  public static Model addHref(UriInfo uriInfo, Model model) {
-    model.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, model.getId()));
-    Entity.withHref(uriInfo, model.getOwner());
-    Entity.withHref(uriInfo, model.getDashboard()); // Dashboard HREF
-    Entity.withHref(uriInfo, model.getFollowers());
-    return model;
+  public static MLModel addHref(UriInfo uriInfo, MLModel mlmodel) {
+    mlmodel.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, mlmodel.getId()));
+    Entity.withHref(uriInfo, mlmodel.getOwner());
+    Entity.withHref(uriInfo, mlmodel.getDashboard()); // Dashboard HREF
+    Entity.withHref(uriInfo, mlmodel.getFollowers());
+    return mlmodel;
   }
 
   @Inject
-  public ModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
+  public MLModelResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "ModelRepository must not be null");
-    this.dao = new ModelRepository(dao);
+    this.dao = new MLModelRepository(dao);
     this.authorizer = authorizer;
   }
 
-  public static class ModelList extends ResultList<Model> {
+  public static class MLModelList extends ResultList<MLModel> {
     @SuppressWarnings("unused")
-    ModelList() {
+    MLModelList() {
       // Empty constructor needed for deserialization
     }
 
-    public ModelList(List<Model> data, String beforeCursor, String afterCursor, int total)
+    public MLModelList(List<MLModel> data, String beforeCursor, String afterCursor, int total)
             throws GeneralSecurityException, UnsupportedEncodingException {
       super(data, beforeCursor, afterCursor, total);
     }
@@ -126,9 +126,9 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "List of models",
                                content = @Content(mediaType = "application/json",
-                                       schema = @Schema(implementation = ModelList.class)))
+                                       schema = @Schema(implementation = MLModelList.class)))
           })
-  public ResultList<Model> list(@Context UriInfo uriInfo,
+  public ResultList<MLModel> list(@Context UriInfo uriInfo,
                                       @Context SecurityContext securityContext,
                                       @Parameter(description = "Fields requested in the returned resource",
                                               schema = @Schema(type = "string", example = FIELDS))
@@ -149,14 +149,14 @@ public class ModelResource {
     RestUtil.validateCursors(before, after);
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
 
-    ResultList<Model> models;
+    ResultList<MLModel> mlmodels;
     if (before != null) { // Reverse paging
-      models = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
+      mlmodels = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      models = dao.listAfter(uriInfo, fields, null, limitParam, after);
+      mlmodels = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    addHref(uriInfo, models.getData());
-    return models;
+    addHref(uriInfo, mlmodels.getData());
+    return mlmodels;
   }
 
   @GET
@@ -166,10 +166,10 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Model.class))),
+                          schema = @Schema(implementation = MLModel.class))),
                   @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
-  public Model get(@Context UriInfo uriInfo,
+  public MLModel get(@Context UriInfo uriInfo,
                        @Context SecurityContext securityContext,
                        @PathParam("id") String id,
                        @Parameter(description = "Fields requested in the returned resource",
@@ -186,17 +186,17 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                                  schema = @Schema(implementation = Model.class))),
+                                  schema = @Schema(implementation = MLModel.class))),
                   @ApiResponse(responseCode = "404", description = "Model for instance {id} is not found")
           })
-  public Model getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
+  public MLModel getByName(@Context UriInfo uriInfo, @PathParam("fqn") String fqn,
                             @Context SecurityContext securityContext,
                             @Parameter(description = "Fields requested in the returned resource",
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Model model = dao.getByName(uriInfo, fqn, fields);
-    return addHref(uriInfo, model);
+    MLModel mlmodel = dao.getByName(uriInfo, fqn, fields);
+    return addHref(uriInfo, mlmodel);
   }
 
 
@@ -206,15 +206,15 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = CreateModel.class))),
+                          schema = @Schema(implementation = CreateMLModel.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response create(@Context UriInfo uriInfo, @Context SecurityContext securityContext,
-                         @Valid CreateModel create) throws IOException, ParseException {
+                         @Valid CreateMLModel create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    Model model = getModel(securityContext, create);
-    model = addHref(uriInfo, dao.create(uriInfo, model));
-    return Response.created(model.getHref()).entity(model).build();
+    MLModel mlModel = getMLModel(securityContext, create);
+    mlModel = addHref(uriInfo, dao.create(uriInfo, mlModel));
+    return Response.created(mlModel.getHref()).entity(mlModel).build();
   }
 
   @PATCH
@@ -224,7 +224,7 @@ public class ModelResource {
           externalDocs = @ExternalDocumentation(description = "JsonPatch RFC",
                   url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Model updateDescription(@Context UriInfo uriInfo,
+  public MLModel updateDescription(@Context UriInfo uriInfo,
                                      @Context SecurityContext securityContext,
                                      @PathParam("id") String id,
                                      @RequestBody(description = "JsonPatch with array of operations",
@@ -235,11 +235,11 @@ public class ModelResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Model model = dao.get(uriInfo, id, fields);
+    MLModel mlModel = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
-            dao.getOwnerReference(model));
-    model = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-    return addHref(uriInfo, model);
+            dao.getOwnerReference(mlModel));
+    mlModel = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    return addHref(uriInfo, mlModel);
   }
 
   @PUT
@@ -248,14 +248,14 @@ public class ModelResource {
           responses = {
                   @ApiResponse(responseCode = "200", description = "The model",
                           content = @Content(mediaType = "application/json",
-                          schema = @Schema(implementation = Model.class))),
+                          schema = @Schema(implementation = MLModel.class))),
                   @ApiResponse(responseCode = "400", description = "Bad request")
           })
   public Response createOrUpdate(@Context UriInfo uriInfo,
                                  @Context SecurityContext securityContext,
-                                 @Valid CreateModel create) throws IOException, ParseException {
-    Model model = getModel(securityContext, create);
-    PutResponse<Model> response = dao.createOrUpdate(uriInfo, model);
+                                 @Valid CreateMLModel create) throws IOException, ParseException {
+    MLModel mlModel = getMLModel(securityContext, create);
+    PutResponse<MLModel> response = dao.createOrUpdate(uriInfo, mlModel);
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
   }
@@ -275,8 +275,8 @@ public class ModelResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
-            UUID.fromString(userId)).toResponse();
+      return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+              UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
@@ -284,8 +284,8 @@ public class ModelResource {
   @Operation(summary = "Remove a follower", tags = "models",
           description = "Remove the user identified `userId` as a follower of the model.")
   public Response deleteFollower(@Context UriInfo uriInfo,
-                                 @Context SecurityContext securityContext,
-                                 @Parameter(description = "Id of the model",
+                              @Context SecurityContext securityContext,
+                              @Parameter(description = "Id of the model",
                                       schema = @Schema(type = "string"))
                               @PathParam("id") String id,
                                  @Parameter(description = "Id of the user being removed as follower",
@@ -308,17 +308,17 @@ public class ModelResource {
     return Response.ok().build();
   }
 
-  private Model getModel(SecurityContext securityContext, CreateModel create) {
-    return new Model().withId(UUID.randomUUID()).withName(create.getName())
-            .withDisplayName(create.getDisplayName())
-            .withDescription(create.getDescription())
-            .withDashboard(create.getDashboard())
-            .withAlgorithm(create.getAlgorithm())
-            .withMlFeatures(create.getMlFeatures())
-            .withMlHyperParameters(create.getMlHyperParameters())
-            .withTags(create.getTags())
-            .withOwner(create.getOwner())
-            .withUpdatedBy(securityContext.getUserPrincipal().getName())
-            .withUpdatedAt(new Date());
+  private MLModel getMLModel(SecurityContext securityContext, CreateMLModel create) {
+    return new MLModel().withId(UUID.randomUUID()).withName(create.getName())
+              .withDisplayName(create.getDisplayName())
+              .withDescription(create.getDescription())
+              .withDashboard(create.getDashboard())
+              .withAlgorithm(create.getAlgorithm())
+              .withMlFeatures(create.getMlFeatures())
+              .withMlHyperParameters(create.getMlHyperParameters())
+              .withTags(create.getTags())
+              .withOwner(create.getOwner())
+              .withUpdatedBy(securityContext.getUserPrincipal().getName())
+              .withUpdatedAt(new Date());
   }
 }
