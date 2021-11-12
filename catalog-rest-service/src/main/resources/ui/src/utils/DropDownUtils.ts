@@ -1,4 +1,4 @@
-const BUFFER_VALUE = 150;
+const BUFFER_VALUE = 200;
 const GAP = 10;
 
 export const getTopPosition = (
