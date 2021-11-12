@@ -48,7 +48,7 @@ const IngestionModal: React.FC<IngestionModalProps> = ({
         <p className="tw-font-normal preview-header tw-text-grey-muted tw-px-1">
           {header}
         </p>
-        <div className="tw-grid tw-gap-2 tw-grid-cols-3 tw-place-content-center tw-mb-1 tw-pl-5">
+        <div className="tw-grid tw-gap-2 tw-grid-cols-3 tw-place-content-center tw-mb-1 tw-pl-6">
           {data.map((d, i) => (
             <div key={i}>
               <p className="tw-text-xs tw-font-normal tw-text-grey-muted">

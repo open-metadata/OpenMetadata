@@ -24,7 +24,12 @@ const IngestionStepper = ({ steps, activeStep }: Props) => {
                   { completed: step.step < activeStep }
                 )}
               />
-              <span className="tw-mt-2 tw-text-xs">{step.name}</span>
+              <span
+                className={classNames('tw-mt-2 tw-text-xs', {
+                  'tw-text-primary': step.step <= activeStep,
+                })}>
+                {step.name}
+              </span>
             </span>
           </div>
         </Fragment>
