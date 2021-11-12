@@ -25,4 +25,5 @@ airflow users create \
     --email spiderman@superhero.org \
     --password admin
 airflow db upgrade
+(sleep 10; curl -u admin:admin --data '{"dag_run_id":"index_metadata"}' -H "Content-type: application/json" -X POST http://localhost:8080/api/v1/dags/index_metadata/dagRuns) &
 airflow standalone

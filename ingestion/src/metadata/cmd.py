@@ -18,6 +18,7 @@ import pathlib
 import subprocess
 import sys
 import time
+import traceback
 from datetime import timedelta
 
 import click
@@ -39,7 +40,8 @@ logger = logging.getLogger(__name__)
 logging.getLogger("urllib3").setLevel(logging.WARN)
 min_memory_limit = 3 * 1024 * 1024 * 1000
 calc_gb = 1024 * 1024 * 1000
-
+local_metadata = "com.docker.compose.project=local-metadata"
+release = "com.docker.compose.project=tmp"
 # Configure logger.
 BASE_LOGGING_FORMAT = (
     "[%(asctime)s] %(levelname)-8s {%(name)s:%(lineno)d} - %(message)s"
@@ -135,14 +137,16 @@ def report(config: str) -> None:
         ) from exc
 
 
-def get_containers(client):
-    stop_containers = client.containers.list(
-        all=True, filters={"label": "com.docker.compose.project=local-metadata"}
-    )
+def get_list(docker_type, all_check: bool = None):
+    filter_kwargs = {
+        "filters": {"label": local_metadata},
+    }
+    if all_check:
+        filter_kwargs["all"] = all_check
+    stop_containers = docker_type.list(**filter_kwargs)
     if len(stop_containers) == 0:
-        return client.containers.list(
-            all=True, filters={"label": "com.docker.compose.project=tmp"}
-        )
+        filter_kwargs["filters"] = {"label": release}
+        return docker_type.list(**filter_kwargs)
     return stop_containers
 
 
@@ -216,15 +220,23 @@ def docker(run, stop, clean, type, path) -> None:
                     f"Time took to get containers running: {str(timedelta(seconds=elapsed))}"
                 )
         elif stop:
-            for container in get_containers(client):
+            for container in get_list(client.containers):
                 logger.info(f"Stopping {container.name}")
                 container.stop()
         elif clean:
-            client.containers.prune()
-            client.images.prune()
-            client.volumes.prune()
-            client.networks.prune()
+            logger.info("Removing Containers")
+            for container in get_list(client.containers, True):
+                container.remove(v=True, force=True)
+            logger.info("Removing Volumes")
+            for volume in get_list(client.volumes):
+                volume.remove(force=True)
+            logger.info("Removing Networks")
+            for network in get_list(client.networks):
+                network.remove()
+
     except Exception as err:
+        logger.error(traceback.format_exc())
+        logger.error(traceback.print_exc())
         logger.error(repr(err))
 
 
