@@ -17,46 +17,26 @@
  */
 
 /**
- * This schema defines the Model entity. Models are algorithms trained on data to find
- * patterns or make predictions.
+ * Create ML Model entity request
  */
-export interface Model {
+export interface CreateMLModel {
   /**
-   * Algorithm used to train the model.
+   * Algorithm used to train the ML model
    */
   algorithm: string;
   /**
-   * Change that lead to this version of the entity.
-   */
-  changeDescription?: ChangeDescription;
-  /**
-   * Performance Dashboard URL to track metric evolution.
+   * Performance Dashboard URL to track metric evolution
    */
   dashboard?: EntityReference;
   /**
-   * Description of the model, what it is, and how to use it.
+   * Description of the ML model instance. How it was trained and for what it is used.
    */
   description?: string;
   /**
-   * Display Name that identifies this model.
+   * Display Name that identifies this ML model. It could be title or label from the source
+   * services
    */
   displayName?: string;
-  /**
-   * Followers of this model.
-   */
-  followers?: EntityReference[];
-  /**
-   * A unique name that identifies a model.
-   */
-  fullyQualifiedName?: string;
-  /**
-   * Link to the resource corresponding to this entity.
-   */
-  href?: string;
-  /**
-   * Unique identifier of a model instance.
-   */
-  id: string;
   /**
    * Features used to train the ML Model.
    */
@@ -66,84 +46,28 @@ export interface Model {
    */
   mlHyperParameters?: MlHyperParameter[];
   /**
-   * Name that identifies this model.
+   * Name that identifies this ML model.
    */
   name: string;
   /**
-   * Owner of this model.
+   * Owner of this database
    */
   owner?: EntityReference;
   /**
-   * Tags for this model.
+   * Tags for this ML Model
    */
   tags?: TagLabel[];
-  /**
-   * Last update time corresponding to the new version of the entity.
-   */
-  updatedAt?: Date;
-  /**
-   * User who made the update.
-   */
-  updatedBy?: string;
-  /**
-   * Latest usage information for this model.
-   */
-  usageSummary?: TypeUsedToReturnUsageDetailsOfAnEntity;
-  /**
-   * Metadata version of the entity.
-   */
-  version?: number;
 }
 
 /**
- * Change that lead to this version of the entity.
- *
- * Description of the change.
- */
-export interface ChangeDescription {
-  /**
-   * Names of fields added during the version changes.
-   */
-  fieldsAdded?: FieldChange[];
-  /**
-   * Fields deleted during the version changes with old value before deleted.
-   */
-  fieldsDeleted?: FieldChange[];
-  /**
-   * Fields modified during the version changes with old and new values.
-   */
-  fieldsUpdated?: FieldChange[];
-  previousVersion?: number;
-}
-
-export interface FieldChange {
-  /**
-   * Name of the entity field that changed
-   */
-  name?: string;
-  /**
-   * New value of the field. Note that this is a JSON string and use the corresponding field
-   * type to deserialize it.
-   */
-  newValue?: any;
-  /**
-   * Previous value of the field. Note that this is a JSON string and use the corresponding
-   * field type to deserialize it.
-   */
-  oldValue?: any;
-}
-
-/**
- * Performance Dashboard URL to track metric evolution.
+ * Performance Dashboard URL to track metric evolution
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Followers of this model.
- *
- * Owner of this model.
+ * Owner of this database
  */
 export interface EntityReference {
   /**
@@ -175,7 +99,7 @@ export interface EntityReference {
 }
 
 /**
- * This schema defines the type for a ML Feature used in a Model.
+ * This schema defines the type for a ML Feature used in a MLModel.
  */
 export interface MlFeature {
   /**
@@ -253,6 +177,10 @@ export enum FeatureSourceDataType {
  */
 export interface TagLabel {
   /**
+   * Unique name of the tag category.
+   */
+  description?: string;
+  /**
    * Link to the tag resource.
    */
   href?: string;
@@ -263,13 +191,13 @@ export interface TagLabel {
    * was propagated from upstream based on lineage. 'Automated' is used when a tool was used
    * to determine the tag label.
    */
-  labelType?: LabelType;
+  labelType: LabelType;
   /**
    * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
    * entity must confirm the suggested labels before it is marked as 'Confirmed'.
    */
-  state?: State;
-  tagFQN?: string;
+  state: State;
+  tagFQN: string;
 }
 
 /**
@@ -296,7 +224,7 @@ export enum State {
 }
 
 /**
- * This schema defines the type for a ML HyperParameter used in a Model.
+ * This schema defines the type for a ML HyperParameter used in a MLModel.
  */
 export interface MlHyperParameter {
   /**
@@ -311,49 +239,4 @@ export interface MlHyperParameter {
    * Hyper parameter value
    */
   value?: string;
-}
-
-/**
- * Latest usage information for this model.
- *
- * This schema defines the type for usage details. Daily, weekly, and monthly aggregation of
- * usage is computed along with the percentile rank based on the usage for a given day.
- */
-export interface TypeUsedToReturnUsageDetailsOfAnEntity {
-  /**
-   * Daily usage stats of a data asset on the start date.
-   */
-  dailyStats: UsageStats;
-  /**
-   * Date in UTC.
-   */
-  date: Date;
-  /**
-   * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
-   */
-  monthlyStats?: UsageStats;
-  /**
-   * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
-   */
-  weeklyStats?: UsageStats;
-}
-
-/**
- * Daily usage stats of a data asset on the start date.
- *
- * Type used to return usage statistics.
- *
- * Monthly (last 30 days) rolling usage stats of a data asset on the start date.
- *
- * Weekly (last 7 days) rolling usage stats of a data asset on the start date.
- */
-export interface UsageStats {
-  /**
-   * Usage count of a data asset on the start date.
-   */
-  count: number;
-  /**
-   * Optional daily percentile rank data asset use when relevant.
-   */
-  percentileRank?: number;
 }

@@ -26,35 +26,92 @@
  */
 export interface ChangeEvent {
   /**
+   * For `eventType` `entityUpdated` this field captures details about what fields were
+   * added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is
+   * null.
+   */
+  changeDescription?: ChangeDescription;
+  /**
+   * Current version of the entity after this change. Note that not all changes result in
+   * entity version change. When entity version is not changed, `previousVersion` is same as
+   * `currentVersion`
+   */
+  currentVersion?: number;
+  /**
    * Date and time when the change was made.
    */
   dateTime: Date;
   /**
-   * Entity that changed.
+   * For `eventType` `entityCreated`, this field captures JSON coded string of the entity
+   * using the schema corresponding to `entityType`
    */
-  entity: any;
+  entity?: any;
+  /**
+   * Identifier of entity that was modified by the operation.
+   */
+  entityId: string;
   /**
    * Entity type that changed. Use the schema of this entity to process the entity attribute.
    */
-  entityType?: string;
+  entityType: string;
   eventType: EventType;
   /**
-   * API operation that was result of user activity resulted in the change.
+   * Version of the entity before this change. Note that not all changes result in entity
+   * version change. When entity version is not changed, `previousVersion` is same as
+   * `currentVersion`
    */
-  operation: any;
+  previousVersion?: number;
   /**
    * Name of the user whose activity resulted in the change.
    */
-  userName: string;
+  userName?: string;
+}
+
+/**
+ * For `eventType` `entityUpdated` this field captures details about what fields were
+ * added/updated/deleted. For `eventType` `entityCreated` or `entityDeleted` this field is
+ * null.
+ *
+ * Description of the change.
+ */
+export interface ChangeDescription {
+  /**
+   * Names of fields added during the version changes.
+   */
+  fieldsAdded?: FieldChange[];
+  /**
+   * Fields deleted during the version changes with old value before deleted.
+   */
+  fieldsDeleted?: FieldChange[];
+  /**
+   * Fields modified during the version changes with old and new values.
+   */
+  fieldsUpdated?: FieldChange[];
+  previousVersion?: number;
+}
+
+export interface FieldChange {
+  /**
+   * Name of the entity field that changed
+   */
+  name?: string;
+  /**
+   * New value of the field. Note that this is a JSON string and use the corresponding field
+   * type to deserialize it.
+   */
+  newValue?: any;
+  /**
+   * Previous value of the field. Note that this is a JSON string and use the corresponding
+   * field type to deserialize it.
+   */
+  oldValue?: any;
 }
 
 /**
  * Type of event
  */
 export enum EventType {
-  EntityCreated = 'ENTITY_CREATED',
-  EntityDeleted = 'ENTITY_DELETED',
-  EntityFollowed = 'ENTITY_FOLLOWED',
-  EntityUnfollowed = 'ENTITY_UNFOLLOWED',
-  EntityUpdated = 'ENTITY_UPDATED',
+  EntityCreated = 'entityCreated',
+  EntityDeleted = 'entityDeleted',
+  EntityUpdated = 'entityUpdated',
 }

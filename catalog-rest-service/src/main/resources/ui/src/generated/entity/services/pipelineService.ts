@@ -133,5 +133,6 @@ export interface Schedule {
  */
 export enum PipelineServiceType {
   Airflow = 'Airflow',
+  Glue = 'Glue',
   Prefect = 'Prefect',
 }
