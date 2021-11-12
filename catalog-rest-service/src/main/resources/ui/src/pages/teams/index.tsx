@@ -216,7 +216,7 @@ const TeamsPage = () => {
           data-testid="user-card-container">
           {currentTeam?.users?.map((user, index) => {
             const User = {
-              description: user.description || '',
+              description: user.displayName || '',
               name: user.name || '',
               id: user.id,
             };
