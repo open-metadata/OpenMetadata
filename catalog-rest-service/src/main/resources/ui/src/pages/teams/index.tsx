@@ -16,6 +16,7 @@
 */
 
 import { AxiosError, AxiosResponse } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { observer } from 'mobx-react';
 import React, { useEffect, useState } from 'react';
@@ -281,7 +282,9 @@ const TeamsPage = () => {
           <h6 className="tw-heading">Teams</h6>
           <NonAdminAction position="bottom" title={TITLE_FOR_NON_ADMIN_ACTION}>
             <Button
-              className="tw-h-7 tw-px-2"
+              className={classNames('tw-h-7 tw-px-2', {
+                'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+              })}
               data-testid="add-teams"
               size="small"
               theme="primary"
@@ -391,7 +394,9 @@ const TeamsPage = () => {
                       position="bottom"
                       title={TITLE_FOR_NON_ADMIN_ACTION}>
                       <Button
-                        className="tw-h-8 tw-rounded tw-mb-2"
+                        className={classNames('tw-h-8 tw-rounded tw-mb-2', {
+                          'tw-opacity-40': !isAdminUser && !isAuthDisabled,
+                        })}
                         data-testid="add-new-user-button"
                         size="small"
                         theme="primary"
