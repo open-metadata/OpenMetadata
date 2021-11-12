@@ -325,7 +325,7 @@ public class IngestionResource {
             })
   public Ingestion triggerIngestion(@Context UriInfo uriInfo, @PathParam("id") String id,
                                    @Context SecurityContext securityContext) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "");
+    Fields fields = new Fields(FIELD_LIST, "owner");
     Ingestion ingestion = dao.get(uriInfo, id, fields);
     airflowRESTClient.runPipeline(ingestion.getName());
     return addHref(uriInfo, dao.get(uriInfo, id, fields));
