@@ -147,18 +147,24 @@ def get_containers(client):
 
 
 @metadata.command()
-@click.option("--run", is_flag=True)
-@click.option("--stop", is_flag=True)
-@click.option("--clean", is_flag=True)
+@click.option("--run", help="Start release Docker containers", is_flag=True)
+@click.option("--stop", help="Stop Docker containers (local and release)", is_flag=True)
+@click.option(
+    "--clean",
+    help="Prune unused containers, images, volumes and networks",
+    is_flag=True,
+)
 @click.option(
     "-t",
     "--type",
+    help="'local' - local type will start local build of OpenMetadata docker",
     default="release",
     required=False,
 )
 @click.option(
     "-p",
     "--path",
+    help="Path to Local docker-compose.yml",
     type=click.Path(exists=True, dir_okay=False),
     required=False,
 )
