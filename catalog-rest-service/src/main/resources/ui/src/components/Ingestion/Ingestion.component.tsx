@@ -16,7 +16,7 @@ const MOCK_INGESTIONS = [
     type: 'Usage',
     service: 'BigQuery',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
+    reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -24,7 +24,7 @@ const MOCK_INGESTIONS = [
     type: 'Profiler',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
+    reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -32,7 +32,7 @@ const MOCK_INGESTIONS = [
     type: 'Metadata',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
+    reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -40,7 +40,7 @@ const MOCK_INGESTIONS = [
     type: 'Metadata',
     service: 'Snowflake',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
+    reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
     nextRun: '2021-11-19 14:00:00',
   },
   {
@@ -48,7 +48,7 @@ const MOCK_INGESTIONS = [
     type: 'Usage',
     service: 'Redshift',
     schedule: '1 day, 00:00:00',
-    reecentRuns: ['error', 'success', 'error', 'success', 'error'],
+    reecentRuns: ['failed', 'success', 'failed', 'success', 'failed'],
     nextRun: '2021-11-19 14:00:00',
   },
 ];
@@ -125,7 +125,7 @@ const Ingestion = () => {
                           if (i === ingestion.reecentRuns.length - 1) {
                             return (
                               <p
-                                className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-${r} tw-mr-2 tw-px-1 tw-text-white tw-text-center`}
+                                className={`tw-h-5 tw-w-16 tw-rounded-sm tw-bg-status-${r} tw-mr-2 tw-px-1 tw-text-white tw-text-center`}
                                 key={i}>
                                 {capitalize(r)}
                               </p>
@@ -133,7 +133,7 @@ const Ingestion = () => {
                           } else {
                             return (
                               <p
-                                className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-${r} tw-mr-2`}
+                                className={`tw-w-4 tw-h-5 tw-rounded-sm tw-bg-status-${r} tw-mr-2`}
                                 key={i}
                               />
                             );

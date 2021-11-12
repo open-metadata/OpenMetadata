@@ -1,10 +1,11 @@
+import classNames from 'classnames';
 import React from 'react';
 import './IngestionStepper.css';
 type Props = {
-  isVertical: boolean;
-  steps: Array<{ name: string }>;
+  steps: Array<{ name: string; step: number }>;
+  activeStep: number;
 };
-const IngestionStepper = ({ steps }: Props) => {
+const IngestionStepper = ({ steps, activeStep }: Props) => {
   return (
     <div className="ingestion-content tw-relative">
       {steps.map((step, index) => (
@@ -14,7 +15,11 @@ const IngestionStepper = ({ steps }: Props) => {
           )}
           <div className="ingestion-wrapper" key={index}>
             <span className="tw-flex tw-flex-col">
-              <span className="ingestion-rounder tw-self-center" />
+              <span
+                className={classNames('ingestion-rounder tw-self-center', {
+                  active: step.step === activeStep,
+                })}
+              />
               <span className="tw-mt-3">{step.name}</span>
             </span>
           </div>
