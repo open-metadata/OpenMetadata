@@ -55,7 +55,8 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   private final CollectionDAO dao;
 
   public PipelineRepository(CollectionDAO dao) {
-    super(Pipeline.class, dao.pipelineDAO(), dao, PIPELINE_PATCH_FIELDS, PIPELINE_UPDATE_FIELDS);
+    super(PipelineResource.COLLECTION_PATH, Pipeline.class, dao.pipelineDAO(), dao, PIPELINE_PATCH_FIELDS,
+            PIPELINE_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -284,6 +285,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Pipeline withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }

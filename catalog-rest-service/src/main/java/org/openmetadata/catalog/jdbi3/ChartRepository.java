@@ -47,7 +47,7 @@ public class ChartRepository extends EntityRepository<Chart> {
   private final CollectionDAO dao;
 
   public ChartRepository(CollectionDAO dao) {
-    super(Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
+    super(ChartResource.COLLECTION_PATH, Chart.class, dao.chartDAO(), dao, CHART_PATCH_FIELDS, CHART_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -255,9 +255,10 @@ public class ChartRepository extends EntityRepository<Chart> {
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
 
     @Override
-    public ChangeDescription getChangeDescription() {
-      return entity.getChangeDescription();
-    }
+    public Chart withHref(URI href) { return entity.withHref(href); }
+
+    @Override
+    public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }
 
     @Override
     public void setTags(List<TagLabel> tags) {

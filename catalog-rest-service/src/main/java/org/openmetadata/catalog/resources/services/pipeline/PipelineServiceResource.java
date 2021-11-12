@@ -64,22 +64,12 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "pipelineServices")
 public class PipelineServiceResource {
+  public static final String COLLECTION_PATH = "v1/services/pipelineServices/";
   private final PipelineServiceRepository dao;
   private final CatalogAuthorizer authorizer;
 
   public static EntityReference addHref(UriInfo uriInfo, EntityReference service) {
     return service.withHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/", service.getId()));
-  }
-
-  private static List<PipelineService> addHref(UriInfo uriInfo, List<PipelineService> instances) {
-    instances.forEach(i -> addHref(uriInfo, i));
-    return instances;
-  }
-
-  private static PipelineService addHref(UriInfo uriInfo, PipelineService pipelineService) {
-    pipelineService.setHref(RestUtil.getHref(uriInfo, "v1/services/pipelineServices/",
-            pipelineService.getId()));
-    return pipelineService;
   }
 
   @Inject
@@ -105,9 +95,7 @@ public class PipelineServiceResource {
           })
   public ResultList<PipelineService> list(@Context UriInfo uriInfo, @QueryParam("name") String name) throws IOException,
           GeneralSecurityException, ParseException {
-    ResultList<PipelineService> list = dao.listAfter(null, null, 10000, null);
-    list.getData().forEach(p -> addHref(uriInfo, p));
-    return list;
+    return dao.listAfter(uriInfo, null, null, 10000, null);
   }
 
   @GET
@@ -123,7 +111,7 @@ public class PipelineServiceResource {
   public  PipelineService get(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, null));
+    return dao.get(uriInfo, id, null);
   }
 
   @GET
@@ -139,7 +127,7 @@ public class PipelineServiceResource {
   public PipelineService getByName(@Context UriInfo uriInfo,
                              @Context SecurityContext securityContext,
                              @PathParam("name") String name) throws IOException, ParseException {
-    return addHref(uriInfo, dao.getByName(name, null));
+    return dao.getByName(uriInfo, name, null);
   }
 
   @POST
@@ -162,7 +150,7 @@ public class PipelineServiceResource {
             .withIngestionSchedule(create.getIngestionSchedule())
             .withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(service));
+    dao.create(uriInfo, service);
     return Response.created(service.getHref()).entity(service).build();
   }
 
@@ -182,9 +170,8 @@ public class PipelineServiceResource {
                          @PathParam("id") String id,
                          @Valid UpdatePipelineService update) throws IOException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    PipelineService service = addHref(uriInfo,
-            dao.update(UUID.fromString(id), update.getDescription(), update.getPipelineUrl(),
-                    update.getIngestionSchedule()));
+    PipelineService service = dao.update(uriInfo, UUID.fromString(id), update.getDescription(), update.getPipelineUrl(),
+                    update.getIngestionSchedule());
     return Response.ok(service).build();
   }
 

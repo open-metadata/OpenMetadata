@@ -26,17 +26,15 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDashboard;
 import org.openmetadata.catalog.entity.data.Dashboard;
-import org.openmetadata.catalog.entity.data.Table;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DashboardRepository;
 import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -80,13 +78,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "dashboards")
 public class DashboardResource {
-  public static final String DASHBOARD_COLLECTION_PATH = "v1/dashboards/";
+  public static final String COLLECTION_PATH = "v1/dashboards/";
   private final DashboardRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, DASHBOARD_COLLECTION_PATH, ref.getId()));
-  }
 
   public static List<Dashboard> addHref(UriInfo uriInfo, List<Dashboard> dashboards) {
     Optional.ofNullable(dashboards).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -94,13 +88,10 @@ public class DashboardResource {
   }
 
   public static Dashboard addHref(UriInfo uriInfo, Dashboard dashboard) {
-    dashboard.setHref(RestUtil.getHref(uriInfo, DASHBOARD_COLLECTION_PATH, dashboard.getId()));
-    EntityUtil.addHref(uriInfo, dashboard.getOwner());
-    EntityUtil.addHref(uriInfo, dashboard.getService());
-    if (dashboard.getCharts() != null) {
-      EntityUtil.addHref(uriInfo, dashboard.getCharts());
-    }
-    EntityUtil.addHref(uriInfo, dashboard.getFollowers());
+    Entity.withHref(uriInfo, dashboard.getOwner());
+    Entity.withHref(uriInfo, dashboard.getService());
+    Entity.withHref(uriInfo, dashboard.getCharts());
+    Entity.withHref(uriInfo, dashboard.getFollowers());
     return dashboard;
   }
 
@@ -164,9 +155,9 @@ public class DashboardResource {
 
     ResultList<Dashboard> dashboards;
     if (before != null) { // Reverse paging
-      dashboards = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
+      dashboards = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      dashboards = dao.listAfter(fields, serviceParam, limitParam, after);
+      dashboards = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
     addHref(uriInfo, dashboards.getData());
     return dashboards;
@@ -205,7 +196,7 @@ public class DashboardResource {
                                schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
@@ -224,7 +215,7 @@ public class DashboardResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Dashboard dashboard = dao.getByName(fqn, fields);
+    Dashboard dashboard = dao.getByName(uriInfo, fqn, fields);
     return addHref(uriInfo, dashboard);
   }
 
@@ -262,7 +253,7 @@ public class DashboardResource {
                          @Valid CreateDashboard create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Dashboard dashboard = getDashboard(securityContext, create);
-    dashboard = addHref(uriInfo, dao.create(dashboard));
+    dashboard = addHref(uriInfo, dao.create(uriInfo, dashboard));
     return Response.created(dashboard.getHref()).entity(dashboard).build();
   }
 
@@ -284,10 +275,10 @@ public class DashboardResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Dashboard dashboard = dao.get(id, fields);
+    Dashboard dashboard = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(dashboard));
-    dashboard = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    dashboard = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, dashboard);
   }
 
@@ -304,9 +295,9 @@ public class DashboardResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDashboard create) throws IOException, ParseException {
     Dashboard dashboard = getDashboard(securityContext, create);
-    PutResponse<Dashboard> response = dao.createOrUpdate(dashboard);
-    dashboard = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(dashboard).build();
+    PutResponse<Dashboard> response = dao.createOrUpdate(uriInfo, dashboard);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -324,17 +315,15 @@ public class DashboardResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-    Dashboard dashboard = dao.get(id, fields);
-    return Response.status(status).entity(dashboard).build();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "dashboards",
           description = "Remove the user identified `userId` as a follower of the dashboard.")
-  public Dashboard deleteFollower(@Context UriInfo uriInfo,
+  public Response deleteFollower(@Context UriInfo uriInfo,
                               @Context SecurityContext securityContext,
                               @Parameter(description = "Id of the dashboard",
                                       schema = @Schema(type = "string"))
@@ -342,10 +331,8 @@ public class DashboardResource {
                               @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-    Dashboard dashboard = dao.get(id, fields);
-    return addHref(uriInfo, dashboard);
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE

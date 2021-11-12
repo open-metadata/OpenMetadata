@@ -39,7 +39,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,14 +273,7 @@ public final class TestUtils {
     // GET .../users/{userId} shows user as following table
     boolean following = false;
     User user = UserResourceTest.getUser(userId, "follows", authHeaders);
-    for (EntityReference follows : user.getFollows()) {
-      TestUtils.validateEntityReference(follows);
-      if (follows.getId().equals(entityId)) {
-        following = true;
-        break;
-      }
-    }
-    assertEquals(expectedFollowing, following, "Follower list for the user is invalid");
+    existsInEntityReferenceList(user.getFollows(), entityId, expectedFollowing);
   }
 
   public static String getPrincipal(Map<String, String> authHeaders) {
@@ -305,4 +297,18 @@ public final class TestUtils {
       assertEquals(Math.round((previousVersion + 1.0) * 10.0)/10.0, newVersion); // Major version change
     }
   }
+
+  public static void existsInEntityReferenceList(List<EntityReference> list, UUID id, boolean expectedExistsInList) {
+    boolean exists = false;
+    for (EntityReference ref : list) {
+      validateEntityReference(ref);
+      if (ref.getId().equals(id)) {
+        exists = true;
+        break;
+      }
+    }
+    assertEquals(expectedExistsInList, exists,
+            "Entry exists in list - expected:" + expectedExistsInList + " actual:" + exists);
+  }
+
 }

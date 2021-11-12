@@ -19,18 +19,22 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.catalog.Entity;
+import org.openmetadata.catalog.entity.teams.User;
 import org.openmetadata.catalog.exception.CatalogExceptionMessage;
 import org.openmetadata.catalog.exception.EntityNotFoundException;
 import org.openmetadata.catalog.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.catalog.type.ChangeDescription;
+import org.openmetadata.catalog.type.ChangeEvent;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
+import org.openmetadata.catalog.type.EventType;
 import org.openmetadata.catalog.type.FieldChange;
 import org.openmetadata.catalog.type.TagLabel;
 import org.openmetadata.catalog.util.EntityInterface;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.JsonUtils;
+import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
 import org.openmetadata.catalog.util.ResultList;
 import org.openmetadata.common.utils.CipherText;
@@ -39,8 +43,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.json.JsonPatch;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -59,6 +65,7 @@ import java.util.function.BiPredicate;
  */
 public abstract class EntityRepository<T> {
   public static final Logger LOG = LoggerFactory.getLogger(EntityRepository.class);
+  private final String collectionPath;
   private final Class<T> entityClass;
   private final String entityName;
   private final EntityDAO<T> dao;
@@ -81,28 +88,30 @@ public abstract class EntityRepository<T> {
     return new EntityUpdater(original, updated, patchOperation);
   }
 
-  EntityRepository(Class<T> entityClass, EntityDAO<T> entityDAO, CollectionDAO collectionDAO,
+  EntityRepository(String collectionPath, Class<T> entityClass, EntityDAO<T> entityDAO, CollectionDAO collectionDAO,
                    Fields patchFields, Fields putFields) {
+    this.collectionPath = collectionPath;
     this.entityClass = entityClass;
     this.dao = entityDAO;
     this.daoCollection = collectionDAO;
     this.patchFields = patchFields;
     this.putFields = putFields;
     this.entityName = entityClass.getSimpleName().toLowerCase(Locale.ROOT);
+    Entity.registerEntity(entityName, dao, this);
   }
 
   @Transaction
-  public final T get(String id, Fields fields) throws IOException, ParseException {
-    return setFields(dao.findEntityById(UUID.fromString(id)), fields);
+  public final T get(UriInfo uriInfo, String id, Fields fields) throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityById(UUID.fromString(id)), fields));
   }
 
   @Transaction
-  public final T getByName(String fqn, Fields fields) throws IOException, ParseException {
-    return setFields(dao.findEntityByName(fqn), fields);
+  public final T getByName(UriInfo uriInfo, String fqn, Fields fields) throws IOException, ParseException {
+    return withHref(uriInfo, setFields(dao.findEntityByName(fqn), fields));
   }
 
   @Transaction
-  public final ResultList<T> listAfter(Fields fields, String fqnPrefix, int limitParam, String after)
+  public final ResultList<T> listAfter(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String after)
           throws GeneralSecurityException, IOException, ParseException {
     // forward scrolling, if after == null then first page is being asked
     List<String> jsons = dao.listAfter(fqnPrefix, limitParam + 1, after == null ? "" :
@@ -110,7 +119,8 @@ public abstract class EntityRepository<T> {
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      entities.add(setFields(JsonUtils.readValue(json, entityClass), fields));
+      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      entities.add(entity);
     }
     int total = dao.listCount(fqnPrefix);
 
@@ -124,14 +134,15 @@ public abstract class EntityRepository<T> {
   }
 
   @Transaction
-  public final ResultList<T> listBefore(Fields fields, String fqnPrefix, int limitParam, String before)
+  public final ResultList<T> listBefore(UriInfo uriInfo, Fields fields, String fqnPrefix, int limitParam, String before)
           throws IOException, GeneralSecurityException, ParseException {
     // Reverse scrolling - Get one extra result used for computing before cursor
     List<String> jsons = dao.listBefore(fqnPrefix, limitParam + 1, CipherText.instance().decrypt(before));
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
-      entities.add(setFields(JsonUtils.readValue(json, entityClass), fields));
+      T entity = withHref(uriInfo, setFields(JsonUtils.readValue(json, entityClass), fields));
+      entities.add(entity);
     }
     int total = dao.listCount(fqnPrefix);
 
@@ -177,18 +188,22 @@ public abstract class EntityRepository<T> {
     return new EntityHistory().withEntityType(entityName).withVersions(allVersions);
   }
 
-  @Transaction
-  public final T create(T entity) throws IOException, ParseException {
-    validate(entity);
-    return createInternal(entity);
+  public final T create(UriInfo uriInfo, T entity) throws IOException, ParseException {
+    return withHref(uriInfo, createInternal(entity));
   }
 
   @Transaction
-  public final PutResponse<T> createOrUpdate(T updated) throws IOException, ParseException {
+  public final T createInternal(T entity) throws IOException, ParseException {
+    validate(entity);
+    return createNewEntity(entity);
+  }
+
+  @Transaction
+  public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated) throws IOException, ParseException {
     validate(updated);
     T original = JsonUtils.readValue(dao.findJsonByFqn(getFullyQualifiedName(updated)), entityClass);
     if (original == null) {
-      return new PutResponse<>(Status.CREATED, createInternal(updated));
+      return new PutResponse<>(Status.CREATED, withHref(uriInfo, createNewEntity(updated)), RestUtil.ENTITY_CREATED);
     }
     // Update the existing entity
     setFields(original, putFields);
@@ -196,11 +211,12 @@ public abstract class EntityRepository<T> {
     EntityUpdater entityUpdater = getUpdater(original, updated, false);
     entityUpdater.update();
     entityUpdater.store();
-    return new PutResponse<>(Status.OK, updated);
+    String change = entityUpdater.fieldsChanged() ? RestUtil.ENTITY_UPDATED : RestUtil.ENTITY_NO_CHANGE;
+    return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
 
   @Transaction
-  public final T patch(UUID id, String user, JsonPatch patch) throws IOException, ParseException {
+  public final T patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) throws IOException, ParseException {
     T original = setFields(dao.findEntityById(id), patchFields);
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     EntityInterface<T> updatedEntity = getEntityInterface(updated);
@@ -211,20 +227,57 @@ public abstract class EntityRepository<T> {
     EntityUpdater entityUpdater = getUpdater(original, updated, true);
     entityUpdater.update();
     entityUpdater.store();
-    return updated;
+    return withHref(uriInfo, updated);
   }
 
   @Transaction
-  public Status addFollower(UUID entityId, UUID userId) throws IOException {
-    dao.findEntityById(entityId);
-    return EntityUtil.addFollower(daoCollection.relationshipDAO(), daoCollection.userDAO(), entityId,
-            entityName, userId, Entity.USER) ? Status.CREATED : Status.OK;
+  public PutResponse<T> addFollower(String updatedBy, UUID entityId, UUID userId) throws IOException {
+    // Get entity
+    T entity = dao.findEntityById(entityId);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Validate user
+    User user = daoCollection.userDAO().findEntityById(userId);
+    if (user.getDeactivated()) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.deactivatedUser(userId));
+    }
+
+    // Add relationship
+    int added = daoCollection.relationshipDAO().insert(userId.toString(), entityId.toString(), Entity.USER, entityName,
+            Relationship.FOLLOWS.ordinal());
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
+    change.getFieldsAdded().add(new FieldChange().withName("followers")
+            .withNewValue(List.of(Entity.getEntityReference(user))));
+    ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
+            .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    return new PutResponse<>(added > 0 ? Status.CREATED : Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   @Transaction
-  public void deleteFollower(UUID entityId, UUID userId) {
-    EntityUtil.validateUser(daoCollection.userDAO(), userId);
-    EntityUtil.removeFollower(daoCollection.relationshipDAO(), entityId, userId);
+  public PutResponse<T> deleteFollower(String updatedBy, UUID entityId, UUID userId) throws IOException {
+    T entity = dao.findEntityById(entityId);
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+
+    // Validate user
+    User user = daoCollection.userDAO().findEntityById(userId);
+
+    // Remove follower
+    daoCollection.relationshipDAO().delete(userId.toString(), entityId.toString(), Relationship.FOLLOWS.ordinal());
+
+    ChangeDescription change = new ChangeDescription().withPreviousVersion(entityInterface.getVersion());
+    change.getFieldsDeleted().add(new FieldChange().withName("followers")
+            .withOldValue(List.of(Entity.getEntityReference(user))));
+
+    ChangeEvent changeEvent = new ChangeEvent().withChangeDescription(change).withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType(entityName).withEntityId(entityId).withUserName(updatedBy)
+            .withDateTime(new Date()).withCurrentVersion(entityInterface.getVersion())
+            .withPreviousVersion(change.getPreviousVersion());
+
+    return new PutResponse<>(Status.OK, changeEvent, RestUtil.ENTITY_FIELDS_CHANGED);
   }
 
   public final String getFullyQualifiedName(T entity) {
@@ -236,11 +289,22 @@ public abstract class EntityRepository<T> {
     return new ResultList<>(entities, beforeCursor, afterCursor, total);
   }
 
-  private T createInternal(T entity) throws IOException {
+  private T createNewEntity(T entity) throws IOException {
     store(entity, false);
     storeRelationships(entity);
-    LOG.info("Created entity {}", entity);
     return entity;
+  }
+
+  protected T withHref(UriInfo uriInfo, T entity) {
+    if (uriInfo == null) {
+      return entity;
+    }
+    EntityInterface<T> entityInterface = getEntityInterface(entity);
+    return entityInterface.withHref(getHref(uriInfo, entityInterface.getId()));
+  }
+
+  public URI getHref(UriInfo uriInfo, UUID id) {
+    return RestUtil.getHref(uriInfo, collectionPath, id);
   }
 
   /**
@@ -338,7 +402,6 @@ public abstract class EntityRepository<T> {
       EntityUtil.applyTags(daoCollection.tagDAO(), updatedTags, fqn);
     }
 
-
     public final boolean updateVersion(Double oldVersion) {
       Double newVersion = oldVersion;
       if (majorVersionChange) {
@@ -422,8 +485,9 @@ public abstract class EntityRepository<T> {
 
         // Store the new version
         EntityRepository.this.store(updated.getEntity(), true);
+      } else {
+        updated.setUpdateDetails(original.getUpdatedBy(), original.getUpdatedAt());
       }
     }
   }
-
 }

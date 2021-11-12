@@ -51,7 +51,8 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
   private final CollectionDAO dao;
 
   public DashboardRepository(CollectionDAO dao) {
-    super(Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS, DASHBOARD_UPDATE_FIELDS);
+    super(DashboardResource.COLLECTION_PATH, Dashboard.class, dao.dashboardDAO(), dao, DASHBOARD_PATCH_FIELDS,
+            DASHBOARD_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -319,6 +320,9 @@ public class DashboardRepository extends EntityRepository<Dashboard> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Dashboard withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }

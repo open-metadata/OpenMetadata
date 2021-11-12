@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.ws.rs.client.WebTarget;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -68,7 +69,7 @@ public class UsageResourceTest extends CatalogApplicationTest {
   public static final int DAYS_OF_USAGE = 32;
 
   @BeforeAll
-  public static void setup(TestInfo test) throws HttpResponseException, URISyntaxException {
+  public static void setup(TestInfo test) throws IOException, URISyntaxException {
     TableResourceTest.setup(test); // Initialize TableResourceTest for using helper methods
     // Create TABLE_COUNT number of tables
     for (int i = 0; i < TABLE_COUNT; i++) {

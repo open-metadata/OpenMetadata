@@ -26,18 +26,17 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateDatabase;
 import org.openmetadata.catalog.entity.data.Database;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository;
 import org.openmetadata.catalog.jdbi3.DatabaseRepository.DatabaseEntityInterface;
 import org.openmetadata.catalog.resources.Collection;
-import org.openmetadata.catalog.resources.locations.LocationResource;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -81,7 +80,7 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "databases")
 public class DatabaseResource {
-  private static final String DATABASE_COLLECTION_PATH = "v1/databases/";
+  public static final String COLLECTION_PATH = "v1/databases/";
   private final DatabaseRepository dao;
   private final CatalogAuthorizer authorizer;
 
@@ -94,18 +93,15 @@ public class DatabaseResource {
   }
 
   public static Database addHref(UriInfo uriInfo, Database db) {
-    db.setHref(RestUtil.getHref(uriInfo, DATABASE_COLLECTION_PATH, db.getId()));
-    Optional.ofNullable(db.getTables()).orElse(Collections.emptyList()).forEach(t -> TableResource.addHref(uriInfo, t));
-    if (db.getLocation() != null) {
-      LocationResource.addHref(uriInfo, db.getLocation());
-    }
-    EntityUtil.addHref(uriInfo, db.getOwner());
-    EntityUtil.addHref(uriInfo, db.getService());
+    Entity.withHref(uriInfo, db.getTables());
+    Entity.withHref(uriInfo, db.getLocation());
+    Entity.withHref(uriInfo, db.getOwner());
+    Entity.withHref(uriInfo, db.getService());
     return db;
   }
 
   public static void addHref(UriInfo uriInfo, EntityReference databaseEntityReference) {
-    databaseEntityReference.withHref(RestUtil.getHref(uriInfo, DATABASE_COLLECTION_PATH,
+    databaseEntityReference.withHref(RestUtil.getHref(uriInfo, COLLECTION_PATH,
             databaseEntityReference.getId()));
   }
 
@@ -166,9 +162,9 @@ public class DatabaseResource {
     // scrolling afterCursor is not null. Similarly, if the extra entry exists, then in reverse scrolling,
     // beforeCursor is not null. Remove the extra entry before returning results.
     if (before != null) { // Reverse paging
-      databases = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
+      databases = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      databases = dao.listAfter(fields, serviceParam, limitParam, after);
+      databases = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
     addHref(uriInfo, databases.getData());
     return databases;
@@ -206,7 +202,7 @@ public class DatabaseResource {
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.get(id, fields);
+    Database database = dao.get(uriInfo, id, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
@@ -227,7 +223,7 @@ public class DatabaseResource {
                                         schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Database database = dao.getByName(fqn, fields);
+    Database database = dao.getByName(uriInfo, fqn, fields);
     addHref(uriInfo, database);
     return Response.ok(database).build();
   }
@@ -266,7 +262,7 @@ public class DatabaseResource {
                          @Valid CreateDatabase create) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Database database = getDatabase(securityContext, create);
-    database = addHref(uriInfo, dao.create(database));
+    database = addHref(uriInfo, dao.create(uriInfo, database));
     return Response.created(database.getHref()).entity(database).build();
   }
 
@@ -287,11 +283,11 @@ public class DatabaseResource {
                                                             "{op:add, path: /b, value: val}" +
                                                             "]")}))
                                             JsonPatch patch) throws IOException, ParseException {
-      Database database = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
-      SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
+    Database database = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             new DatabaseEntityInterface(database).getEntityReference());
-      return addHref(uriInfo, database);
-    }
+    return addHref(uriInfo, database);
+  }
 
   @PUT
   @Operation(summary = "Create or update database", tags = "databases",
@@ -305,9 +301,9 @@ public class DatabaseResource {
                                  @Context SecurityContext securityContext,
                                  @Valid CreateDatabase create) throws IOException, ParseException {
     Database database = getDatabase(securityContext, create);
-    PutResponse<Database> response = dao.createOrUpdate(database);
-    Database db = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(db).build();
+    PutResponse<Database> response = dao.createOrUpdate(uriInfo, database);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @DELETE
@@ -321,7 +317,7 @@ public class DatabaseResource {
                               @PathParam("id") String id) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, "location");
     dao.deleteLocation(id);
-    Database database = dao.get(id, fields);
+    Database database = dao.get(uriInfo, id, fields);
     return addHref(uriInfo, database);
   }
 

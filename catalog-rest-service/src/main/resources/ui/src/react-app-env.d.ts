@@ -30,3 +30,4 @@ declare module 'slick-carousel';
 declare module 'react-table';
 declare module 'recharts';
 declare module 'react-tutorial';
+declare module 'diff';

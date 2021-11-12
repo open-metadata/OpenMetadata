@@ -50,7 +50,7 @@ public class TopicRepository extends EntityRepository<Topic> {
   }
 
   public TopicRepository(CollectionDAO dao) {
-    super(Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS, TOPIC_UPDATE_FIELDS);
+    super(TopicResource.COLLECTION_PATH, Topic.class, dao.topicDAO(), dao, TOPIC_PATCH_FIELDS, TOPIC_UPDATE_FIELDS);
     this.dao = dao;
   }
 
@@ -262,6 +262,9 @@ public class TopicRepository extends EntityRepository<Topic> {
 
     @Override
     public void setOwner(EntityReference owner) { entity.setOwner(owner); }
+
+    @Override
+    public Topic withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public ChangeDescription getChangeDescription() { return entity.getChangeDescription(); }

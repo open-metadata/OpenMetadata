@@ -19,6 +19,7 @@ package org.openmetadata.catalog.jdbi3;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.entity.Bots;
+import org.openmetadata.catalog.resources.bots.BotsResource;
 import org.openmetadata.catalog.type.ChangeDescription;
 import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.type.TagLabel;
@@ -36,7 +37,7 @@ public class BotsRepository extends EntityRepository<Bots>{
   private final CollectionDAO dao;
 
   public BotsRepository(CollectionDAO dao) {
-    super(Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
+    super(BotsResource.COLLECTION_PATH, Bots.class, dao.botsDAO(), dao, Fields.EMPTY_FIELDS, Fields.EMPTY_FIELDS);
     this.dao = dao; }
 
   public Bots insert(Bots bots) throws JsonProcessingException {
@@ -69,10 +70,10 @@ public class BotsRepository extends EntityRepository<Bots>{
   @Override
   public void storeRelationships(Bots entity) throws IOException { }
 
-  static class BotsEntityInterface implements EntityInterface<Bots> {
+  public static class BotsEntityInterface implements EntityInterface<Bots> {
     private final Bots entity;
 
-    BotsEntityInterface(Bots entity) {
+    public BotsEntityInterface(Bots entity) {
       this.entity = entity;
     }
 
@@ -156,6 +157,9 @@ public class BotsRepository extends EntityRepository<Bots>{
 
     @Override
     public void setOwner(EntityReference owner) { }
+
+    @Override
+    public Bots withHref(URI href) { return entity.withHref(href); }
 
     @Override
     public void setTags(List<TagLabel> tags) { }

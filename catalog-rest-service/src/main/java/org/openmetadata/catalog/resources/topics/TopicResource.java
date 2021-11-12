@@ -26,8 +26,8 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.data.CreateTopic;
-import org.openmetadata.catalog.entity.data.Dashboard;
 import org.openmetadata.catalog.entity.data.Topic;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
 import org.openmetadata.catalog.jdbi3.TopicRepository;
@@ -35,8 +35,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.EntityUtil.Fields;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.RestUtil.PutResponse;
@@ -80,13 +78,9 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "topics")
 public class TopicResource {
-  private static final String TOPIC_COLLECTION_PATH = "v1/topics/";
+  public static final String COLLECTION_PATH = "v1/topics/";
   private final TopicRepository dao;
   private final CatalogAuthorizer authorizer;
-
-  public static void addHref(UriInfo uriInfo, EntityReference ref) {
-    ref.withHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, ref.getId()));
-  }
 
   public static List<Topic> addHref(UriInfo uriInfo, List<Topic> topics) {
     Optional.ofNullable(topics).orElse(Collections.emptyList()).forEach(i -> addHref(uriInfo, i));
@@ -94,10 +88,9 @@ public class TopicResource {
   }
 
   public static Topic addHref(UriInfo uriInfo, Topic topic) {
-    topic.setHref(RestUtil.getHref(uriInfo, TOPIC_COLLECTION_PATH, topic.getId()));
-    EntityUtil.addHref(uriInfo, topic.getOwner());
-    EntityUtil.addHref(uriInfo, topic.getService());
-    EntityUtil.addHref(uriInfo, topic.getFollowers());
+    Entity.withHref(uriInfo, topic.getOwner());
+    Entity.withHref(uriInfo, topic.getService());
+    Entity.withHref(uriInfo, topic.getFollowers());
     return topic;
   }
 
@@ -157,9 +150,9 @@ public class TopicResource {
 
     ResultList<Topic> topics;
     if (before != null) { // Reverse paging
-      topics = dao.listBefore(fields, serviceParam, limitParam, before); // Ask for one extra entry
+      topics = dao.listBefore(uriInfo, fields, serviceParam, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      topics = dao.listAfter(fields, serviceParam, limitParam, after);
+      topics = dao.listAfter(uriInfo, fields, serviceParam, limitParam, after);
     }
     addHref(uriInfo, topics.getData());
     return topics;
@@ -197,7 +190,7 @@ public class TopicResource {
                               schema = @Schema(type = "string", example = FIELDS))
                       @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
@@ -216,7 +209,7 @@ public class TopicResource {
                                     schema = @Schema(type = "string", example = FIELDS))
                             @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    Topic topic = dao.getByName(fqn, fields);
+    Topic topic = dao.getByName(uriInfo, fqn, fields);
     addHref(uriInfo, topic);
     return Response.ok(topic).build();
   }
@@ -257,7 +250,7 @@ public class TopicResource {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Topic topic = getTopic(securityContext, create);
 
-    topic = addHref(uriInfo, dao.create(topic));
+    topic = addHref(uriInfo, dao.create(uriInfo, topic));
     return Response.created(topic.getHref()).entity(topic).build();
   }
 
@@ -279,10 +272,10 @@ public class TopicResource {
                                                          "]")}))
                                          JsonPatch patch) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, FIELDS);
-    Topic topic = dao.get(id, fields);
+    Topic topic = dao.get(uriInfo, id, fields);
     SecurityUtil.checkAdminRoleOrPermissions(authorizer, securityContext,
             dao.getOwnerReference(topic));
-    topic = dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
+    topic = dao.patch(uriInfo, UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch);
     return addHref(uriInfo, topic);
   }
 
@@ -299,9 +292,9 @@ public class TopicResource {
                                  @Valid CreateTopic create) throws IOException, ParseException {
 
     Topic topic = getTopic(securityContext, create);
-    PutResponse<Topic> response = dao.createOrUpdate(topic);
-    topic = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(topic).build();
+    PutResponse<Topic> response = dao.createOrUpdate(uriInfo, topic);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PUT
@@ -319,28 +312,24 @@ public class TopicResource {
                               @Parameter(description = "Id of the user to be added as follower",
                                       schema = @Schema(type = "string"))
                                       String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    Response.Status status = dao.addFollower(UUID.fromString(id), UUID.fromString(userId));
-    Topic table = dao.get(id, fields);
-    return Response.status(status).entity(table).build();
+    return dao.addFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
   @DELETE
   @Path("/{id}/followers/{userId}")
   @Operation(summary = "Remove a follower", tags = "topics",
           description = "Remove the user identified `userId` as a follower of the topic.")
-  public Topic deleteFollower(@Context UriInfo uriInfo,
-                              @Context SecurityContext securityContext,
-                              @Parameter(description = "Id of the topic",
+  public Response deleteFollower(@Context UriInfo uriInfo,
+                                 @Context SecurityContext securityContext,
+                                 @Parameter(description = "Id of the topic",
                                       schema = @Schema(type = "string"))
                               @PathParam("id") String id,
-                              @Parameter(description = "Id of the user being removed as follower",
+                                 @Parameter(description = "Id of the user being removed as follower",
                                       schema = @Schema(type = "string"))
                               @PathParam("userId") String userId) throws IOException, ParseException {
-    Fields fields = new Fields(FIELD_LIST, "followers");
-    dao.deleteFollower(UUID.fromString(id), UUID.fromString(userId));
-    Topic topic = dao.get(id, fields);
-    return addHref(uriInfo, topic);
+    return dao.deleteFollower(securityContext.getUserPrincipal().getName(), UUID.fromString(id),
+            UUID.fromString(userId)).toResponse();
   }
 
 

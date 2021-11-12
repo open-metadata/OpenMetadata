@@ -16,7 +16,6 @@
 
 package org.openmetadata.catalog.resources.bots;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.inject.Inject;
 import io.swagger.annotations.Api;
 import io.swagger.v3.oas.annotations.Operation;
@@ -67,11 +66,6 @@ public class BotsResource {
   private final BotsRepository dao;
   private final CatalogAuthorizer authorizer;
 
-  private static Bots addHref(UriInfo uriInfo, Bots bot) {
-    bot.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, bot.getId()));
-    return bot;
-  }
-
   @Inject
   public BotsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "CollectionDAO must not be null");
@@ -110,12 +104,10 @@ public class BotsResource {
     
     ResultList<Bots> list;
     if (before != null) { // Reverse paging
-      list = dao.listBefore(null, name, limitParam, before);
+      list = dao.listBefore(uriInfo, null, name, limitParam, before);
     } else { // Forward paging or first page
-      list = dao.listAfter(null, name, limitParam, after);
+      list = dao.listAfter(uriInfo, null, name, limitParam, after);
     }
-    list.getData().forEach(b -> addHref(uriInfo, b));
-    
     return list;
   }
 
@@ -132,7 +124,7 @@ public class BotsResource {
   public Bots get(@Context UriInfo uriInfo,
                   @Context SecurityContext securityContext,
                   @PathParam("id") String id) throws IOException, ParseException {
-    return addHref(uriInfo, dao.get(id, Fields.EMPTY_FIELDS));
+    return dao.get(uriInfo, id, Fields.EMPTY_FIELDS);
   }
 
   @POST
@@ -150,7 +142,7 @@ public class BotsResource {
     SecurityUtil.checkAdminRole(authorizer, securityContext);
     bot.withId(UUID.randomUUID()).withUpdatedBy(securityContext.getUserPrincipal().getName())
             .withUpdatedAt(new Date());
-    addHref(uriInfo, dao.create(bot));
+    dao.create(uriInfo, bot);
     return Response.created(bot.getHref()).entity(bot).build();
   }
 }

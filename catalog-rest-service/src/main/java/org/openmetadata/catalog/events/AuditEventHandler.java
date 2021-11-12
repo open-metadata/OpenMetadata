@@ -18,10 +18,9 @@ package org.openmetadata.catalog.events;
 
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.catalog.CatalogApplicationConfig;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.type.AuditLog;
-import org.openmetadata.catalog.jdbi3.AuditLogRepository;
 import org.openmetadata.catalog.type.EntityReference;
-import org.openmetadata.catalog.util.EntityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +30,9 @@ import java.util.Date;
 
 public class AuditEventHandler implements  EventHandler {
   private static final Logger LOG = LoggerFactory.getLogger(AuditEventHandler.class);
-  private AuditLogRepository auditLogRepository;
 
   public void init(CatalogApplicationConfig config, Jdbi jdbi) {
-    this.auditLogRepository = jdbi.onDemand(AuditLogRepository.class);
+    // Nothing to do
   }
 
   public Void process(ContainerRequestContext requestContext,
@@ -47,26 +45,18 @@ public class AuditEventHandler implements  EventHandler {
       Date nowAsISO = new Date();
 
       try {
-        EntityReference entityReference = null;
-        // TODO fix this
-//        EntityReference entityReference = EntityUtil.getEntityReference(responseContext.getEntity(),
-//                responseContext.getEntity().getClass());
-        if (entityReference != null) {
-          AuditLog auditLog = new AuditLog()
-                  .withPath(path)
-                  .withDateTime(nowAsISO)
-                  .withEntityId(entityReference.getId())
-                  .withEntityType(entityReference.getType())
-                  .withMethod(AuditLog.Method.fromValue(method))
-                  .withUserName(username)
-                  .withResponseCode(responseCode);
-          auditLogRepository.create(auditLog);
-          LOG.debug("Added audit log entry: {}", auditLog);
-        } else {
-          LOG.error("Failed to capture audit log for {}", path);
-        }
+        EntityReference entityReference = Entity.getEntityReference(responseContext.getEntity());
+        AuditLog auditLog = new AuditLog()
+                .withPath(path)
+                .withDateTime(nowAsISO)
+                .withEntityId(entityReference.getId())
+                .withEntityType(entityReference.getType())
+                .withMethod(AuditLog.Method.fromValue(method))
+                .withUserName(username)
+                .withResponseCode(responseCode);
+        LOG.info("Added audit log entry: {}", auditLog);
       } catch(Exception e) {
-        LOG.error("Failed to capture audit log due to {}", e.getMessage());
+        LOG.error("Failed to capture audit log for {} and method {} due to {}", path, method, e.getMessage());
       }
     }
     return null;

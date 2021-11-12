@@ -454,76 +454,109 @@ const EntityTable = ({
                       ) : null}
 
                       {cell.column.id === 'dataTypeDisplay' && (
-                        <div>
-                          {cell.value.length > 25 ? (
-                            <span>
-                              <PopOver
-                                html={
-                                  <div className="tw-break-words">
-                                    <RichTextEditorPreviewer
-                                      markdown={cell.value.toLowerCase()}
-                                    />
-                                  </div>
-                                }
-                                position="bottom"
-                                theme="light"
-                                trigger="click">
-                                <p className="tw-cursor-pointer tw-underline tw-inline-block">
-                                  <RichTextEditorPreviewer
-                                    markdown={`${cell.value
-                                      .slice(0, 20)
-                                      .toLowerCase()}...`}
-                                  />
-                                </p>
-                              </PopOver>
-                            </span>
+                        <>
+                          {isReadOnly ? (
+                            <div className="tw-flex tw-flex-wrap tw-w-60 tw-overflow-x-auto">
+                              <RichTextEditorPreviewer
+                                markdown={cell.value.toLowerCase()}
+                              />
+                            </div>
                           ) : (
-                            cell.value.toLowerCase()
+                            <>
+                              {cell.value.length > 25 ? (
+                                <span>
+                                  <PopOver
+                                    html={
+                                      <div className="tw-break-words">
+                                        <RichTextEditorPreviewer
+                                          markdown={cell.value.toLowerCase()}
+                                        />
+                                      </div>
+                                    }
+                                    position="bottom"
+                                    theme="light"
+                                    trigger="click">
+                                    <div className="tw-cursor-pointer tw-underline tw-inline-block">
+                                      <RichTextEditorPreviewer
+                                        markdown={`${cell.value
+                                          .slice(0, 20)
+                                          .toLowerCase()}...`}
+                                      />
+                                    </div>
+                                  </PopOver>
+                                </span>
+                              ) : (
+                                cell.value.toLowerCase()
+                              )}
+                            </>
                           )}
-                        </div>
+                        </>
                       )}
 
                       {cell.column.id === 'tags' && (
-                        <div
-                          onClick={() => {
-                            if (!editColumnTag && !isReadOnly) {
-                              handleEditColumnTag(row.original, row.id);
-                            }
-                          }}>
-                          <NonAdminAction
-                            html={getHtmlForNonAdminAction(Boolean(owner))}
-                            isOwner={hasEditAccess}
-                            position="left"
-                            trigger="click">
-                            <TagsContainer
-                              editable={editColumnTag?.index === row.id}
-                              selectedTags={cell.value || []}
-                              tagList={allTags}
-                              onCancel={() => {
-                                handleTagSelection();
-                              }}
-                              onSelectionChange={(tags) => {
-                                handleTagSelection(tags);
-                              }}>
-                              {!isReadOnly ? (
-                                cell.value.length ? (
-                                  <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
-                                    <SVGIcons
-                                      alt="edit"
-                                      icon="icon-edit"
-                                      title="Edit"
-                                      width="10px"
-                                    />
-                                  </button>
-                                ) : (
-                                  <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
-                                    <Tags tag="+ Add tag" type="outlined" />
-                                  </span>
+                        <>
+                          {isReadOnly ? (
+                            <div className="tw-flex tw-flex-wrap">
+                              {cell.value?.map(
+                                (
+                                  tag: TagLabel & {
+                                    added: boolean;
+                                    removed: boolean;
+                                  },
+                                  i: number
+                                ) => (
+                                  <Tags
+                                    className={classNames(
+                                      { 'diff-added': tag?.added },
+                                      { 'diff-removed': tag?.removed }
+                                    )}
+                                    key={i}
+                                    tag={`#${tag.tagFQN}`}
+                                  />
                                 )
-                              ) : null}
-                            </TagsContainer>
-                          </NonAdminAction>
-                        </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              onClick={() => {
+                                if (!editColumnTag) {
+                                  handleEditColumnTag(row.original, row.id);
+                                }
+                              }}>
+                              <NonAdminAction
+                                html={getHtmlForNonAdminAction(Boolean(owner))}
+                                isOwner={hasEditAccess}
+                                position="left"
+                                trigger="click">
+                                <TagsContainer
+                                  editable={editColumnTag?.index === row.id}
+                                  selectedTags={cell.value || []}
+                                  tagList={allTags}
+                                  onCancel={() => {
+                                    handleTagSelection();
+                                  }}
+                                  onSelectionChange={(tags) => {
+                                    handleTagSelection(tags);
+                                  }}>
+                                  {cell.value.length ? (
+                                    <button className="tw-opacity-0 tw-ml-1 group-hover:tw-opacity-100 focus:tw-outline-none">
+                                      <SVGIcons
+                                        alt="edit"
+                                        icon="icon-edit"
+                                        title="Edit"
+                                        width="10px"
+                                      />
+                                    </button>
+                                  ) : (
+                                    <span className="tw-opacity-60 group-hover:tw-opacity-100 tw-text-grey-muted group-hover:tw-text-primary">
+                                      <Tags tag="+ Add tag" type="outlined" />
+                                    </span>
+                                  )}
+                                </TagsContainer>
+                              </NonAdminAction>
+                            </div>
+                          )}
+                        </>
                       )}
                       {cell.column.id === 'description' && (
                         <div>
@@ -647,15 +680,23 @@ const EntityTable = ({
                         </div>
                       )}
                       {cell.column.id === 'name' && (
-                        <span
-                          style={{
-                            paddingLeft: `${
-                              row.canExpand ? '0px' : `${row.depth * 25}px`
-                            }`,
-                          }}>
-                          {getConstraintIcon(row.original.constraint)}
-                          {cell.render('Cell')}
-                        </span>
+                        <>
+                          {isReadOnly ? (
+                            <div className="tw-inline-block">
+                              <RichTextEditorPreviewer markdown={cell.value} />
+                            </div>
+                          ) : (
+                            <span
+                              style={{
+                                paddingLeft: `${
+                                  row.canExpand ? '0px' : `${row.depth * 25}px`
+                                }`,
+                              }}>
+                              {getConstraintIcon(row.original.constraint)}
+                              {cell.render('Cell')}
+                            </span>
+                          )}
+                        </>
                       )}
                     </td>
                   );

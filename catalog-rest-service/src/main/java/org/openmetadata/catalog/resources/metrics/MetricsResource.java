@@ -71,11 +71,6 @@ public class MetricsResource {
   public static final String COLLECTION_PATH = "/v1/metrics/";
   private final MetricsRepository dao;
 
-  private static Metrics addHref(UriInfo uriInfo, Metrics metrics) {
-    metrics.setHref(RestUtil.getHref(uriInfo, COLLECTION_PATH, metrics.getId()));
-    return metrics;
-  }
-
   @Inject
   public MetricsResource(CollectionDAO dao, CatalogAuthorizer authorizer) {
     Objects.requireNonNull(dao, "MetricsRepository must not be null");
@@ -120,12 +115,10 @@ public class MetricsResource {
 
     ResultList<Metrics> metricsList;
     if (before != null) { // Reverse paging
-      metricsList = dao.listBefore(fields, null, limitParam, before);
+      metricsList = dao.listBefore(uriInfo, fields, null, limitParam, before);
     } else { // Forward paging or first page
-      metricsList = dao.listAfter(fields, null, limitParam, after);
+      metricsList = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
-    metricsList.getData().forEach(m -> addHref(uriInfo, m));
-    
     return metricsList;
   }
 
@@ -145,7 +138,7 @@ public class MetricsResource {
                              schema = @Schema(type = "string", example = FIELDS))
                        @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     Fields fields = new Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return dao.get(uriInfo, id, fields);
   }
 
   @POST
@@ -161,7 +154,7 @@ public class MetricsResource {
                          @Context SecurityContext securityContext,
                          @Valid Metrics metrics) throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
-    addHref(uriInfo, dao.create(metrics));
+    dao.create(uriInfo, metrics);
     return Response.created(metrics.getHref()).entity(metrics).build();
   }
 
@@ -178,9 +171,8 @@ public class MetricsResource {
                                  @Context SecurityContext securityContext,
                                  @Valid Metrics metrics) throws IOException, ParseException {
     addToMetrics(securityContext, metrics);
-    PutResponse<Metrics> response = dao.createOrUpdate(metrics);
-    addHref(uriInfo, metrics);
-    return Response.status(response.getStatus()).entity(metrics).build();
+    PutResponse<Metrics> response = dao.createOrUpdate(uriInfo, metrics);
+    return response.toResponse();
   }
 
   private void addToMetrics(SecurityContext securityContext, Metrics metrics) {

@@ -27,20 +27,18 @@ from metadata.generated.schema.api.data.createDashboard import (
 from metadata.generated.schema.api.data.createDatabase import (
     CreateDatabaseEntityRequest,
 )
-from metadata.generated.schema.api.data.createModel import CreateModelEntityRequest
+from metadata.generated.schema.api.data.createMLModel import CreateMLModelEntityRequest
 from metadata.generated.schema.api.data.createPipeline import (
     CreatePipelineEntityRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableEntityRequest
-from metadata.generated.schema.api.data.createTask import CreateTaskEntityRequest
 from metadata.generated.schema.api.data.createTopic import CreateTopicEntityRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineage
 from metadata.generated.schema.api.teams.createTeam import CreateTeamEntityRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserEntityRequest
 from metadata.generated.schema.entity.data.chart import ChartType
-from metadata.generated.schema.entity.data.model import Model
+from metadata.generated.schema.entity.data.mlmodel import MLModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.task import Task
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Record, WorkflowContext
 from metadata.ingestion.api.sink import Sink, SinkStatus
@@ -110,16 +108,14 @@ class MetadataRestSink(Sink):
             self.write_charts(record)
         elif isinstance(record, Dashboard):
             self.write_dashboards(record)
-        elif isinstance(record, Task):
-            self.write_tasks(record)
         elif isinstance(record, Pipeline):
             self.write_pipelines(record)
         elif isinstance(record, AddLineage):
             self.write_lineage(record)
         elif isinstance(record, User):
             self.write_users(record)
-        elif isinstance(record, Model):
-            self.write_model(record)
+        elif isinstance(record, MLModel):
+            self.write_ml_model(record)
         else:
             logging.info(
                 f"Ignoring the record due to unknown Record type {type(record)}"
@@ -252,24 +248,6 @@ class MetadataRestSink(Sink):
                 chart_references.append(self.charts_dict[chart_id])
         return chart_references
 
-    def write_tasks(self, task: Task):
-        try:
-            task_request = CreateTaskEntityRequest(
-                name=task.name,
-                displayName=task.displayName,
-                description=task.description,
-                taskUrl=task.taskUrl,
-                downstreamTasks=task.downstreamTasks,
-                service=task.service,
-            )
-            created_task = self.metadata.create_or_update(task_request)
-            logger.info(f"Successfully ingested Task {created_task.displayName}")
-            self.status.records_written(f"Task: {created_task.displayName}")
-        except (APIError, ValidationError) as err:
-            logger.error(f"Failed to ingest task {task.name}")
-            logger.error(err)
-            self.status.failure(f"Task: {task.name}")
-
     def write_pipelines(self, pipeline: Pipeline):
         try:
             pipeline_request = CreatePipelineEntityRequest(
@@ -301,10 +279,10 @@ class MetadataRestSink(Sink):
             logger.error(err)
             self.status.failure(f"Lineage: {add_lineage}")
 
-    def write_model(self, model: Model):
+    def write_ml_model(self, model: MLModel):
         try:
             logger.info(model)
-            model_request = CreateModelEntityRequest(
+            model_request = CreateMLModelEntityRequest(
                 name=model.name,
                 displayName=model.displayName,
                 description=model.description,

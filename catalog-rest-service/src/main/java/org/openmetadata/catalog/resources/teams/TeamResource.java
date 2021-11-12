@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import org.openmetadata.catalog.Entity;
 import org.openmetadata.catalog.api.teams.CreateTeam;
 import org.openmetadata.catalog.entity.teams.Team;
 import org.openmetadata.catalog.jdbi3.CollectionDAO;
@@ -35,7 +36,6 @@ import org.openmetadata.catalog.resources.Collection;
 import org.openmetadata.catalog.security.CatalogAuthorizer;
 import org.openmetadata.catalog.security.SecurityUtil;
 import org.openmetadata.catalog.type.EntityHistory;
-import org.openmetadata.catalog.type.EntityReference;
 import org.openmetadata.catalog.util.EntityUtil;
 import org.openmetadata.catalog.util.RestUtil;
 import org.openmetadata.catalog.util.ResultList;
@@ -75,19 +75,13 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "teams")
 public class TeamResource {
-  public static final String TEAM_COLLECTION_PATH = "/v1/teams/";
+  public static final String COLLECTION_PATH = "/v1/teams/";
   private final TeamRepository dao;
   private final CatalogAuthorizer authorizer;
 
-
-  public static void addHref(UriInfo uriInfo, EntityReference team) {
-    team.setHref(RestUtil.getHref(uriInfo, TEAM_COLLECTION_PATH, team.getId()));
-  }
-
   public static Team addHref(UriInfo uriInfo, Team team) {
-    team.setHref(RestUtil.getHref(uriInfo, TEAM_COLLECTION_PATH, team.getId()));
-    EntityUtil.addHref(uriInfo, team.getUsers());
-    EntityUtil.addHref(uriInfo, team.getOwns());
+    Entity.withHref(uriInfo, team.getUsers());
+    Entity.withHref(uriInfo, team.getOwns());
     return team;
   }
 
@@ -144,9 +138,9 @@ public class TeamResource {
 
     ResultList<Team> teams;
     if (before != null) { // Reverse paging
-      teams = dao.listBefore(fields, null, limitParam, before); // Ask for one extra entry
+      teams = dao.listBefore(uriInfo, fields, null, limitParam, before); // Ask for one extra entry
     } else { // Forward paging or first page
-      teams = dao.listAfter(fields, null, limitParam, after);
+      teams = dao.listAfter(uriInfo, fields, null, limitParam, after);
     }
     teams.getData().forEach(team -> addHref(uriInfo, team));
     return teams;
@@ -186,7 +180,7 @@ public class TeamResource {
                           schema = @Schema(type = "string", example = FIELDS))
                   @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.get(id, fields));
+    return addHref(uriInfo, dao.get(uriInfo, id, fields));
   }
 
   @GET
@@ -207,7 +201,7 @@ public class TeamResource {
                           schema = @Schema(type = "string", example = FIELDS))
                         @QueryParam("fields") String fieldsParam) throws IOException, ParseException {
     EntityUtil.Fields fields = new EntityUtil.Fields(FIELD_LIST, fieldsParam);
-    return addHref(uriInfo, dao.getByName(name, fields));
+    return addHref(uriInfo, dao.getByName(uriInfo, name, fields));
   }
 
   @GET
@@ -245,7 +239,7 @@ public class TeamResource {
                          @Valid CreateTeam ct) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
-    addHref(uriInfo, dao.create(team));
+    addHref(uriInfo, dao.create(uriInfo, team));
     return Response.created(team.getHref()).entity(team).build();
   }
 
@@ -263,9 +257,9 @@ public class TeamResource {
                                      @Valid CreateTeam ct) throws IOException, ParseException {
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
     Team team = getTeam(ct, securityContext);
-    RestUtil.PutResponse<Team> response = dao.createOrUpdate(team);
-    team = addHref(uriInfo, response.getEntity());
-    return Response.status(response.getStatus()).entity(team).build();
+    RestUtil.PutResponse<Team> response = dao.createOrUpdate(uriInfo, team);
+    addHref(uriInfo, response.getEntity());
+    return response.toResponse();
   }
 
   @PATCH
@@ -288,7 +282,8 @@ public class TeamResource {
                     JsonPatch patch) throws IOException, ParseException {
 
     SecurityUtil.checkAdminOrBotRole(authorizer, securityContext);
-    return addHref(uriInfo, dao.patch(UUID.fromString(id), securityContext.getUserPrincipal().getName(), patch));
+    return addHref(uriInfo, dao.patch(uriInfo, UUID.fromString(id),
+            securityContext.getUserPrincipal().getName(), patch));
   }
 
   @DELETE
